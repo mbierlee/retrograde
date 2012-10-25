@@ -1,0 +1,2 @@
+FIX: mouseview rotation determinism
+FIX: ground collision detection: detects collision when jumping in unbound CL rate
