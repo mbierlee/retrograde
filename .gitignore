@@ -1,0 +1,16 @@
+/.svn
+/PShoot.v11.suo
+/PShoot.sdf
+/TestResults
+/src/Debug
+/ipch
+/src/Release
+/src/Test
+/Debug
+/Release
+/Test
+/src/PShoot.vcxproj.user
+/PShootTest/PShootTest.vcxproj.user
+/PShootTest/Debug
+/PShootTest/Release
+/PShootTest/Test
