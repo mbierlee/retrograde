@@ -10,10 +10,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PShootTest", "PShootTest\PS
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug Client|Win32 = Debug Client|Win32
-		Debug Client|x64 = Debug Client|x64
-		Debug Host|Win32 = Debug Host|Win32
-		Debug Host|x64 = Debug Host|x64
 		Debug|Win32 = Debug|Win32
 		Debug|x64 = Debug|x64
 		Release|Win32 = Release|Win32
@@ -22,12 +18,6 @@ Global
 		Test|x64 = Test|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{DC72AB35-F1AF-4C24-BD66-CC09772E0D55}.Debug Client|Win32.ActiveCfg = Debug Client|Win32
-		{DC72AB35-F1AF-4C24-BD66-CC09772E0D55}.Debug Client|Win32.Build.0 = Debug Client|Win32
-		{DC72AB35-F1AF-4C24-BD66-CC09772E0D55}.Debug Client|x64.ActiveCfg = Debug Client|Win32
-		{DC72AB35-F1AF-4C24-BD66-CC09772E0D55}.Debug Host|Win32.ActiveCfg = Debug Host|Win32
-		{DC72AB35-F1AF-4C24-BD66-CC09772E0D55}.Debug Host|Win32.Build.0 = Debug Host|Win32
-		{DC72AB35-F1AF-4C24-BD66-CC09772E0D55}.Debug Host|x64.ActiveCfg = Debug Host|Win32
 		{DC72AB35-F1AF-4C24-BD66-CC09772E0D55}.Debug|Win32.ActiveCfg = Debug|Win32
 		{DC72AB35-F1AF-4C24-BD66-CC09772E0D55}.Debug|Win32.Build.0 = Debug|Win32
 		{DC72AB35-F1AF-4C24-BD66-CC09772E0D55}.Debug|x64.ActiveCfg = Debug|Win32
@@ -37,10 +27,6 @@ Global
 		{DC72AB35-F1AF-4C24-BD66-CC09772E0D55}.Test|Win32.ActiveCfg = Test|Win32
 		{DC72AB35-F1AF-4C24-BD66-CC09772E0D55}.Test|Win32.Build.0 = Test|Win32
 		{DC72AB35-F1AF-4C24-BD66-CC09772E0D55}.Test|x64.ActiveCfg = Test|Win32
-		{5A566026-B1AE-4029-A027-7618EDF26C3E}.Debug Client|Win32.ActiveCfg = Debug|Win32
-		{5A566026-B1AE-4029-A027-7618EDF26C3E}.Debug Client|x64.ActiveCfg = Debug|Win32
-		{5A566026-B1AE-4029-A027-7618EDF26C3E}.Debug Host|Win32.ActiveCfg = Debug|Win32
-		{5A566026-B1AE-4029-A027-7618EDF26C3E}.Debug Host|x64.ActiveCfg = Debug|Win32
 		{5A566026-B1AE-4029-A027-7618EDF26C3E}.Debug|Win32.ActiveCfg = Debug|Win32
 		{5A566026-B1AE-4029-A027-7618EDF26C3E}.Debug|x64.ActiveCfg = Debug|Win32
 		{5A566026-B1AE-4029-A027-7618EDF26C3E}.Release|Win32.ActiveCfg = Release|Win32
