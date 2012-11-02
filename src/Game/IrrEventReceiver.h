@@ -13,7 +13,7 @@ namespace Game {
 		Engine::Framework::IEventManager* eventManager;
 
 	public:
-		IrrEventReceiver(Engine::Framework::IEventManager* eventManager);
+		IrrEventReceiver(Engine::Framework::IEventManager* eventManager); //TODO: Pass shared ptr instead
 
 		virtual bool OnEvent( const irr::SEvent& event );
 	};

@@ -1,11 +1,13 @@
 #include "irrlicht.h"
 
+#include "DependencyConfig.h"
+
 #include "Game/TestGame.h"
 
 #include <memory>
 #include <stdio.h>
 
-#include <memory>
+#include <Hypodermic/ContainerBuilder.h>
 
 //#define CL_UPDRATE 16u
 #define CL_UPDRATE 0
@@ -26,12 +28,13 @@ int main() {
 	// TODO: config-based log levels
 	deviceParams.LoggingLevel = irr::ELL_INFORMATION;
 
-	irr::IrrlichtDevice* device = irr::createDeviceEx(deviceParams);
+	std::shared_ptr<Hypodermic::IContainer> typeContainer = SetupDependencies(deviceParams);
+	std::shared_ptr<irr::IrrlichtDevice> device = typeContainer->resolve<irr::IrrlichtDevice>();
 			
 	if (!device) 
 		return 1;
 	
-	std::shared_ptr<Game::TestGame> game = std::make_shared<Game::TestGame>(device);
+	auto game = typeContainer->resolve<Engine::Framework::IGame>();
 
 	int lastTime = device->getTimer()->getTime();
 
@@ -71,8 +74,6 @@ int main() {
 		}
 #endif
 	}
-
-	device->drop();
 
 	return 0;
 }

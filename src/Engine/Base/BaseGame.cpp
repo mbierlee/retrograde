@@ -1,11 +1,12 @@
 #include "BaseGame.h"
 
-#include "Engine/EntityManager.h"
-#include "Engine/EventManager.h"
-
-Engine::Base::BaseGame::BaseGame( irr::IrrlichtDevice* device )
-	: isExitRequested(false)
-	, device(device)
+Engine::Base::BaseGame::BaseGame(std::shared_ptr<irr::IrrlichtDevice> device
+								 , std::shared_ptr<Engine::Framework::IEntityManager> entityManager
+								 , std::shared_ptr<Engine::Framework::IEventManager> eventManager)
+	: device(device)
+	, entityManager(entityManager)
+	, eventManager(eventManager)
+	, isExitRequested(false)
 	, lastFrameTime(0)
 {
 	if (device) {
@@ -13,14 +14,9 @@ Engine::Base::BaseGame::BaseGame( irr::IrrlichtDevice* device )
 		driver = device->getVideoDriver();
 		lastFrameTime = device->getTimer()->getTime();
 	}
-
-	entityManager = new Engine::EntityManager();
-	eventManager = new Engine::EventManager();
 }
 
 Engine::Base::BaseGame::~BaseGame() {
-	delete entityManager;
-	delete eventManager;
 }
 
 bool Engine::Base::BaseGame::exitRequested()

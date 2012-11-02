@@ -8,6 +8,8 @@
 #include "IVideoDriver.h"
 #include "ISceneManager.h"
 
+#include <memory>
+
 namespace Engine { namespace Base {
 
 	class BaseGame 
@@ -17,15 +19,18 @@ namespace Engine { namespace Base {
 		bool isExitRequested;
 
 	protected:
-		irr::IrrlichtDevice* device;
+		std::shared_ptr<irr::IrrlichtDevice> device;
 		irr::video::IVideoDriver* driver;
 		irr::scene::ISceneManager* sceneManager;
-		Engine::Framework::IEntityManager* entityManager;
-		Engine::Framework::IEventManager* eventManager;
+		std::shared_ptr<Engine::Framework::IEntityManager> entityManager;
+		std::shared_ptr<Engine::Framework::IEventManager> eventManager;
 		irr::u32 lastFrameTime;
 
 	public:
-		BaseGame(irr::IrrlichtDevice* device);
+		BaseGame(std::shared_ptr<irr::IrrlichtDevice> device
+			, std::shared_ptr<Engine::Framework::IEntityManager> entityManager
+			, std::shared_ptr<Engine::Framework::IEventManager> eventManager);
+
 		virtual ~BaseGame();
 			
 		virtual bool exitRequested();

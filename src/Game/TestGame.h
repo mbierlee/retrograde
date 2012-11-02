@@ -8,6 +8,8 @@
 
 #include "irrlicht.h"
 
+#include <memory>
+
 namespace Game {
 
 class TestGame 
@@ -16,10 +18,14 @@ class TestGame
 	, public std::enable_shared_from_this<Game::TestGame>
 {
 private:	
-	Engine::Framework::IPhysicsManager* physicsManager;
+	std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager;
 
 public:
-	TestGame(irr::IrrlichtDevice* device);
+	TestGame(std::shared_ptr<irr::IrrlichtDevice> device
+		, std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager
+		, std::shared_ptr<Engine::Framework::IEntityManager> entityManager
+		, std::shared_ptr<Engine::Framework::IEventManager> eventManager);
+
 	virtual ~TestGame(void);
 
 	virtual void initialize();

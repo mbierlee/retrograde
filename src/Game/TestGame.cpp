@@ -1,10 +1,6 @@
 #include "TestGame.h"
 
 #include "Engine/Entity.h"
-#include "Game/Test/TestComponent.h"
-#include "Engine/EntityComponents/PositionEntityComponent.h"
-#include "Engine/EntityComponents/IrrlichtLoggerEntityComponent.h"
-#include "Engine/PhysicsManager.h"
 #include "Game/IrrEventReceiver.h"
 
 #include "Game/Entities.h"
@@ -12,22 +8,24 @@
 
 #include "ICameraSceneNode.h"
 
-Game::TestGame::TestGame(irr::IrrlichtDevice* device)
-	: Engine::Base::BaseGame(device)
+Game::TestGame::TestGame(std::shared_ptr<irr::IrrlichtDevice> device
+						 , std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager
+						 , std::shared_ptr<Engine::Framework::IEntityManager> entityManager
+						 , std::shared_ptr<Engine::Framework::IEventManager> eventManager)
+	: Engine::Base::BaseGame(device, entityManager, eventManager)
+	, physicsManager(physicsManager)
 {
-	physicsManager = new Engine::PhysicsManager();
 }
 
 
 Game::TestGame::~TestGame(void)
 {
-	delete physicsManager;
 }
 
 void Game::TestGame::initialize()
 {
 	eventManager->registerObserver(shared_from_this());
-	device->setEventReceiver(new Game::IrrEventReceiver(eventManager));
+	device->setEventReceiver(new Game::IrrEventReceiver(eventManager.get()));
 
 	physicsManager->initialize();
 
