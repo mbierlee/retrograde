@@ -5,6 +5,7 @@
 #include "Engine/Framework/IEntity.h"
 #include "Engine/Framework/IPhysicsManager.h"
 #include "Engine/Framework/IEventObserver.h"
+#include "Engine/Framework/IEntityFactory.h"
 
 #include "irrlicht.h"
 
@@ -19,12 +20,14 @@ class TestGame
 {
 private:	
 	std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager;
+	std::shared_ptr<Engine::Framework::IEntityFactory> entityFactory;
 
 public:
 	TestGame(std::shared_ptr<irr::IrrlichtDevice> device
 		, std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager
 		, std::shared_ptr<Engine::Framework::IEntityManager> entityManager
-		, std::shared_ptr<Engine::Framework::IEventManager> eventManager);
+		, std::shared_ptr<Engine::Framework::IEventManager> eventManager
+		, std::shared_ptr<Engine::Framework::IEntityFactory> entityFactory);
 
 	virtual ~TestGame(void);
 

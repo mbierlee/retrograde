@@ -7,6 +7,7 @@
 #include "Engine/PhysicsManager.h"
 #include "Engine/EntityManager.h"
 #include "Engine/EventManager.h"
+#include "Engine/DefaultEntityFactory.h"
 
 std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreationParameters& deviceParams)
 {
@@ -25,12 +26,16 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 	//Setup Event Manager
 	builder.registerType<Engine::EventManager>()->as<Engine::Framework::IEventManager>()->singleInstance();
 
+	//Setup Entity Factory
+	builder.registerType<Engine::DefaultEntityFactory>(CREATE(new Engine::DefaultEntityFactory(INJECT(irr::IrrlichtDevice))))->as<Engine::Framework::IEntityFactory>();
+
 	//Setup Game
 	builder.registerType<Game::TestGame>(CREATE(new Game::TestGame(
 		INJECT(irr::IrrlichtDevice)
 		, INJECT(Engine::Framework::IPhysicsManager)
 		, INJECT(Engine::Framework::IEntityManager)
 		, INJECT(Engine::Framework::IEventManager)
+		, INJECT(Engine::Framework::IEntityFactory)
 		)))->as<Engine::Framework::IGame>()->singleInstance();
 
 	return builder.build();

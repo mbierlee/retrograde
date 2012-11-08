@@ -11,9 +11,11 @@
 Game::TestGame::TestGame(std::shared_ptr<irr::IrrlichtDevice> device
 						 , std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager
 						 , std::shared_ptr<Engine::Framework::IEntityManager> entityManager
-						 , std::shared_ptr<Engine::Framework::IEventManager> eventManager)
+						 , std::shared_ptr<Engine::Framework::IEventManager> eventManager
+						 , std::shared_ptr<Engine::Framework::IEntityFactory> entityFactory)
 	: Engine::Base::BaseGame(device, entityManager, eventManager)
 	, physicsManager(physicsManager)
+	, entityFactory(entityFactory)
 {
 }
 
