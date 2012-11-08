@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine/Framework/IEntityFactory.h"
+
 #include "IrrlichtDevice.h"
 
 namespace Engine {

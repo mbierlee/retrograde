@@ -146,7 +146,6 @@
     <ClCompile Include="Engine\Event.cpp" />
     <ClCompile Include="Engine\EventManager.cpp" />
     <ClCompile Include="Engine\PhysicsManager.cpp" />
-    <ClCompile Include="Game\Entities.cpp" />
     <ClCompile Include="Game\IrrEventReceiver.cpp" />
     <ClCompile Include="Game\Test\TestComponent.cpp" />
     <ClCompile Include="Main.cpp" />
@@ -156,6 +155,7 @@
   <ItemGroup>
     <ClInclude Include="DependencyConfig.h" />
     <ClInclude Include="Engine\Base\BaseGame.h" />
+    <ClInclude Include="Engine\DefaultEntityDefinitions.h" />
     <ClInclude Include="Engine\DefaultEntityFactory.h" />
     <ClInclude Include="Engine\Entity.h" />
     <ClInclude Include="Engine\EntityComponents\CameraEntityComponent.h" />
@@ -174,7 +174,6 @@
     <ClInclude Include="Engine\Framework\IPhysicsManager.h" />
     <ClInclude Include="Engine\Event.h" />
     <ClInclude Include="Engine\PhysicsManager.h" />
-    <ClInclude Include="Game\Entities.h" />
     <ClInclude Include="Game\Event\Events.h" />
     <ClInclude Include="Game\IrrEventReceiver.h" />
     <ClInclude Include="Game\TestGame.h" />

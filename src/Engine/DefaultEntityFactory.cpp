@@ -1,9 +1,10 @@
 #include "DefaultEntityFactory.h"
-#include "Engine/Entity.h"
 
+#include "Engine/Entity.h"
 #include "Engine/EntityComponents/PositionEntityComponent.h"
 #include "Engine/EntityComponents/RotationEntityComponent.h"
 #include "Engine/EntityComponents/CameraEntityComponent.h"
+#include "Engine/DefaultEntityDefinitions.h"
 
 void Engine::DefaultEntityFactory::clearPool()
 {
@@ -22,7 +23,7 @@ std::shared_ptr<Engine::Framework::IEntity> Engine::DefaultEntityFactory::makeFl
 
 std::shared_ptr<Engine::Framework::IEntity> Engine::DefaultEntityFactory::create(irr::core::stringc entityType)
 {
-	if (entityType == "flyCamera") {
+	if (entityType == ENTITY_FLYCAMERA) {
 		return makeFlyCameraEntity();
 	}
 

@@ -1,9 +1,9 @@
 #include "TestGame.h"
 
 #include "Engine/Entity.h"
-#include "Game/IrrEventReceiver.h"
+#include "Engine/DefaultEntityDefinitions.h"
 
-#include "Game/Entities.h"
+#include "Game/IrrEventReceiver.h"
 #include "Game/Event/Events.h"
 
 #include "ICameraSceneNode.h"
@@ -30,9 +30,8 @@ void Game::TestGame::initialize()
 	device->setEventReceiver(new Game::IrrEventReceiver(eventManager.get()));
 
 	physicsManager->initialize();
-
-	irr::scene::ICameraSceneNode* cameraNode = sceneManager->addCameraSceneNode(sceneManager->getRootSceneNode());
-	entityManager->addEntity(Game::createFlyCameraEntity(cameraNode));
+		
+	entityManager->addEntity(entityFactory->create(ENTITY_FLYCAMERA));
 	
 	sceneManager->loadScene("data/TestMap.irr");
 }
