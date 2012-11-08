@@ -2,6 +2,7 @@
 
 #include "Engine/Framework/IEntityComponent.h"
 
+#include "IrrlichtDevice.h"
 #include "ICameraSceneNode.h"
 
 namespace Engine { namespace EntityComponents {
@@ -10,10 +11,11 @@ namespace Engine { namespace EntityComponents {
 		: public Engine::Framework::IEntityComponent
 	{
 	private:
+		std::shared_ptr<irr::IrrlichtDevice> device;
 		irr::scene::ICameraSceneNode* cameraSceneNode;
 
 	public:
-		CameraEntityComponent(irr::scene::ICameraSceneNode* cameraSceneNode);
+		CameraEntityComponent(std::shared_ptr<irr::IrrlichtDevice> device);
 
 		static const irr::core::stringc componentType();
 		static const irr::core::stringc familyType();

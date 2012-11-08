@@ -3,9 +3,15 @@
 #include "Engine/EntityComponents/PositionEntityComponent.h"
 #include "Engine/EntityComponents/RotationEntityComponent.h"
 
-Engine::EntityComponents::CameraEntityComponent::CameraEntityComponent( irr::scene::ICameraSceneNode* cameraSceneNode )
-	: cameraSceneNode(cameraSceneNode)
+#include "ISceneManager.h"
+
+Engine::EntityComponents::CameraEntityComponent::CameraEntityComponent(std::shared_ptr<irr::IrrlichtDevice> device)
+	: device(device)
 {
+	if (device) {
+		irr::scene::ISceneManager* sceneManager = device->getSceneManager();
+		cameraSceneNode = sceneManager->addCameraSceneNode(sceneManager->getRootSceneNode());
+	}
 }
 
 const irr::core::stringc Engine::EntityComponents::CameraEntityComponent::getComponentType() const

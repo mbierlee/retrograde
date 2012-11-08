@@ -16,8 +16,7 @@ std::shared_ptr<Engine::Framework::IEntity> Engine::DefaultEntityFactory::makeFl
 	std::shared_ptr<Engine::Framework::IEntity> entity = std::make_shared<Engine::Entity>("flyCamera");
 	entity->addComponent(std::make_shared<Engine::EntityComponents::PositionEntityComponent>());
 	entity->addComponent(std::make_shared<Engine::EntityComponents::RotationEntityComponent>());
-	//TODO: Refactor camera to create its own with the irrlicht device.
-	//entity->addComponent(std::make_shared<Engine::EntityComponents::CameraEntityComponent>(camera)); 
+	entity->addComponent(std::make_shared<Engine::EntityComponents::CameraEntityComponent>(device)); 
 	return entity;
 }
 
