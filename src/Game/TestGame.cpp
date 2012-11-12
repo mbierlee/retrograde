@@ -31,7 +31,7 @@ void Game::TestGame::initialize()
 
 	physicsManager->initialize();
 		
-	entityManager->addEntity(entityFactory->create(ENTITY_FLYCAMERA));
+	entityManager->addEntity(entityFactory->create(ENTITY_DEBUG_FLY_CAMERA));
 	
 	sceneManager->loadScene("data/TestMap.irr");
 }

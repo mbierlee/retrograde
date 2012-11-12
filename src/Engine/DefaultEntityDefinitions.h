@@ -1,3 +1,3 @@
 #pragma once
 
-#define ENTITY_FLYCAMERA "flyCamera"
+#define ENTITY_DEBUG_FLY_CAMERA "debugFlyCamera"

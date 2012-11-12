@@ -12,7 +12,7 @@ namespace Engine {
 	private:
 		std::shared_ptr<irr::IrrlichtDevice> device;
 
-		std::shared_ptr<Engine::Framework::IEntity> makeFlyCameraEntity();
+		std::shared_ptr<Engine::Framework::IEntity> makeDebugFlyCameraEntity();
 
 	public:
 		DefaultEntityFactory(std::shared_ptr<irr::IrrlichtDevice> device);

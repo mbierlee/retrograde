@@ -139,6 +139,7 @@
     <ClCompile Include="Engine\Base\BaseGame.cpp" />
     <ClCompile Include="Engine\DefaultEntityFactory.cpp" />
     <ClCompile Include="Engine\Entity.cpp" />
+    <ClCompile Include="Engine\EntityComponents\FreeflightCameraEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\IrrlichtLoggerEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\RotationEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\CameraEntityComponent.cpp" />
@@ -159,6 +160,7 @@
     <ClInclude Include="Engine\DefaultEntityFactory.h" />
     <ClInclude Include="Engine\Entity.h" />
     <ClInclude Include="Engine\EntityComponents\CameraEntityComponent.h" />
+    <ClInclude Include="Engine\EntityComponents\FreeflightCameraEntityComponent.h" />
     <ClInclude Include="Engine\EntityComponents\IrrlichtLoggerEntityComponent.h" />
     <ClInclude Include="Engine\EntityComponents\RotationEntityComponent.h" />
     <ClInclude Include="Engine\EntityManager.h" />
