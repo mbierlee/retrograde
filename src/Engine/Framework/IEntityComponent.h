@@ -1,5 +1,10 @@
 #pragma once
 
+/**
+ * Gets a component of certain type from the entity.
+ */
+#define COMPONENT(_COMPTYPE) std::static_pointer_cast<Engine::EntityComponents::_COMPTYPE>(entity->getComponent(Engine::EntityComponents::_COMPTYPE::familyType()))
+
 #include "Engine/Framework/IEntity.h"
 
 #include <memory>
