@@ -1,6 +1,6 @@
 #include "irrlicht.h"
 
-#include "DependencyConfig.h"
+#include "Engine/TypeContainerConfig.h"
 
 #include "Game/TestGame.h"
 
@@ -28,7 +28,7 @@ int main() {
 	// TODO: config-based log levels
 	deviceParams.LoggingLevel = irr::ELL_INFORMATION;
 
-	std::shared_ptr<Hypodermic::IContainer> typeContainer = SetupDependencies(deviceParams);
+	SetupTypeContainer(deviceParams);
 	std::shared_ptr<irr::IrrlichtDevice> device = typeContainer->resolve<irr::IrrlichtDevice>();
 			
 	if (!device) 

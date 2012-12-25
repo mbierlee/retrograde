@@ -1,4 +1,4 @@
-#include "DependencyConfig.h"
+#include "Engine/TypeContainerConfig.h"
 
 #include <Hypodermic/ContainerBuilder.h>
 #include <Hypodermic/Helpers.h>
@@ -9,7 +9,9 @@
 #include "Engine/EventManager.h"
 #include "Engine/DefaultEntityFactory.h"
 
-std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreationParameters& deviceParams)
+std::shared_ptr<Hypodermic::IContainer> typeContainer;
+
+void SetupTypeContainer(irr::SIrrlichtCreationParameters& deviceParams)
 {
 	Hypodermic::ContainerBuilder builder;
 
@@ -38,5 +40,5 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 		, INJECT(Engine::Framework::IEntityFactory)
 		)))->as<Engine::Framework::IGame>()->singleInstance();
 
-	return builder.build();
+	typeContainer = builder.build();
 }

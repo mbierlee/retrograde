@@ -135,7 +135,7 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="DependencyConfig.cpp" />
+    <ClCompile Include="TypeContainerConfig.cpp" />
     <ClCompile Include="Engine\Base\BaseGame.cpp" />
     <ClCompile Include="Engine\DefaultEntityFactory.cpp" />
     <ClCompile Include="Engine\Entity.cpp" />
@@ -154,7 +154,7 @@
     <ClCompile Include="Engine\EntityComponents\PositionEntityComponent.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="DependencyConfig.h" />
+    <ClInclude Include="Engine\TypeContainerConfig.h" />
     <ClInclude Include="Engine\Base\BaseGame.h" />
     <ClInclude Include="Engine\DefaultEntityDefinitions.h" />
     <ClInclude Include="Engine\DefaultEntityFactory.h" />
