@@ -13,6 +13,8 @@ private:
 	irr::core::vector3df position;
 
 public:
+	PositionEntityComponent(irr::core::vector3df& position = irr::core::vector3df(0));
+
 	virtual const irr::core::stringc getComponentType() const;
 	virtual const irr::core::stringc getFamilyType() const;
 	virtual void update( Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime );

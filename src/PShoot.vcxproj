@@ -135,18 +135,31 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="TypeContainerConfig.cpp" />
+    <ClCompile Include="Engine\Bullet\HandledMotionState.cpp" />
+    <ClCompile Include="Engine\EntityComponents\CollisionGroupEntityComponent.cpp" />
+    <ClCompile Include="Engine\EntityComponents\CollisionMaskEntityComponent.cpp" />
+    <ClCompile Include="Engine\EntityComponents\RigidBodyEntityComponent.cpp" />
+    <ClCompile Include="Engine\EntityComponents\VisualModelEntityComponent.cpp" />
+    <ClCompile Include="Game\TypeContainerConfig.cpp" />
     <ClCompile Include="Engine\Base\BaseGame.cpp" />
-    <ClCompile Include="Engine\DefaultEntityFactory.cpp" />
+    <ClCompile Include="Engine\Bullet\IrrlichtPhysicsDebugDrawer.cpp" />
+    <ClCompile Include="Engine\EntityFactories\DebugEntityFactory.cpp" />
+    <ClCompile Include="Engine\EntityFactories\DefaultEntityFactory.cpp" />
     <ClCompile Include="Engine\Entity.cpp" />
+    <ClCompile Include="Engine\EntityComponents\CollisionModelEntityComponent.cpp" />
+    <ClCompile Include="Engine\EntityComponents\CollisionObjectEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\FreeflightCameraEntityComponent.cpp" />
+    <ClCompile Include="Engine\EntityComponents\InertiaEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\IrrlichtLoggerEntityComponent.cpp" />
+    <ClCompile Include="Engine\EntityComponents\MassEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\RotationEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\CameraEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityManager.cpp" />
     <ClCompile Include="Engine\Event.cpp" />
     <ClCompile Include="Engine\EventManager.cpp" />
+    <ClCompile Include="Engine\FactoryManager.cpp" />
     <ClCompile Include="Engine\PhysicsManager.cpp" />
+    <ClCompile Include="Engine\PhysicsUtil.cpp" />
     <ClCompile Include="Game\IrrEventReceiver.cpp" />
     <ClCompile Include="Game\Test\TestComponent.cpp" />
     <ClCompile Include="Main.cpp" />
@@ -154,17 +167,30 @@
     <ClCompile Include="Engine\EntityComponents\PositionEntityComponent.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\Bullet\HandledMotionState.h" />
+    <ClInclude Include="Engine\EntityComponents\CollisionGroupEntityComponent.h" />
+    <ClInclude Include="Engine\EntityComponents\CollisionMaskEntityComponent.h" />
+    <ClInclude Include="Engine\EntityComponents\RigidBodyEntityComponent.h" />
+    <ClInclude Include="Engine\EntityComponents\VisualModelEntityComponent.h" />
     <ClInclude Include="Engine\TypeContainerConfig.h" />
     <ClInclude Include="Engine\Base\BaseGame.h" />
+    <ClInclude Include="Engine\Bullet\IrrlichtPhysicsDebugDrawer.h" />
     <ClInclude Include="Engine\DefaultEntityDefinitions.h" />
-    <ClInclude Include="Engine\DefaultEntityFactory.h" />
+    <ClInclude Include="Engine\EntityFactories\DebugEntityFactory.h" />
+    <ClInclude Include="Engine\EntityFactories\DefaultEntityFactory.h" />
     <ClInclude Include="Engine\Entity.h" />
     <ClInclude Include="Engine\EntityComponents\CameraEntityComponent.h" />
+    <ClInclude Include="Engine\EntityComponents\CollisionObjectEntityComponent.h" />
     <ClInclude Include="Engine\EntityComponents\FreeflightCameraEntityComponent.h" />
+    <ClInclude Include="Engine\EntityComponents\CollisionModelEntityComponent.h" />
+    <ClInclude Include="Engine\EntityComponents\InertiaEntityComponent.h" />
     <ClInclude Include="Engine\EntityComponents\IrrlichtLoggerEntityComponent.h" />
+    <ClInclude Include="Engine\EntityComponents\MassEntityComponent.h" />
     <ClInclude Include="Engine\EntityComponents\RotationEntityComponent.h" />
     <ClInclude Include="Engine\EntityManager.h" />
     <ClInclude Include="Engine\EventManager.h" />
+    <ClInclude Include="Engine\FactoryManager.h" />
+    <ClInclude Include="Engine\Framework\IDebugDrawer.h" />
     <ClInclude Include="Engine\Framework\IEntity.h" />
     <ClInclude Include="Engine\Framework\IEntityComponent.h" />
     <ClInclude Include="Engine\Framework\IEntityFactory.h" />
@@ -172,10 +198,12 @@
     <ClInclude Include="Engine\Framework\IEvent.h" />
     <ClInclude Include="Engine\Framework\IEventManager.h" />
     <ClInclude Include="Engine\Framework\IEventObserver.h" />
+    <ClInclude Include="Engine\Framework\IFactoryManager.h" />
     <ClInclude Include="Engine\Framework\IGame.h" />
     <ClInclude Include="Engine\Framework\IPhysicsManager.h" />
     <ClInclude Include="Engine\Event.h" />
     <ClInclude Include="Engine\PhysicsManager.h" />
+    <ClInclude Include="Engine\PhysicsUtil.h" />
     <ClInclude Include="Game\Event\Events.h" />
     <ClInclude Include="Game\IrrEventReceiver.h" />
     <ClInclude Include="Game\TestGame.h" />

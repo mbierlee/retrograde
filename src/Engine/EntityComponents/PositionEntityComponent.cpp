@@ -1,5 +1,10 @@
 #include "PositionEntityComponent.h"
 
+Engine::EntityComponents::PositionEntityComponent::PositionEntityComponent(irr::core::vector3df& position /*= irr::core::vector3df(0)*/)
+	: position(position)
+{
+}
+
 const irr::core::stringc Engine::EntityComponents::PositionEntityComponent::getComponentType() const
 {
 	return componentType();
@@ -33,3 +38,4 @@ void Engine::EntityComponents::PositionEntityComponent::setPosition( const irr::
 {
 	this->position = position;
 }
+

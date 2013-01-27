@@ -36,18 +36,24 @@ int main() {
 	
 	auto game = typeContainer->resolve<Engine::Framework::IGame>();
 
-	int lastTime = device->getTimer()->getTime();
-
+	int lastTime = 0;
+	
 	//TODO: build in config-based frame limit for rendering.
 	//TODO: on-screen fps and ups
 	
 	irr::u32 updateTime = CL_UPDRATE; // Force immediate update upon start
 	irr::u32 updateRate = deviceParams.Vsync ? 0 : CL_UPDRATE;
-
-	game->initialize();
+	
+	bool firstRun = true;
 
 	while(device->run() && !game->exitRequested()) {
 		//TODO: let game change updaterate
+
+		if (firstRun) {
+			lastTime = device->getTimer()->getTime();
+			game->initialize();
+			firstRun = false;
+		}
 
 		if (updateRate > 0) {
 			irr::u32 currentTime = device->getTimer()->getTime();

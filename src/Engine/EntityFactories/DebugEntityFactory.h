@@ -14,6 +14,7 @@ namespace Engine { namespace EntityFactories {
 
 		std::shared_ptr<Engine::Framework::IEntity> makeDebugFlyCameraEntity();
 		std::shared_ptr<Engine::Framework::IEntity> makeDebugPhysCube();
+		std::shared_ptr<Engine::Framework::IEntity> makeDebugPhysFloor();
 
 	public:
 		DebugEntityFactory(std::shared_ptr<irr::IrrlichtDevice> device);

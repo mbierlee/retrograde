@@ -2,21 +2,22 @@
 
 #include "Engine/Framework/IEntityComponent.h"
 
-#include "ILogger.h"
-#include "irrString.h"
-
-#include <cstdarg>
+#include <IMesh.h>
+#include <IMeshSceneNode.h>
+#include <IrrlichtDevice.h>
 
 namespace Engine { namespace EntityComponents {
 
-	class IrrlichtLoggerEntityComponent 
+	class VisualModelEntityComponent 
 		: public Engine::Framework::IEntityComponent
-	{
+	{	
 	private:
-		irr::ILogger* logger;
+		irr::scene::IMesh* mesh;
+		irr::scene::IMeshSceneNode* meshSceneNode;
+		std::shared_ptr<irr::IrrlichtDevice> device;
 
 	public:
-		IrrlichtLoggerEntityComponent(irr::ILogger* logger);
+		VisualModelEntityComponent(std::shared_ptr<irr::IrrlichtDevice> device, irr::scene::IMesh* mesh);
 
 		virtual const irr::core::stringc getComponentType() const;
 		virtual const irr::core::stringc getFamilyType() const;
@@ -24,9 +25,6 @@ namespace Engine { namespace EntityComponents {
 		static const irr::core::stringc familyType();
 
 		virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime);
-
-		void log(const wchar_t* text, irr::ELOG_LEVEL logLevel = irr::ELL_INFORMATION);
-		void log(const irr::c8* text, irr::ELOG_LEVEL logLevel = irr::ELL_INFORMATION);
 	};
 
 }}

@@ -7,8 +7,8 @@
 
 Engine::EntityComponents::FreeflightCameraEntityComponent::FreeflightCameraEntityComponent( std::shared_ptr<irr::IrrlichtDevice> device )
 	: device(device)
+	, cameraSceneNode(nullptr)
 {
-	cameraSceneNode = device->getSceneManager()->addCameraSceneNodeFPS();
 }
 
 const irr::core::stringc Engine::EntityComponents::FreeflightCameraEntityComponent::getComponentType() const
@@ -23,22 +23,18 @@ const irr::core::stringc Engine::EntityComponents::FreeflightCameraEntityCompone
 
 void Engine::EntityComponents::FreeflightCameraEntityComponent::update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime)
 {	
-	if (cameraSceneNode) {
-		auto positionComponent = 
-			std::static_pointer_cast<Engine::EntityComponents::PositionEntityComponent>(
-			entity->getComponent(Engine::EntityComponents::PositionEntityComponent::familyType()));
+	if (device) {
+		auto positionComponent = COMPONENT(PositionEntityComponent);
+		auto rotationComponent = COMPONENT(RotationEntityComponent);
 
-		if (positionComponent) {
-			positionComponent->setPosition(cameraSceneNode->getPosition());
+		if (!cameraSceneNode) {
+			cameraSceneNode = device->getSceneManager()->addCameraSceneNodeFPS(); // TODO Add to entity scenenode
+			if (positionComponent) cameraSceneNode->setPosition(positionComponent->getPosition() * 10.);
+			if (rotationComponent) cameraSceneNode->setRotation(rotationComponent->getRotation());
 		}
-		
-		auto rotationComponent = 
-			std::static_pointer_cast<Engine::EntityComponents::RotationEntityComponent>(
-			entity->getComponent(Engine::EntityComponents::RotationEntityComponent::familyType()));
 
-		if (rotationComponent) {
-			rotationComponent->setRotation(cameraSceneNode->getRotation());
-		}
+		if (positionComponent) positionComponent->setPosition(cameraSceneNode->getPosition() / 10.);
+		if (rotationComponent) rotationComponent->setRotation(cameraSceneNode->getRotation());
 	}
 }
 

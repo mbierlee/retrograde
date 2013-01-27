@@ -7,11 +7,8 @@
 
 Engine::EntityComponents::CameraEntityComponent::CameraEntityComponent(std::shared_ptr<irr::IrrlichtDevice> device)
 	: device(device)
+	, cameraSceneNode(nullptr)
 {
-	if (device) {
-		irr::scene::ISceneManager* sceneManager = device->getSceneManager();
-		cameraSceneNode = sceneManager->addCameraSceneNode(sceneManager->getRootSceneNode());
-	}
 }
 
 const irr::core::stringc Engine::EntityComponents::CameraEntityComponent::getComponentType() const
@@ -26,18 +23,18 @@ const irr::core::stringc Engine::EntityComponents::CameraEntityComponent::getFam
 
 void Engine::EntityComponents::CameraEntityComponent::update( Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime )
 {
-	if (cameraSceneNode) {
-		auto positionComponent = 
-			std::static_pointer_cast<Engine::EntityComponents::PositionEntityComponent>(
-			entity->getComponent(Engine::EntityComponents::PositionEntityComponent::familyType()));
+	if (device) {
+		auto positionComponent = COMPONENT(PositionEntityComponent);
+		auto rotationComponent = COMPONENT(RotationEntityComponent);
+
+		if (!cameraSceneNode) {
+			irr::scene::ISceneManager* sceneManager = device->getSceneManager();
+			cameraSceneNode = sceneManager->addCameraSceneNode(sceneManager->getRootSceneNode()); //TODO: Add to entity scenenode
+		}
 
 		if (positionComponent && positionComponent->getPosition() != cameraSceneNode->getPosition()) {
 			cameraSceneNode->setPosition(positionComponent->getPosition());
 		}
-
-		auto rotationComponent = 
-			std::static_pointer_cast<Engine::EntityComponents::RotationEntityComponent>(
-			entity->getComponent(Engine::EntityComponents::RotationEntityComponent::familyType()));
 
 		if (rotationComponent && rotationComponent->getRotation() != cameraSceneNode->getRotation()) {
 			cameraSceneNode->setRotation(rotationComponent->getRotation());

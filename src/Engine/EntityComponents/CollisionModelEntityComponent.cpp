@@ -29,7 +29,7 @@ const irr::core::stringc Engine::EntityComponents::CollisionModelEntityComponent
 	return "CollisionModelEntityComponent";
 }
 
-btCollisionShape* Engine::EntityComponents::CollisionModelEntityComponent::getCollisionShape()
+std::shared_ptr<btCollisionShape> Engine::EntityComponents::CollisionModelEntityComponent::getCollisionShape()
 {
 	return collisionShape;
 }

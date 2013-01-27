@@ -3,6 +3,7 @@
 #include "Engine/Framework/IGame.h"
 #include "Engine/Framework/IEntityManager.h"
 #include "Engine/Framework/IEventManager.h"
+#include "Engine/Framework/IFactoryManager.h"
 
 #include "irrlicht.h"
 #include "IVideoDriver.h"
@@ -24,18 +25,21 @@ namespace Engine { namespace Base {
 		irr::scene::ISceneManager* sceneManager;
 		std::shared_ptr<Engine::Framework::IEntityManager> entityManager;
 		std::shared_ptr<Engine::Framework::IEventManager> eventManager;
-		irr::u32 lastFrameTime;
+		std::shared_ptr<Engine::Framework::IFactoryManager> factoryManager;
+		irr::u32 lastFrameTime, frameTime, deltaTime;
 
 	public:
 		BaseGame(std::shared_ptr<irr::IrrlichtDevice> device
 			, std::shared_ptr<Engine::Framework::IEntityManager> entityManager
-			, std::shared_ptr<Engine::Framework::IEventManager> eventManager);
+			, std::shared_ptr<Engine::Framework::IEventManager> eventManager
+			, std::shared_ptr<Engine::Framework::IFactoryManager> factoryManager);
 
 		virtual ~BaseGame();
 			
 		virtual bool exitRequested();
 		virtual void requestExit();
 		virtual void update();
+		virtual void initialize();
 
 	};
 

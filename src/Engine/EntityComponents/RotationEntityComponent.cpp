@@ -1,6 +1,11 @@
 #include "RotationEntityComponent.h"
 
 
+Engine::EntityComponents::RotationEntityComponent::RotationEntityComponent( irr::core::vector3df& rotation /*= irr::core::vector3df(0)*/ )
+	: rotation(rotation)
+{
+}
+
 const irr::core::stringc Engine::EntityComponents::RotationEntityComponent::getComponentType() const
 {
 	return componentType();

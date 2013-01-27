@@ -2,33 +2,34 @@
 
 #include "Engine/Framework/IEntityComponent.h"
 #include "Engine/Framework/IPhysicsManager.h"
+#include "Engine/Bullet/HandledMotionState.h"
 
-#include <btBulletCollisionCommon.h>
-
-#include <memory>
+#include  <btBulletDynamicsCommon.h>
 
 namespace Engine { namespace EntityComponents {
 
-	class CollisionObjectEntityComponent 
+	class RigidBodyEntityComponent
 		: public Engine::Framework::IEntityComponent
-		, public std::enable_shared_from_this<CollisionObjectEntityComponent>
-	{
+		, public std::enable_shared_from_this<RigidBodyEntityComponent>
+	{	
 	private:
-		btCollisionObject* collisionObject;
+		btRigidBody* rigidBody;
 		std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager;
-		void initialize( Engine::Framework::IEntity* entity );
+		Engine::Bullet::HandledMotionState* motionState;
 
 	public:
-		CollisionObjectEntityComponent();
+		RigidBodyEntityComponent();
 
 		virtual const irr::core::stringc getComponentType() const;
 		virtual const irr::core::stringc getFamilyType() const;
 		static const irr::core::stringc componentType();
 		static const irr::core::stringc familyType();
 
-		virtual void update( Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime );
+		virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime);
 
-		btCollisionObject* getCollisionObject() const;
+		void initialize( Engine::Framework::IEntity* entity );
+
+		btRigidBody* getRigidBody() const;
 	};
 
 }}

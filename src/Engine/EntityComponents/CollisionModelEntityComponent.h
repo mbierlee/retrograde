@@ -21,7 +21,7 @@ namespace Engine { namespace EntityComponents {
 		static const irr::core::stringc componentType();
 		static const irr::core::stringc familyType();
 
-		btCollisionShape* getCollisionShape();
+		std::shared_ptr<btCollisionShape> getCollisionShape();
 	};
 
 }}
