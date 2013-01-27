@@ -1,6 +1,6 @@
 /.svn
-/PShoot.v11.suo
-/PShoot.sdf
+/Retrograde.v11.suo
+/Retrograde.sdf
 /TestResults
 /src/Debug
 /ipch
@@ -9,9 +9,9 @@
 /Debug
 /Release
 /Test
-/src/PShoot.vcxproj.user
-/PShootTest/PShootTest.vcxproj.user
-/PShootTest/Debug
-/PShootTest/Release
-/PShootTest/Test
-/PShoot.opensdf
+/src/Retrograde.vcxproj.user
+/RetrogradeTest/Retrograde.vcxproj.user
+/RetrogradeTest/Debug
+/RetrogradeTest/Release
+/RetrogradeTest/Test
+/Retrograde.opensdf

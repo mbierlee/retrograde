@@ -15,7 +15,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{DC72AB35-F1AF-4C24-BD66-CC09772E0D55}</ProjectGuid>
+    <ProjectGuid>{4FE54FF1-E96F-4156-BCA3-9FCCB58F6701}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>PShoot</RootNamespace>
   </PropertyGroup>
