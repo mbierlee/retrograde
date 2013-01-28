@@ -61,7 +61,7 @@ std::shared_ptr<Engine::Framework::IEntity> Engine::EntityFactories::DebugEntity
 	
 	entity->addComponent(std::make_shared<Engine::EntityComponents::VisualModelEntityComponent>(device, visualMesh));
 	entity->addComponent(std::make_shared<Engine::EntityComponents::PositionEntityComponent>(irr::core::vector3df(0., 50., 0.)));
-	entity->addComponent(std::make_shared<Engine::EntityComponents::RotationEntityComponent>());
+	entity->addComponent(std::make_shared<Engine::EntityComponents::RotationEntityComponent>(irr::core::quaternion(0, irr::core::degToRad(45.f), 0)));
 	entity->addComponent(std::make_shared<Engine::EntityComponents::MassEntityComponent>(1.f));
 	entity->addComponent(std::make_shared<Engine::EntityComponents::InertiaEntityComponent>());
 	entity->addComponent(std::make_shared<Engine::EntityComponents::CollisionModelEntityComponent>(collisionShape));

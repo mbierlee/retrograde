@@ -3,6 +3,7 @@
 #include "Engine/EntityComponents/IrrlichtLoggerEntityComponent.h"
 #include "Engine/EntityComponents/PositionEntityComponent.h"
 #include "Engine/EntityComponents/RotationEntityComponent.h"
+#include "Engine/PhysicsUtil.h"
 
 #include <ISceneManager.h>
 #include <irrTypes.h>
@@ -53,12 +54,13 @@ void Engine::EntityComponents::VisualModelEntityComponent::update( Engine::Frame
 				if (positionComponent) position = positionComponent->getPosition() * 10.;
 				if (rotationComponent) rotation = rotationComponent->getEulerRotation();
 
-				meshSceneNode = sceneManager->addMeshSceneNode(mesh, sceneManager->getRootSceneNode(), -1, position, rotation);
+				meshSceneNode = sceneManager->addMeshSceneNode(mesh, sceneManager->getRootSceneNode(), -1, position, vecRadToDeg(rotation));
 				//TODO: Add scenenode entity component so we can use an entity's node as parent.
 			}
 		} 
 
+		// Todo: only set on changes
 		if (positionComponent) meshSceneNode->setPosition(positionComponent->getPosition() * 10.);
-		if (rotationComponent) meshSceneNode->setRotation(rotationComponent->getEulerRotation());
+		if (rotationComponent) meshSceneNode->setRotation(vecRadToDeg(rotationComponent->getEulerRotation()));
 	}
 }

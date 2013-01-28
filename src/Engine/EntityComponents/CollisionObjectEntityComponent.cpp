@@ -66,8 +66,7 @@ void Engine::EntityComponents::CollisionObjectEntityComponent::initialize( Engin
 			transform.setIdentity();
 			if (positionComponent) transform.setOrigin(transformIrrVector(positionComponent->getPosition()));
 			if (rotationComponent) {
-				irr::core::vector3df rotation = rotationComponent->getEulerRotation();
-				transform.setRotation(btQuaternion(rotation.Y, rotation.X, rotation.Z));
+				transform.setRotation(transformIrrQuaternion(rotationComponent->getRotation()));
 			}
 
 			collisionObject = new btCollisionObject();

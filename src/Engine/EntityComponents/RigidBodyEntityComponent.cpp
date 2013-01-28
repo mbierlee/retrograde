@@ -80,8 +80,7 @@ void Engine::EntityComponents::RigidBodyEntityComponent::initialize( Engine::Fra
 			startTransform.setIdentity();
 			if (positionComponent) startTransform.setOrigin(transformIrrVector(positionComponent->getPosition()));
 			if (rotationComponent) {
-				irr::core::vector3df rotation = rotationComponent->getEulerRotation();
-				startTransform.setRotation(btQuaternion(rotation.Y, rotation.X, rotation.Z));
+				startTransform.setRotation(transformIrrQuaternion(rotationComponent->getRotation()));
 			}
 
 			btVector3 inertia;
