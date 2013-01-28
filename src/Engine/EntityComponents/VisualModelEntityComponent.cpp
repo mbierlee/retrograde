@@ -51,7 +51,7 @@ void Engine::EntityComponents::VisualModelEntityComponent::update( Engine::Frame
 			if (sceneManager) {
 				irr::core::vector3df position, rotation;
 				if (positionComponent) position = positionComponent->getPosition() * 10.;
-				if (rotationComponent) rotation = rotationComponent->getRotation();
+				if (rotationComponent) rotation = rotationComponent->getEulerRotation();
 
 				meshSceneNode = sceneManager->addMeshSceneNode(mesh, sceneManager->getRootSceneNode(), -1, position, rotation);
 				//TODO: Add scenenode entity component so we can use an entity's node as parent.
@@ -59,6 +59,6 @@ void Engine::EntityComponents::VisualModelEntityComponent::update( Engine::Frame
 		} 
 
 		if (positionComponent) meshSceneNode->setPosition(positionComponent->getPosition() * 10.);
-		if (rotationComponent) meshSceneNode->setRotation(rotationComponent->getRotation());
+		if (rotationComponent) meshSceneNode->setRotation(rotationComponent->getEulerRotation());
 	}
 }

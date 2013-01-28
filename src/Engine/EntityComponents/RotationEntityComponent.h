@@ -22,8 +22,8 @@ namespace Engine { namespace EntityComponents {
 
 		virtual void update( Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime );
 
-		const irr::core::vector3df& getRotation() const;
-		void setRotation(const irr::core::vector3df& rotation);
+		const irr::core::vector3df& getEulerRotation() const;
+		void setEulerRotation(const irr::core::vector3df& rotation);
 	};
 
 }}

@@ -30,11 +30,11 @@ void Engine::EntityComponents::FreeflightCameraEntityComponent::update(Engine::F
 		if (!cameraSceneNode) {
 			cameraSceneNode = device->getSceneManager()->addCameraSceneNodeFPS(); // TODO Add to entity scenenode
 			if (positionComponent) cameraSceneNode->setPosition(positionComponent->getPosition() * 10.);
-			if (rotationComponent) cameraSceneNode->setRotation(rotationComponent->getRotation());
+			if (rotationComponent) cameraSceneNode->setRotation(rotationComponent->getEulerRotation());
 		}
 
 		if (positionComponent) positionComponent->setPosition(cameraSceneNode->getPosition() / 10.);
-		if (rotationComponent) rotationComponent->setRotation(cameraSceneNode->getRotation());
+		if (rotationComponent) rotationComponent->setEulerRotation(cameraSceneNode->getRotation());
 	}
 }
 

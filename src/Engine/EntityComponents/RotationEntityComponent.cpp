@@ -30,12 +30,12 @@ const irr::core::stringc Engine::EntityComponents::RotationEntityComponent::fami
 	return "RotationEntityComponent";
 }
 
-const irr::core::vector3df& Engine::EntityComponents::RotationEntityComponent::getRotation() const
+const irr::core::vector3df& Engine::EntityComponents::RotationEntityComponent::getEulerRotation() const
 {
 	return rotation;
 }
 
-void Engine::EntityComponents::RotationEntityComponent::setRotation( const irr::core::vector3df& rotation )
+void Engine::EntityComponents::RotationEntityComponent::setEulerRotation( const irr::core::vector3df& rotation )
 {
 	this->rotation = rotation;
 }

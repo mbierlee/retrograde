@@ -36,8 +36,8 @@ void Engine::EntityComponents::CameraEntityComponent::update( Engine::Framework:
 			cameraSceneNode->setPosition(positionComponent->getPosition());
 		}
 
-		if (rotationComponent && rotationComponent->getRotation() != cameraSceneNode->getRotation()) {
-			cameraSceneNode->setRotation(rotationComponent->getRotation());
+		if (rotationComponent && rotationComponent->getEulerRotation() != cameraSceneNode->getRotation()) {
+			cameraSceneNode->setRotation(rotationComponent->getEulerRotation());
 		}
 	}
 }
