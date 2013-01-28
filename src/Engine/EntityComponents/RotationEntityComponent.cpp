@@ -2,6 +2,11 @@
 
 
 Engine::EntityComponents::RotationEntityComponent::RotationEntityComponent( irr::core::vector3df& rotation /*= irr::core::vector3df(0)*/ )
+{
+	setEulerRotation(rotation);
+}
+
+Engine::EntityComponents::RotationEntityComponent::RotationEntityComponent( irr::core::quaternion& rotation /*= irr::core::quaternion()*/ )
 	: rotation(rotation)
 {
 }
@@ -30,12 +35,24 @@ const irr::core::stringc Engine::EntityComponents::RotationEntityComponent::fami
 	return "RotationEntityComponent";
 }
 
-const irr::core::vector3df& Engine::EntityComponents::RotationEntityComponent::getEulerRotation() const
+const irr::core::vector3df Engine::EntityComponents::RotationEntityComponent::getEulerRotation() const
+{
+	irr::core::vector3df eulerRotation;
+	rotation.toEuler(eulerRotation);
+	return eulerRotation;
+}
+
+void Engine::EntityComponents::RotationEntityComponent::setEulerRotation( const irr::core::vector3df& rotation )
+{
+	this->rotation = irr::core::quaternion(rotation.X, rotation.Y, rotation.Z);
+}
+
+const irr::core::quaternion& Engine::EntityComponents::RotationEntityComponent::getRotation() const
 {
 	return rotation;
 }
 
-void Engine::EntityComponents::RotationEntityComponent::setEulerRotation( const irr::core::vector3df& rotation )
+void Engine::EntityComponents::RotationEntityComponent::setRotation( const irr::core::quaternion& rotation )
 {
 	this->rotation = rotation;
 }
