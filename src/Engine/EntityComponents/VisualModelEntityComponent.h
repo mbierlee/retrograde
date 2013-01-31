@@ -25,6 +25,9 @@ namespace Engine { namespace EntityComponents {
 		static const irr::core::stringc familyType();
 
 		virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime);
+
+		void initialize(Engine::Framework::IEntity* entity);
+
 	};
 
 }}

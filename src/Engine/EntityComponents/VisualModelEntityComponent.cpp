@@ -38,29 +38,37 @@ const irr::core::stringc Engine::EntityComponents::VisualModelEntityComponent::f
 void Engine::EntityComponents::VisualModelEntityComponent::update( Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime )
 {
 	if (device) {
+		if (!meshSceneNode) {
+			initialize(entity);
+		} 
+
 		auto positionComponent = COMPONENT(PositionEntityComponent);
 		auto rotationComponent = COMPONENT(RotationEntityComponent);
-
-		if (!meshSceneNode) {
-			if (!mesh) {
-				auto loggerComponent = COMPONENT(IrrlichtLoggerEntityComponent);
-				loggerComponent->log("VisualModelEntityComponent: No mesh supplied. Nothing added.", irr::ELL_WARNING);
-			}
-
-			irr::scene::ISceneManager* sceneManager = device->getSceneManager();
-
-			if (sceneManager) {
-				irr::core::vector3df position, rotation;
-				if (positionComponent) position = positionComponent->getPosition() * 10.;
-				if (rotationComponent) rotation = rotationComponent->getEulerRotation();
-
-				meshSceneNode = sceneManager->addMeshSceneNode(mesh, sceneManager->getRootSceneNode(), -1, position, vecRadToDeg(rotation));
-				//TODO: Add scenenode entity component so we can use an entity's node as parent.
-			}
-		} 
 
 		// Todo: only set on changes
 		if (positionComponent) meshSceneNode->setPosition(positionComponent->getPosition() * 10.);
 		if (rotationComponent) meshSceneNode->setRotation(vecRadToDeg(rotationComponent->getEulerRotation()));
+	}
+}
+
+void Engine::EntityComponents::VisualModelEntityComponent::initialize(Engine::Framework::IEntity* entity)
+{
+	if (!mesh) {
+		auto loggerComponent = COMPONENT(IrrlichtLoggerEntityComponent);
+		loggerComponent->log("VisualModelEntityComponent: No mesh supplied. Nothing added.", irr::ELL_WARNING);
+	}
+
+	auto positionComponent = COMPONENT(PositionEntityComponent);
+	auto rotationComponent = COMPONENT(RotationEntityComponent);
+
+	irr::scene::ISceneManager* sceneManager = device->getSceneManager();
+
+	if (sceneManager) {
+		irr::core::vector3df position, rotation;
+		if (entity) position = positionComponent->getPosition() * 10.;
+		if (rotationComponent) rotation = rotationComponent->getEulerRotation();
+
+		meshSceneNode = sceneManager->addMeshSceneNode(mesh, sceneManager->getRootSceneNode(), -1, position, vecRadToDeg(rotation));
+		//TODO: Add scenenode entity component so we can use an entity's node as parent.
 	}
 }
