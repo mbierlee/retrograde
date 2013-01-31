@@ -44,7 +44,7 @@ const irr::core::vector3df Engine::EntityComponents::RotationEntityComponent::ge
 
 void Engine::EntityComponents::RotationEntityComponent::setEulerRotation( const irr::core::vector3df& rotation )
 {
-	this->rotation = irr::core::quaternion(rotation.X, rotation.Y, rotation.Z);
+	setRotation(irr::core::quaternion(rotation.X, rotation.Y, rotation.Z));
 }
 
 const irr::core::quaternion& Engine::EntityComponents::RotationEntityComponent::getRotation() const
@@ -55,4 +55,5 @@ const irr::core::quaternion& Engine::EntityComponents::RotationEntityComponent::
 void Engine::EntityComponents::RotationEntityComponent::setRotation( const irr::core::quaternion& rotation )
 {
 	this->rotation = rotation;
+	notifyAll();
 }

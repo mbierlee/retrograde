@@ -37,5 +37,6 @@ const irr::core::vector3df& Engine::EntityComponents::PositionEntityComponent::g
 void Engine::EntityComponents::PositionEntityComponent::setPosition( const irr::core::vector3df& position )
 {
 	this->position = position;
+	notifyAll();
 }
 

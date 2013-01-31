@@ -44,10 +44,6 @@ void Engine::EntityComponents::VisualModelEntityComponent::update( Engine::Frame
 
 		auto positionComponent = COMPONENT(PositionEntityComponent);
 		auto rotationComponent = COMPONENT(RotationEntityComponent);
-
-		// Todo: only set on changes
-		if (positionComponent) meshSceneNode->setPosition(positionComponent->getPosition() * 10.);
-		if (rotationComponent) meshSceneNode->setRotation(vecRadToDeg(rotationComponent->getEulerRotation()));
 	}
 }
 
@@ -65,10 +61,30 @@ void Engine::EntityComponents::VisualModelEntityComponent::initialize(Engine::Fr
 
 	if (sceneManager) {
 		irr::core::vector3df position, rotation;
-		if (entity) position = positionComponent->getPosition() * 10.;
+		if (positionComponent) position = positionComponent->getPosition() * 10.;
 		if (rotationComponent) rotation = rotationComponent->getEulerRotation();
 
 		meshSceneNode = sceneManager->addMeshSceneNode(mesh, sceneManager->getRootSceneNode(), -1, position, vecRadToDeg(rotation));
 		//TODO: Add scenenode entity component so we can use an entity's node as parent.
+
+		positionComponent->subscribeNotifications(shared_from_this());
+		rotationComponent->subscribeNotifications(shared_from_this());
+	}
+}
+
+void Engine::EntityComponents::VisualModelEntityComponent::handleNotification( std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent )
+{
+	if (!meshSceneNode) {
+		return;
+	}
+
+	if (entityComponent->getComponentType() == PositionEntityComponent::componentType()) {
+		auto positionComponent = std::static_pointer_cast<Engine::EntityComponents::PositionEntityComponent>(entityComponent);
+		meshSceneNode->setPosition(positionComponent->getPosition() * 10.);
+	}
+
+	if (entityComponent->getComponentType() == RotationEntityComponent::componentType()) {
+		auto rotationComponent = std::static_pointer_cast<Engine::EntityComponents::RotationEntityComponent>(entityComponent);
+		meshSceneNode->setRotation(vecRadToDeg(rotationComponent->getEulerRotation()));
 	}
 }

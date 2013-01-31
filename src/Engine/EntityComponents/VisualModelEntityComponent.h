@@ -27,6 +27,7 @@ namespace Engine { namespace EntityComponents {
 		virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime);
 
 		void initialize(Engine::Framework::IEntity* entity);
+		virtual void handleNotification(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent);
 
 	};
 
