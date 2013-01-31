@@ -52,7 +52,7 @@ void Engine::EntityComponents::RigidBodyEntityComponent::update( Engine::Framewo
 		auto rotationComponent = COMPONENT(RotationEntityComponent);
 
 		positionComponent->setPosition(transformBulletVector(transform.getOrigin()));
-		//TODO: Set rotation when converted rotationcomponent to quarternion
+		rotationComponent->setRotation(transformBulletQuaternion(transform.getRotation()));
 		motionState->resetChanged();
 	}
 }
