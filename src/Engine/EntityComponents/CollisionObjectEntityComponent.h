@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/Framework/IEntityComponent.h"
+#include "Engine/Base/BaseEntityComponent.h"
 #include "Engine/Framework/IPhysicsManager.h"
 
 #include <btBulletCollisionCommon.h>
@@ -10,7 +10,7 @@
 namespace Engine { namespace EntityComponents {
 
 	class CollisionObjectEntityComponent 
-		: public Engine::Framework::IEntityComponent
+		: public Engine::Base::BaseEntityComponent
 		, public std::enable_shared_from_this<CollisionObjectEntityComponent>
 	{
 	private:

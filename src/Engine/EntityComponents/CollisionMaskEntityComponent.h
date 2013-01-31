@@ -1,11 +1,11 @@
 #pragma once
 
-#include "Engine/Framework/IEntityComponent.h"
+#include "Engine/Base/BaseEntityComponent.h"
 
 namespace Engine { namespace EntityComponents {
 
 	class CollisionMaskEntityComponent 
-		: public Engine::Framework::IEntityComponent
+		: public Engine::Base::BaseEntityComponent
 	{	
 	private:
 		irr::s16 mask;

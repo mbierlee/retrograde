@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/Framework/IEntityComponent.h"
+#include "Engine/Base/BaseEntityComponent.h"
 
 #include "vector3d.h"
 #include "quaternion.h"
@@ -8,7 +8,7 @@
 namespace Engine { namespace EntityComponents {
 
 	class RotationEntityComponent 
-		: public Engine::Framework::IEntityComponent
+		: public Engine::Base::BaseEntityComponent
 	{
 	private:
 		irr::core::quaternion rotation;

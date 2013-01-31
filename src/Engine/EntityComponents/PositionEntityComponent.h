@@ -1,13 +1,13 @@
 #pragma once
 
-#include "Engine/Framework/IEntityComponent.h"
+#include "Engine/Base/BaseEntityComponent.h"
 
 #include "vector3d.h"
 
 namespace Engine { namespace EntityComponents {
 
-class PositionEntityComponent :
-	public Engine::Framework::IEntityComponent
+class PositionEntityComponent
+	: public Engine::Base::BaseEntityComponent
 {
 private:
 	irr::core::vector3df position;

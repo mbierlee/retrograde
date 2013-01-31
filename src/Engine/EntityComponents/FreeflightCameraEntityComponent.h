@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/Framework/IEntityComponent.h"
+#include "Engine/Base/BaseEntityComponent.h"
 #include "Engine/Framework/IEventObserver.h"
 #include "Engine/Framework/IEvent.h"
 
@@ -12,7 +12,7 @@
 namespace Engine { namespace EntityComponents {
 
 	class FreeflightCameraEntityComponent 
-		: public Engine::Framework::IEntityComponent
+		: public Engine::Base::BaseEntityComponent
 	{		
 	private:
 		std::shared_ptr<irr::IrrlichtDevice> device;

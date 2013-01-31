@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/Framework/IEntityComponent.h"
+#include "Engine/Base/BaseEntityComponent.h"
 #include "Engine/Framework/IPhysicsManager.h"
 #include "Engine/Bullet/HandledMotionState.h"
 
@@ -9,7 +9,7 @@
 namespace Engine { namespace EntityComponents {
 
 	class RigidBodyEntityComponent
-		: public Engine::Framework::IEntityComponent
+		: public Engine::Base::BaseEntityComponent
 		, public std::enable_shared_from_this<RigidBodyEntityComponent>
 	{	
 	private:

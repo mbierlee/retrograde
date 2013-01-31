@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/Framework/IEntityComponent.h"
+#include "Engine/Base/BaseEntityComponent.h"
 
 #include "ILogger.h"
 #include "irrString.h"
@@ -10,7 +10,7 @@
 namespace Engine { namespace EntityComponents {
 
 	class IrrlichtLoggerEntityComponent 
-		: public Engine::Framework::IEntityComponent
+		: public Engine::Base::BaseEntityComponent
 	{
 	private:
 		irr::ILogger* logger;

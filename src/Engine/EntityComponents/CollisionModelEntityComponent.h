@@ -1,13 +1,13 @@
 #pragma once
 
-#include "Engine/Framework/IEntityComponent.h"
+#include "Engine/Base/BaseEntityComponent.h"
 
 #include <btBulletDynamicsCommon.h>
 
 namespace Engine { namespace EntityComponents {
 
 	class CollisionModelEntityComponent 
-		: public Engine::Framework::IEntityComponent
+		: public Engine::Base::BaseEntityComponent
 	{		
 	private:
 		std::shared_ptr<btCollisionShape> collisionShape;

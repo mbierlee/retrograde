@@ -135,6 +135,7 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Engine\Base\BaseEntityComponent.cpp" />
     <ClCompile Include="Engine\Bullet\HandledMotionState.cpp" />
     <ClCompile Include="Engine\EntityComponents\CollisionGroupEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\CollisionMaskEntityComponent.cpp" />
@@ -167,6 +168,7 @@
     <ClCompile Include="Engine\EntityComponents\PositionEntityComponent.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\Base\BaseEntityComponent.h" />
     <ClInclude Include="Engine\Bullet\HandledMotionState.h" />
     <ClInclude Include="Engine\EntityComponents\CollisionGroupEntityComponent.h" />
     <ClInclude Include="Engine\EntityComponents\CollisionMaskEntityComponent.h" />

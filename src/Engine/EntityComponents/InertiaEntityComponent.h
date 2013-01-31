@@ -1,13 +1,13 @@
 #pragma once
 
-#include "Engine/Framework/IEntityComponent.h"
+#include "Engine/Base/BaseEntityComponent.h"
 
 #include <vector3d.h>
 
 namespace Engine { namespace EntityComponents {
 
 	class InertiaEntityComponent 
-		: public Engine::Framework::IEntityComponent
+		: public Engine::Base::BaseEntityComponent
 	{	
 	private:
 		irr::core::vector3df inertia;

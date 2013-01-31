@@ -1,13 +1,13 @@
 #pragma once
 
-#include "Engine/Framework/IEntityComponent.h"
+#include "Engine/Base/BaseEntityComponent.h"
 
 #include <irrTypes.h>
 
 namespace Engine { namespace EntityComponents {
 
 	class MassEntityComponent 
-		: public Engine::Framework::IEntityComponent
+		: public Engine::Base::BaseEntityComponent
 	{	
 	private:
 		irr::f32 mass;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/Framework/IEntityComponent.h"
+#include "Engine/Base/BaseEntityComponent.h"
 
 #include <IMesh.h>
 #include <IMeshSceneNode.h>
@@ -9,7 +9,7 @@
 namespace Engine { namespace EntityComponents {
 
 	class VisualModelEntityComponent 
-		: public Engine::Framework::IEntityComponent
+		: public Engine::Base::BaseEntityComponent
 	{	
 	private:
 		irr::scene::IMesh* mesh;
