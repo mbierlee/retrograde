@@ -11,7 +11,6 @@ namespace Engine { namespace EntityComponents {
 
 	class CollisionObjectEntityComponent 
 		: public Engine::Base::BaseEntityComponent
-		, public std::enable_shared_from_this<CollisionObjectEntityComponent>
 	{
 	private:
 		btCollisionObject* collisionObject;

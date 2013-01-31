@@ -10,7 +10,6 @@ namespace Engine { namespace EntityComponents {
 
 	class RigidBodyEntityComponent
 		: public Engine::Base::BaseEntityComponent
-		, public std::enable_shared_from_this<RigidBodyEntityComponent>
 	{	
 	private:
 		btRigidBody* rigidBody;

@@ -77,9 +77,9 @@ void Engine::EntityComponents::CollisionObjectEntityComponent::initialize( Engin
 			irr::s16 mask = collisionMaskComponent ? collisionMaskComponent->getMask() : btBroadphaseProxy::AllFilter ^ btBroadphaseProxy::StaticFilter;
 
 			if (collisionGroupComponent || collisionMaskComponent) {
-				physicsManager->registerCollisionObject(shared_from_this(), group, mask);
+				physicsManager->registerCollisionObject(std::static_pointer_cast<Engine::EntityComponents::CollisionObjectEntityComponent>(shared_from_this()), group, mask);
 			} else {
-				physicsManager->registerCollisionObject(shared_from_this());
+				physicsManager->registerCollisionObject(std::static_pointer_cast<Engine::EntityComponents::CollisionObjectEntityComponent>(shared_from_this()));
 			}
 		}
 	} else {

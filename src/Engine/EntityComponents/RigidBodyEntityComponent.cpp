@@ -102,9 +102,9 @@ void Engine::EntityComponents::RigidBodyEntityComponent::initialize( Engine::Fra
 			irr::s16 mask = collisionMaskComponent ? collisionMaskComponent->getMask() : 0;
 
 			if (collisionGroupComponent || collisionMaskComponent) {
-				physicsManager->registerRigidBody(shared_from_this(), group, mask);
+				physicsManager->registerRigidBody(std::static_pointer_cast<Engine::EntityComponents::RigidBodyEntityComponent>(shared_from_this()), group, mask);
 			} else {
-				physicsManager->registerRigidBody(shared_from_this());	
+				physicsManager->registerRigidBody(std::static_pointer_cast<Engine::EntityComponents::RigidBodyEntityComponent>(shared_from_this()));
 			}
 		}
 	} else {
