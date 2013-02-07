@@ -2,8 +2,8 @@
 
 #include "Engine/Base/BaseEntityComponent.h"
 
-#include "IrrlichtDevice.h"
-#include "ICameraSceneNode.h"
+#include <IrrlichtDevice.h>
+#include <ICameraSceneNode.h>
 
 namespace Engine { namespace EntityComponents {
 
@@ -23,6 +23,9 @@ namespace Engine { namespace EntityComponents {
 		virtual const irr::core::stringc getComponentType() const;
 		virtual const irr::core::stringc getFamilyType() const;
 		virtual void update( Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime );
+
+		void initialize(Engine::Framework::IEntity* entity);
+		virtual void handleNotification( std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent );
 
 	};
 
