@@ -41,9 +41,6 @@ void Engine::EntityComponents::VisualModelEntityComponent::update( Engine::Frame
 		if (!meshSceneNode) {
 			initialize(entity);
 		} 
-
-		auto positionComponent = COMPONENT(PositionEntityComponent);
-		auto rotationComponent = COMPONENT(RotationEntityComponent);
 	}
 }
 
