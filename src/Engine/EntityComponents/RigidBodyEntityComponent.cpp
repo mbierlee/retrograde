@@ -8,7 +8,7 @@
 #include "Engine/EntityComponents/CollisionGroupEntityComponent.h"
 #include "Engine/EntityComponents/CollisionMaskEntityComponent.h"
 #include "Engine/EntityComponents/IrrlichtLoggerEntityComponent.h"
-#include "Engine/PhysicsUtil.h"
+#include "Engine/UnitTransformationUtil.h"
 #include "Engine/TypeContainerConfig.h"
 
 Engine::EntityComponents::RigidBodyEntityComponent::RigidBodyEntityComponent()

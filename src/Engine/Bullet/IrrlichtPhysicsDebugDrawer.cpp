@@ -1,6 +1,6 @@
 #include "IrrlichtPhysicsDebugDrawer.h"
 
-#include "Engine/PhysicsUtil.h"
+#include "Engine/UnitTransformationUtil.h"
 
 #include <SMaterial.h>
 #include <matrix4.h>

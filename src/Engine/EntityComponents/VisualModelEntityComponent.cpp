@@ -3,7 +3,7 @@
 #include "Engine/EntityComponents/IrrlichtLoggerEntityComponent.h"
 #include "Engine/EntityComponents/PositionEntityComponent.h"
 #include "Engine/EntityComponents/RotationEntityComponent.h"
-#include "Engine/PhysicsUtil.h"
+#include "Engine/UnitTransformationUtil.h"
 
 #include <ISceneManager.h>
 #include <irrTypes.h>

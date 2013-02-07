@@ -7,7 +7,7 @@
 #include "Engine/EntityComponents/CollisionGroupEntityComponent.h"
 #include "Engine/EntityComponents/CollisionMaskEntityComponent.h"
 #include "Engine/TypeContainerConfig.h"
-#include "Engine/PhysicsUtil.h"
+#include "Engine/UnitTransformationUtil.h"
 
 Engine::EntityComponents::CollisionObjectEntityComponent::CollisionObjectEntityComponent()
 	: collisionObject(nullptr)

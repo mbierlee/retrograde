@@ -160,7 +160,7 @@
     <ClCompile Include="Engine\EventManager.cpp" />
     <ClCompile Include="Engine\FactoryManager.cpp" />
     <ClCompile Include="Engine\PhysicsManager.cpp" />
-    <ClCompile Include="Engine\PhysicsUtil.cpp" />
+    <ClCompile Include="Engine\UnitTransformationUtil.cpp" />
     <ClCompile Include="Game\IrrEventReceiver.cpp" />
     <ClCompile Include="Game\Test\TestComponent.cpp" />
     <ClCompile Include="Main.cpp" />
@@ -205,7 +205,7 @@
     <ClInclude Include="Engine\Framework\IPhysicsManager.h" />
     <ClInclude Include="Engine\Event.h" />
     <ClInclude Include="Engine\PhysicsManager.h" />
-    <ClInclude Include="Engine\PhysicsUtil.h" />
+    <ClInclude Include="Engine\UnitTransformationUtil.h" />
     <ClInclude Include="Game\Event\Events.h" />
     <ClInclude Include="Game\IrrEventReceiver.h" />
     <ClInclude Include="Game\TestGame.h" />
