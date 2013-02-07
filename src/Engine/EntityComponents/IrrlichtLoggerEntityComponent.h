@@ -2,8 +2,8 @@
 
 #include "Engine/Base/BaseEntityComponent.h"
 
-#include "ILogger.h"
-#include "irrString.h"
+#include <ILogger.h>
+#include <irrString.h>
 
 #include <cstdarg>
 

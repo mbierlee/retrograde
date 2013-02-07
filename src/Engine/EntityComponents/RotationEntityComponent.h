@@ -2,8 +2,8 @@
 
 #include "Engine/Base/BaseEntityComponent.h"
 
-#include "vector3d.h"
-#include "quaternion.h"
+#include <vector3d.h>
+#include <quaternion.h>
 
 namespace Engine { namespace EntityComponents {
 
