@@ -15,6 +15,7 @@
 #include "Engine/EntityComponents/FreeflightCameraEntityComponent.h"
 #include "Engine/EntityComponents/IrrlichtLoggerEntityComponent.h"
 #include "Engine/EntityComponents/VisualModelEntityComponent.h"
+#include "Engine/EntityComponents/SceneNodeEntityComponent.h"
 
 #include <btBulletDynamicsCommon.h>
 #include <IMesh.h>
@@ -59,6 +60,7 @@ std::shared_ptr<Engine::Framework::IEntity> Engine::EntityFactories::DebugEntity
 	std::shared_ptr<btCollisionShape> collisionShape = std::make_shared<btBoxShape>(btVector3(0.5,0.5,0.5));
 	irr::scene::IMesh* visualMesh = device->getSceneManager()->getGeometryCreator()->createCubeMesh(irr::core::vector3df(10., 10., 10.));
 	
+	entity->addComponent(std::make_shared<Engine::EntityComponents::SceneNodeEntityComponent>(device, device->getSceneManager()->getRootSceneNode()));
 	entity->addComponent(std::make_shared<Engine::EntityComponents::VisualModelEntityComponent>(device, visualMesh));
 	entity->addComponent(std::make_shared<Engine::EntityComponents::PositionEntityComponent>(irr::core::vector3df(0., 50., 0.)));
 	entity->addComponent(std::make_shared<Engine::EntityComponents::RotationEntityComponent>(irr::core::quaternion(0, irr::core::degToRad(45.f), 0)));
