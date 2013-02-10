@@ -1,7 +1,6 @@
 #include "CameraEntityComponent.h"
 
-#include "Engine/EntityComponents/PositionEntityComponent.h"
-#include "Engine/EntityComponents/RotationEntityComponent.h"
+#include "Engine/EntityComponents/SceneNodeEntityComponent.h"
 #include "Engine/UnitTransformationUtil.h"
 
 #include <ISceneManager.h>
@@ -43,32 +42,10 @@ const irr::core::stringc Engine::EntityComponents::CameraEntityComponent::family
 
 void Engine::EntityComponents::CameraEntityComponent::initialize(Engine::Framework::IEntity* entity)
 {
-	auto positionComponent = COMPONENT(PositionEntityComponent);
-	auto rotationComponent = COMPONENT(RotationEntityComponent);
-
 	irr::scene::ISceneManager* sceneManager = device->getSceneManager();
-	cameraSceneNode = sceneManager->addCameraSceneNode(sceneManager->getRootSceneNode()); //TODO: Add to entity scenenode
-
-	if (positionComponent) {
-		cameraSceneNode->setPosition(positionComponent->getPosition());
-		positionComponent->subscribeNotifications(shared_from_this());
-	}
-
-	if (rotationComponent) {
-		cameraSceneNode->setRotation(vecRadToDeg(rotationComponent->getEulerRotation()));
-		rotationComponent->subscribeNotifications(shared_from_this());
+	auto sceneNodeComponent = COMPONENT(SceneNodeEntityComponent);
+	if (sceneManager && sceneNodeComponent) {
+		cameraSceneNode = sceneManager->addCameraSceneNode(sceneNodeComponent.get());
 	}
 }
 
-void Engine::EntityComponents::CameraEntityComponent::handleNotification( std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent )
-{
-	if (entityComponent->getComponentType() == PositionEntityComponent::componentType()) {
-		auto positionComponent = std::static_pointer_cast<Engine::EntityComponents::PositionEntityComponent>(entityComponent);
-		cameraSceneNode->setPosition(positionComponent->getPosition() * 10.);
-	}
-
-	if (entityComponent->getComponentType() == RotationEntityComponent::componentType()) {
-		auto rotationComponent = std::static_pointer_cast<Engine::EntityComponents::RotationEntityComponent>(entityComponent);
-		cameraSceneNode->setRotation(vecRadToDeg(rotationComponent->getEulerRotation()));
-	}
-}

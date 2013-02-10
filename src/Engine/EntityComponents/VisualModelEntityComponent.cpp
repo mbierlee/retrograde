@@ -1,8 +1,7 @@
 #include "VisualModelEntityComponent.h"
 
 #include "Engine/EntityComponents/IrrlichtLoggerEntityComponent.h"
-#include "Engine/EntityComponents/PositionEntityComponent.h"
-#include "Engine/EntityComponents/RotationEntityComponent.h"
+#include "Engine/EntityComponents/SceneNodeEntityComponent.h"
 #include "Engine/UnitTransformationUtil.h"
 
 #include <ISceneManager.h>
@@ -51,37 +50,9 @@ void Engine::EntityComponents::VisualModelEntityComponent::initialize(Engine::Fr
 		loggerComponent->log("VisualModelEntityComponent: No mesh supplied. Nothing added.", irr::ELL_WARNING);
 	}
 
-	auto positionComponent = COMPONENT(PositionEntityComponent);
-	auto rotationComponent = COMPONENT(RotationEntityComponent);
-
 	irr::scene::ISceneManager* sceneManager = device->getSceneManager();
-
-	if (sceneManager) {
-		irr::core::vector3df position, rotation;
-		if (positionComponent) position = positionComponent->getPosition() * 10.;
-		if (rotationComponent) rotation = rotationComponent->getEulerRotation();
-
-		meshSceneNode = sceneManager->addMeshSceneNode(mesh, sceneManager->getRootSceneNode(), -1, position, vecRadToDeg(rotation));
-		//TODO: Add scenenode entity component so we can use an entity's node as parent.
-
-		positionComponent->subscribeNotifications(shared_from_this());
-		rotationComponent->subscribeNotifications(shared_from_this());
-	}
-}
-
-void Engine::EntityComponents::VisualModelEntityComponent::handleNotification( std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent )
-{
-	if (!meshSceneNode) {
-		return;
-	}
-
-	if (entityComponent->getComponentType() == PositionEntityComponent::componentType()) {
-		auto positionComponent = std::static_pointer_cast<Engine::EntityComponents::PositionEntityComponent>(entityComponent);
-		meshSceneNode->setPosition(positionComponent->getPosition() * 10.);
-	}
-
-	if (entityComponent->getComponentType() == RotationEntityComponent::componentType()) {
-		auto rotationComponent = std::static_pointer_cast<Engine::EntityComponents::RotationEntityComponent>(entityComponent);
-		meshSceneNode->setRotation(vecRadToDeg(rotationComponent->getEulerRotation()));
+	auto sceneNodeComponent = COMPONENT(SceneNodeEntityComponent);
+	if (sceneManager && sceneNodeComponent) {		
+		meshSceneNode = sceneManager->addMeshSceneNode(mesh, sceneNodeComponent.get());
 	}
 }
