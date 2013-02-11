@@ -9,13 +9,12 @@
 #include "Engine/EntityComponents/CollisionMaskEntityComponent.h"
 #include "Engine/EntityComponents/IrrlichtLoggerEntityComponent.h"
 #include "Engine/UnitTransformationUtil.h"
-#include "Engine/TypeContainerConfig.h"
 
-Engine::EntityComponents::RigidBodyEntityComponent::RigidBodyEntityComponent()
+Engine::EntityComponents::RigidBodyEntityComponent::RigidBodyEntityComponent(std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager)
 	: rigidBody(nullptr)
 	, motionState(nullptr)
+	, physicsManager(physicsManager)
 {
-	physicsManager = typeContainer->resolve<Engine::Framework::IPhysicsManager>();
 }
 
 const irr::core::stringc Engine::EntityComponents::RigidBodyEntityComponent::getComponentType() const

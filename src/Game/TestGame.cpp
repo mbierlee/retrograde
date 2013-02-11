@@ -5,7 +5,6 @@
 #include "Engine/PhysicsManager.h"
 #include "Engine/EntityFactories/DefaultEntityFactory.h"
 #include "Engine/EntityFactories/DebugEntityFactory.h"
-#include "Engine/TypeContainerConfig.h"
 
 #include "Game/IrrEventReceiver.h"
 #include "Game/Event/Events.h"
@@ -30,9 +29,6 @@ Game::TestGame::~TestGame(void)
 void Game::TestGame::initialize()
 {
 	BaseGame::initialize();
-
-	factoryManager->registerFactory(typeContainer->resolve<Engine::EntityFactories::DefaultEntityFactory>());
-	factoryManager->registerFactory(typeContainer->resolve<Engine::EntityFactories::DebugEntityFactory>());
 
 	eventManager->registerObserver(shared_from_this());
 	device->setEventReceiver(new Game::IrrEventReceiver(eventManager.get()));

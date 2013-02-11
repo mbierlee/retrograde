@@ -1,6 +1,6 @@
 #include "irrlicht.h"
 
-#include "Engine/TypeContainerConfig.h"
+#include "Engine/DependencyConfig.h"
 
 #include "Game/TestGame.h"
 
@@ -28,7 +28,7 @@ int main() {
 	// TODO: config-based log levels
 	deviceParams.LoggingLevel = irr::ELL_INFORMATION;
 
-	SetupTypeContainer(deviceParams);
+	auto typeContainer = SetupDependencies(deviceParams);
 	std::shared_ptr<irr::IrrlichtDevice> device = typeContainer->resolve<irr::IrrlichtDevice>();
 			
 	if (!device) 

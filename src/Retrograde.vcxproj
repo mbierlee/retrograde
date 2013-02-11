@@ -142,7 +142,7 @@
     <ClCompile Include="Engine\EntityComponents\RigidBodyEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\SceneNodeEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\VisualModelEntityComponent.cpp" />
-    <ClCompile Include="Game\TypeContainerConfig.cpp" />
+    <ClCompile Include="Game\DependencyConfig.cpp" />
     <ClCompile Include="Engine\Base\BaseGame.cpp" />
     <ClCompile Include="Engine\Bullet\IrrlichtPhysicsDebugDrawer.cpp" />
     <ClCompile Include="Engine\EntityFactories\DebugEntityFactory.cpp" />
@@ -176,7 +176,7 @@
     <ClInclude Include="Engine\EntityComponents\RigidBodyEntityComponent.h" />
     <ClInclude Include="Engine\EntityComponents\SceneNodeEntityComponent.h" />
     <ClInclude Include="Engine\EntityComponents\VisualModelEntityComponent.h" />
-    <ClInclude Include="Engine\TypeContainerConfig.h" />
+    <ClInclude Include="Engine\DependencyConfig.h" />
     <ClInclude Include="Engine\Base\BaseGame.h" />
     <ClInclude Include="Engine\Bullet\IrrlichtPhysicsDebugDrawer.h" />
     <ClInclude Include="Engine\DefaultEntityDefinitions.h" />

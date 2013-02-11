@@ -1,6 +1,5 @@
 #include "DebugEntityFactory.h"
 
-#include "Engine/TypeContainerConfig.h"
 #include "Engine/DefaultEntityDefinitions.h"
 #include "Engine/Framework/IPhysicsManager.h"
 #include "Engine/Entity.h"
@@ -19,11 +18,13 @@
 
 #include <btBulletDynamicsCommon.h>
 #include <IMesh.h>
+#include <ISceneManager.h>
 
 #include <memory>
 
-Engine::EntityFactories::DebugEntityFactory::DebugEntityFactory(std::shared_ptr<irr::IrrlichtDevice> device)
+Engine::EntityFactories::DebugEntityFactory::DebugEntityFactory(std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager)
 	: device(device)
+	, physicsManager(physicsManager)
 {
 }
 
@@ -67,7 +68,7 @@ std::shared_ptr<Engine::Framework::IEntity> Engine::EntityFactories::DebugEntity
 	entity->addComponent(std::make_shared<Engine::EntityComponents::MassEntityComponent>(1.f));
 	entity->addComponent(std::make_shared<Engine::EntityComponents::InertiaEntityComponent>());
 	entity->addComponent(std::make_shared<Engine::EntityComponents::CollisionModelEntityComponent>(collisionShape));
-	entity->addComponent(std::make_shared<Engine::EntityComponents::RigidBodyEntityComponent>());
+	entity->addComponent(std::make_shared<Engine::EntityComponents::RigidBodyEntityComponent>(physicsManager));
 	entity->addComponent(std::make_shared<Engine::EntityComponents::IrrlichtLoggerEntityComponent>(device->getLogger()));
 	return entity;
 }
@@ -79,6 +80,6 @@ std::shared_ptr<Engine::Framework::IEntity> Engine::EntityFactories::DebugEntity
 
 	entity->addComponent(std::make_shared<Engine::EntityComponents::PositionEntityComponent>(irr::core::vector3df(0., -1., 0.)));
 	entity->addComponent(std::make_shared<Engine::EntityComponents::CollisionModelEntityComponent>(shape));
-	entity->addComponent(std::make_shared<Engine::EntityComponents::CollisionObjectEntityComponent>());
+	entity->addComponent(std::make_shared<Engine::EntityComponents::CollisionObjectEntityComponent>(physicsManager));
 	return entity;
 }

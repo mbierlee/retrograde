@@ -18,7 +18,7 @@ namespace Engine { namespace EntityComponents {
 		void initialize( Engine::Framework::IEntity* entity );
 
 	public:
-		CollisionObjectEntityComponent();
+		CollisionObjectEntityComponent(std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager);
 
 		virtual const irr::core::stringc getComponentType() const;
 		virtual const irr::core::stringc getFamilyType() const;

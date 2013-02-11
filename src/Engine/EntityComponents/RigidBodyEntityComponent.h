@@ -17,7 +17,7 @@ namespace Engine { namespace EntityComponents {
 		Engine::Bullet::HandledMotionState* motionState;
 
 	public:
-		RigidBodyEntityComponent();
+		RigidBodyEntityComponent(std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager);
 
 		virtual const irr::core::stringc getComponentType() const;
 		virtual const irr::core::stringc getFamilyType() const;

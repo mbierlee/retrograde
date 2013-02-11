@@ -6,13 +6,12 @@
 #include "Engine/EntityComponents/IrrlichtLoggerEntityComponent.h"
 #include "Engine/EntityComponents/CollisionGroupEntityComponent.h"
 #include "Engine/EntityComponents/CollisionMaskEntityComponent.h"
-#include "Engine/TypeContainerConfig.h"
 #include "Engine/UnitTransformationUtil.h"
 
-Engine::EntityComponents::CollisionObjectEntityComponent::CollisionObjectEntityComponent()
+Engine::EntityComponents::CollisionObjectEntityComponent::CollisionObjectEntityComponent(std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager)
 	: collisionObject(nullptr)
+	, physicsManager(physicsManager)
 {
-	physicsManager = typeContainer->resolve<Engine::Framework::IPhysicsManager>();
 }
 
 const irr::core::stringc Engine::EntityComponents::CollisionObjectEntityComponent::getComponentType() const
