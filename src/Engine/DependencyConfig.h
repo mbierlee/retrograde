@@ -1,6 +1,6 @@
 #pragma once
 
-#include "irrlicht.h"
+#include <irrlicht.h>
 
 #include <Hypodermic/IContainer.h>
 
