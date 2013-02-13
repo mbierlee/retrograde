@@ -21,7 +21,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
     <PlatformToolset>v110</PlatformToolset>
@@ -33,7 +33,7 @@
     <PlatformToolset>v110</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
@@ -77,7 +77,8 @@
       <AdditionalLibraryDirectories>$(SolutionDir)\lib\Bullet\x86\debug;$(SolutionDir)\lib\enet\x86\debug;$(SolutionDir)\lib\Hypodermic\x86\debug;$(SolutionDir)\lib\Irrlicht\x86;$(BOOST_HOME)\stage\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /D /Y "$(SolutionDir)lib\Irrlicht\x86\Irrlicht.dll" "$(TargetDir)"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
     <PreBuildEvent>
       <Command>echo Running Static Code Analysis...
@@ -100,7 +101,8 @@
       <AdditionalLibraryDirectories>$(SolutionDir)\lib\enet\x86\debug;$(SolutionDir)\lib\Irrlicht\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /D /Y "$(SolutionDir)lib\Irrlicht\x86\Irrlicht.dll" "$(TargetDir)"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
     <PreBuildEvent>
       <Command>echo Running Static Code Analysis...
@@ -127,7 +129,8 @@
       <AdditionalLibraryDirectories>$(SolutionDir)\lib\Bullet\x86\release;$(SolutionDir)\lib\enet\x86\release;$(SolutionDir)\lib\Hypodermic\x86\release;$(SolutionDir)\lib\Irrlicht\x86;$(BOOST_HOME)\stage\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /D /Y "$(SolutionDir)lib\Irrlicht\x86\Irrlicht.dll" "$(TargetDir)"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
     <PreBuildEvent>
       <Command>echo Running Static Code Analysis...
@@ -143,7 +146,6 @@
     <ClCompile Include="Engine\EntityComponents\RigidBodyEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\SceneNodeEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\VisualModelEntityComponent.cpp" />
-    <ClCompile Include="Game\DependencyConfig.cpp" />
     <ClCompile Include="Engine\Base\BaseGame.cpp" />
     <ClCompile Include="Engine\Bullet\IrrlichtPhysicsDebugDrawer.cpp" />
     <ClCompile Include="Engine\EntityFactories\DebugEntityFactory.cpp" />
@@ -163,10 +165,6 @@
     <ClCompile Include="Engine\FactoryManager.cpp" />
     <ClCompile Include="Engine\PhysicsManager.cpp" />
     <ClCompile Include="Engine\UnitTransformationUtil.cpp" />
-    <ClCompile Include="Game\IrrEventReceiver.cpp" />
-    <ClCompile Include="Game\Test\TestComponent.cpp" />
-    <ClCompile Include="Main.cpp" />
-    <ClCompile Include="Game\TestGame.cpp" />
     <ClCompile Include="Engine\EntityComponents\PositionEntityComponent.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -178,7 +176,6 @@
     <ClInclude Include="Engine\EntityComponents\RigidBodyEntityComponent.h" />
     <ClInclude Include="Engine\EntityComponents\SceneNodeEntityComponent.h" />
     <ClInclude Include="Engine\EntityComponents\VisualModelEntityComponent.h" />
-    <ClInclude Include="Engine\DependencyConfig.h" />
     <ClInclude Include="Engine\Base\BaseGame.h" />
     <ClInclude Include="Engine\Bullet\IrrlichtPhysicsDebugDrawer.h" />
     <ClInclude Include="Engine\DefaultEntityDefinitions.h" />
@@ -210,10 +207,6 @@
     <ClInclude Include="Engine\Event.h" />
     <ClInclude Include="Engine\PhysicsManager.h" />
     <ClInclude Include="Engine\UnitTransformationUtil.h" />
-    <ClInclude Include="Game\Event\Events.h" />
-    <ClInclude Include="Game\IrrEventReceiver.h" />
-    <ClInclude Include="Game\TestGame.h" />
-    <ClInclude Include="Game\Test\TestComponent.h" />
     <ClInclude Include="Engine\EntityComponents\PositionEntityComponent.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

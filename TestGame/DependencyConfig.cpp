@@ -1,4 +1,4 @@
-#include "Engine/DependencyConfig.h"
+#include "DependencyConfig.h"
 
 #include "Game/TestGame.h"
 #include "Engine/PhysicsManager.h"
