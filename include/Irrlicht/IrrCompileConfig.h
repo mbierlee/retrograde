@@ -1,4 +1,4 @@
-// Copyright (C) 2002-2011 Nikolaus Gebhardt
+// Copyright (C) 2002-2012 Nikolaus Gebhardt
 // This file is part of the "Irrlicht Engine".
 // For conditions of distribution and use, see copyright notice in irrlicht.h
 
@@ -11,8 +11,8 @@
 #define IRRLICHT_VERSION_REVISION 0
 // This flag will be defined only in SVN, the official release code will have
 // it undefined
-#define IRRLICHT_VERSION_SVN -alpha
-#define IRRLICHT_SDK_VERSION "1.8.0-alpha"
+//#define IRRLICHT_VERSION_SVN -alpha
+#define IRRLICHT_SDK_VERSION "1.8.0"
 
 #include <stdio.h> // TODO: Although included elsewhere this is required at least for mingw
 
@@ -97,6 +97,13 @@
 #define _IRR_COMPILE_WITH_OSX_DEVICE_
 #endif
 
+#if defined(__SVR4) && defined(__sun)
+#define _IRR_SOLARIS_PLATFORM_
+#if defined(__sparc)
+	#define __BIG_ENDIAN__
+#endif
+#endif
+
 #if !defined(_IRR_WINDOWS_API_) && !defined(_IRR_OSX_PLATFORM_)
 #ifndef _IRR_SOLARIS_PLATFORM_
 #define _IRR_LINUX_PLATFORM_
@@ -115,6 +122,19 @@
 
 //! Maximum number of texture an SMaterial can have, up to 8 are supported by Irrlicht.
 #define _IRR_MATERIAL_MAX_TEXTURES_ 4
+
+//! Whether to support XML and XML-based formats (irrmesh, collada...)
+#define _IRR_COMPILE_WITH_XML_
+#ifdef NO_IRR_COMPILE_WITH_XML_
+#undef _IRR_COMPILE_WITH_XML_
+#endif
+
+//! Add a leak-hunter to Irrlicht which helps finding unreleased reference counted objects.
+//! NOTE: This is slow and should only be used for debugging
+//#define _IRR_COMPILE_WITH_LEAK_HUNTER_
+#ifdef NO_IRR_COMPILE_WITH_LEAK_HUNTER_
+#undef _IRR_COMPILE_WITH_LEAK_HUNTER_
+#endif
 
 //! Define _IRR_COMPILE_WITH_DIRECT3D_8_ and _IRR_COMPILE_WITH_DIRECT3D_9_ to
 //! compile the Irrlicht engine with Direct3D8 and/or DIRECT3D9.
@@ -227,7 +247,8 @@ you will not be able to use anything provided by the GUI Environment, including 
 //! Define _IRR_WCHAR_FILESYSTEM to enable unicode filesystem support for the engine.
 /** This enables the engine to read/write from unicode filesystem. If you
 disable this feature, the engine behave as before (ansi). This is currently only supported
-for Windows based systems. */
+for Windows based systems. You also have to set #define UNICODE for this to compile.
+*/
 //#define _IRR_WCHAR_FILESYSTEM
 #ifdef NO_IRR_WCHAR_FILESYSTEM
 #undef _IRR_WCHAR_FILESYSTEM
@@ -511,14 +532,24 @@ B3D, MS3D or X meshes */
 #ifdef NO_IRR_COMPILE_WITH_PSD_LOADER_
 #undef _IRR_COMPILE_WITH_PSD_LOADER_
 #endif
-//! Define _IRR_COMPILE_WITH_DDS_LOADER_ if you want to load .dds files
+//! Define _IRR_COMPILE_WITH_DDS_LOADER_ if you want to load compressed .dds files
+// Patent problem isn't related to this loader.
+#define _IRR_COMPILE_WITH_DDS_LOADER_
+#ifdef NO_IRR_COMPILE_WITH_DDS_LOADER_
+#undef _IRR_COMPILE_WITH_DDS_LOADER_
+#endif
+//! Define _IRR_COMPILE_WITH_DDS_DECODER_LOADER_ if you want to load .dds files
+//! loader will decompress these files and will send to the memory as uncompressed files.
 // Outcommented because
 // a) it doesn't compile on 64-bit currently
 // b) anyone enabling it should be aware that S3TC compression algorithm which might be used in that loader
 // is patented in the US by S3 and they do collect license fees when it's used in applications.
 // So if you are unfortunate enough to develop applications for US market and their broken patent system be careful.
-// #define _IRR_COMPILE_WITH_DDS_LOADER_
-#ifdef NO_IRR_COMPILE_WITH_DDS_LOADER_
+// #define _IRR_COMPILE_WITH_DDS_DECODER_LOADER_
+#ifdef NO_IRR_COMPILE_WITH_DDS_DECODER_LOADER_
+#undef _IRR_COMPILE_WITH_DDS_DECODER_LOADER_
+#endif
+#ifdef _IRR_COMPILE_WITH_DDS_DECODER_LOADER_
 #undef _IRR_COMPILE_WITH_DDS_LOADER_
 #endif
 //! Define _IRR_COMPILE_WITH_TGA_LOADER_ if you want to load .tga files
@@ -777,10 +808,6 @@ precision will be lower but speed higher. currently X86 only
 	#undef _IRR_WCHAR_FILESYSTEM
 #endif
 
-#if defined(__sparc__) || defined(__sun__)
-#define __BIG_ENDIAN__
-#endif
-
 #if defined(_IRR_SOLARIS_PLATFORM_)
 	#undef _IRR_COMPILE_WITH_JOYSTICK_EVENTS_
 #endif
@@ -789,6 +816,14 @@ precision will be lower but speed higher. currently X86 only
 #define __IRR_HAS_S64
 #ifdef NO__IRR_HAS_S64
 #undef __IRR_HAS_S64
+#endif
+
+// These depend on XML
+#ifndef _IRR_COMPILE_WITH_XML_
+	#undef _IRR_COMPILE_WITH_IRR_MESH_LOADER_
+	#undef _IRR_COMPILE_WITH_IRR_WRITER_
+	#undef _IRR_COMPILE_WITH_COLLADA_WRITER_
+	#undef _IRR_COMPILE_WITH_COLLADA_LOADER_
 #endif
 
 #endif // __IRR_COMPILE_CONFIG_H_INCLUDED__
