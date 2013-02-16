@@ -81,3 +81,15 @@ void Engine::Entity::setType( const irr::core::stringc entityTypeName )
 {
 	this->entityType = entityTypeName;
 }
+
+void Engine::Entity::handleEvent( Engine::Framework::IEvent& event, void* source )
+{
+	for (std::shared_ptr<Engine::Framework::IEntityComponent>& entityComponent : eventSubscribers) {
+		entityComponent->handleEvent(event, this, source);
+	}
+}
+
+void Engine::Entity::subscribeToEvents( std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent )
+{
+	eventSubscribers.push_back(entityComponent);
+}

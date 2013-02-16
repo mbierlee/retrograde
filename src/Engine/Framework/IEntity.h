@@ -23,6 +23,8 @@ namespace Engine { namespace Framework {
 		virtual void removeComponent(const irr::core::stringc familyType) =0;
 		virtual void clearComponents() =0;
 		virtual bool hasComponent(const irr::core::stringc familyType) =0;
+
+		virtual void subscribeToEvents(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent) =0;
 		
 		virtual void update(irr::u32 frameTime, irr::u32 lastFrameTime) =0;
 	};

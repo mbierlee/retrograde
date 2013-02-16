@@ -6,6 +6,7 @@
 #define COMPONENT(_COMPTYPE) std::static_pointer_cast<Engine::EntityComponents::_COMPTYPE>(entity->getComponent(Engine::EntityComponents::_COMPTYPE::familyType()))
 
 #include "Engine/Framework/IEntity.h"
+#include "Engine/Framework/IEvent.h"
 
 #include <memory>
 
@@ -25,6 +26,7 @@ namespace Engine { namespace Framework {
 		virtual void subscribeNotifications(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent) =0;
 		virtual void unsubscribeNotifications(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent) =0;
 		virtual void handleNotification(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent) =0;
+		virtual void handleEvent(Engine::Framework::IEvent& event, Engine::Framework::IEntity* entity, void* source) =0;
 	};
 
 }}

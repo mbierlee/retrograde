@@ -2,17 +2,20 @@
 
 #include "Engine/Framework/IEntity.h"
 #include "Engine/Framework/IEntityComponent.h"
+#include "Engine/Framework/IEventObserver.h"
 
 #include "irrString.h"
 
 #include <map>
 #include <list>
 #include <memory>
+#include <vector>
 
 namespace Engine {
 
 	class Entity
-		: public Engine::Framework::IEntity		
+		: public Engine::Framework::IEntity
+		, public Engine::Framework::IEventObserver
 	{
 	private:
 		int entityId;
@@ -20,6 +23,7 @@ namespace Engine {
 		std::list<irr::core::stringc> componentRemovalSchedule;
 		bool componentRemovalLocked;
 		irr::core::stringc entityType;
+		std::vector<std::shared_ptr<Engine::Framework::IEntityComponent>> eventSubscribers;
 
 		void removeScheduledComponents();
 
@@ -38,6 +42,9 @@ namespace Engine {
 		virtual void clearComponents();
 		virtual void update(irr::u32 frameTime, irr::u32 lastFrameTime);
 		virtual bool hasComponent( const irr::core::stringc familyType );
+
+		virtual void handleEvent( Engine::Framework::IEvent& event, void* source );
+		virtual void subscribeToEvents( std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent );
 	};
 
 }

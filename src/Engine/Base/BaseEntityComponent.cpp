@@ -32,3 +32,8 @@ void Engine::Base::BaseEntityComponent::notifyAll()
 		(*it)->handleNotification(shared_from_this());
 	}
 }
+
+void Engine::Base::BaseEntityComponent::handleEvent( Engine::Framework::IEvent& event, Engine::Framework::IEntity* entity, void* source )
+{
+	// Don't do jack
+}
