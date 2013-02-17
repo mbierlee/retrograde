@@ -22,6 +22,7 @@ namespace Engine { namespace Framework {
 		virtual const irr::core::stringc getFamilyType() const =0;
 
 		virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime) =0;
+		virtual void cleanup(Engine::Framework::IEntity* entity) =0;
 
 		virtual void subscribeNotifications(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent) =0;
 		virtual void unsubscribeNotifications(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent) =0;

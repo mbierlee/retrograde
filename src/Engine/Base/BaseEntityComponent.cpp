@@ -36,3 +36,8 @@ void Engine::Base::BaseEntityComponent::handleEvent( Engine::Framework::IEvent& 
 {
 	// Don't do jack
 }
+
+void Engine::Base::BaseEntityComponent::cleanup( Engine::Framework::IEntity* entity )
+{
+	// Crispy clean
+}

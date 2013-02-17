@@ -32,10 +32,15 @@ std::shared_ptr<Engine::Framework::IEntityComponent> Engine::Entity::getComponen
 
 void Engine::Entity::removeComponent( const irr::core::stringc familyType )
 {
-	if (!componentRemovalLocked)
-		components.erase(familyType);
-	else
+	if (!componentRemovalLocked) {
+		std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent = getComponent(familyType);
+		if (entityComponent) {
+			entityComponent->cleanup(this);
+			components.erase(familyType);
+		}
+	} else {
 		componentRemovalSchedule.push_back(familyType);
+	}
 }
 
 void Engine::Entity::clearComponents()
@@ -59,8 +64,8 @@ void Engine::Entity::removeScheduledComponents()
 {
 	if (!componentRemovalSchedule.empty()) {
 		std::list<irr::core::stringc>::iterator it;
-		for (auto& component : componentRemovalSchedule) {
-			removeComponent(component);
+		for (auto& componentFamily : componentRemovalSchedule) {
+			removeComponent(componentFamily);
 		}
 
 		componentRemovalSchedule.clear();
