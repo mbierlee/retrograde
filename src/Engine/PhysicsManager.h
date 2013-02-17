@@ -28,8 +28,6 @@ namespace Engine {
 		virtual void setGravity(const irr::core::vector3df& gravity);
 		virtual void update(irr::f32 timeStep);
 
-		void testStuff();
-
 		virtual void setDebugDrawing( bool enableDebugDrawing );
 
 		virtual void drawDebugData();
