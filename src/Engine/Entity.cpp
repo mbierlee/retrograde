@@ -59,8 +59,8 @@ void Engine::Entity::removeScheduledComponents()
 {
 	if (!componentRemovalSchedule.empty()) {
 		std::list<irr::core::stringc>::iterator it;
-		for (it = componentRemovalSchedule.begin(); it != componentRemovalSchedule.end(); ++it) {
-			removeComponent(*it);
+		for (auto& component : componentRemovalSchedule) {
+			removeComponent(component);
 		}
 
 		componentRemovalSchedule.clear();
@@ -84,7 +84,7 @@ void Engine::Entity::setType( const irr::core::stringc entityTypeName )
 
 void Engine::Entity::handleEvent( Engine::Framework::IEvent& event, void* source )
 {
-	for (std::shared_ptr<Engine::Framework::IEntityComponent>& entityComponent : eventSubscribers) {
+	for (auto& entityComponent : eventSubscribers) {
 		entityComponent->handleEvent(event, this, source);
 	}
 }

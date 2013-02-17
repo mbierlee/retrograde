@@ -73,9 +73,7 @@ std::shared_ptr<Engine::Framework::IEntity> Engine::EntityManager::getEntity( ir
 	if (entityId == 0)
 		return std::shared_ptr<Engine::Framework::IEntity>();
 
-	std::list<std::shared_ptr<Engine::Framework::IEntity>>::iterator it;
-	for (it = entities.begin(); it != entities.end(); it++) {
-		std::shared_ptr<Engine::Framework::IEntity> entity = std::static_pointer_cast<Engine::Framework::IEntity>(*it);
+	for (auto& entity : entities) {
 		if (entity->getId() == entityId) {
 			return entity;
 		}
@@ -86,9 +84,7 @@ std::shared_ptr<Engine::Framework::IEntity> Engine::EntityManager::getEntity( ir
 
 std::shared_ptr<Engine::Framework::IEntity> Engine::EntityManager::getEntity( irr::core::stringc entityType )
 {
-	std::list<std::shared_ptr<Engine::Framework::IEntity>>::iterator it;
-	for (it = entities.begin(); it != entities.end(); it++) {
-		std::shared_ptr<Engine::Framework::IEntity> entity = std::static_pointer_cast<Engine::Framework::IEntity>(*it);
+	for (auto& entity : entities) {
 		if (entity->getType() == entityType) {
 			return entity;
 		}
@@ -99,9 +95,7 @@ std::shared_ptr<Engine::Framework::IEntity> Engine::EntityManager::getEntity( ir
 
 void Engine::EntityManager::updateEntities( irr::u32 frameTime, irr::u32 lastFrameTime )
 {
-	std::list<std::shared_ptr<Engine::Framework::IEntity>>::iterator it;
-	for (it = entities.begin(); it != entities.end(); it++) {
-		std::shared_ptr<Engine::Framework::IEntity> entity = std::static_pointer_cast<Engine::Framework::IEntity>(*it);
+	for (auto& entity : entities) {
 		entity->update(frameTime, lastFrameTime);
 	}
 }

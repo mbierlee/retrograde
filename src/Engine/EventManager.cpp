@@ -3,10 +3,7 @@
 
 void Engine::EventManager::postEvent( Engine::Framework::IEvent& event, void* source )
 {
-	std::list<std::shared_ptr<Engine::Framework::IEventObserver>>::iterator it;
-	for (it = observers.begin(); it != observers.end(); it++)
-	{
-		std::shared_ptr<Engine::Framework::IEventObserver> observer = *it;
+	for (auto& observer : observers) {
 		observer->handleEvent(event, source);
 	}
 }
@@ -26,14 +23,12 @@ void Engine::EventManager::clearObservers()
 	observers.clear();
 }
 
-bool Engine::EventManager::hasObserver( std::shared_ptr<Engine::Framework::IEventObserver> observer )
+bool Engine::EventManager::hasObserver( std::shared_ptr<Engine::Framework::IEventObserver> expectedObserver )
 {
 	bool observerFound = false;
 
-	std::list<std::shared_ptr<Engine::Framework::IEventObserver>>::iterator it;
-	for (it = observers.begin(); it != observers.end(); it++)
-	{
-		if (*it == observer) {
+	for (auto& observer : observers) {
+		if (observer == expectedObserver) {
 			observerFound = true;
 			break;
 		}

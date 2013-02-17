@@ -52,8 +52,7 @@ void Engine::Bullet::IrrlichtPhysicsDebugDrawer::drawDebugData()
 	driver->setMaterial(lineMaterial);
 	driver->setTransform(irr::video::ETS_WORLD, irr::core::IdentityMatrix);
 
-	for (std::vector<SDebugLine>::size_type i = 0; i < debugLines.size(); ++i) {
-		SDebugLine line = debugLines[i];
+	for (auto& line : debugLines) {
 		driver->draw3DLine(line.from, line.to, line.color);		
 	}
 	

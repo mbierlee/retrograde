@@ -27,9 +27,8 @@ void Engine::Base::BaseEntityComponent::handleNotification( std::shared_ptr<Engi
 
 void Engine::Base::BaseEntityComponent::notifyAll()
 {
-	std::vector<std::shared_ptr<Engine::Framework::IEntityComponent>>::iterator it;
-	for (it = notificationSubscribers.begin(); it != notificationSubscribers.end(); it++) {
-		(*it)->handleNotification(shared_from_this());
+	for (auto& subscriber : notificationSubscribers) {
+		subscriber->handleNotification(shared_from_this());
 	}
 }
 
