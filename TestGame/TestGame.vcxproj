@@ -91,7 +91,6 @@
     <ClCompile Include="DependencyConfig.cpp" />
     <ClCompile Include="Game\IrrEventReceiver.cpp" />
     <ClCompile Include="Game\TestGame.cpp" />
-    <ClCompile Include="Game\Test\TestComponent.cpp" />
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -99,7 +98,6 @@
     <ClInclude Include="Game\Event\Events.h" />
     <ClInclude Include="Game\IrrEventReceiver.h" />
     <ClInclude Include="Game\TestGame.h" />
-    <ClInclude Include="Game\Test\TestComponent.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
