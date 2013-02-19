@@ -1,5 +1,9 @@
 #include "BaseEntityComponent.h"
 
+Engine::Base::BaseEntityComponent::BaseEntityComponent()
+	: initialized(false)
+{
+}
 
 void Engine::Base::BaseEntityComponent::subscribeNotifications( std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent )
 {
@@ -40,4 +44,9 @@ void Engine::Base::BaseEntityComponent::handleEvent( Engine::Framework::IEvent& 
 void Engine::Base::BaseEntityComponent::cleanup( Engine::Framework::IEntity* entity )
 {
 	// Crispy clean
+}
+
+bool Engine::Base::BaseEntityComponent::isInitialized() const
+{
+	return initialized;
 }
