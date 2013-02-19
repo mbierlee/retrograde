@@ -15,10 +15,14 @@
 #include "Engine/EntityComponents/IrrlichtLoggerEntityComponent.h"
 #include "Engine/EntityComponents/VisualModelEntityComponent.h"
 #include "Engine/EntityComponents/SceneNodeEntityComponent.h"
+#include "Engine/EntityComponents/VisualMaterialEntityComponent.h"
+#include "Engine/EntityComponents/TextureEntityComponent.h"
 
 #include <btBulletDynamicsCommon.h>
 #include <IMesh.h>
 #include <ISceneManager.h>
+#include <SMaterial.h>
+#include <IVideoDriver.h>
 
 #include <memory>
 
@@ -60,6 +64,12 @@ std::shared_ptr<Engine::Framework::IEntity> Engine::EntityFactories::DebugEntity
 	auto entity = std::make_shared<Engine::Entity>(ENTITY_DEBUG_PHYS_CUBE);
 	std::shared_ptr<btCollisionShape> collisionShape = std::make_shared<btBoxShape>(btVector3(0.5,0.5,0.5));
 	irr::scene::IMesh* visualMesh = device->getSceneManager()->getGeometryCreator()->createCubeMesh(irr::core::vector3df(10., 10., 10.));
+
+	irr::video::IVideoDriver* driver = device->getVideoDriver();
+	irr::video::SMaterial material;
+	material.setFlag(irr::video::EMF_LIGHTING, false);
+	material.setFlag(irr::video::EMF_TRILINEAR_FILTER, true);
+	material.setFlag(irr::video::EMF_ANISOTROPIC_FILTER, true);
 	
 	entity->addComponent(std::make_shared<Engine::EntityComponents::SceneNodeEntityComponent>(device, device->getSceneManager()->getRootSceneNode()));
 	entity->addComponent(std::make_shared<Engine::EntityComponents::VisualModelEntityComponent>(device, visualMesh));
@@ -70,6 +80,8 @@ std::shared_ptr<Engine::Framework::IEntity> Engine::EntityFactories::DebugEntity
 	entity->addComponent(std::make_shared<Engine::EntityComponents::CollisionModelEntityComponent>(collisionShape));
 	entity->addComponent(std::make_shared<Engine::EntityComponents::RigidBodyEntityComponent>(physicsManager));
 	entity->addComponent(std::make_shared<Engine::EntityComponents::IrrlichtLoggerEntityComponent>(device->getLogger()));
+	entity->addComponent(std::make_shared<Engine::EntityComponents::VisualMaterialEntityComponent>(material));
+	entity->addComponent(std::make_shared<Engine::EntityComponents::TextureEntityComponent>(driver->getTexture("data/default_texture.jpg")));
 	return entity;
 }
 

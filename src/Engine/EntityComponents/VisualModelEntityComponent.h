@@ -5,6 +5,7 @@
 #include <IMesh.h>
 #include <IMeshSceneNode.h>
 #include <IrrlichtDevice.h>
+#include <SMaterial.h>
 
 namespace Engine { namespace EntityComponents {
 
@@ -15,6 +16,7 @@ namespace Engine { namespace EntityComponents {
 		irr::scene::IMesh* mesh;
 		irr::scene::IMeshSceneNode* meshSceneNode;
 		std::shared_ptr<irr::IrrlichtDevice> device;
+		bool usingMaterialComponent;
 
 	public:
 		VisualModelEntityComponent(std::shared_ptr<irr::IrrlichtDevice> device, irr::scene::IMesh* mesh);
@@ -27,7 +29,8 @@ namespace Engine { namespace EntityComponents {
 		virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime);
 
 		void initialize(Engine::Framework::IEntity* entity);
-
+		virtual bool isInitialized() const;
+		virtual void handleNotification( std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent );
 	};
 
 }}

@@ -143,6 +143,8 @@
     <ClCompile Include="Engine\Bullet\HandledMotionState.cpp" />
     <ClCompile Include="Engine\EntityComponents\CollisionGroupEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\CollisionMaskEntityComponent.cpp" />
+    <ClCompile Include="Engine\EntityComponents\TextureEntityComponent.cpp" />
+    <ClCompile Include="Engine\EntityComponents\VisualMaterialEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\RigidBodyEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\SceneNodeEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\VisualModelEntityComponent.cpp" />
@@ -173,6 +175,8 @@
     <ClInclude Include="Engine\Bullet\HandledMotionState.h" />
     <ClInclude Include="Engine\EntityComponents\CollisionGroupEntityComponent.h" />
     <ClInclude Include="Engine\EntityComponents\CollisionMaskEntityComponent.h" />
+    <ClInclude Include="Engine\EntityComponents\TextureEntityComponent.h" />
+    <ClInclude Include="Engine\EntityComponents\VisualMaterialEntityComponent.h" />
     <ClInclude Include="Engine\EntityComponents\RigidBodyEntityComponent.h" />
     <ClInclude Include="Engine\EntityComponents\SceneNodeEntityComponent.h" />
     <ClInclude Include="Engine\EntityComponents\VisualModelEntityComponent.h" />
