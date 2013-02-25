@@ -1,5 +1,6 @@
 #include "RotationEntityComponent.h"
 
+#include <irrMath.h>
 
 Engine::EntityComponents::RotationEntityComponent::RotationEntityComponent( irr::core::vector3df& rotation /*= irr::core::vector3df(0)*/ )
 {
@@ -44,7 +45,7 @@ const irr::core::vector3df Engine::EntityComponents::RotationEntityComponent::ge
 
 void Engine::EntityComponents::RotationEntityComponent::setEulerRotation( const irr::core::vector3df& rotation )
 {
-	setRotation(irr::core::quaternion(rotation.X, rotation.Y, rotation.Z));
+	setRotation(irr::core::quaternion(rotation));
 }
 
 const irr::core::quaternion& Engine::EntityComponents::RotationEntityComponent::getRotation() const
