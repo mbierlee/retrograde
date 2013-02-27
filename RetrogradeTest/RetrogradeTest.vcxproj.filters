@@ -27,5 +27,8 @@
     <ClCompile Include="CollisionGroupEntityComponentTest.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CollisionMaskEntityComponentTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
