@@ -15,8 +15,11 @@ namespace Engine { namespace Framework {
 		virtual irr::u32 getId() const =0;
 		virtual void setId(const int entityId) =0;
 
-		virtual const irr::core::stringc getType() const =0;
-		virtual void setType(const irr::core::stringc typeName) =0;
+		virtual const irr::core::stringc& getType() const =0;
+		virtual void setType(const irr::core::stringc& typeName) =0;
+
+		virtual const irr::core::stringc& getName() const =0;
+		virtual void setName(const irr::core::stringc& name) =0;
 
 		virtual void addComponent(std::shared_ptr<Engine::Framework::IEntityComponent> component) =0;
 		virtual std::shared_ptr<Engine::Framework::IEntityComponent> getComponent(const irr::core::stringc familyType) =0;

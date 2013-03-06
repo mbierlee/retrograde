@@ -22,7 +22,7 @@ namespace Engine {
 		std::map<irr::core::stringc, std::shared_ptr<Engine::Framework::IEntityComponent>> components;
 		std::list<irr::core::stringc> componentRemovalSchedule;
 		bool componentRemovalLocked;
-		irr::core::stringc entityType;
+		irr::core::stringc entityType, entityName;
 		std::vector<std::shared_ptr<Engine::Framework::IEntityComponent>> eventSubscribers;
 
 		void removeScheduledComponents();
@@ -33,8 +33,8 @@ namespace Engine {
 		virtual irr::u32 getId() const;	
 		virtual void setId( const int entityId );
 
-		virtual const irr::core::stringc getType() const;
-		virtual void setType( const irr::core::stringc typeName );
+		virtual const irr::core::stringc& getType() const;
+		virtual void setType( const irr::core::stringc& typeName );
 
 		virtual void addComponent( std::shared_ptr<Engine::Framework::IEntityComponent> component );
 		virtual std::shared_ptr<Engine::Framework::IEntityComponent> getComponent( const irr::core::stringc familyType );
@@ -45,6 +45,11 @@ namespace Engine {
 
 		virtual void handleEvent( Engine::Framework::IEvent& event, void* source );
 		virtual void subscribeToEvents( std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent );
+
+		virtual const irr::core::stringc& getName() const;
+
+		virtual void setName( const irr::core::stringc& name );
+
 	};
 
 }

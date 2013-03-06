@@ -77,12 +77,12 @@ bool Engine::Entity::hasComponent( const irr::core::stringc familyType )
 	return components.count(familyType) == 1;
 }
 
-const irr::core::stringc Engine::Entity::getType() const
+const irr::core::stringc& Engine::Entity::getType() const
 {
 	return this->entityType;
 }
 
-void Engine::Entity::setType( const irr::core::stringc entityTypeName )
+void Engine::Entity::setType( const irr::core::stringc& entityTypeName )
 {
 	this->entityType = entityTypeName;
 }
@@ -97,4 +97,14 @@ void Engine::Entity::handleEvent( Engine::Framework::IEvent& event, void* source
 void Engine::Entity::subscribeToEvents( std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent )
 {
 	eventSubscribers.push_back(entityComponent);
+}
+
+const irr::core::stringc& Engine::Entity::getName() const
+{
+	return entityName;
+}
+
+void Engine::Entity::setName( const irr::core::stringc& name )
+{
+	entityName = name;
 }
