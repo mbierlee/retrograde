@@ -1,0 +1,1 @@
+bjam toolset=msvc-11.0 variant=debug threading=multi link=static define=_BIND_TO_CURRENT_VCLIBS_VERSION 
