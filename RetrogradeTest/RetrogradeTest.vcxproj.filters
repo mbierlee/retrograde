@@ -42,5 +42,8 @@
     <ClCompile Include="IntertiaEntityComponentTest.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="IrrlichtLoggerEntityComponentTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
