@@ -36,5 +36,8 @@
     <ClCompile Include="CollisionObjectEntityComponentTest.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="FreeflightCameraEntityComponentTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
