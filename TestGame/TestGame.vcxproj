@@ -61,7 +61,8 @@
       <AdditionalLibraryDirectories>$(SolutionDir)\lib\Bullet\x86\debug;$(SolutionDir)\lib\enet\x86\debug;$(SolutionDir)\lib\Hypodermic\x86\debug;$(SolutionDir)\lib\Irrlicht\x86;$(BOOST_HOME)\stage\lib;$(SolutionDir)\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /D /Y "$(SolutionDir)lib\Irrlicht\x86\Irrlicht.dll" "$(TargetDir)"</Command>
+      <Command>xcopy /D /Y "$(SolutionDir)lib\Irrlicht\x86\Irrlicht.dll" "$(TargetDir)"
+xcopy /D /Y /E "$(SolutionDir)data" "$(TargetDir)data\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -84,7 +85,8 @@
       <AdditionalLibraryDirectories>$(SolutionDir)\lib\Bullet\x86\release;$(SolutionDir)\lib\enet\x86\release;$(SolutionDir)\lib\Hypodermic\x86\release;$(SolutionDir)\lib\Irrlicht\x86;$(BOOST_HOME)\stage\lib;$(SolutionDir)\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /D /Y "$(SolutionDir)lib\Irrlicht\x86\Irrlicht.dll" "$(TargetDir)"</Command>
+      <Command>xcopy /D /Y "$(SolutionDir)lib\Irrlicht\x86\Irrlicht.dll" "$(TargetDir)"
+xcopy /D /Y /E "$(SolutionDir)data" "$(TargetDir)data\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
