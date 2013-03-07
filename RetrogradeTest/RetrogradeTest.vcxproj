@@ -85,6 +85,7 @@
     <ClCompile Include="CollisionGroupEntityComponentTest.cpp" />
     <ClCompile Include="CollisionMaskEntityComponentTest.cpp" />
     <ClCompile Include="CollisionModelEntityComponentTest.cpp" />
+    <ClCompile Include="CollisionObjectEntityComponentTest.cpp" />
     <ClCompile Include="PositionEntityComponentTest.cpp" />
     <ClCompile Include="ProjectConfigurationTest.cpp" />
     <ClCompile Include="RotationEntityComponentTest.cpp" />
