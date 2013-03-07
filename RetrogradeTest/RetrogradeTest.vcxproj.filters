@@ -39,5 +39,8 @@
     <ClCompile Include="FreeflightCameraEntityComponentTest.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="IntertiaEntityComponentTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
