@@ -15,7 +15,7 @@ int Engine::engineMain(std::shared_ptr<Hypodermic::IContainer> (*dependencyConfi
 	deviceParams.Doublebuffer = true;
 	deviceParams.DriverType = irr::video::EDT_OPENGL;   
 	deviceParams.Fullscreen = false;
-	deviceParams.Vsync = false;
+	deviceParams.Vsync = true;
 	deviceParams.WindowSize = irr::core::dimension2du(1280,720);
 	deviceParams.HandleSRGB = false;
 	deviceParams.Stencilbuffer = true;
