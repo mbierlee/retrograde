@@ -170,6 +170,8 @@
     <ClCompile Include="Engine\EntityComponents\PositionEntityComponent.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\Base\BaseContentLoader.h" />
+    <ClInclude Include="Engine\Framework\IContentLoader.h" />
     <ClInclude Include="Engine\EngineMain.h" />
     <ClInclude Include="Engine\Base\BaseEntityComponent.h" />
     <ClInclude Include="Engine\Bullet\HandledMotionState.h" />
@@ -209,6 +211,7 @@
     <ClInclude Include="Engine\Framework\IGame.h" />
     <ClInclude Include="Engine\Framework\IPhysicsManager.h" />
     <ClInclude Include="Engine\Event.h" />
+    <ClInclude Include="Engine\Loadable.h" />
     <ClInclude Include="Engine\PhysicsManager.h" />
     <ClInclude Include="Engine\UnitTransformationUtil.h" />
     <ClInclude Include="Engine\EntityComponents\PositionEntityComponent.h" />
