@@ -10,10 +10,9 @@
 #include <queue>
 
 namespace Engine { namespace EntityComponents {
-
-	class FreeflightCameraEntityComponent 
+	class FreeflightCameraEntityComponent
 		: public Engine::Base::BaseEntityComponent
-	{		
+	{
 	private:
 		std::shared_ptr<irr::IrrlichtDevice> device;
 		irr::scene::ICameraSceneNode* cameraSceneNode;
@@ -29,5 +28,4 @@ namespace Engine { namespace EntityComponents {
 		virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime);
 		void initialize(Engine::Framework::IEntity* entity);
 	};
-
 }}

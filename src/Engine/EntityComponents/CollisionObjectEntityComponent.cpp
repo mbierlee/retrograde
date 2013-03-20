@@ -28,9 +28,7 @@ void Engine::EntityComponents::CollisionObjectEntityComponent::update( Engine::F
 {
 	if (!collisionObject) {
 		initialize(entity);
-	} 
-
-	
+	}
 }
 
 const irr::core::stringc Engine::EntityComponents::CollisionObjectEntityComponent::componentType()
@@ -70,7 +68,7 @@ void Engine::EntityComponents::CollisionObjectEntityComponent::initialize( Engin
 
 			collisionObject = new btCollisionObject();
 			collisionObject->setCollisionShape(shape.get());
-			collisionObject->setWorldTransform(transform);	
+			collisionObject->setWorldTransform(transform);
 
 			irr::s16 group = collisionGroupComponent ? collisionGroupComponent->getGroup() : btBroadphaseProxy::StaticFilter;
 			irr::s16 mask = collisionMaskComponent ? collisionMaskComponent->getMask() : btBroadphaseProxy::AllFilter ^ btBroadphaseProxy::StaticFilter;
@@ -85,7 +83,7 @@ void Engine::EntityComponents::CollisionObjectEntityComponent::initialize( Engin
 		auto loggerComponent = COMPONENT(IrrlichtLoggerEntityComponent);
 		if (loggerComponent) {
 			char logText[1024];
-			snprintf(logText, 2, "CollisionObjectEntityComponent: Entity %s(%u) has no collision model component.", entity->getType(), entity->getId());				
+			snprintf(logText, 2, "CollisionObjectEntityComponent: Entity %s(%u) has no collision model component.", entity->getType(), entity->getId());
 			loggerComponent->log(logText);
 		}
 	}

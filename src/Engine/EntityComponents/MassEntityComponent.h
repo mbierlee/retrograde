@@ -5,10 +5,9 @@
 #include <irrTypes.h>
 
 namespace Engine { namespace EntityComponents {
-
-	class MassEntityComponent 
+	class MassEntityComponent
 		: public Engine::Base::BaseEntityComponent
-	{	
+	{
 	private:
 		irr::f32 mass;
 
@@ -25,5 +24,4 @@ namespace Engine { namespace EntityComponents {
 		irr::f32 getMass() const;
 		void setMass(irr::f32 mass);
 	};
-
 }}

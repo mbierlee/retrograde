@@ -8,24 +8,24 @@
 using ::testing::Return;
 
 namespace RetrogradeTest {
-	class LoggerMock 
+	class LoggerMock
 		: public irr::ILogger
 	{
 	public:
 		MOCK_METHOD2(log, void(const wchar_t* text, irr::ELOG_LEVEL logLevel));
 		MOCK_METHOD2(log, void(const irr::c8* text, irr::ELOG_LEVEL logLevel));
 
-		virtual void log( const irr::c8* text, const irr::c8* hint, irr::ELOG_LEVEL ll=irr::ELL_INFORMATION ) 
+		virtual void log( const irr::c8* text, const irr::c8* hint, irr::ELOG_LEVEL ll=irr::ELL_INFORMATION )
 		{
 			throw std::exception("The method or operation is not implemented.");
 		}
 
-		virtual void log( const irr::c8* text, const wchar_t* hint, irr::ELOG_LEVEL ll=irr::ELL_INFORMATION ) 
+		virtual void log( const irr::c8* text, const wchar_t* hint, irr::ELOG_LEVEL ll=irr::ELL_INFORMATION )
 		{
 			throw std::exception("The method or operation is not implemented.");
 		}
 
-		virtual void log( const wchar_t* text, const wchar_t* hint, irr::ELOG_LEVEL ll=irr::ELL_INFORMATION ) 
+		virtual void log( const wchar_t* text, const wchar_t* hint, irr::ELOG_LEVEL ll=irr::ELL_INFORMATION )
 		{
 			throw std::exception("The method or operation is not implemented.");
 		}
@@ -35,11 +35,10 @@ namespace RetrogradeTest {
 			throw std::exception("The method or operation is not implemented.");
 		}
 
-		virtual void setLogLevel( irr::ELOG_LEVEL ll ) 
+		virtual void setLogLevel( irr::ELOG_LEVEL ll )
 		{
 			throw std::exception("The method or operation is not implemented.");
 		}
-
 	};
 }
 

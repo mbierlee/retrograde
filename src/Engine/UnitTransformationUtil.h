@@ -7,7 +7,6 @@
 #include <SColor.h>
 
 namespace Engine {
-
 	btVector3 transformIrrVector(const irr::core::vector3df& vector);
 	irr::core::vector3df transformBulletVector(const btVector3& vector);
 

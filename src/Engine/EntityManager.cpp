@@ -25,7 +25,7 @@ void Engine::EntityManager::addEntity( std::shared_ptr<Engine::Framework::IEntit
 }
 
 void Engine::EntityManager::removeEntity( std::shared_ptr<Engine::Framework::IEntity> entity )
-{	
+{
 	if (!entity) {
 		//TODO: Log stuff
 		return;

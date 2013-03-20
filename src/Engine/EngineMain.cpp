@@ -13,7 +13,7 @@ int Engine::engineMain(std::shared_ptr<Hypodermic::IContainer> (*dependencyConfi
 	deviceParams.AntiAlias = 32U;
 	deviceParams.Bits = 32U;
 	deviceParams.Doublebuffer = true;
-	deviceParams.DriverType = irr::video::EDT_OPENGL;   
+	deviceParams.DriverType = irr::video::EDT_OPENGL;
 	deviceParams.Fullscreen = false;
 	deviceParams.Vsync = true;
 	deviceParams.WindowSize = irr::core::dimension2du(1280,720);
@@ -25,7 +25,7 @@ int Engine::engineMain(std::shared_ptr<Hypodermic::IContainer> (*dependencyConfi
 	auto typeContainer = dependencyConfigFunc(deviceParams);
 	std::shared_ptr<irr::IrrlichtDevice> device = typeContainer->resolve<irr::IrrlichtDevice>();
 
-	if (!device) 
+	if (!device)
 		return 1;
 
 	auto game = typeContainer->resolve<Engine::Framework::IGame>();
@@ -51,10 +51,10 @@ int Engine::engineMain(std::shared_ptr<Hypodermic::IContainer> (*dependencyConfi
 
 		if (updateRate > 0) {
 			irr::u32 currentTime = device->getTimer()->getTime();
-			irr::u32 deltaTime = currentTime - lastTime;						
+			irr::u32 deltaTime = currentTime - lastTime;
 			updateTime += deltaTime;
 
-			if (updateTime >= updateRate) {			
+			if (updateTime >= updateRate) {
 				game->update();
 				updateTime = updateTime % updateRate;
 			}
@@ -67,7 +67,7 @@ int Engine::engineMain(std::shared_ptr<Hypodermic::IContainer> (*dependencyConfi
 #if defined(DEBUG_HOST) || defined(DEBUG_CLIENT)
 		game->draw();
 #else
-		if (device->isWindowActive()) {			 
+		if (device->isWindowActive()) {
 			game->draw();
 		} else {
 			device->yield();

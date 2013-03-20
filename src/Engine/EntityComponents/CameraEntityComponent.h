@@ -6,8 +6,7 @@
 #include <ICameraSceneNode.h>
 
 namespace Engine { namespace EntityComponents {
-
-	class CameraEntityComponent 
+	class CameraEntityComponent
 		: public Engine::Base::BaseEntityComponent
 	{
 	private:
@@ -26,5 +25,4 @@ namespace Engine { namespace EntityComponents {
 
 		void initialize(Engine::Framework::IEntity* entity);
 	};
-
 }}

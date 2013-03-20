@@ -5,8 +5,7 @@
 #include <vector>
 
 namespace Engine {
-	
-	class FactoryManager 
+	class FactoryManager
 		: public Engine::Framework::IFactoryManager
 	{
 	private:
@@ -17,5 +16,4 @@ namespace Engine {
 		virtual void registerFactory( std::shared_ptr<Engine::Framework::IEntityFactory> factory );
 		virtual void clearRegistry();
 	};
-
 }

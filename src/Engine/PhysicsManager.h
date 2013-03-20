@@ -7,8 +7,7 @@
 #include <memory>
 
 namespace Engine {
-
-	class PhysicsManager 
+	class PhysicsManager
 		: public Engine::Framework::IPhysicsManager
 	{
 	private:
@@ -39,7 +38,5 @@ namespace Engine {
 		virtual void registerRigidBody( std::shared_ptr<Engine::EntityComponents::RigidBodyEntityComponent> rigidBody );
 
 		virtual void registerRigidBody( std::shared_ptr<Engine::EntityComponents::RigidBodyEntityComponent> rigidBody, irr::s16 group, irr::s16 mask );
-
 	};
-
 }

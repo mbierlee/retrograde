@@ -22,7 +22,7 @@ const irr::core::stringc Engine::EntityComponents::FreeflightCameraEntityCompone
 }
 
 void Engine::EntityComponents::FreeflightCameraEntityComponent::update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime)
-{	
+{
 	if (device) {
 		if (!cameraSceneNode) {
 			initialize(entity);

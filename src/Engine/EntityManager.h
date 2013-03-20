@@ -5,9 +5,8 @@
 #include <list>
 #include <vector>
 
-namespace Engine { 
-
-	class EntityManager 
+namespace Engine {
+	class EntityManager
 		: public Engine::Framework::IEntityManager
 	{
 	private:
@@ -27,7 +26,5 @@ namespace Engine {
 		virtual std::shared_ptr<Engine::Framework::IEntity> getEntity( irr::core::stringc entityType );
 
 		virtual void updateEntities( irr::u32 frameTime, irr::u32 lastFrameTime );
-
 	};
-
 }

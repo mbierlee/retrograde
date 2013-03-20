@@ -5,8 +5,7 @@
 #include <list>
 
 namespace Engine {
-
-	class EventManager 
+	class EventManager
 		: public Engine::Framework::IEventManager
 	{
 	private:
@@ -19,5 +18,4 @@ namespace Engine {
 		virtual bool hasObserver( std::shared_ptr<Engine::Framework::IEventObserver> observer );
 		virtual void clearObservers();
 	};
-
 }

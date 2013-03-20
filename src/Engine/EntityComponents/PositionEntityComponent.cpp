@@ -16,7 +16,7 @@ const irr::core::stringc Engine::EntityComponents::PositionEntityComponent::getF
 }
 
 void Engine::EntityComponents::PositionEntityComponent::update( Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime )
-{	
+{
 }
 
 const irr::core::stringc Engine::EntityComponents::PositionEntityComponent::componentType()
@@ -39,4 +39,3 @@ void Engine::EntityComponents::PositionEntityComponent::setPosition( const irr::
 	this->position = position;
 	notifyAll();
 }
-

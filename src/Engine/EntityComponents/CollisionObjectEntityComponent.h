@@ -8,8 +8,7 @@
 #include <memory>
 
 namespace Engine { namespace EntityComponents {
-
-	class CollisionObjectEntityComponent 
+	class CollisionObjectEntityComponent
 		: public Engine::Base::BaseEntityComponent
 	{
 	private:
@@ -29,5 +28,4 @@ namespace Engine { namespace EntityComponents {
 
 		btCollisionObject* getCollisionObject() const;
 	};
-
 }}

@@ -8,7 +8,6 @@
 #include <map>
 
 namespace Engine { namespace Framework {
-
 	template<class T>
 	class IContentLoader {
 	protected:
@@ -20,5 +19,4 @@ namespace Engine { namespace Framework {
 		virtual void releaseContent(const irr::core::stringw& fileName) =0;
 		virtual irr::u32 cacheSize() =0;
 	};
-
 }}

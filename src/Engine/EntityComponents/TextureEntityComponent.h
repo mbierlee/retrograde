@@ -5,10 +5,9 @@
 #include <ITexture.h>
 
 namespace Engine { namespace EntityComponents {
-
-	class TextureEntityComponent 
+	class TextureEntityComponent
 		: public Engine::Base::BaseEntityComponent
-	{	
+	{
 	private:
 		irr::video::ITexture* texture;
 

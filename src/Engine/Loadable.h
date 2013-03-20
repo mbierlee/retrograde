@@ -4,7 +4,6 @@
 #include <memory>
 
 namespace Engine {
-
 	template<class T>
 	class Loadable {
 	private:
@@ -12,7 +11,7 @@ namespace Engine {
 		irr::u32 loadCount;
 
 	public:
-		Loadable(std::shared_ptr<T> content) 
+		Loadable(std::shared_ptr<T> content)
 			: content(content)
 			, loadCount(0)
 		{
@@ -34,5 +33,4 @@ namespace Engine {
 			return content;
 		}
 	};
-
 }

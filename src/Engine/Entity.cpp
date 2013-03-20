@@ -2,7 +2,7 @@
 
 #include "Engine/Framework/IEntityComponent.h"
 
-Engine::Entity::Entity(const irr::core::stringc typeName) 
+Engine::Entity::Entity(const irr::core::stringc typeName)
 	: entityId(0)
 	, componentRemovalLocked(false)
 	, entityType(typeName)

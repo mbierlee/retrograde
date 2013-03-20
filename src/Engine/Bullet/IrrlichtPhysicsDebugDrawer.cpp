@@ -53,9 +53,9 @@ void Engine::Bullet::IrrlichtPhysicsDebugDrawer::drawDebugData()
 	driver->setTransform(irr::video::ETS_WORLD, irr::core::IdentityMatrix);
 
 	for (auto& line : debugLines) {
-		driver->draw3DLine(line.from, line.to, line.color);		
+		driver->draw3DLine(line.from, line.to, line.color);
 	}
-	
+
 	debugLines.clear();
 }
 

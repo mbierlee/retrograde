@@ -8,8 +8,7 @@
 #include <cstdarg>
 
 namespace Engine { namespace EntityComponents {
-
-	class IrrlichtLoggerEntityComponent 
+	class IrrlichtLoggerEntityComponent
 		: public Engine::Base::BaseEntityComponent
 	{
 	private:
@@ -28,5 +27,4 @@ namespace Engine { namespace EntityComponents {
 		void log(const wchar_t* text, irr::ELOG_LEVEL logLevel = irr::ELL_INFORMATION);
 		void log(const irr::c8* text, irr::ELOG_LEVEL logLevel = irr::ELL_INFORMATION);
 	};
-
 }}

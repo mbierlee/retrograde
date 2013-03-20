@@ -4,14 +4,14 @@ Engine::Base::BaseGame::BaseGame(std::shared_ptr<irr::IrrlichtDevice> device
 								 , std::shared_ptr<Engine::Framework::IEntityManager> entityManager
 								 , std::shared_ptr<Engine::Framework::IEventManager> eventManager
 								 , std::shared_ptr<Engine::Framework::IFactoryManager> factoryManager)
-	: device(device)
-	, entityManager(entityManager)
-	, eventManager(eventManager)
-	, factoryManager(factoryManager)
-	, isExitRequested(false)
-	, lastFrameTime(0)
-	, frameTime(0)
-	, deltaTime(0)
+								 : device(device)
+								 , entityManager(entityManager)
+								 , eventManager(eventManager)
+								 , factoryManager(factoryManager)
+								 , isExitRequested(false)
+								 , lastFrameTime(0)
+								 , frameTime(0)
+								 , deltaTime(0)
 {
 	if (device) {
 		sceneManager = device->getSceneManager();
@@ -45,7 +45,7 @@ void Engine::Base::BaseGame::update()
 }
 
 void Engine::Base::BaseGame::initialize()
-{	
+{
 	lastFrameTime = device->getTimer()->getTime();
 	frameTime = lastFrameTime;
 	deltaTime = 0;

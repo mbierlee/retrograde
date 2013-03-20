@@ -16,11 +16,10 @@ Game::TestGame::TestGame(std::shared_ptr<irr::IrrlichtDevice> device
 						 , std::shared_ptr<Engine::Framework::IEntityManager> entityManager
 						 , std::shared_ptr<Engine::Framework::IEventManager> eventManager
 						 , std::shared_ptr<Engine::Framework::IFactoryManager> factoryManager)
-	: Engine::Base::BaseGame(device, entityManager, eventManager, factoryManager)
-	, physicsManager(physicsManager)
+						 : Engine::Base::BaseGame(device, entityManager, eventManager, factoryManager)
+						 , physicsManager(physicsManager)
 {
 }
-
 
 Game::TestGame::~TestGame(void)
 {
@@ -35,16 +34,16 @@ void Game::TestGame::initialize()
 
 	physicsManager->initialize();
 	physicsManager->setDebugDrawing(true);
-		
+
 	entityManager->addEntity(factoryManager->create(ENTITY_DEBUG_FLY_CAMERA));
 	entityManager->addEntity(factoryManager->create(ENTITY_DEBUG_PHYS_FLOOR));
 	entityManager->addEntity(factoryManager->create(ENTITY_DEBUG_PHYS_CUBE));
-	
+
 	sceneManager->loadScene("data/TestMap.irr");
 }
 
 void Game::TestGame::update(){
-	Engine::Base::BaseGame::update();	
+	Engine::Base::BaseGame::update();
 	physicsManager->update((irr::f32)deltaTime);
 }
 

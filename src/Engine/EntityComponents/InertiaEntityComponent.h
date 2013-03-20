@@ -5,10 +5,9 @@
 #include <vector3d.h>
 
 namespace Engine { namespace EntityComponents {
-
-	class InertiaEntityComponent 
+	class InertiaEntityComponent
 		: public Engine::Base::BaseEntityComponent
-	{	
+	{
 	private:
 		irr::core::vector3df inertia;
 
@@ -25,5 +24,4 @@ namespace Engine { namespace EntityComponents {
 		irr::core::vector3df getIntertia() const;
 		void setInertia(irr::core::vector3df inertia);
 	};
-
 }}

@@ -14,8 +14,7 @@
 #include <tuple>
 
 namespace Engine { namespace Bullet {
-
-	class IrrlichtPhysicsDebugDrawer 
+	class IrrlichtPhysicsDebugDrawer
 		: public btIDebugDraw
 		, public Engine::Framework::IIDebugDrawer
 	{
@@ -36,7 +35,7 @@ namespace Engine { namespace Bullet {
 		irr::ILogger* logger;
 		irr::scene::ISceneManager* sceneManager;
 
-		std::vector<SDebugLine> debugLines;				
+		std::vector<SDebugLine> debugLines;
 
 	public:
 		IrrlichtPhysicsDebugDrawer(std::shared_ptr<irr::IrrlichtDevice> device);
@@ -51,7 +50,5 @@ namespace Engine { namespace Bullet {
 		virtual int getDebugMode() const;
 
 		virtual void drawDebugData();
-
 	};
-
 }}

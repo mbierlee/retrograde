@@ -3,9 +3,8 @@
 #include "Engine/Framework/IContentLoader.h"
 
 namespace Engine { namespace Base {
-
 	template<class T>
-	class BaseContentLoader 
+	class BaseContentLoader
 		: public Engine::Framework::IContentLoader<T>
 	{
 	private:
@@ -42,11 +41,9 @@ namespace Engine { namespace Base {
 			}
 		}
 
-		virtual irr::u32 cacheSize() 
+		virtual irr::u32 cacheSize()
 		{
 			return loadedContent.size();
 		}
-
 	};
-
 }}

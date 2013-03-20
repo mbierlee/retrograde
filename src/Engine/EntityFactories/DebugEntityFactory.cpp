@@ -50,12 +50,12 @@ std::shared_ptr<Engine::Framework::IEntity> Engine::EntityFactories::DebugEntity
 	return std::shared_ptr<Engine::Framework::IEntity>();
 }
 
-std::shared_ptr<Engine::Framework::IEntity> Engine::EntityFactories::DebugEntityFactory::makeDebugFlyCameraEntity() 
+std::shared_ptr<Engine::Framework::IEntity> Engine::EntityFactories::DebugEntityFactory::makeDebugFlyCameraEntity()
 {
 	auto entity = std::make_shared<Engine::Entity>(ENTITY_DEBUG_FLY_CAMERA);
 	entity->addComponent(std::make_shared<Engine::EntityComponents::PositionEntityComponent>(irr::core::vector3df(10., 10., 0.)));
 	entity->addComponent(std::make_shared<Engine::EntityComponents::RotationEntityComponent>());
-	entity->addComponent(std::make_shared<Engine::EntityComponents::FreeflightCameraEntityComponent>(device)); 
+	entity->addComponent(std::make_shared<Engine::EntityComponents::FreeflightCameraEntityComponent>(device));
 	return entity;
 }
 
@@ -70,7 +70,7 @@ std::shared_ptr<Engine::Framework::IEntity> Engine::EntityFactories::DebugEntity
 	material.setFlag(irr::video::EMF_LIGHTING, false);
 	material.setFlag(irr::video::EMF_TRILINEAR_FILTER, true);
 	material.setFlag(irr::video::EMF_ANISOTROPIC_FILTER, true);
-	
+
 	entity->addComponent(std::make_shared<Engine::EntityComponents::SceneNodeEntityComponent>(device, device->getSceneManager()->getRootSceneNode()));
 	entity->addComponent(std::make_shared<Engine::EntityComponents::VisualModelEntityComponent>(device, visualMesh));
 	entity->addComponent(std::make_shared<Engine::EntityComponents::PositionEntityComponent>(irr::core::vector3df(0., 50., 0.)));

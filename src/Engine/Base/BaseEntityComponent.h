@@ -5,11 +5,10 @@
 #include <vector>
 
 namespace Engine { namespace Base {
-
-	class BaseEntityComponent 
+	class BaseEntityComponent
 		: public Engine::Framework::IEntityComponent
 		, public std::enable_shared_from_this<Engine::Base::BaseEntityComponent>
-	{	
+	{
 	private:
 		std::vector<std::shared_ptr<Engine::Framework::IEntityComponent>> notificationSubscribers;
 
@@ -26,7 +25,5 @@ namespace Engine { namespace Base {
 		virtual void handleEvent( Engine::Framework::IEvent& event, Engine::Framework::IEntity* entity, void* source );
 		virtual void cleanup( Engine::Framework::IEntity* entity );
 		virtual bool isInitialized() const;
-
 	};
-
 }}

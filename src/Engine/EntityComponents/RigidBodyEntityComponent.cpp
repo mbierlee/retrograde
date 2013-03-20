@@ -41,12 +41,12 @@ void Engine::EntityComponents::RigidBodyEntityComponent::update( Engine::Framewo
 {
 	if (!rigidBody) {
 		initialize(entity);
-	} 
+	}
 
 	if (motionState && motionState->isChanged()) {
 		btTransform transform;
 		motionState->getWorldTransform(transform);
-		
+
 		auto positionComponent = COMPONENT(PositionEntityComponent);
 		auto rotationComponent = COMPONENT(RotationEntityComponent);
 
@@ -69,7 +69,7 @@ void Engine::EntityComponents::RigidBodyEntityComponent::initialize( Engine::Fra
 		std::shared_ptr<btCollisionShape> shape = collisionModelComponent->getCollisionShape();
 		if (shape) {
 			auto massComponent = COMPONENT(MassEntityComponent);
-			auto inertiaComponent = COMPONENT(InertiaEntityComponent);		
+			auto inertiaComponent = COMPONENT(InertiaEntityComponent);
 			auto positionComponent = COMPONENT(PositionEntityComponent);
 			auto rotationComponent = COMPONENT(RotationEntityComponent);
 			auto collisionGroupComponent = COMPONENT(CollisionGroupEntityComponent);

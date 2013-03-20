@@ -5,7 +5,6 @@
 #include "IEventReceiver.h"
 
 namespace Game {
-
 	class IrrEventReceiver
 		: public irr::IEventReceiver
 	{
@@ -17,5 +16,4 @@ namespace Game {
 
 		virtual bool OnEvent( const irr::SEvent& event );
 	};
-
 }

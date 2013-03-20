@@ -2,7 +2,7 @@
 
 Engine::EntityComponents::CollisionModelEntityComponent::CollisionModelEntityComponent(std::shared_ptr<btCollisionShape> collisionShape)
 	: collisionShape(collisionShape)
-{	
+{
 }
 
 const irr::core::stringc Engine::EntityComponents::CollisionModelEntityComponent::getComponentType() const

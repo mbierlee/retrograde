@@ -5,8 +5,7 @@
 #include <IrrlichtDevice.h>
 
 namespace Engine { namespace EntityFactories {
-
-	class DefaultEntityFactory 
+	class DefaultEntityFactory
 		: public Engine::Framework::IEntityFactory
 	{
 	private:
@@ -19,5 +18,4 @@ namespace Engine { namespace EntityFactories {
 		virtual std::shared_ptr<Engine::Framework::IEntity> create(irr::core::stringc entityType);
 		virtual void clearPool();
 	};
-
 }}

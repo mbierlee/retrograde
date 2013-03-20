@@ -5,10 +5,9 @@
 #include <btBulletDynamicsCommon.h>
 
 namespace Engine { namespace EntityComponents {
-
-	class CollisionModelEntityComponent 
+	class CollisionModelEntityComponent
 		: public Engine::Base::BaseEntityComponent
-	{		
+	{
 	private:
 		std::shared_ptr<btCollisionShape> collisionShape;
 
@@ -23,5 +22,4 @@ namespace Engine { namespace EntityComponents {
 
 		std::shared_ptr<btCollisionShape> getCollisionShape();
 	};
-
 }}

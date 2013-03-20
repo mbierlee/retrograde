@@ -3,10 +3,9 @@
 #include "Engine/Base/BaseEntityComponent.h"
 
 namespace Engine { namespace EntityComponents {
-
-	class CollisionGroupEntityComponent 
+	class CollisionGroupEntityComponent
 		: public Engine::Base::BaseEntityComponent
-	{	
+	{
 	private:
 		irr::s16 group;
 
@@ -22,5 +21,4 @@ namespace Engine { namespace EntityComponents {
 
 		virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime);
 	};
-
 }}

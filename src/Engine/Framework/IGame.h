@@ -1,7 +1,6 @@
 #pragma once
 
 namespace Engine { namespace Framework {
-
 	class IGame {
 	public:
 		virtual ~IGame() {}
@@ -13,5 +12,4 @@ namespace Engine { namespace Framework {
 		virtual bool exitRequested() =0;
 		virtual void requestExit() =0;
 	};
-
 }}

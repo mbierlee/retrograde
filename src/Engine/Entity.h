@@ -12,7 +12,6 @@
 #include <vector>
 
 namespace Engine {
-
 	class Entity
 		: public Engine::Framework::IEntity
 		, public Engine::Framework::IEventObserver
@@ -30,7 +29,7 @@ namespace Engine {
 	public:
 		Entity(const irr::core::stringc typeName = "Undefined");
 
-		virtual irr::u32 getId() const;	
+		virtual irr::u32 getId() const;
 		virtual void setId( const int entityId );
 
 		virtual const irr::core::stringc& getType() const;
@@ -49,7 +48,5 @@ namespace Engine {
 		virtual const irr::core::stringc& getName() const;
 
 		virtual void setName( const irr::core::stringc& name );
-
 	};
-
 }

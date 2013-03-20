@@ -19,7 +19,7 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 	//Setup Irrlicht
 	auto irrlichtDevice = std::shared_ptr<irr::IrrlichtDevice>(irr::createDeviceEx(deviceParams));
 	builder.registerInstance(irrlichtDevice);//->singleInstance();
-	
+
 	//Setup Physics Debug Drawer
 	builder.registerType<Engine::Bullet::IrrlichtPhysicsDebugDrawer>(CREATE(new Engine::Bullet::IrrlichtPhysicsDebugDrawer(INJECT(irr::IrrlichtDevice))))->as<btIDebugDraw>();
 
@@ -40,7 +40,7 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 
 	//Setup debug entity factory
 	builder.registerType<Engine::EntityFactories::DebugEntityFactory>(CREATE(new Engine::EntityFactories::DebugEntityFactory(INJECT(irr::IrrlichtDevice), INJECT(Engine::Framework::IPhysicsManager))));
-	
+
 	//Setup Game
 	builder.registerType<Game::TestGame>(CREATE(new Game::TestGame(
 		INJECT(irr::IrrlichtDevice)
@@ -49,7 +49,7 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 		, INJECT(Engine::Framework::IEventManager)
 		, INJECT(Engine::Framework::IFactoryManager)
 		)))->as<Engine::Framework::IGame>()->singleInstance();
-		
+
 	std::shared_ptr<Hypodermic::IContainer> typeContainer = builder.build();
 
 	//Run-time dependencies

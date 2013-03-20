@@ -6,7 +6,6 @@
 #include <memory>
 
 namespace Engine { namespace Framework {
-
 	class IEventManager {
 	public:
 		virtual ~IEventManager() {}
@@ -18,5 +17,4 @@ namespace Engine { namespace Framework {
 		virtual bool hasObserver( std::shared_ptr<Engine::Framework::IEventObserver> observer ) =0;
 		virtual void clearObservers() =0;
 	};
-
 }}

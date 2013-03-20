@@ -48,4 +48,3 @@ void Engine::EntityComponents::CameraEntityComponent::initialize(Engine::Framewo
 		cameraSceneNode = sceneManager->addCameraSceneNode(sceneNodeComponent.get());
 	}
 }
-

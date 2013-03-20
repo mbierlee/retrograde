@@ -12,8 +12,7 @@
 #include <memory>
 
 namespace Engine { namespace Base {
-
-	class BaseGame 
+	class BaseGame
 		: public Engine::Framework::IGame
 	{
 	private:
@@ -35,12 +34,10 @@ namespace Engine { namespace Base {
 			, std::shared_ptr<Engine::Framework::IFactoryManager> factoryManager);
 
 		virtual ~BaseGame();
-			
+
 		virtual bool exitRequested();
 		virtual void requestExit();
 		virtual void update();
 		virtual void initialize();
-
 	};
-
 }}

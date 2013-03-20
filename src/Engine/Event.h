@@ -3,8 +3,7 @@
 #include "Engine/Framework/IEvent.h"
 
 namespace Engine {
-
-	class Event 
+	class Event
 		: public Engine::Framework::IEvent
 	{
 	private:
@@ -13,7 +12,5 @@ namespace Engine {
 	public:
 		Event(irr::u32 eventType);
 		virtual irr::u32 getType() const;
-
 	};
-
 }

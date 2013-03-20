@@ -7,10 +7,9 @@
 #include  <btBulletDynamicsCommon.h>
 
 namespace Engine { namespace EntityComponents {
-
 	class RigidBodyEntityComponent
 		: public Engine::Base::BaseEntityComponent
-	{	
+	{
 	private:
 		btRigidBody* rigidBody;
 		std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager;
@@ -30,5 +29,4 @@ namespace Engine { namespace EntityComponents {
 
 		btRigidBody* getRigidBody() const;
 	};
-
 }}

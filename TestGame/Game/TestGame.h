@@ -11,31 +11,29 @@
 #include <memory>
 
 namespace Game {
+	class TestGame
+		: public Engine::Base::BaseGame
+		, public Engine::Framework::IEventObserver
+		, public std::enable_shared_from_this<Game::TestGame>
+	{
+	private:
+		std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager;
 
-class TestGame 
-	: public Engine::Base::BaseGame
-	, public Engine::Framework::IEventObserver
-	, public std::enable_shared_from_this<Game::TestGame>
-{
-private:	
-	std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager;
+	public:
+		TestGame(std::shared_ptr<irr::IrrlichtDevice> device
+			, std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager
+			, std::shared_ptr<Engine::Framework::IEntityManager> entityManager
+			, std::shared_ptr<Engine::Framework::IEventManager> eventManager
+			, std::shared_ptr<Engine::Framework::IFactoryManager> factoryManager);
 
-public:
-	TestGame(std::shared_ptr<irr::IrrlichtDevice> device
-		, std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager
-		, std::shared_ptr<Engine::Framework::IEntityManager> entityManager
-		, std::shared_ptr<Engine::Framework::IEventManager> eventManager
-		, std::shared_ptr<Engine::Framework::IFactoryManager> factoryManager);
+		virtual ~TestGame(void);
 
-	virtual ~TestGame(void);
+		virtual void initialize();
 
-	virtual void initialize();
+		virtual void update();
 
-	virtual void update();
+		virtual void draw();
 
-	virtual void draw();
-
-	virtual void handleEvent( Engine::Framework::IEvent& event, void* source );
-};
-
+		virtual void handleEvent( Engine::Framework::IEvent& event, void* source );
+	};
 }

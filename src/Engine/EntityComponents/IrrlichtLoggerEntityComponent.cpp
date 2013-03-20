@@ -1,9 +1,8 @@
 #include "IrrlichtLoggerEntityComponent.h"
 
-
 Engine::EntityComponents::IrrlichtLoggerEntityComponent::IrrlichtLoggerEntityComponent( irr::ILogger* logger )
 	: logger(logger)
-{	
+{
 }
 
 const irr::core::stringc Engine::EntityComponents::IrrlichtLoggerEntityComponent::getComponentType() const

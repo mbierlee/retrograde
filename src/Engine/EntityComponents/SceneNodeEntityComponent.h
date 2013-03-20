@@ -7,11 +7,10 @@
 #include <aabbox3d.h>
 
 namespace Engine { namespace EntityComponents {
-
-	class SceneNodeEntityComponent 
+	class SceneNodeEntityComponent
 		: public Engine::Base::BaseEntityComponent
 		, public irr::scene::ISceneNode
-	{	
+	{
 	private:
 		bool registeredWithPosition, registeredWithRotation;
 		irr::core::aabbox3df aabbox;
@@ -30,7 +29,5 @@ namespace Engine { namespace EntityComponents {
 		virtual void render();
 		virtual const irr::core::aabbox3d<irr::f32>& getBoundingBox() const;
 		virtual void OnRegisterSceneNode();
-
 	};
-
 }}

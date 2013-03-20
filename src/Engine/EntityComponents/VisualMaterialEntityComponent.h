@@ -5,10 +5,9 @@
 #include <SMaterial.h>
 
 namespace Engine { namespace EntityComponents {
-
-	class VisualMaterialEntityComponent 
+	class VisualMaterialEntityComponent
 		: public Engine::Base::BaseEntityComponent
-	{	
+	{
 	private:
 		irr::video::SMaterial visualMaterial;
 		bool usingTextureComponent;
@@ -25,5 +24,4 @@ namespace Engine { namespace EntityComponents {
 		const irr::video::SMaterial& getVisualMaterial() const;
 		void setVisualMaterial(const irr::video::SMaterial& material);
 	};
-
 }}

@@ -6,8 +6,7 @@
 #include <quaternion.h>
 
 namespace Engine { namespace EntityComponents {
-
-	class RotationEntityComponent 
+	class RotationEntityComponent
 		: public Engine::Base::BaseEntityComponent
 	{
 	private:
@@ -29,5 +28,4 @@ namespace Engine { namespace EntityComponents {
 		void setEulerRotation(const irr::core::vector3df& rotation);
 		void setRotation(const irr::core::quaternion& rotation);
 	};
-
 }}

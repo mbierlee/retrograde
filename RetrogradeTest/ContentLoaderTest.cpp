@@ -17,7 +17,7 @@ namespace RetrogradeTest {
 		virtual ~DummyContent() {
 			disposed = true;
 		}
-		
+
 		int getTimesInitialized() const {
 			return timesInitilized;
 		}
@@ -26,17 +26,17 @@ namespace RetrogradeTest {
 	int DummyContent::timesInitilized = 0;
 	bool DummyContent::disposed = false;
 
-	class TestContentLoader 
+	class TestContentLoader
 		: public Engine::Base::BaseContentLoader<DummyContent>
 	{
 	protected:
-		virtual std::shared_ptr<DummyContent> loadContent( const irr::core::stringw& fileName ) 
+		virtual std::shared_ptr<DummyContent> loadContent( const irr::core::stringw& fileName )
 		{
 			return std::shared_ptr<DummyContent>(new DummyContent);
 		}
 
 	public:
-		virtual bool canLoad(const irr::core::stringw& fileName) 
+		virtual bool canLoad(const irr::core::stringw& fileName)
 		{
 			return true;
 		}

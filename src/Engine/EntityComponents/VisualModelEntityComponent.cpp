@@ -60,10 +60,10 @@ void Engine::EntityComponents::VisualModelEntityComponent::initialize(Engine::Fr
 		auto loggerComponent = COMPONENT(IrrlichtLoggerEntityComponent);
 		loggerComponent->log("VisualModelEntityComponent: No mesh supplied. Nothing added.", irr::ELL_WARNING);
 	}
-	
+
 	irr::scene::ISceneManager* sceneManager = device->getSceneManager();
 	auto sceneNodeComponent = COMPONENT(SceneNodeEntityComponent);
-	if (sceneManager && sceneNodeComponent) {		
+	if (sceneManager && sceneNodeComponent) {
 		meshSceneNode = sceneManager->addMeshSceneNode(mesh, sceneNodeComponent.get());
 	}
 }

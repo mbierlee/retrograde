@@ -6,7 +6,6 @@
 #include "irrString.h"
 
 namespace Engine { namespace Framework {
-
 	class IEntityManager {
 	public:
 		virtual ~IEntityManager() {};
@@ -18,8 +17,7 @@ namespace Engine { namespace Framework {
 		virtual std::shared_ptr<Engine::Framework::IEntity> getEntity(irr::u32 entityId) =0;
 		virtual std::shared_ptr<Engine::Framework::IEntity> getEntity(irr::core::stringc entityType) =0;
 		virtual irr::u32 entityCount() =0;
-		
+
 		virtual void updateEntities(irr::u32 frameTime, irr::u32 lastFrameTime) =0;
 	};
-
 }}

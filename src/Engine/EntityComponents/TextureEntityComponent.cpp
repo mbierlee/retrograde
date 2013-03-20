@@ -1,6 +1,5 @@
 #include "TextureEntityComponent.h"
 
-
 Engine::EntityComponents::TextureEntityComponent::TextureEntityComponent( irr::video::ITexture* texture )
 	: texture(texture)
 {

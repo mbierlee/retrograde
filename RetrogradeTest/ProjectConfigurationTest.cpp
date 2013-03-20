@@ -9,7 +9,7 @@ namespace RetrogradeTest {
 		virtual bool worldDominationIsGuaranteed() =0;
 	};
 
-	class MockFoo 
+	class MockFoo
 		: public IFoo
 	{
 	public:

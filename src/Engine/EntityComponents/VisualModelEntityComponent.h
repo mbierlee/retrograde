@@ -8,10 +8,9 @@
 #include <SMaterial.h>
 
 namespace Engine { namespace EntityComponents {
-
-	class VisualModelEntityComponent 
+	class VisualModelEntityComponent
 		: public Engine::Base::BaseEntityComponent
-	{	
+	{
 	private:
 		irr::scene::IMesh* mesh;
 		irr::scene::IMeshSceneNode* meshSceneNode;
@@ -32,5 +31,4 @@ namespace Engine { namespace EntityComponents {
 		virtual bool isInitialized() const;
 		virtual void handleNotification( std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent );
 	};
-
 }}

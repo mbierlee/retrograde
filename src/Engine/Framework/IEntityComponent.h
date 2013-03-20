@@ -1,8 +1,8 @@
 #pragma once
 
 /**
- * Gets a component of certain type from the entity.
- */
+* Gets a component of certain type from the entity.
+*/
 #define COMPONENT(_COMPTYPE) std::static_pointer_cast<Engine::EntityComponents::_COMPTYPE>(entity->getComponent(Engine::EntityComponents::_COMPTYPE::familyType()))
 
 #include "Engine/Framework/IEntity.h"
@@ -13,7 +13,6 @@
 #include "irrString.h"
 
 namespace Engine { namespace Framework {
-		
 	class IEntityComponent {
 	public:
 		virtual ~IEntityComponent() {};
@@ -30,5 +29,4 @@ namespace Engine { namespace Framework {
 		virtual void handleEvent(Engine::Framework::IEvent& event, Engine::Framework::IEntity* entity, void* source) =0;
 		virtual bool isInitialized() const =0;
 	};
-
 }}

@@ -7,7 +7,6 @@
 #include <memory>
 
 namespace Engine { namespace Framework {
-
 	class IFactoryManager {
 	public:
 		virtual ~IFactoryManager() {};
@@ -16,5 +15,4 @@ namespace Engine { namespace Framework {
 		virtual void registerFactory(std::shared_ptr<Engine::Framework::IEntityFactory> factory) =0;
 		virtual void clearRegistry() =0;
 	};
-
 }}
