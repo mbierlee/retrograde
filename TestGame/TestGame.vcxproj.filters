@@ -32,13 +32,13 @@
     <ClInclude Include="DependencyConfig.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Game\Event\Events.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Game\IrrEventReceiver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Game\TestGame.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\EventConstants.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

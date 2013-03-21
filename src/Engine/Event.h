@@ -7,10 +7,10 @@ namespace Engine {
 		: public Engine::Framework::IEvent
 	{
 	private:
-		irr::u32 eventType;
+		irr::core::stringc eventName;
 
 	public:
-		Event(irr::u32 eventType);
-		virtual irr::u32 getType() const;
+		Event(const irr::core::stringc& eventName);
+		virtual const irr::core::stringc& getName() const;
 	};
 }

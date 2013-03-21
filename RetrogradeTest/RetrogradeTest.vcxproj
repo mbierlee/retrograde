@@ -87,6 +87,7 @@
     <ClCompile Include="CollisionModelEntityComponentTest.cpp" />
     <ClCompile Include="CollisionObjectEntityComponentTest.cpp" />
     <ClCompile Include="ContentLoaderTest.cpp" />
+    <ClCompile Include="EventTest.cpp" />
     <ClCompile Include="FreeflightCameraEntityComponentTest.cpp" />
     <ClCompile Include="IntertiaEntityComponentTest.cpp" />
     <ClCompile Include="IrrlichtLoggerEntityComponentTest.cpp" />

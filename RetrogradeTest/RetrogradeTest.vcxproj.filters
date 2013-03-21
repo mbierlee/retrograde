@@ -48,5 +48,8 @@
     <ClCompile Include="ContentLoaderTest.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="EventTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

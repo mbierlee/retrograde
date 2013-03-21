@@ -1,11 +1,11 @@
 #include "Event.h"
 
-Engine::Event::Event( irr::u32 eventType )
-	: eventType(eventType)
+Engine::Event::Event(const irr::core::stringc& eventName)
+	: eventName(eventName)
 {
 }
 
-irr::u32 Engine::Event::getType() const
+const irr::core::stringc& Engine::Event::getName() const
 {
-	return eventType;
+	return eventName;
 }

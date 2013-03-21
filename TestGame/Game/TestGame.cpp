@@ -7,7 +7,7 @@
 #include "Engine/EntityFactories/DebugEntityFactory.h"
 
 #include "Game/IrrEventReceiver.h"
-#include "Game/Event/Events.h"
+#include "Game/EventConstants.h"
 
 #include <ICameraSceneNode.h>
 
@@ -57,10 +57,9 @@ void Game::TestGame::draw()
 
 void Game::TestGame::handleEvent( Engine::Framework::IEvent& event, void* source )
 {
-	switch (event.getType())
-	{
-	case Game::Event::Events::QUIT_GAME_EVENT:
+	irr::core::stringc eventName = event.getName();
+
+	if (eventName == EV_QUIT) {
 		requestExit();
-		break;
 	}
 }

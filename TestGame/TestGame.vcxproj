@@ -95,7 +95,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DependencyConfig.h" />
-    <ClInclude Include="Game\Event\Events.h" />
+    <ClInclude Include="Game\EventConstants.h" />
     <ClInclude Include="Game\IrrEventReceiver.h" />
     <ClInclude Include="Game\TestGame.h" />
   </ItemGroup>

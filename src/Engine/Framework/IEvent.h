@@ -1,12 +1,11 @@
 #pragma once
 
-#include "irrTypes.h"
+#include <irrString.h>
 
 namespace Engine { namespace Framework {
 	class IEvent {
 	public:
 		virtual ~IEvent() {}
-
-		virtual irr::u32 getType() const =0;
+		virtual const irr::core::stringc& getName() const =0;
 	};
 }}

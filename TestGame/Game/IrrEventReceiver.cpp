@@ -1,7 +1,7 @@
 #include "IrrEventReceiver.h"
 
 #include "Engine/Event.h"
-#include "Game/Event/Events.h"
+#include "Game/EventConstants.h"
 
 bool Game::IrrEventReceiver::OnEvent( const irr::SEvent& event )
 {
@@ -12,7 +12,7 @@ bool Game::IrrEventReceiver::OnEvent( const irr::SEvent& event )
 				switch (event.KeyInput.Key)
 				{
 				case irr::KEY_ESCAPE:
-					eventManager->postEvent(Engine::Event(static_cast<irr::s32>(Game::Event::Events::QUIT_GAME_EVENT)), this);
+					eventManager->postEvent(Engine::Event(EV_QUIT), this);
 					break;
 				}
 			}
