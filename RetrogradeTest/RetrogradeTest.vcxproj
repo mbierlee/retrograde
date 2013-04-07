@@ -89,8 +89,7 @@
     <ClCompile Include="ContentLoaderTest.cpp" />
     <ClCompile Include="EventTest.cpp" />
     <ClCompile Include="FreeflightCameraEntityComponentTest.cpp" />
-    <ClCompile Include="InputManagerTest.cpp" />
-    <ClCompile Include="IntertiaEntityComponentTest.cpp" />
+    <ClCompile Include="HeadRotationEntityComponentTest.cpp" />    <ClCompile Include="InputManagerTest.cpp" />    <ClCompile Include="IntertiaEntityComponentTest.cpp" />
     <ClCompile Include="IrrlichtLoggerEntityComponentTest.cpp" />
     <ClCompile Include="PositionEntityComponentTest.cpp" />
     <ClCompile Include="ProjectConfigurationTest.cpp" />

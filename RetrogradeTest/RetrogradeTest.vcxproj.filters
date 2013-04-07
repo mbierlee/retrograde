@@ -51,8 +51,9 @@
     <ClCompile Include="EventTest.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="InputManagerTest.cpp">
+    <ClCompile Include="HeadRotationEntityComponentTest.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
+    </ClCompile>    <ClCompile Include="InputManagerTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>  </ItemGroup>
 </Project>
