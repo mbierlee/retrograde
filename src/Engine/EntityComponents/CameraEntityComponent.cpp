@@ -1,6 +1,7 @@
 #include "CameraEntityComponent.h"
 
 #include "Engine/EntityComponents/SceneNodeEntityComponent.h"
+#include "Engine/EntityComponents/CameraTargetEntityComponent.h"
 #include "Engine/UnitTransformationUtil.h"
 
 #include <ISceneManager.h>
@@ -8,6 +9,7 @@
 Engine::EntityComponents::CameraEntityComponent::CameraEntityComponent(std::shared_ptr<irr::IrrlichtDevice> device)
 	: device(device)
 	, cameraSceneNode(nullptr)
+	, registeredWithTargetPosition(false)
 {
 }
 
@@ -26,6 +28,15 @@ void Engine::EntityComponents::CameraEntityComponent::update( Engine::Framework:
 	if (device) {
 		if (!cameraSceneNode) {
 			initialize(entity);
+		}
+
+		if (cameraSceneNode && !registeredWithTargetPosition) {
+			auto targetComponent = COMPONENT(CameraTargetEntityComponent);
+			if (targetComponent) {
+				cameraSceneNode->setTarget(targetComponent->getTargetPosition());
+				targetComponent->subscribeNotifications(shared_from_this());
+				registeredWithTargetPosition = true;
+			}
 		}
 	}
 }
@@ -46,5 +57,13 @@ void Engine::EntityComponents::CameraEntityComponent::initialize(Engine::Framewo
 	auto sceneNodeComponent = COMPONENT(SceneNodeEntityComponent);
 	if (sceneManager && sceneNodeComponent) {
 		cameraSceneNode = sceneManager->addCameraSceneNode(sceneNodeComponent.get());
+	}
+}
+
+void Engine::EntityComponents::CameraEntityComponent::handleNotification( std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent )
+{
+	if (cameraSceneNode && entityComponent->getFamilyType() == Engine::EntityComponents::CameraTargetEntityComponent::familyType()) {
+		auto targetComponent = std::static_pointer_cast<Engine::EntityComponents::CameraTargetEntityComponent>(entityComponent);
+		cameraSceneNode->setTarget(targetComponent->getTargetPosition());
 	}
 }
