@@ -1,7 +1,5 @@
 #include "SceneNodeEntityComponent.h"
 
-#include "Engine/EntityComponents/PositionEntityComponent.h"
-#include "Engine/EntityComponents/RotationEntityComponent.h"
 #include "Engine/UnitTransformationUtil.h"
 
 #include <ISceneManager.h>
@@ -39,6 +37,7 @@ void Engine::EntityComponents::SceneNodeEntityComponent::update( Engine::Framewo
 	if (!registeredWithPosition) {
 		auto positionComponent = COMPONENT(PositionEntityComponent);
 		if (positionComponent) {
+			setPositionFromComponent(positionComponent);
 			positionComponent->subscribeNotifications(shared_from_this());
 			registeredWithPosition = true;
 		}
@@ -47,6 +46,7 @@ void Engine::EntityComponents::SceneNodeEntityComponent::update( Engine::Framewo
 	if (!registeredWithRotation) {
 		auto rotationComponent = COMPONENT(RotationEntityComponent);
 		if (rotationComponent) {
+			setRotationFromComponent(rotationComponent);
 			rotationComponent->subscribeNotifications(shared_from_this());
 			registeredWithRotation = true;
 		}
@@ -57,12 +57,12 @@ void Engine::EntityComponents::SceneNodeEntityComponent::handleNotification( std
 {
 	if (entityComponent->getComponentType() == PositionEntityComponent::componentType()) {
 		auto positionComponent = std::static_pointer_cast<Engine::EntityComponents::PositionEntityComponent>(entityComponent);
-		setPosition(positionComponent->getPosition() * 10.);
+		setPositionFromComponent(positionComponent);
 	}
 
 	if (entityComponent->getComponentType() == RotationEntityComponent::componentType()) {
 		auto rotationComponent = std::static_pointer_cast<Engine::EntityComponents::RotationEntityComponent>(entityComponent);
-		setRotation(vecRadToDeg(rotationComponent->getEulerRotation()));
+		setRotationFromComponent(rotationComponent);
 	}
 }
 
@@ -82,4 +82,14 @@ void Engine::EntityComponents::SceneNodeEntityComponent::OnRegisterSceneNode()
 	}
 
 	irr::scene::ISceneNode::OnRegisterSceneNode();
+}
+
+void Engine::EntityComponents::SceneNodeEntityComponent::setPositionFromComponent(std::shared_ptr<Engine::EntityComponents::PositionEntityComponent> component)
+{
+	setPosition(component->getPosition() * 10.);
+}
+
+void Engine::EntityComponents::SceneNodeEntityComponent::setRotationFromComponent(std::shared_ptr<Engine::EntityComponents::RotationEntityComponent> component)
+{
+	setRotation(vecRadToDeg(component->getEulerRotation()));
 }

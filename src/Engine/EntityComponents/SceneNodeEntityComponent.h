@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Engine/Base/BaseEntityComponent.h"
+#include "Engine/EntityComponents/PositionEntityComponent.h"
+#include "Engine/EntityComponents/RotationEntityComponent.h"
 
 #include <ISceneNode.h>
 #include <IrrlichtDevice.h>
@@ -14,6 +16,8 @@ namespace Engine { namespace EntityComponents {
 	private:
 		bool registeredWithPosition, registeredWithRotation;
 		irr::core::aabbox3df aabbox;
+		void setPositionFromComponent(std::shared_ptr<Engine::EntityComponents::PositionEntityComponent> component);
+		void setRotationFromComponent(std::shared_ptr<Engine::EntityComponents::RotationEntityComponent> component);
 
 	public:
 		SceneNodeEntityComponent(std::shared_ptr<irr::IrrlichtDevice> device, irr::scene::ISceneNode* parent = nullptr);
