@@ -89,14 +89,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="DependencyConfig.cpp" />
-    <ClCompile Include="Game\IrrEventReceiver.cpp" />
+    <ClCompile Include="Game\GameEntityFactory.cpp" />
     <ClCompile Include="Game\TestGame.cpp" />
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DependencyConfig.h" />
-    <ClInclude Include="Game\EventConstants.h" />
-    <ClInclude Include="Game\IrrEventReceiver.h" />
+    <ClInclude Include="Game\GameEventDefinitions.h" />
+    <ClInclude Include="Game\GameEntityDefinitions.h" />
+    <ClInclude Include="Game\GameEntityFactory.h" />
     <ClInclude Include="Game\TestGame.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

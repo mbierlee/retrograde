@@ -28,6 +28,7 @@ const irr::core::stringc Engine::EntityComponents::HeadRotationEntityComponent::
 void Engine::EntityComponents::HeadRotationEntityComponent::setRotation( const irr::core::quaternion& rotation )
 {
 	headRotation = rotation;
+	notifyAll();
 }
 
 const irr::core::quaternion& Engine::EntityComponents::HeadRotationEntityComponent::getRotation() const

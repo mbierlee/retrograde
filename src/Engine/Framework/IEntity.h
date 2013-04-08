@@ -1,5 +1,11 @@
 #pragma once
 
+/**
+* Macros for getting and adding components without having to deal with the syntax bombardment of STL
+*/
+#define COMPONENT(_COMPTYPE) std::static_pointer_cast<Engine::EntityComponents::_COMPTYPE>(entity->getComponent(Engine::EntityComponents::_COMPTYPE::familyType()))
+#define ADD_COMPONENT(_COMTYPE, ...) entity->addComponent(std::make_shared<Engine::EntityComponents::_COMTYPE>(__VA_ARGS__))
+
 #include "irrString.h"
 
 #include <memory>

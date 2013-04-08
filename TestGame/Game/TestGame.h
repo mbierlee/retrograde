@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Engine/Base/BaseGame.h"
-
-#include "Engine/Framework/IEntity.h"
-#include "Engine/Framework/IPhysicsManager.h"
-#include "Engine/Framework/IEventObserver.h"
+#include <Engine/Base/BaseGame.h>
+#include <Engine/Framework/IEntity.h>
+#include <Engine/Framework/IPhysicsManager.h>
+#include <Engine/Framework/IEventObserver.h>
+#include <Engine/Framework/IInputManager.h>
 
 #include "irrlicht.h"
 
@@ -24,7 +24,8 @@ namespace Game {
 			, std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager
 			, std::shared_ptr<Engine::Framework::IEntityManager> entityManager
 			, std::shared_ptr<Engine::Framework::IEventManager> eventManager
-			, std::shared_ptr<Engine::Framework::IFactoryManager> factoryManager);
+			, std::shared_ptr<Engine::Framework::IFactoryManager> factoryManager
+			, std::shared_ptr<Engine::Framework::IInputManager> inputManager);
 
 		virtual ~TestGame(void);
 

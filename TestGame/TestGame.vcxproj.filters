@@ -21,10 +21,10 @@
     <ClCompile Include="DependencyConfig.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Game\IrrEventReceiver.cpp">
+    <ClCompile Include="Game\TestGame.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Game\TestGame.cpp">
+    <ClCompile Include="Game\GameEntityFactory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -32,13 +32,16 @@
     <ClInclude Include="DependencyConfig.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Game\IrrEventReceiver.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Game\TestGame.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Game\EventConstants.h">
+    <ClInclude Include="Game\GameEntityFactory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameEntityDefinitions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\GameEventDefinitions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

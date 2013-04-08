@@ -4,7 +4,7 @@
 
 int Engine::engineMain(std::shared_ptr<Hypodermic::IContainer> (*dependencyConfigFunc)(irr::SIrrlichtCreationParameters&))
 {
-	std::printf("Project Phantasy Shooter\n0.1.0 Alpha\nSHAREWARE EDITION\nCopyright 2012 Lostmoment Games\n\nRetroGrade Engine version 0.1\nLoading WIN/4GW...Done!\n\n");
+	std::printf("Retrograde Test Game\nCopyright 2013 Lostmoment Games\n\nRetroGrade Engine version 0.1-indev\n\n");
 
 	irr::SIrrlichtCreationParameters deviceParams;
 	deviceParams.AntiAlias = 32U;

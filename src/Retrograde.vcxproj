@@ -144,7 +144,10 @@
     <ClCompile Include="Engine\EntityComponents\CameraTargetEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\CollisionGroupEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\CollisionMaskEntityComponent.cpp" />
+    <ClCompile Include="Engine\EntityComponents\FirstPersonInputEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\HeadRotationEntityComponent.cpp" />
+    <ClCompile Include="Engine\EntityComponents\FirstPersonCameraEntityComponent.cpp" />
+    <ClCompile Include="Engine\EntityComponents\HeightEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\TextureEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\VisualMaterialEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\RigidBodyEntityComponent.cpp" />
@@ -176,8 +179,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Base\BaseContentLoader.h" />
+    <ClInclude Include="Engine\Base\BaseInputBinding.h" />
+    <ClInclude Include="Engine\BindingProperties.h" />
     <ClInclude Include="Engine\EntityComponents\CameraTargetEntityComponent.h" />
+    <ClInclude Include="Engine\EntityComponents\FirstPersonCameraEntityComponent.h" />
+    <ClInclude Include="Engine\EntityComponents\FirstPersonInputEntityComponent.h" />
     <ClInclude Include="Engine\EntityComponents\HeadRotationEntityComponent.h" />
+    <ClInclude Include="Engine\EntityComponents\HeightEntityComponent.h" />
     <ClInclude Include="Engine\Framework\IContentLoader.h" />
     <ClInclude Include="Engine\EngineMain.h" />
     <ClInclude Include="Engine\Base\BaseEntityComponent.h" />
