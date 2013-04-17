@@ -87,7 +87,7 @@ void Engine::Entity::setType( const irr::core::stringc& entityTypeName )
 	this->entityType = entityTypeName;
 }
 
-void Engine::Entity::handleEvent( Engine::Framework::IEvent& event, void* source )
+void Engine::Entity::handleEvent( const Engine::Framework::IEvent& event, void* source )
 {
 	for (auto& entityComponent : eventSubscribers) {
 		entityComponent->handleEvent(event, this, source);

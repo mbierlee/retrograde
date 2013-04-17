@@ -34,6 +34,6 @@ namespace Game {
 
 		virtual void draw();
 
-		virtual void handleEvent( Engine::Framework::IEvent& event, void* source );
+		virtual void handleEvent( const Engine::Framework::IEvent& event, void* source );
 	};
 }

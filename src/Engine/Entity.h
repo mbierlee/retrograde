@@ -42,7 +42,7 @@ namespace Engine {
 		virtual void update(irr::u32 frameTime, irr::u32 lastFrameTime);
 		virtual bool hasComponent( const irr::core::stringc familyType );
 
-		virtual void handleEvent( Engine::Framework::IEvent& event, void* source );
+		virtual void handleEvent( const Engine::Framework::IEvent& event, void* source );
 		virtual void subscribeToEvents( std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent );
 
 		virtual const irr::core::stringc& getName() const;

@@ -7,6 +7,6 @@ namespace Engine { namespace Framework {
 	public:
 		virtual ~IEventObserver() {}
 
-		virtual void handleEvent(Engine::Framework::IEvent& event, void* source) =0;
+		virtual void handleEvent(const Engine::Framework::IEvent& event, void* source) =0;
 	};
 }}

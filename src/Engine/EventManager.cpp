@@ -1,6 +1,6 @@
 #include "EventManager.h"
 
-void Engine::EventManager::postEvent( Engine::Framework::IEvent& event, void* source )
+void Engine::EventManager::postEvent( const Engine::Framework::IEvent& event, void* source )
 {
 	for (auto& observer : observers) {
 		observer->handleEvent(event, source);

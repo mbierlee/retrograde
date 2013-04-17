@@ -55,7 +55,7 @@ void Game::TestGame::draw()
 	driver->endScene();
 }
 
-void Game::TestGame::handleEvent( Engine::Framework::IEvent& event, void* source )
+void Game::TestGame::handleEvent( const Engine::Framework::IEvent& event, void* source )
 {
 	irr::core::stringc eventName = event.getName();
 

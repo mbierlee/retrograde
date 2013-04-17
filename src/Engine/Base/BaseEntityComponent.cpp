@@ -36,7 +36,7 @@ void Engine::Base::BaseEntityComponent::notifyAll()
 	}
 }
 
-void Engine::Base::BaseEntityComponent::handleEvent( Engine::Framework::IEvent& event, Engine::Framework::IEntity* entity, void* source )
+void Engine::Base::BaseEntityComponent::handleEvent( const Engine::Framework::IEvent& event, Engine::Framework::IEntity* entity, void* source )
 {
 	// Don't do jack
 }

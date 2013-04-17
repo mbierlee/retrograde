@@ -26,7 +26,7 @@ namespace Engine { namespace Framework {
 		virtual void subscribeNotifications(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent) =0;
 		virtual void unsubscribeNotifications(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent) =0;
 		virtual void handleNotification(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent) =0;
-		virtual void handleEvent(Engine::Framework::IEvent& event, Engine::Framework::IEntity* entity, void* source) =0;
+		virtual void handleEvent(const Engine::Framework::IEvent& event, Engine::Framework::IEntity* entity, void* source) =0;
 		virtual bool isInitialized() const =0;
 	};
 }}

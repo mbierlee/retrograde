@@ -10,7 +10,7 @@ namespace Engine { namespace Framework {
 	public:
 		virtual ~IEventManager() {}
 
-		virtual void postEvent(Engine::Framework::IEvent& event, void* source) =0;
+		virtual void postEvent(const Engine::Framework::IEvent& event, void* source) =0;
 
 		virtual void registerObserver(std::shared_ptr<Engine::Framework::IEventObserver> observer) =0;
 		virtual void unregisterObserver(std::shared_ptr<Engine::Framework::IEventObserver> observer) =0;
