@@ -7,5 +7,6 @@ namespace Engine { namespace Framework {
 	public:
 		virtual ~IEvent() {}
 		virtual const irr::core::stringc& getName() const =0;
+		virtual bool operator== (const IEvent& obj) const =0;
 	};
 }}
