@@ -6,7 +6,7 @@ namespace Engine {
 	class Event
 		: public Engine::Framework::IEvent
 	{
-	private:
+	protected:
 		irr::core::stringc eventName;
 
 	public:

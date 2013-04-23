@@ -165,12 +165,15 @@
     <ClCompile Include="Engine\Event.cpp" />
     <ClCompile Include="Engine\EventManager.cpp" />
     <ClCompile Include="Engine\FactoryManager.cpp" />
+    <ClCompile Include="Engine\InputManager.cpp" />
+    <ClCompile Include="Engine\MagnitudeEvent.cpp" />
     <ClCompile Include="Engine\PhysicsManager.cpp" />
     <ClCompile Include="Engine\UnitTransformationUtil.cpp" />
     <ClCompile Include="Engine\EntityComponents\PositionEntityComponent.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Base\BaseContentLoader.h" />
+    <ClInclude Include="Engine\Base\BaseInputBinding.h" />
     <ClInclude Include="Engine\Framework\IContentLoader.h" />
     <ClInclude Include="Engine\EngineMain.h" />
     <ClInclude Include="Engine\Base\BaseEntityComponent.h" />
@@ -209,12 +212,19 @@
     <ClInclude Include="Engine\Framework\IEventObserver.h" />
     <ClInclude Include="Engine\Framework\IFactoryManager.h" />
     <ClInclude Include="Engine\Framework\IGame.h" />
+    <ClInclude Include="Engine\Framework\IInputBinding.h" />
+    <ClInclude Include="Engine\Framework\IInputManager.h" />
     <ClInclude Include="Engine\Framework\IPhysicsManager.h" />
     <ClInclude Include="Engine\Event.h" />
+    <ClInclude Include="Engine\JoystickAnalogInputBinding.h" />
+    <ClInclude Include="Engine\JoystickDigitalInputBinding.h" />
+    <ClInclude Include="Engine\InputManager.h" />
+    <ClInclude Include="Engine\KeyboardInputBinding.h" />
     <ClInclude Include="Engine\Loadable.h" />
     <ClInclude Include="Engine\PhysicsManager.h" />
     <ClInclude Include="Engine\UnitTransformationUtil.h" />
     <ClInclude Include="Engine\EntityComponents\PositionEntityComponent.h" />
+    <ClInclude Include="Engine\MagnitudeEvent.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
