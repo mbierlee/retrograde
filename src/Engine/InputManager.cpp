@@ -2,29 +2,77 @@
 
 #include "Engine\Event.h"
 #include "Engine\MagnitudeEvent.h"
+#include "Engine\BindingProperties.h"
 
 #include <cmath>
 
-Engine::InputManager::InputManager( std::shared_ptr<Engine::Framework::IEventManager> eventManager, irr::ILogger* logger)
+Engine::InputManager::InputManager(std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IEventManager> eventManager, irr::ILogger* logger)
 	: eventManager(eventManager)
 	, logger(logger)
+	, cancelAxes(true)
+	, device(device)
 {
 	for (irr::u32 i = 0; i < irr::SEvent::SJoystickEvent::NUMBER_OF_BUTTONS; ++i) {
 		joystickButtonPressedState[i] = false;
+	}
+
+	for (irr::u32 i = 0; i < irr::SEvent::SJoystickEvent::NUMBER_OF_AXES; ++i) {
+		axisMagnitude[i] = 0;
+	}
+
+	if (device) {
+		relativeMousePosition = device->getCursorControl()->getRelativePosition();
 	}
 }
 
 void Engine::InputManager::handleMouseInput( const irr::SEvent& event )
 {
-	throw std::exception("The method or operation is not implemented.");
+	if (mouseEventInputBinding) {
+		if (mouseEventInputBinding->hasBinding(event.MouseInput.Event)) {
+			const Engine::BindingProperties& properties = mouseEventInputBinding->getBoundEvent(event.MouseInput.Event);
+			irr::f32 magnitude = !properties.IsInverted ? 1.f : 0;
+			eventManager->postEvent(Engine::MagnitudeEvent(properties.EventName, magnitude), this);
+		}
+	}
+
+	if (mouseAnalogInputBinding) {
+		if(event.MouseInput.Event == irr::EMIE_MOUSE_MOVED) {
+			irr::core::vector2df previousPosition = relativeMousePosition;
+			relativeMousePosition = getRelativeMousePosition();
+			if (previousPosition != relativeMousePosition) {
+				irr::core::vector2df positionDiff = relativeMousePosition - previousPosition;
+				if (positionDiff.X != 0) {
+					handleMouseMovement(positionDiff.X, previousPositionDiff.X, Engine::EMAI_MOUSE_LEFT, Engine::EMAI_MOUSE_RIGHT);
+				}
+
+				if (positionDiff.Y != 0) {
+					handleMouseMovement(positionDiff.Y, previousPositionDiff.Y, Engine::EMAI_MOUSE_UP, Engine::EMAI_MOUSE_DOWN);
+				}
+
+				previousPositionDiff = positionDiff;
+			}
+		} else if (event.MouseInput.Event == irr::EMIE_MOUSE_WHEEL) {
+			Engine::MouseAnalogInput wheelInput = (event.MouseInput.Wheel > 0) ? Engine::EMAI_WHEEL_UP : Engine::EMAI_WHEEL_DOWN;
+			if (mouseAnalogInputBinding->hasBinding(wheelInput)) {
+				const Engine::BindingProperties& properties = mouseAnalogInputBinding->getBoundEvent(wheelInput);
+				irr::f32 magnitude = abs(event.MouseInput.Wheel);
+				eventManager->postEvent(Engine::MagnitudeEvent(properties.EventName, magnitude), this);
+			}
+		}
+	}
 }
 
 void Engine::InputManager::handleKeyboardInput( const irr::SEvent& event )
 {
 	if (keyboardInputBinding) {
-		Engine::KeyboardInput input(event.KeyInput.Key, event.KeyInput.PressedDown);
-		if (keyboardInputBinding->hasBinding(input)) {
-			eventManager->postEvent(Engine::Event(keyboardInputBinding->getBoundEvent(input)), this);
+		if (keyboardInputBinding->hasBinding(event.KeyInput.Key)) {
+			const Engine::BindingProperties& properties = keyboardInputBinding->getBoundEvent(event.KeyInput.Key);
+			irr::f32 magnitude = event.KeyInput.PressedDown;
+			if (properties.IsInverted) {
+				magnitude = 1.f - magnitude;
+			}
+
+			eventManager->postEvent(Engine::MagnitudeEvent(properties.EventName, event.KeyInput.PressedDown ? 1.f : 0), this);
 		}
 	}
 }
@@ -35,23 +83,43 @@ void Engine::InputManager::handleJoystickInput( const irr::SEvent& event )
 		for (irr::u32 i = 0; i < event.JoystickEvent.NUMBER_OF_BUTTONS; ++i) {
 			bool previousButtonState = joystickButtonPressedState[i];
 			joystickButtonPressedState[i] = event.JoystickEvent.IsButtonPressed(i);
-			bool currentButtonState = joystickButtonPressedState[i];
-			Engine::JoystickDigitalInput input(i, currentButtonState);
-			if (previousButtonState != joystickButtonPressedState[i] && joystickDigitalInputBinding->hasBinding(input)) {
-				eventManager->postEvent(Engine::Event(joystickDigitalInputBinding->getBoundEvent(input)), this);
+			bool isPressed = joystickButtonPressedState[i];
+			if (previousButtonState != joystickButtonPressedState[i] && joystickDigitalInputBinding->hasBinding(i)) {
+				const Engine::BindingProperties& properties = joystickDigitalInputBinding->getBoundEvent(i);
+				irr::f32 magnitude = (irr::f32)isPressed;
+				if (properties.IsInverted) {
+					magnitude = 1.f - magnitude;
+				}
+
+				eventManager->postEvent(Engine::MagnitudeEvent(properties.EventName, magnitude), this);
 			}
 		}
 	}
 
 	if (joystickAnalogInputBinding) {
 		for (irr::u32 i = 0; i < event.JoystickEvent.NUMBER_OF_AXES; ++i) {
-			//TODO: Deadzone settings
+			//TODO: Dead-zone settings
 			irr::s16 previousMagnitude = axisMagnitude[i];
 			axisMagnitude[i] = event.JoystickEvent.Axis[i];
 			irr::s16 currentMagnitude = axisMagnitude[i];
 			Engine::JoystickAnalogInput input(i, currentMagnitude > 0);
 			if (previousMagnitude != currentMagnitude && joystickAnalogInputBinding->hasBinding(input)) {
-				eventManager->postEvent(Engine::MagnitudeEvent(joystickAnalogInputBinding->getBoundEvent(input), abs((irr::f32)currentMagnitude)), this);
+				const Engine::BindingProperties& properties = joystickAnalogInputBinding->getBoundEvent(input);
+				irr::f32 eventMagnitude = abs((irr::f32)currentMagnitude) / 32768;
+				eventManager->postEvent(Engine::MagnitudeEvent(properties.EventName, eventMagnitude), this);
+
+				// Cancel out the effect of the event on the other end of the axis.
+				// When, for example, the magnitude was negative before and is positive now, we cancel
+				// out the negative axis by sending an event with a magnitude of zero (or one if inverted)
+				if ((previousMagnitude != 0 && currentMagnitude != 0)
+					&& (!(previousMagnitude > 0) != !(currentMagnitude > 0))) {
+						Engine::JoystickAnalogInput oppositeInput(i, !input.PositiveAxis);
+						if (joystickAnalogInputBinding->hasBinding(oppositeInput)) {
+							const Engine::BindingProperties& oppositeProperties = joystickAnalogInputBinding->getBoundEvent(oppositeInput);
+							irr::f32 magnitude = oppositeProperties.IsInverted ? 1.f : 0;
+							eventManager->postEvent(Engine::MagnitudeEvent(oppositeProperties.EventName, magnitude), this);
+						}
+				}
 			}
 		}
 	}
@@ -72,6 +140,9 @@ bool Engine::InputManager::OnEvent( const irr::SEvent& event )
 	case irr::EET_JOYSTICK_INPUT_EVENT:
 		handleJoystickInput(event);
 		break;
+	case irr::EET_MOUSE_INPUT_EVENT:
+		handleMouseInput(event);
+		break;
 	}
 
 	return false;
@@ -85,4 +156,48 @@ void Engine::InputManager::setJoystickDigitalBinding( const std::shared_ptr<Engi
 void Engine::InputManager::setJoystickAnalogBinding( const std::shared_ptr<Engine::JoystickAnalogInputBinding> binding )
 {
 	joystickAnalogInputBinding = binding;
+}
+
+void Engine::InputManager::setMouseEventBinding( const std::shared_ptr<Engine::MouseEventInputBinding> binding )
+{
+	mouseEventInputBinding = binding;
+}
+
+void Engine::InputManager::setMouseAnalogBinding( const std::shared_ptr<Engine::MouseAnalogInputBinding> binding )
+{
+	mouseAnalogInputBinding = binding;
+}
+
+const irr::core::position2df Engine::InputManager::getRelativeMousePosition() const
+{
+	return device->getCursorControl()->getRelativePosition();
+}
+
+const irr::core::position2di& Engine::InputManager::getAbsoluteMousePosition() const
+{
+	return device->getCursorControl()->getPosition();
+}
+
+void Engine::InputManager::handleMouseMovement( irr::f32 posDiff, irr::f32 prevPosDiff, Engine::MouseAnalogInput negativeAxisInput, Engine::MouseAnalogInput positiveAxisInput )
+{
+	Engine::MouseAnalogInput inputType = (posDiff < 0) ? negativeAxisInput : positiveAxisInput;
+	if (mouseAnalogInputBinding->hasBinding(inputType)) {
+		irr::f32 magnitude = abs(posDiff);
+		const Engine::BindingProperties& properties = mouseAnalogInputBinding->getBoundEvent(inputType);
+		if (properties.IsInverted) {
+			magnitude = 1.f - magnitude;
+		}
+
+		eventManager->postEvent(Engine::MagnitudeEvent(properties.EventName, magnitude), this);
+	}
+
+	// Cancel out magnitude by sending a magnitude event of 0 to the other "axis"
+	// This behavior keeps eventing consistent for both mouse and joystick inputs.
+	Engine::MouseAnalogInput previousInputType = (prevPosDiff < 0) ? negativeAxisInput : positiveAxisInput;
+	if (previousInputType != inputType) {
+		if (mouseAnalogInputBinding->hasBinding(previousInputType)) {
+			const Engine::BindingProperties& properties = mouseAnalogInputBinding->getBoundEvent(previousInputType);
+			eventManager->postEvent(Engine::MagnitudeEvent(properties.EventName, 0), this);
+		}
+	}
 }

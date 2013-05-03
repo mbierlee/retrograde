@@ -164,6 +164,7 @@
     <ClCompile Include="Engine\EntityManager.cpp" />
     <ClCompile Include="Engine\Event.cpp" />
     <ClCompile Include="Engine\EventManager.cpp" />
+    <ClCompile Include="Engine\BindingProperties.cpp" />
     <ClCompile Include="Engine\FactoryManager.cpp" />
     <ClCompile Include="Engine\InputManager.cpp" />
     <ClCompile Include="Engine\MagnitudeEvent.cpp" />
@@ -174,6 +175,7 @@
   <ItemGroup>
     <ClInclude Include="Engine\Base\BaseContentLoader.h" />
     <ClInclude Include="Engine\Base\BaseInputBinding.h" />
+    <ClInclude Include="Engine\BindingProperties.h" />
     <ClInclude Include="Engine\Framework\IContentLoader.h" />
     <ClInclude Include="Engine\EngineMain.h" />
     <ClInclude Include="Engine\Base\BaseEntityComponent.h" />
@@ -221,6 +223,8 @@
     <ClInclude Include="Engine\InputManager.h" />
     <ClInclude Include="Engine\KeyboardInputBinding.h" />
     <ClInclude Include="Engine\Loadable.h" />
+    <ClInclude Include="Engine\MouseAnalogInputBinding.h" />
+    <ClInclude Include="Engine\MouseEventInputBinding.h" />
     <ClInclude Include="Engine\PhysicsManager.h" />
     <ClInclude Include="Engine\UnitTransformationUtil.h" />
     <ClInclude Include="Engine\EntityComponents\PositionEntityComponent.h" />

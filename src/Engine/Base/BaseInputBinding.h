@@ -3,6 +3,7 @@
 #include "Engine/Framework/IInputBinding.h"
 
 #include <map>
+#include <vector>
 
 namespace Engine { namespace Base {
 	template <class inputIdentifierType>
@@ -10,12 +11,13 @@ namespace Engine { namespace Base {
 		: public Engine::Framework::IInputBinding<inputIdentifierType>
 	{
 	private:
-		std::map<inputIdentifierType, irr::core::stringc> bindings;
+		std::map<inputIdentifierType, Engine::BindingProperties> bindings;
 
 	public:
-		virtual void bind(const inputIdentifierType& inputIdentifier, const irr::core::stringc& eventName)
+		virtual void bind(const inputIdentifierType& inputIdentifier, const irr::core::stringc& eventName, bool isInverted = false)
 		{
-			bindings.insert(std::pair<inputIdentifierType, irr::core::stringc>(inputIdentifier, eventName));
+			Engine::BindingProperties properties(eventName, isInverted);
+			bindings.insert(std::pair<inputIdentifierType, Engine::BindingProperties>(inputIdentifier, properties));
 		}
 
 		virtual void unbind(const inputIdentifierType& inputIdentifier)
@@ -28,7 +30,7 @@ namespace Engine { namespace Base {
 			bindings.clear();
 		}
 
-		virtual const irr::core::stringc getBoundEvent(const inputIdentifierType& inputIdentifier) const
+		virtual const Engine::BindingProperties getBoundEvent(const inputIdentifierType& inputIdentifier) const
 		{
 			return bindings.at(inputIdentifier);
 		}

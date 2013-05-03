@@ -5,8 +5,8 @@
 #include <IEventReceiver.h>
 
 namespace Engine {
-	class KeyboardInputBinding
-		: public Engine::Base::BaseInputBinding<irr::EKEY_CODE>
+	class MouseEventInputBinding
+		: public Engine::Base::BaseInputBinding<irr::EMOUSE_INPUT_EVENT>
 	{
 	};
 }

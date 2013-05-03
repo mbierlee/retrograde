@@ -1,8 +1,13 @@
 #pragma once
 
 #include "Engine/KeyboardInputBinding.h"
+#include "Engine/JoystickDigitalInputBinding.h"
+#include "Engine/JoystickAnalogInputBinding.h"
+#include "Engine/MouseEventInputBinding.h"
+#include "Engine/MouseAnalogInputBinding.h"
 
 #include <IEventReceiver.h>
+#include <position2d.h>
 
 #include <memory>
 
@@ -17,5 +22,12 @@ namespace Engine { namespace Framework {
 		virtual void handleJoystickInput(const irr::SEvent& event) =0;
 
 		virtual void setKeyboardBinding(const std::shared_ptr<Engine::KeyboardInputBinding> binding) =0;
+		virtual void setJoystickDigitalBinding(const std::shared_ptr<Engine::JoystickDigitalInputBinding> binding) =0;
+		virtual void setJoystickAnalogBinding(const std::shared_ptr<Engine::JoystickAnalogInputBinding> binding) =0;
+		virtual void setMouseEventBinding(const std::shared_ptr<Engine::MouseEventInputBinding> binding) =0;
+		virtual void setMouseAnalogBinding(const std::shared_ptr<Engine::MouseAnalogInputBinding> binding) =0;
+
+		virtual const irr::core::position2df getRelativeMousePosition() const =0;
+		virtual const irr::core::position2di& getAbsoluteMousePosition() const =0;
 	};
 }}
