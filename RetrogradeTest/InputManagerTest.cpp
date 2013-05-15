@@ -18,6 +18,7 @@
 using ::testing::Return;
 using ::testing::Eq;
 using ::testing::AtLeast;
+using ::testing::_;
 
 namespace RetrogradeTest {
 	class MockEventManager
@@ -493,5 +494,55 @@ TEST(InputManagerTest, testHandleMouseAnalogBinding) {
 	EXPECT_FALSE(inputManager.OnEvent(event));
 }
 
-//TODO: Joystick deadzones
+TEST(InputManagerTest, testHandleJoystickDeadzones) {
+	std::shared_ptr<irr::IrrlichtDevice> nullDevice;
+	std::shared_ptr<RetrogradeTest::MockEventManager> mockEventManager = std::make_shared<RetrogradeTest::MockEventManager>();
+	Engine::InputManager inputManager(nullDevice, mockEventManager);
+
+	irr::SEvent event;
+	event.EventType = irr::EET_JOYSTICK_INPUT_EVENT;
+
+	std::shared_ptr<Engine::JoystickAnalogInputBinding> joystickBinding = std::make_shared<Engine::JoystickAnalogInputBinding>();
+	joystickBinding->bind(Engine::JoystickAnalogInput(irr::SEvent::SJoystickEvent::AXIS_X, true), "ev_xaxis_right");
+	joystickBinding->bind(Engine::JoystickAnalogInput(irr::SEvent::SJoystickEvent::AXIS_X, false), "ev_xaxis_left");
+	joystickBinding->bind(Engine::JoystickAnalogInput(irr::SEvent::SJoystickEvent::AXIS_Y, false), "ev_yaxis_up");
+	joystickBinding->bind(Engine::JoystickAnalogInput(irr::SEvent::SJoystickEvent::AXIS_Y, true), "ev_yaxis_down");
+	inputManager.setJoystickAnalogBinding(joystickBinding);
+
+	irr::f32 deadzone = 200.f / 32768;
+	inputManager.setJoystickDeadzones(deadzone);
+
+	event.JoystickEvent.Axis[event.JoystickEvent.AXIS_X] = 100;
+	EXPECT_CALL(*mockEventManager, postEvent(_, _)).Times(1);
+	EXPECT_FALSE(inputManager.OnEvent(event));
+
+	event.JoystickEvent.Axis[event.JoystickEvent.AXIS_X] = 300;
+	EXPECT_CALL(*mockEventManager, postEvent(_, _)).Times(1);
+	EXPECT_FALSE(inputManager.OnEvent(event));
+
+	event.JoystickEvent.Axis[event.JoystickEvent.AXIS_X] = -100;
+	EXPECT_CALL(*mockEventManager, postEvent(_, _)).Times(1);
+	EXPECT_FALSE(inputManager.OnEvent(event));
+
+	event.JoystickEvent.Axis[event.JoystickEvent.AXIS_X] = -300;
+	EXPECT_CALL(*mockEventManager, postEvent(_, _)).Times(1);
+	EXPECT_FALSE(inputManager.OnEvent(event));
+
+	event.JoystickEvent.Axis[event.JoystickEvent.AXIS_Y] = -100;
+	EXPECT_CALL(*mockEventManager, postEvent(_, _)).Times(1);
+	EXPECT_FALSE(inputManager.OnEvent(event));
+
+	event.JoystickEvent.Axis[event.JoystickEvent.AXIS_Y] = -300;
+	EXPECT_CALL(*mockEventManager, postEvent(_, _)).Times(1);
+	EXPECT_FALSE(inputManager.OnEvent(event));
+
+	event.JoystickEvent.Axis[event.JoystickEvent.AXIS_Y] = 100;
+	EXPECT_CALL(*mockEventManager, postEvent(_, _)).Times(1);
+	EXPECT_FALSE(inputManager.OnEvent(event));
+
+	event.JoystickEvent.Axis[event.JoystickEvent.AXIS_Y] = 300;
+	EXPECT_CALL(*mockEventManager, postEvent(_, _)).Times(1);
+	EXPECT_FALSE(inputManager.OnEvent(event));
+}
+
 //TODO: Mouse centering

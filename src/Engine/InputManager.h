@@ -25,6 +25,7 @@ namespace Engine {
 		irr::core::position2df relativeMousePosition;
 		std::shared_ptr<irr::IrrlichtDevice> device;
 		irr::core::vector2df previousPositionDiff;
+		std::map<Engine::JoystickAnalogInput, irr::f32> joystickDeadzones;
 
 		void handleMouseMovement( irr::f32 posDiff, irr::f32 prevPosDiff, Engine::MouseAnalogInput negativeAxisInput, Engine::MouseAnalogInput positiveAxisInput );
 
@@ -40,6 +41,10 @@ namespace Engine {
 		virtual void setJoystickAnalogBinding(const std::shared_ptr<Engine::JoystickAnalogInputBinding> binding);
 		virtual void setMouseEventBinding(const std::shared_ptr<Engine::MouseEventInputBinding> binding);
 		virtual void setMouseAnalogBinding( const std::shared_ptr<Engine::MouseAnalogInputBinding> binding );
+
+		virtual void setJoystickDeadzone(Engine::JoystickAnalogInput& input, irr::f32 threshold);
+		virtual irr::f32 getJoystickDeadzone(Engine::JoystickAnalogInput& input) const;
+		virtual void setJoystickDeadzones( irr::f32 threshold );
 
 		virtual const irr::core::position2df getRelativeMousePosition() const;
 		virtual const irr::core::position2di& getAbsoluteMousePosition() const;

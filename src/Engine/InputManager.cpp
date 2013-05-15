@@ -98,27 +98,34 @@ void Engine::InputManager::handleJoystickInput( const irr::SEvent& event )
 
 	if (joystickAnalogInputBinding) {
 		for (irr::u32 i = 0; i < event.JoystickEvent.NUMBER_OF_AXES; ++i) {
-			//TODO: Dead-zone settings
 			irr::s16 previousMagnitude = axisMagnitude[i];
 			axisMagnitude[i] = event.JoystickEvent.Axis[i];
 			irr::s16 currentMagnitude = axisMagnitude[i];
 			Engine::JoystickAnalogInput input(i, currentMagnitude > 0);
-			if (previousMagnitude != currentMagnitude && joystickAnalogInputBinding->hasBinding(input)) {
-				const Engine::BindingProperties& properties = joystickAnalogInputBinding->getBoundEvent(input);
-				irr::f32 eventMagnitude = abs((irr::f32)currentMagnitude) / 32768;
-				eventManager->postEvent(Engine::MagnitudeEvent(properties.EventName, eventMagnitude), this);
 
-				// Cancel out the effect of the event on the other end of the axis.
-				// When, for example, the magnitude was negative before and is positive now, we cancel
-				// out the negative axis by sending an event with a magnitude of zero (or one if inverted)
-				if ((previousMagnitude != 0 && currentMagnitude != 0)
-					&& (!(previousMagnitude > 0) != !(currentMagnitude > 0))) {
-						Engine::JoystickAnalogInput oppositeInput(i, !input.PositiveAxis);
-						if (joystickAnalogInputBinding->hasBinding(oppositeInput)) {
-							const Engine::BindingProperties& oppositeProperties = joystickAnalogInputBinding->getBoundEvent(oppositeInput);
-							irr::f32 magnitude = oppositeProperties.IsInverted ? 1.f : 0;
-							eventManager->postEvent(Engine::MagnitudeEvent(oppositeProperties.EventName, magnitude), this);
-						}
+			if (joystickAnalogInputBinding->hasBinding(input)) {
+				irr::f32 eventMagnitude = abs((irr::f32)currentMagnitude) / 32768;
+				if (joystickDeadzones.count(input) == 1 && joystickDeadzones.at(input) < eventMagnitude) {
+					axisMagnitude[i] = currentMagnitude = 0;
+					eventMagnitude = 0;
+				}
+
+				if (previousMagnitude != currentMagnitude) {
+					const Engine::BindingProperties& properties = joystickAnalogInputBinding->getBoundEvent(input);
+					eventManager->postEvent(Engine::MagnitudeEvent(properties.EventName, eventMagnitude), this);
+
+					// Cancel out the effect of the event on the other end of the axis.
+					// When, for example, the magnitude was negative before and is positive now, we cancel
+					// out the negative axis by sending an event with a magnitude of zero (or one if inverted)
+					if ((previousMagnitude != 0 && currentMagnitude != 0)
+						&& (!(previousMagnitude > 0) != !(currentMagnitude > 0))) {
+							Engine::JoystickAnalogInput oppositeInput(i, !input.PositiveAxis);
+							if (joystickAnalogInputBinding->hasBinding(oppositeInput)) {
+								const Engine::BindingProperties& oppositeProperties = joystickAnalogInputBinding->getBoundEvent(oppositeInput);
+								irr::f32 magnitude = oppositeProperties.IsInverted ? 1.f : 0;
+								eventManager->postEvent(Engine::MagnitudeEvent(oppositeProperties.EventName, magnitude), this);
+							}
+					}
 				}
 			}
 		}
@@ -200,4 +207,23 @@ void Engine::InputManager::handleMouseMovement( irr::f32 posDiff, irr::f32 prevP
 			eventManager->postEvent(Engine::MagnitudeEvent(properties.EventName, 0), this);
 		}
 	}
+}
+
+void Engine::InputManager::setJoystickDeadzone(Engine::JoystickAnalogInput& input, irr::f32 threshold)
+{
+	joystickDeadzones.insert(std::pair<Engine::JoystickAnalogInput, irr::f32>(input, threshold));
+}
+
+void Engine::InputManager::setJoystickDeadzones(irr::f32 threshold)
+{
+	for (irr::u32 i =0; i < irr::SEvent::SJoystickEvent::NUMBER_OF_AXES; ++i)
+	{
+		setJoystickDeadzone(Engine::JoystickAnalogInput(i, true), threshold);
+		setJoystickDeadzone(Engine::JoystickAnalogInput(i, false), threshold);
+	}
+}
+
+irr::f32 Engine::InputManager::getJoystickDeadzone(Engine::JoystickAnalogInput& input) const
+{
+	return joystickDeadzones.at(input);
 }
