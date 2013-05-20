@@ -271,6 +271,7 @@ namespace RetrogradeTest {
 		: public irr::gui::ICursorControl
 	{
 	public:
+
 		virtual void setVisible( bool visible )
 		{
 			throw std::exception("The method or operation is not implemented.");
@@ -281,10 +282,7 @@ namespace RetrogradeTest {
 			throw std::exception("The method or operation is not implemented.");
 		}
 
-		virtual void setPosition( const irr::core::position2d<irr::f32> &pos )
-		{
-			throw std::exception("The method or operation is not implemented.");
-		}
+		MOCK_METHOD1(setPosition, void(const irr::core::position2d<irr::f32>& position));
 
 		virtual void setPosition( irr::f32 x, irr::f32 y )
 		{
@@ -306,12 +304,12 @@ namespace RetrogradeTest {
 			throw std::exception("The method or operation is not implemented.");
 		}
 
+		MOCK_METHOD0(getRelativePosition, irr::core::position2d<irr::f32>());
+
 		virtual void setReferenceRect( irr::core::rect<irr::s32>* rect=0 )
 		{
 			throw std::exception("The method or operation is not implemented.");
 		}
-
-		MOCK_METHOD0(getRelativePosition, irr::core::position2d<irr::f32>());
 	};
 }
 
@@ -446,7 +444,7 @@ TEST(InputManagerTest, testHandleMouseAnalogBinding) {
 	std::shared_ptr<RetrogradeTest::MockDevice> mockDevice = std::make_shared<RetrogradeTest::MockDevice>();
 	std::shared_ptr<RetrogradeTest::MockCursorControl> mockCursorControl = std::make_shared<RetrogradeTest::MockCursorControl>();
 	std::shared_ptr<RetrogradeTest::MockEventManager> mockEventManager = std::make_shared<RetrogradeTest::MockEventManager>();
-	EXPECT_CALL(*mockDevice, getCursorControl()).WillRepeatedly(Return(mockCursorControl.get()));
+	EXPECT_CALL(*mockDevice, getCursorControl()).WillOnce(Return(mockCursorControl.get()));
 	EXPECT_CALL(*mockCursorControl, getRelativePosition()).WillOnce(Return(irr::core::position2df(0.5f, 0.5f)));
 	Engine::InputManager inputManager(mockDevice, mockEventManager);
 
@@ -545,4 +543,26 @@ TEST(InputManagerTest, testHandleJoystickDeadzones) {
 	EXPECT_FALSE(inputManager.OnEvent(event));
 }
 
-//TODO: Mouse centering
+TEST(InputManagerTest, testMouseCentering) {
+	std::shared_ptr<RetrogradeTest::MockDevice> mockDevice = std::make_shared<RetrogradeTest::MockDevice>();
+	std::shared_ptr<RetrogradeTest::MockCursorControl> mockCursorControl = std::make_shared<RetrogradeTest::MockCursorControl>();
+	std::shared_ptr<RetrogradeTest::MockEventManager> mockEventManager = std::make_shared<RetrogradeTest::MockEventManager>();
+	EXPECT_CALL(*mockDevice, getCursorControl()).WillOnce(Return(mockCursorControl.get()));
+	EXPECT_CALL(*mockCursorControl, setPosition(irr::core::position2df(0.5f))).WillRepeatedly(Return());
+	EXPECT_CALL(*mockCursorControl, getRelativePosition()).WillOnce(Return(irr::core::position2df(0.5f)));
+	Engine::InputManager inputManager(mockDevice, mockEventManager);
+	inputManager.setMouseCentering(true);
+
+	irr::SEvent event;
+	event.EventType = irr::EET_MOUSE_INPUT_EVENT;
+	event.MouseInput.Event = irr::EMIE_MOUSE_MOVED;
+	std::shared_ptr<Engine::MouseAnalogInputBinding> mouseBinding = std::make_shared<Engine::MouseAnalogInputBinding>();
+	mouseBinding->bind(Engine::EMAI_MOUSE_LEFT, "ev_left");
+	inputManager.setMouseAnalogBinding(mouseBinding);
+
+	EXPECT_CALL(*mockCursorControl, getRelativePosition()).WillOnce(Return(irr::core::position2df(0.f, 0.5f)));
+	EXPECT_CALL(*mockEventManager, postEvent(Eq(Engine::MagnitudeEvent("ev_left", 0.5f)), &inputManager)).WillOnce(Return());
+	EXPECT_FALSE(inputManager.OnEvent(event));
+	EXPECT_CALL(*mockCursorControl, getRelativePosition()).WillOnce(Return(irr::core::position2df(0.5f)));
+	EXPECT_EQ(irr::core::position2df(0.5f), inputManager.getRelativeMousePosition());
+}

@@ -11,6 +11,8 @@ Engine::InputManager::InputManager(std::shared_ptr<irr::IrrlichtDevice> device, 
 	, logger(logger)
 	, cancelAxes(true)
 	, device(device)
+	, centerMouse(false)
+	, cursorControl(nullptr)
 {
 	for (irr::u32 i = 0; i < irr::SEvent::SJoystickEvent::NUMBER_OF_BUTTONS; ++i) {
 		joystickButtonPressedState[i] = false;
@@ -21,7 +23,10 @@ Engine::InputManager::InputManager(std::shared_ptr<irr::IrrlichtDevice> device, 
 	}
 
 	if (device) {
-		relativeMousePosition = device->getCursorControl()->getRelativePosition();
+		cursorControl = device->getCursorControl();
+		if (cursorControl) {
+			relativeMousePosition = cursorControl->getRelativePosition();
+		}
 	}
 }
 
@@ -177,12 +182,12 @@ void Engine::InputManager::setMouseAnalogBinding( const std::shared_ptr<Engine::
 
 const irr::core::position2df Engine::InputManager::getRelativeMousePosition() const
 {
-	return device->getCursorControl()->getRelativePosition();
+	return cursorControl->getRelativePosition();
 }
 
 const irr::core::position2di& Engine::InputManager::getAbsoluteMousePosition() const
 {
-	return device->getCursorControl()->getPosition();
+	return cursorControl->getPosition();
 }
 
 void Engine::InputManager::handleMouseMovement( irr::f32 posDiff, irr::f32 prevPosDiff, Engine::MouseAnalogInput negativeAxisInput, Engine::MouseAnalogInput positiveAxisInput )
@@ -196,6 +201,10 @@ void Engine::InputManager::handleMouseMovement( irr::f32 posDiff, irr::f32 prevP
 		}
 
 		eventManager->postEvent(Engine::MagnitudeEvent(properties.EventName, magnitude), this);
+		if (centerMouse) {
+			relativeMousePosition = irr::core::position2df(0.5);
+			cursorControl->setPosition(relativeMousePosition);
+		}
 	}
 
 	// Cancel out magnitude by sending a magnitude event of 0 to the other "axis"
@@ -226,4 +235,9 @@ void Engine::InputManager::setJoystickDeadzones(irr::f32 threshold)
 irr::f32 Engine::InputManager::getJoystickDeadzone(Engine::JoystickAnalogInput& input) const
 {
 	return joystickDeadzones.at(input);
+}
+
+void Engine::InputManager::setMouseCentering( bool centerMouse )
+{
+	this->centerMouse = centerMouse;
 }

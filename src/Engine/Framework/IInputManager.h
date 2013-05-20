@@ -31,6 +31,8 @@ namespace Engine { namespace Framework {
 		virtual irr::f32 getJoystickDeadzone(Engine::JoystickAnalogInput& input) const =0;
 		virtual void setJoystickDeadzones(irr::f32 threshold) =0;
 
+		virtual void setMouseCentering(bool centerMouse) =0;
+
 		virtual const irr::core::position2df getRelativeMousePosition() const =0;
 		virtual const irr::core::position2di& getAbsoluteMousePosition() const =0;
 	};
