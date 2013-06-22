@@ -89,6 +89,7 @@ namespace RetrogradeTest {
 		: public irr::IrrlichtDevice
 	{
 	public:
+
 		virtual bool run()
 		{
 			throw std::exception("The method or operation is not implemented.");
@@ -237,6 +238,11 @@ namespace RetrogradeTest {
 		}
 
 		virtual void restoreWindow()
+		{
+			throw std::exception("The method or operation is not implemented.");
+		}
+
+		virtual irr::core::position2di getWindowPosition()
 		{
 			throw std::exception("The method or operation is not implemented.");
 		}
