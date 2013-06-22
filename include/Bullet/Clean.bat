@@ -2,3 +2,4 @@
 del /S /Q *.cpp
 del /S /Q *.txt
 del /S /Q *.lua
+del /S /Q *.am
