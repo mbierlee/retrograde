@@ -36,7 +36,7 @@ void Engine::PhysicsManager::setGravity(const irr::core::vector3df& gravity)
 
 void Engine::PhysicsManager::update(irr::f32 timeStep)
 {
-	dynamicsWorld->stepSimulation(btScalar(timeStep * 0.001f), 7);
+	dynamicsWorld->stepSimulation(btScalar(timeStep * 0.001f));
 
 	if (debugModeEnabled) {
 		dynamicsWorld->debugDrawWorld();
