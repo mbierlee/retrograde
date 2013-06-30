@@ -14,6 +14,7 @@
 #include <Engine/EntityComponents/RigidBodyEntityComponent.h>
 #include <Engine/EntityComponents/CollisionModelEntityComponent.h>
 #include <Engine/EntityComponents/FirstPersonInputEntityComponent.h>
+#include <Engine/EntityComponents/OriginOffsetEntityComponent.h>
 
 #include <Bullet/BulletCollision/CollisionShapes/btCapsuleShape.h>
 
@@ -43,17 +44,27 @@ void Game::GameEntityFactory::clearPool()
 std::shared_ptr<Engine::Framework::IEntity> Game::GameEntityFactory::makePlayer()
 {
 	auto entity = std::make_shared<Engine::Entity>(ENTITY_PLAYER);
-	std::shared_ptr<btCapsuleShape> shape = std::make_shared<btCapsuleShape>(0.8, 1.8);
+	irr::f32 height = 1.8f;
+	std::shared_ptr<btCapsuleShape> shape = std::make_shared<btCapsuleShape>((btScalar)0.4, (btScalar)(height - 0.8f));
 
 	ADD_COMPONENT(PositionEntityComponent, irr::core::vector3df(-9.5, 0., -9.));
 	ADD_COMPONENT(RotationEntityComponent);
 	ADD_COMPONENT(HeadRotationEntityComponent);
 	ADD_COMPONENT(SceneNodeEntityComponent, device, device->getSceneManager()->getRootSceneNode());
 	ADD_COMPONENT(FirstPersonCameraEntityComponent, device, 0.1f);
-	ADD_COMPONENT(HeightEntityComponent, 1.8f);
+	ADD_COMPONENT(HeightEntityComponent, height);
 	ADD_COMPONENT(RigidBodyEntityComponent, physicsManager);
 	ADD_COMPONENT(CollisionModelEntityComponent, shape);
-	Engine::EntityComponents::FirstPersonInputEntityComponent* inputEc = new Engine::EntityComponents::FirstPersonInputEntityComponent(EV_MOVE_FORWARD, EV_MOVE_BACKWARD, EV_MOVE_LEFT, EV_MOVE_RIGHT, EV_TURN_LEFT, EV_TURN_RIGHT);
+	ADD_COMPONENT(OriginOffsetEntityComponent, irr::core::vector3df(0, (irr::f32) -(height/2.f), 0));
+	Engine::EntityComponents::FirstPersonInputEntityComponent* inputEc = new Engine::EntityComponents::FirstPersonInputEntityComponent(
+		EV_MOVE_FORWARD,
+		EV_MOVE_BACKWARD,
+		EV_MOVE_LEFT,
+		EV_MOVE_RIGHT,
+		EV_TURN_LEFT,
+		EV_TURN_RIGHT
+		);
+
 	entity->addComponent(std::shared_ptr<Engine::EntityComponents::FirstPersonInputEntityComponent>(inputEc));
 	eventManager->registerObserver(entity);
 	return entity;
