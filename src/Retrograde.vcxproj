@@ -148,6 +148,7 @@
     <ClCompile Include="Engine\EntityComponents\HeadRotationEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\FirstPersonCameraEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\HeightEntityComponent.cpp" />
+    <ClCompile Include="Engine\EntityComponents\OriginOffsetEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\TextureEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\VisualMaterialEntityComponent.cpp" />
     <ClCompile Include="Engine\EntityComponents\RigidBodyEntityComponent.cpp" />
@@ -186,6 +187,7 @@
     <ClInclude Include="Engine\EntityComponents\FirstPersonInputEntityComponent.h" />
     <ClInclude Include="Engine\EntityComponents\HeadRotationEntityComponent.h" />
     <ClInclude Include="Engine\EntityComponents\HeightEntityComponent.h" />
+    <ClInclude Include="Engine\EntityComponents\OriginOffsetEntityComponent.h" />
     <ClInclude Include="Engine\Framework\IContentLoader.h" />
     <ClInclude Include="Engine\EngineMain.h" />
     <ClInclude Include="Engine\Base\BaseEntityComponent.h" />
