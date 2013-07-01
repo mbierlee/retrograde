@@ -15,6 +15,7 @@
 #include <Engine/EntityComponents/CollisionModelEntityComponent.h>
 #include <Engine/EntityComponents/FirstPersonInputEntityComponent.h>
 #include <Engine/EntityComponents/OriginOffsetEntityComponent.h>
+#include <Engine/EntityComponents/MassEntityComponent.h>
 
 #include <Bullet/BulletCollision/CollisionShapes/btCapsuleShape.h>
 
@@ -45,11 +46,12 @@ std::shared_ptr<Engine::Framework::IEntity> Game::GameEntityFactory::makePlayer(
 {
 	auto entity = std::make_shared<Engine::Entity>(ENTITY_PLAYER);
 	irr::f32 height = 1.8f;
-	std::shared_ptr<btCapsuleShape> shape = std::make_shared<btCapsuleShape>((btScalar)0.4, (btScalar)(height - 0.8f));
+	std::shared_ptr<btCapsuleShape> shape = std::make_shared<btCapsuleShape>((btScalar)0.4, (btScalar)(height - 0.8));
 
-	ADD_COMPONENT(PositionEntityComponent, irr::core::vector3df(-9.5, 0., -9.));
+	ADD_COMPONENT(PositionEntityComponent, irr::core::vector3df(-9.5, 10., -9.));
 	ADD_COMPONENT(RotationEntityComponent);
 	ADD_COMPONENT(HeadRotationEntityComponent);
+	ADD_COMPONENT(MassEntityComponent, 1.f);
 	ADD_COMPONENT(SceneNodeEntityComponent, device, device->getSceneManager()->getRootSceneNode());
 	ADD_COMPONENT(FirstPersonCameraEntityComponent, device, 0.1f);
 	ADD_COMPONENT(HeightEntityComponent, height);

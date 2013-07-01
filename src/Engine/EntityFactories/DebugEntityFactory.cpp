@@ -71,17 +71,17 @@ std::shared_ptr<Engine::Framework::IEntity> Engine::EntityFactories::DebugEntity
 	material.setFlag(irr::video::EMF_TRILINEAR_FILTER, true);
 	material.setFlag(irr::video::EMF_ANISOTROPIC_FILTER, true);
 
-	ADD_COMPONENT(SceneNodeEntityComponent,device, device->getSceneManager()->getRootSceneNode());
-	ADD_COMPONENT(VisualModelEntityComponent,device, visualMesh);
-	ADD_COMPONENT(PositionEntityComponent,irr::core::vector3df(0., 50., 0.));
-	ADD_COMPONENT(RotationEntityComponent,irr::core::quaternion(0, irr::core::degToRad(45.f), 0));
-	ADD_COMPONENT(MassEntityComponent,1.f);
-	ADD_COMPONENT(InertiaEntityComponent,);
-	ADD_COMPONENT(CollisionModelEntityComponent,collisionShape);
-	ADD_COMPONENT(RigidBodyEntityComponent,physicsManager);
-	ADD_COMPONENT(IrrlichtLoggerEntityComponent,device->getLogger());
-	ADD_COMPONENT(VisualMaterialEntityComponent,material);
-	ADD_COMPONENT(TextureEntityComponent,driver->getTexture("data/default_texture.jpg"));
+	ADD_COMPONENT(SceneNodeEntityComponent, device, device->getSceneManager()->getRootSceneNode());
+	ADD_COMPONENT(VisualModelEntityComponent, device, visualMesh);
+	ADD_COMPONENT(PositionEntityComponent, irr::core::vector3df(0., 50., 0.));
+	ADD_COMPONENT(RotationEntityComponent, irr::core::quaternion(0, irr::core::degToRad(45.f), 0));
+	ADD_COMPONENT(MassEntityComponent, 1.f);
+	ADD_COMPONENT(InertiaEntityComponent);
+	ADD_COMPONENT(CollisionModelEntityComponent ,collisionShape);
+	ADD_COMPONENT(RigidBodyEntityComponent, physicsManager);
+	ADD_COMPONENT(IrrlichtLoggerEntityComponent, device->getLogger());
+	ADD_COMPONENT(VisualMaterialEntityComponent, material);
+	ADD_COMPONENT(TextureEntityComponent, driver->getTexture("data/default_texture.jpg"));
 	return entity;
 }
 
@@ -90,8 +90,8 @@ std::shared_ptr<Engine::Framework::IEntity> Engine::EntityFactories::DebugEntity
 	auto entity = std::make_shared<Engine::Entity>(ENTITY_DEBUG_PHYS_FLOOR);
 	std::shared_ptr<btCollisionShape> shape = std::make_shared<btBoxShape>(btVector3(100.,1.,100.));
 
-	ADD_COMPONENT(PositionEntityComponent,irr::core::vector3df(0., -1., 0.));
-	ADD_COMPONENT(CollisionModelEntityComponent,shape);
-	ADD_COMPONENT(CollisionObjectEntityComponent,physicsManager);
+	ADD_COMPONENT(PositionEntityComponent, irr::core::vector3df(0., -1., 0.));
+	ADD_COMPONENT(CollisionModelEntityComponent, shape);
+	ADD_COMPONENT(CollisionObjectEntityComponent ,physicsManager);
 	return entity;
 }
