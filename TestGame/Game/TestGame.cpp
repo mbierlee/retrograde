@@ -51,7 +51,7 @@ void Game::TestGame::initialize()
 	entityManager->addEntity(factoryManager->create(ENTITY_PLAYER));
 	entityManager->addEntity(factoryManager->create(ENTITY_DEBUG_PHYS_FLOOR));
 	entityManager->addEntity(factoryManager->create(ENTITY_DEBUG_PHYS_CUBE));
-	//entityManager->addEntity(factoryManager->create(ENTITY_DEBUG_FLY_CAMERA));
+	entityManager->addEntity(factoryManager->create(ENTITY_DEBUG_FLY_CAMERA));
 
 	sceneManager->loadScene("data/TestMap.irr");
 }

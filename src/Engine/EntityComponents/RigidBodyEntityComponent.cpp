@@ -84,15 +84,19 @@ void Engine::EntityComponents::RigidBodyEntityComponent::initialize( Engine::Fra
 				startTransform.setRotation(transformIrrQuaternion(rotationComponent->getRotation()));
 			}
 
-			btVector3 inertia;
+			btVector3 inertia = btVector3(0, 0, 0);
 			irr::f32 mass = 0.;
-			if (massComponent && inertiaComponent) {
+			if (massComponent) {
 				mass = massComponent->getMass();
+			}
+
+			if (inertiaComponent) {
 				inertia = transformIrrVector(inertiaComponent->getIntertia());
-				bool isDynamic = (mass != 0.);
-				if (isDynamic) {
-					shape->calculateLocalInertia(mass, inertia);
-				}
+			}
+
+			bool isDynamic = (mass != 0.);
+			if (isDynamic) {
+				shape->calculateLocalInertia(mass, inertia);
 			}
 
 			btTransform centerOfMassOffset = btTransform::getIdentity();
