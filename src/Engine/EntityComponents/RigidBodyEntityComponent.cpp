@@ -9,6 +9,7 @@
 #include "Engine/EntityComponents/CollisionMaskEntityComponent.h"
 #include "Engine/EntityComponents/IrrlichtLoggerEntityComponent.h"
 #include "Engine/EntityComponents/OriginOffsetEntityComponent.h"
+#include "Engine/EntityComponents/FrictionEntityComponent.h"
 #include "Engine/UnitTransformationUtil.h"
 
 Engine::EntityComponents::RigidBodyEntityComponent::RigidBodyEntityComponent(std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager)
@@ -76,6 +77,7 @@ void Engine::EntityComponents::RigidBodyEntityComponent::initialize( Engine::Fra
 			auto collisionGroupComponent = COMPONENT(CollisionGroupEntityComponent);
 			auto collisionMaskComponent = COMPONENT(CollisionMaskEntityComponent);
 			auto originOffsetComponent = COMPONENT(OriginOffsetEntityComponent);
+			auto frictionComponent = COMPONENT(FrictionEntityComponent);
 
 			btTransform startTransform;
 			startTransform.setIdentity();
@@ -104,8 +106,14 @@ void Engine::EntityComponents::RigidBodyEntityComponent::initialize( Engine::Fra
 				centerOfMassOffset.setOrigin(transformIrrVector(originOffsetComponent->getOrigin()));
 			}
 
+			btScalar friction = 1.f;
+			if (frictionComponent) {
+				friction = frictionComponent->getFriction();
+			}
+
 			motionState = new Engine::Bullet::HandledMotionState(startTransform, centerOfMassOffset);
 			btRigidBody::btRigidBodyConstructionInfo rigidBodyInfo(mass, motionState, shape.get(), inertia);
+			rigidBodyInfo.m_friction = friction;
 			rigidBody = new btRigidBody(rigidBodyInfo);
 
 			irr::s16 group = collisionGroupComponent ? collisionGroupComponent->getGroup() : 0;

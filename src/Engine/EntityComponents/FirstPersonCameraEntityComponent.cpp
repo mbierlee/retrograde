@@ -3,6 +3,7 @@
 #include "Engine/EntityComponents/SceneNodeEntityComponent.h"
 #include "Engine/EntityComponents/HeightEntityComponent.h"
 #include "Engine/EntityComponents/HeadRotationEntityComponent.h"
+#include "Engine/EntityComponents/PositionEntityComponent.h"
 
 #include "Engine/UnitTransformationUtil.h"
 
@@ -44,20 +45,26 @@ void Engine::EntityComponents::FirstPersonCameraEntityComponent::update( Engine:
 			initialize(entity);
 		}
 
-		if (cameraSceneNode) {
+		if (cameraSceneNode && targetSceneNode) {
 			if (!syncedWithHeight) {
 				auto heightComponent = COMPONENT(HeightEntityComponent);
-				heightComponent->subscribeNotifications(shared_from_this());
-				setEyeHeight(heightComponent->getHeight());
-				syncedWithHeight = true;
+				if (heightComponent) {
+					heightComponent->subscribeNotifications(shared_from_this());
+					setEyeHeight(heightComponent->getHeight());
+					syncedWithHeight = true;
+				}
 			}
 
 			if (!syncedWithHeadRotation) {
 				auto headRotationComponent = COMPONENT(HeadRotationEntityComponent);
-				headRotationComponent->subscribeNotifications(shared_from_this());
-				setCameraRotation(headRotationComponent->getRotation());
-				syncedWithHeadRotation = true;
+				if (headRotationComponent) {
+					headRotationComponent->subscribeNotifications(shared_from_this());
+					setCameraRotation(headRotationComponent->getRotation());
+					syncedWithHeadRotation = true;
+				}
 			}
+
+			cameraSceneNode->setTarget(targetSceneNode->getAbsolutePosition());
 		}
 	}
 }
@@ -68,7 +75,10 @@ void Engine::EntityComponents::FirstPersonCameraEntityComponent::initialize(Engi
 	auto sceneNodeComponent = COMPONENT(SceneNodeEntityComponent);
 	if (sceneManager && sceneNodeComponent) {
 		cameraSceneNode = sceneManager->addCameraSceneNode(sceneNodeComponent.get());
-		cameraSceneNode->bindTargetAndRotation(true);
+		if (cameraSceneNode) {
+			targetSceneNode = sceneManager->addEmptySceneNode(cameraSceneNode);
+			targetSceneNode->setPosition(irr::core::vector3df(0, 0, 10.f));
+		}
 	}
 }
 

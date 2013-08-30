@@ -6,6 +6,7 @@
 #include "Engine/EntityComponents/IrrlichtLoggerEntityComponent.h"
 #include "Engine/EntityComponents/CollisionGroupEntityComponent.h"
 #include "Engine/EntityComponents/CollisionMaskEntityComponent.h"
+#include "Engine/EntityComponents/FrictionEntityComponent.h"
 #include "Engine/UnitTransformationUtil.h"
 
 Engine::EntityComponents::CollisionObjectEntityComponent::CollisionObjectEntityComponent(std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager)
@@ -58,6 +59,7 @@ void Engine::EntityComponents::CollisionObjectEntityComponent::initialize( Engin
 			auto rotationComponent = COMPONENT(RotationEntityComponent);
 			auto collisionGroupComponent = COMPONENT(CollisionGroupEntityComponent);
 			auto collisionMaskComponent = COMPONENT(CollisionMaskEntityComponent);
+			auto frictionComponent = COMPONENT(FrictionEntityComponent);
 
 			btTransform transform;
 			transform.setIdentity();
@@ -66,9 +68,15 @@ void Engine::EntityComponents::CollisionObjectEntityComponent::initialize( Engin
 				transform.setRotation(transformIrrQuaternion(rotationComponent->getRotation()));
 			}
 
+			btScalar friction = 1.f;
+			if (frictionComponent) {
+				friction = frictionComponent->getFriction();
+			}
+
 			collisionObject = new btCollisionObject();
 			collisionObject->setCollisionShape(shape.get());
 			collisionObject->setWorldTransform(transform);
+			collisionObject->setFriction(friction);
 
 			irr::s16 group = collisionGroupComponent ? collisionGroupComponent->getGroup() : btBroadphaseProxy::StaticFilter;
 			irr::s16 mask = collisionMaskComponent ? collisionMaskComponent->getMask() : btBroadphaseProxy::AllFilter ^ btBroadphaseProxy::StaticFilter;

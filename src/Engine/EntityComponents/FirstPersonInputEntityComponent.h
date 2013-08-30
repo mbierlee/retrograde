@@ -12,6 +12,8 @@ namespace Engine { namespace EntityComponents {
 	private:
 		bool subscribedToEvents;
 		irr::core::stringc moveForwardEvent, moveBackwardEvent, moveLeftEvent, moveRightEvent, turnLeftEvent, turnRightEvent;
+		irr::f32 forwardMagnitude, backwardsMagnitude, leftMagnitude, rightMagnitude, turnLeftMagnitude, turnRightMagnitude;
+		bool previouslyMoving;
 
 	public:
 		FirstPersonInputEntityComponent(irr::core::stringc moveForwardEvent, irr::core::stringc moveBackwardEvent,

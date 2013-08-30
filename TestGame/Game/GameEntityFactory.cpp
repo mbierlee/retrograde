@@ -16,6 +16,8 @@
 #include <Engine/EntityComponents/FirstPersonInputEntityComponent.h>
 #include <Engine/EntityComponents/OriginOffsetEntityComponent.h>
 #include <Engine/EntityComponents/MassEntityComponent.h>
+#include <Engine/EntityComponents/KillRotationEntityComponent.h>
+#include <Engine/EntityComponents/FrictionEntityComponent.h>
 
 #include <Bullet/BulletCollision/CollisionShapes/btCapsuleShape.h>
 
@@ -48,6 +50,8 @@ std::shared_ptr<Engine::Framework::IEntity> Game::GameEntityFactory::makePlayer(
 	irr::f32 height = 1.8f;
 	std::shared_ptr<btCapsuleShape> shape = std::make_shared<btCapsuleShape>((btScalar)0.4, (btScalar)(height - 0.8));
 
+	ADD_COMPONENT(KillRotationEntityComponent);
+	ADD_COMPONENT(FrictionEntityComponent, 5.f);
 	ADD_COMPONENT(PositionEntityComponent, irr::core::vector3df(-9.5, 0, -9.));
 	ADD_COMPONENT(RotationEntityComponent);
 	ADD_COMPONENT(HeadRotationEntityComponent);

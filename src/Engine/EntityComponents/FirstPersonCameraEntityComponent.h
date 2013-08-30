@@ -12,6 +12,7 @@ namespace Engine { namespace EntityComponents {
 	private:
 		std::shared_ptr<irr::IrrlichtDevice> device;
 		irr::scene::ICameraSceneNode* cameraSceneNode;
+		irr::scene::ISceneNode* targetSceneNode;
 		irr::f32 eyeHeightOffset;
 		bool syncedWithHeight, syncedWithHeadRotation;
 
