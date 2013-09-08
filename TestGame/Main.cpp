@@ -3,5 +3,5 @@
 #include "DependencyConfig.h"
 
 int main() {
-	Engine::engineMain(SetupDependencies);
+	return Engine::engineMain(SetupDependencies);
 }

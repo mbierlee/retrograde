@@ -21,7 +21,7 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 
 	//Setup Irrlicht
 	auto irrlichtDevice = std::shared_ptr<irr::IrrlichtDevice>(irr::createDeviceEx(deviceParams));
-	builder.registerInstance(irrlichtDevice);//->singleInstance();
+	builder.registerInstance(irrlichtDevice);
 
 	//Setup Physics Debug Drawer
 	builder.registerType<Engine::Bullet::IrrlichtPhysicsDebugDrawer>(CREATE(new Engine::Bullet::IrrlichtPhysicsDebugDrawer(INJECT(irr::IrrlichtDevice))))->as<btIDebugDraw>();
