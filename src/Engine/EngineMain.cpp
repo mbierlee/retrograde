@@ -26,6 +26,10 @@ int Engine::engineMain(std::shared_ptr<Hypodermic::IContainer> (*dependencyConfi
 		return 1;
 
 	auto game = typeContainer->resolve<Engine::Framework::IGame>();
+	if (!game) {
+		return 1;
+	}
+
 	game->initialize();
 
 	while(device->run() && !game->exitRequested()) {
