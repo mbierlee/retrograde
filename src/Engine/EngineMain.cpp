@@ -22,12 +22,13 @@ int Engine::engineMain(std::shared_ptr<Hypodermic::IContainer> (*dependencyConfi
 	auto typeContainer = dependencyConfigFunc(deviceParams);
 	std::shared_ptr<irr::IrrlichtDevice> device = typeContainer->resolve<irr::IrrlichtDevice>();
 
-	if (!device)
-		return 1;
+	if (!device) {
+		return 1; //TODO: debug log
+	}
 
 	auto game = typeContainer->resolve<Engine::Framework::IGame>();
 	if (!game) {
-		return 1;
+		return 1; // TODO: debug log
 	}
 
 	game->initialize();
