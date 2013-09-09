@@ -1,10 +1,13 @@
 #include "EngineMain.h"
 
 #include "Engine/Framework/IGame.h"
+#include "Engine/EngineCompileConfig.h"
 
-int Engine::engineMain(std::shared_ptr<Hypodermic::IContainer> (*dependencyConfigFunc)(irr::SIrrlichtCreationParameters&))
+#include <boost/format.hpp>
+
+int Engine::engineMain(std::shared_ptr<Hypodermic::IContainer> (*dependencyConfigFunc)(irr::SIrrlichtCreationParameters&), irr::core::stringw gameName)
 {
-	std::printf("Retrograde Test Game\nCopyright 2013 Lostmoment Games\n\nRetroGrade Engine version 0.1-indev\n\n");
+	std::wcout << boost::wformat(L"%s\nCopyright %s Lostmoment\n\nRetroGrade Engine version %s\n\n") % gameName.c_str() % RETROGRADE_COPYRIGHT_YEAR % RETROGRADE_VERSION_STRING;
 
 	irr::SIrrlichtCreationParameters deviceParams;
 	deviceParams.AntiAlias = 32U;

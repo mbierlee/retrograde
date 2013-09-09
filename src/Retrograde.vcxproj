@@ -182,6 +182,7 @@
     <ClCompile Include="Engine\EntityComponents\PositionEntityComponent.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\EngineCompileConfig.h" />
     <ClInclude Include="Engine\Base\BaseContentLoader.h" />
     <ClInclude Include="Engine\Base\BaseInputBinding.h" />
     <ClInclude Include="Engine\BindingProperties.h" />
