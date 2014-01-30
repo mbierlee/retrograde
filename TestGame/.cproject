@@ -10,7 +10,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.exe" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.exe" description="" id="org.eclipse.cdt.msvc.exe.debug.614574660" name="Debug Win32" parent="org.eclipse.cdt.msvc.exe.debug" postannouncebuildStep="Copy run-time resources to target directory" postbuildStep="${RETROGRADE_HOME}\TestGame\post_build.bat">
+				<configuration artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.exe" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.exe" description="" id="org.eclipse.cdt.msvc.exe.debug.614574660" name="Debug Win32" parent="org.eclipse.cdt.msvc.exe.debug" postannouncebuildStep="Copy run-time resources to target directory" postbuildStep="${RETROGRADE_HOME}\TestGame\post_build_debug.bat">
 					<folderInfo id="org.eclipse.cdt.msvc.exe.debug.614574660." name="/" resourcePath="">
 						<toolChain id="org.eclipse.cdt.msvc.toolchain.exe.debug.1274010204" name="Microsoft Visual C++" superClass="org.eclipse.cdt.msvc.toolchain.exe.debug">
 							<targetPlatform id="org.eclipse.cdt.msvc.targetPlatform.exe.debug.1071781288" superClass="org.eclipse.cdt.msvc.targetPlatform.exe.debug"/>
@@ -75,7 +75,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.exe" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.exe" description="" id="org.eclipse.cdt.msvc.exe.release.88463183" name="Release Win32" parent="org.eclipse.cdt.msvc.exe.release">
+				<configuration artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.exe" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.exe" description="" id="org.eclipse.cdt.msvc.exe.release.88463183" name="Release Win32" parent="org.eclipse.cdt.msvc.exe.release" postannouncebuildStep="Copy run-time resources to target directory" postbuildStep="${RETROGRADE_HOME}\TestGame\post_build.bat">
 					<folderInfo id="org.eclipse.cdt.msvc.exe.release.88463183." name="/" resourcePath="">
 						<toolChain id="org.eclipse.cdt.msvc.toolchain.exe.release.1060977344" name="Microsoft Visual C++" superClass="org.eclipse.cdt.msvc.toolchain.exe.release">
 							<targetPlatform id="org.eclipse.cdt.msvc.targetPlatform.exe.release.693501960" superClass="org.eclipse.cdt.msvc.targetPlatform.exe.release"/>
@@ -89,14 +89,35 @@
 								<option id="org.eclipse.cdt.msvc.cl.option.optimization.81028009" name="Optimization" superClass="org.eclipse.cdt.msvc.cl.option.optimization"/>
 								<option id="org.eclipse.cdt.msvc.cl.option.debugFormat.218162122" name="Debug Information Format" superClass="org.eclipse.cdt.msvc.cl.option.debugFormat"/>
 								<option id="org.eclipse.cdt.msvc.cl.option.includes.244791466" name="Include Path (/I)" superClass="org.eclipse.cdt.msvc.cl.option.includes" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${BOOST_HOME}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/include/Irrlicht&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Retrograde/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/include/Bullet&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/TestGame/src}&quot;"/>
 								</option>
+								<option id="org.eclipse.cdt.msvc.cl.option.macros.973127336" name="Defines (/D)" superClass="org.eclipse.cdt.msvc.cl.option.macros" valueType="definedSymbols"/>
 								<inputType id="org.eclipse.cdt.msvc.cl.inputType.1401568422" superClass="org.eclipse.cdt.msvc.cl.inputType"/>
 							</tool>
 							<tool id="org.eclipse.cdt.msvc.rc.exe.release.494715531" name="Resource Compiler (rc)" superClass="org.eclipse.cdt.msvc.rc.exe.release">
 								<inputType id="org.eclipse.cdt.msvc.rc.inputType.1682083170" superClass="org.eclipse.cdt.msvc.rc.inputType"/>
 							</tool>
 							<tool id="org.eclipse.cdt.msvc.link.exe.release.562069794" name="Linker (link)" superClass="org.eclipse.cdt.msvc.link.exe.release">
+								<option id="org.eclipse.cdt.msvc.link.option.libpath.1935605401" name="Additional Libpath (/libpath)" superClass="org.eclipse.cdt.msvc.link.option.libpath" valueType="stringList">
+									<listOptionValue builtIn="false" value="&quot;${BOOST_HOME}/stage/lib&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/lib/Bullet/x86/release&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/lib/Hypodermic/x86/release&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/lib/Irrlicht/x86&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Retrograde/Release Win32}&quot;"/>
+								</option>
+								<option id="org.eclipse.cdt.msvc.link.option.libraries.1044065950" name="Libraries" superClass="org.eclipse.cdt.msvc.link.option.libraries" valueType="libs">
+									<listOptionValue builtIn="false" value="Retrograde.lib"/>
+									<listOptionValue builtIn="false" value="BulletCollision_vs2010.lib"/>
+									<listOptionValue builtIn="false" value="BulletDynamics_vs2010.lib"/>
+									<listOptionValue builtIn="false" value="LinearMath_vs2010.lib"/>
+									<listOptionValue builtIn="false" value="hypodermic-vc110.lib"/>
+									<listOptionValue builtIn="false" value="Irrlicht.lib"/>
+								</option>
 								<inputType id="org.eclipse.cdt.msvc.link.inputType.313037843" superClass="org.eclipse.cdt.msvc.link.inputType"/>
 							</tool>
 							<tool id="org.eclipse.cdt.msvc.lib.1935101968" name="Library Manager (lib)" superClass="org.eclipse.cdt.msvc.lib"/>

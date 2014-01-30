@@ -31,7 +31,6 @@
 								</option>
 								<option id="org.eclipse.cdt.msvc.cl.option.macros.1856583104" name="Defines (/D)" superClass="org.eclipse.cdt.msvc.cl.option.macros" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="_VARIADIC_MAX=10"/>
-									<listOptionValue builtIn="false" value="_MBCS"/>
 									<listOptionValue builtIn="false" value="_DEBUG"/>
 								</option>
 								<option id="org.eclipse.cdt.msvc.cl.option.runtime.1450130244" name="Run-Time Library" superClass="org.eclipse.cdt.msvc.cl.option.runtime" value="org.eclipse.cdt.msvc.cl.option.runtime.mdd" valueType="enumerated"/>
@@ -46,11 +45,7 @@
 									<listOptionValue builtIn="false" value="gmock.lib"/>
 									<listOptionValue builtIn="false" value="BulletCollision_vs2010_debug.lib"/>
 									<listOptionValue builtIn="false" value="BulletDynamics_vs2010_debug.lib"/>
-									<listOptionValue builtIn="false" value="BulletSoftBody_vs2010_debug.lib"/>
-									<listOptionValue builtIn="false" value="ConvexDecomposition_vs2010_debug.lib"/>
-									<listOptionValue builtIn="false" value="HACD_vs2010_debug.lib"/>
 									<listOptionValue builtIn="false" value="LinearMath_vs2010_debug.lib"/>
-									<listOptionValue builtIn="false" value="OpenGLSupport_vs2010_debug.lib"/>
 									<listOptionValue builtIn="false" value="Irrlicht.lib"/>
 									<listOptionValue builtIn="false" value="gtestd.lib"/>
 									<listOptionValue builtIn="false" value="Retrograde.lib"/>
@@ -111,6 +106,22 @@
 								<inputType id="org.eclipse.cdt.msvc.rc.inputType.251020078" superClass="org.eclipse.cdt.msvc.rc.inputType"/>
 							</tool>
 							<tool id="org.eclipse.cdt.msvc.link.exe.release.1726409285" name="Linker (link)" superClass="org.eclipse.cdt.msvc.link.exe.release">
+								<option id="org.eclipse.cdt.msvc.link.option.libpath.1181804589" name="Additional Libpath (/libpath)" superClass="org.eclipse.cdt.msvc.link.option.libpath" valueType="stringList">
+									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/lib/GTest/x86/Release/&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/lib/GMock/x86/Release/&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/lib/Bullet/x86/release&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/Retrograde/Release Win32/&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/lib/Irrlicht/x86/&quot;"/>
+								</option>
+								<option id="org.eclipse.cdt.msvc.link.option.libraries.831103448" name="Libraries" superClass="org.eclipse.cdt.msvc.link.option.libraries" valueType="libs">
+									<listOptionValue builtIn="false" value="gmock.lib"/>
+									<listOptionValue builtIn="false" value="BulletCollision_vs2010.lib"/>
+									<listOptionValue builtIn="false" value="BulletDynamics_vs2010.lib"/>
+									<listOptionValue builtIn="false" value="LinearMath_vs2010.lib"/>
+									<listOptionValue builtIn="false" value="Irrlicht.lib"/>
+									<listOptionValue builtIn="false" value="gtest.lib"/>
+									<listOptionValue builtIn="false" value="Retrograde.lib"/>
+								</option>
 								<inputType id="org.eclipse.cdt.msvc.link.inputType.1181293386" superClass="org.eclipse.cdt.msvc.link.inputType"/>
 							</tool>
 							<tool id="org.eclipse.cdt.msvc.lib.366441086" name="Library Manager (lib)" superClass="org.eclipse.cdt.msvc.lib"/>
