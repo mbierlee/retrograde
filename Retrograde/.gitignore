@@ -1,2 +1,4 @@
 /Debug Win32
 /Release Win32
+/Debug Win32 MinGW
+/Release Win32 MinGW
