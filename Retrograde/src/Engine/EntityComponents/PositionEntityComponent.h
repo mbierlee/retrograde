@@ -12,7 +12,7 @@ namespace Engine { namespace EntityComponents {
 		irr::core::vector3df position;
 
 	public:
-		PositionEntityComponent(irr::core::vector3df& position = irr::core::vector3df(0));
+		PositionEntityComponent(const irr::core::vector3df& position = irr::core::vector3df(0));
 
 		virtual const irr::core::stringc getComponentType() const;
 		virtual const irr::core::stringc getFamilyType() const;

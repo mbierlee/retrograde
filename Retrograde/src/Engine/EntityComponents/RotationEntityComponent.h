@@ -13,8 +13,8 @@ namespace Engine { namespace EntityComponents {
 		irr::core::quaternion rotation;
 
 	public:
-		RotationEntityComponent(irr::core::vector3df& rotation);
-		RotationEntityComponent(irr::core::quaternion& rotation = irr::core::quaternion());
+		RotationEntityComponent(const irr::core::vector3df& rotation);
+		RotationEntityComponent(const irr::core::quaternion& rotation = irr::core::quaternion());
 
 		virtual const irr::core::stringc getComponentType() const;
 		virtual const irr::core::stringc getFamilyType() const;

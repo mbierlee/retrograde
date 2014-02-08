@@ -14,7 +14,8 @@ namespace Engine { namespace EntityComponents {
 		, public irr::scene::ISceneNode
 	{
 	private:
-		bool registeredWithPosition, registeredWithRotation;
+		bool registeredWithRotation;
+		bool registeredWithPosition;
 		irr::core::aabbox3df aabbox;
 		void setPositionFromComponent(std::shared_ptr<Engine::EntityComponents::PositionEntityComponent> component);
 		void setRotationFromComponent(std::shared_ptr<Engine::EntityComponents::RotationEntityComponent> component);

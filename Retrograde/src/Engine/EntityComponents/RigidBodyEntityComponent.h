@@ -12,8 +12,8 @@ namespace Engine { namespace EntityComponents {
 	{
 	private:
 		btRigidBody* rigidBody;
-		std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager;
 		Engine::Bullet::HandledMotionState* motionState;
+		std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager;
 
 	public:
 		RigidBodyEntityComponent(std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager);

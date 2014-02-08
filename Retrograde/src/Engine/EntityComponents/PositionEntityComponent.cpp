@@ -1,6 +1,6 @@
 #include "PositionEntityComponent.h"
 
-Engine::EntityComponents::PositionEntityComponent::PositionEntityComponent(irr::core::vector3df& position /*= irr::core::vector3df(0)*/)
+Engine::EntityComponents::PositionEntityComponent::PositionEntityComponent(const irr::core::vector3df& position /*= irr::core::vector3df(0)*/)
 	: position(position)
 {
 }

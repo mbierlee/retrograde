@@ -2,12 +2,12 @@
 
 #include <irrMath.h>
 
-Engine::EntityComponents::RotationEntityComponent::RotationEntityComponent( irr::core::vector3df& rotation /*= irr::core::vector3df(0)*/ )
+Engine::EntityComponents::RotationEntityComponent::RotationEntityComponent(const irr::core::vector3df& rotation /*= irr::core::vector3df(0)*/ )
 {
 	setEulerRotation(rotation);
 }
 
-Engine::EntityComponents::RotationEntityComponent::RotationEntityComponent( irr::core::quaternion& rotation /*= irr::core::quaternion()*/ )
+Engine::EntityComponents::RotationEntityComponent::RotationEntityComponent(const irr::core::quaternion& rotation /*= irr::core::quaternion()*/ )
 	: rotation(rotation)
 {
 }

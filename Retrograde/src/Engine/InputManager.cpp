@@ -155,6 +155,8 @@ bool Engine::InputManager::OnEvent( const irr::SEvent& event )
 	case irr::EET_MOUSE_INPUT_EVENT:
 		handleMouseInput(event);
 		break;
+	default:
+		return false;
 	}
 
 	return false;
@@ -218,12 +220,12 @@ void Engine::InputManager::handleMouseMovement( irr::f32 posDiff, irr::f32 prevP
 	}
 }
 
-void Engine::InputManager::setJoystickDeadzone(Engine::JoystickAnalogInput& input, irr::f32 threshold)
+void Engine::InputManager::setJoystickDeadzone(const Engine::JoystickAnalogInput& input, const irr::f32& threshold)
 {
 	joystickDeadzones.insert(std::pair<Engine::JoystickAnalogInput, irr::f32>(input, threshold));
 }
 
-void Engine::InputManager::setJoystickDeadzones(irr::f32 threshold)
+void Engine::InputManager::setJoystickDeadzones(const irr::f32& threshold)
 {
 	for (irr::u32 i =0; i < irr::SEvent::SJoystickEvent::NUMBER_OF_AXES; ++i)
 	{
