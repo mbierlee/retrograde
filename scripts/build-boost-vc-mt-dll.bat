@@ -1,0 +1,1 @@
+bjam toolset=msvc-11.0 variant=release threading=multi link=static define=_BIND_TO_CURRENT_VCLIBS_VERSION address-model=32 architecture=x86 
