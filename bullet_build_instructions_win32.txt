@@ -1,0 +1,9 @@
+You'll need CMake (cmake.org) and MinGW
+Run CMake-gui.exe from wherever you installed it. You should see two fields: one for source directory, and one for output. Make the source directory the one that contains Bullet's files, and make the output whatever you want, though I suggest making it a folder other than the source directory. CMake should print up a list of options for your build, such as whether to make demos, etc., but for simplicity's sake just use the default settings. Press 'Configure' and when the option comes up, choose 'MinGW Makefiles'. When configuring is complete, press 'Generate'.
+CMake should have put a MinGW makefile in the directory you chose for output. Make sure Windows has your MinGW/bin folder in the system PATH, and then start a command prompt in that output directory. (In recent versions of Windows, you can just shift-right-click inside the folder and choose 'Open Command Window here'.) Now, simply type in 'mingw32-make' to build the libraries.
+You might get errors if you don't have certain other libraries, like GLUT. If that's the case, try unchecking all the options in CMake-gui, and then configure and generate again.
+If all goes well, the output directory should now have a 'lib' directory that contains all your .a files, while the .h files can all be taken from bullet-2.77/src.
+
+NOTE: If the compiler crashes during compilation, you need to add -O1 to the compiler flags. Any higher optimizations makes GCC crash with bullet for some reason.
+
+NOTE2: Note that the dynamics lib must be linked before the collision lib (the reverse of the order given by alphabetical rules of windows file system).
