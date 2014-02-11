@@ -3,6 +3,8 @@
 	<name>RetrogradeTest</name>
 	<comment></comment>
 	<projects>
+		<project>gmock</project>
+		<project>gtest</project>
 		<project>Retrograde</project>
 	</projects>
 	<buildSpec>
