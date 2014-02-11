@@ -1,3 +1,5 @@
+#include "NotPartOfTestException.h"
+
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
@@ -17,27 +19,27 @@ namespace RetrogradeTest {
 
 		virtual void log( const irr::c8* text, const irr::c8* hint, irr::ELOG_LEVEL ll=irr::ELL_INFORMATION )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void log( const irr::c8* text, const wchar_t* hint, irr::ELOG_LEVEL ll=irr::ELL_INFORMATION )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void log( const wchar_t* text, const wchar_t* hint, irr::ELOG_LEVEL ll=irr::ELL_INFORMATION )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual irr::ELOG_LEVEL getLogLevel() const
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void setLogLevel( irr::ELOG_LEVEL ll )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 	};
 }

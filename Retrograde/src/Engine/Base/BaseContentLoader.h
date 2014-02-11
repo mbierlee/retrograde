@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine/Framework/IContentLoader.h"
+#include "Engine/Base/NotImplementedException.h"
 
 namespace Engine { namespace Base {
 	template<class T>
@@ -8,13 +9,19 @@ namespace Engine { namespace Base {
 		: public Engine::Framework::IContentLoader<T>
 	{
 	private:
+		typedef typename std::map<irr::core::stringw, Engine::Loadable<T>>::iterator LoadedContentIterator;
 		std::map<irr::core::stringw, Engine::Loadable<T>> loadedContent;
+
+	protected:
+		virtual std::shared_ptr<T> loadContent(const irr::core::stringw& fileName) {
+			throw Engine::Base::NotImplementedException("Content loader provides no implementation for loading its content.");
+		}
 
 	public:
 		virtual ~BaseContentLoader(){};
 
 		virtual std::shared_ptr<T> requestContent(const irr::core::stringw& fileName) {
-			std::map<irr::core::stringw, Engine::Loadable<T>>::iterator it;
+			LoadedContentIterator it;
 			it = loadedContent.find(fileName);
 			if (it != loadedContent.end()) {
 				auto loadable = it->second;
@@ -29,7 +36,7 @@ namespace Engine { namespace Base {
 		}
 
 		virtual void releaseContent(const irr::core::stringw& fileName) {
-			std::map<irr::core::stringw, Engine::Loadable<T>>::iterator it;
+			LoadedContentIterator it;
 			it = loadedContent.find(fileName);
 			if (it != loadedContent.end()) {
 				Engine::Loadable<T> loadable = it->second;

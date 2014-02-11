@@ -1,3 +1,5 @@
+#include "NotPartOfTestException.h"
+
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
@@ -29,22 +31,22 @@ namespace RetrogradeTest {
 
 		virtual void registerObserver( std::shared_ptr<Engine::Framework::IEventObserver> observer )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void unregisterObserver( std::shared_ptr<Engine::Framework::IEventObserver> observer )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual bool hasObserver( std::shared_ptr<Engine::Framework::IEventObserver> observer )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void clearObservers()
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 	};
 
@@ -54,32 +56,32 @@ namespace RetrogradeTest {
 	public:
 		virtual irr::ELOG_LEVEL getLogLevel() const
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void setLogLevel( irr::ELOG_LEVEL ll )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void log( const irr::c8* text, irr::ELOG_LEVEL ll=irr::ELL_INFORMATION )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void log( const irr::c8* text, const irr::c8* hint, irr::ELOG_LEVEL ll=irr::ELL_INFORMATION )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void log( const irr::c8* text, const wchar_t* hint, irr::ELOG_LEVEL ll=irr::ELL_INFORMATION )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void log( const wchar_t* text, const wchar_t* hint, irr::ELOG_LEVEL ll=irr::ELL_INFORMATION )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		MOCK_METHOD2(log, void(const wchar_t* text, irr::ELOG_LEVEL ll));
@@ -92,184 +94,184 @@ namespace RetrogradeTest {
 
 		virtual bool run()
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void yield()
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void sleep( irr::u32 timeMs, bool pauseTimer=false )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual irr::video::IVideoDriver* getVideoDriver()
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual irr::io::IFileSystem* getFileSystem()
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual irr::gui::IGUIEnvironment* getGUIEnvironment()
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual irr::scene::ISceneManager* getSceneManager()
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		MOCK_METHOD0(getCursorControl, irr::gui::ICursorControl*());
 
 		virtual irr::ILogger* getLogger()
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual irr::video::IVideoModeList* getVideoModeList()
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual irr::IOSOperator* getOSOperator()
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual irr::ITimer* getTimer()
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual irr::IRandomizer* getRandomizer() const
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void setRandomizer( irr::IRandomizer* r )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual irr::IRandomizer* createDefaultRandomizer() const
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void setWindowCaption( const wchar_t* text )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual bool isWindowActive() const
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual bool isWindowFocused() const
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual bool isWindowMinimized() const
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual bool isFullscreen() const
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual irr::video::ECOLOR_FORMAT getColorFormat() const
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void closeDevice()
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual const irr::c8* getVersion() const
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void setEventReceiver( irr::IEventReceiver* receiver )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual irr::IEventReceiver* getEventReceiver()
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual bool postEventFromUser( const irr::SEvent& event )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void setInputReceivingSceneManager( irr::scene::ISceneManager* sceneManager )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void setResizable( bool resize=false )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void minimizeWindow()
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void maximizeWindow()
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void restoreWindow()
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual irr::core::position2di getWindowPosition()
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual bool activateJoysticks( irr::core::array<irr::SJoystickInfo>& joystickInfo )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual bool setGammaRamp( irr::f32 red, irr::f32 green, irr::f32 blue, irr::f32 relativebrightness, irr::f32 relativecontrast )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual bool getGammaRamp( irr::f32 &red, irr::f32 &green, irr::f32 &blue, irr::f32 &brightness, irr::f32 &contrast )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void clearSystemMessages()
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual irr::E_DEVICE_TYPE getType() const
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 	};
 
@@ -280,41 +282,41 @@ namespace RetrogradeTest {
 
 		virtual void setVisible( bool visible )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual bool isVisible() const
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		MOCK_METHOD1(setPosition, void(const irr::core::position2d<irr::f32>& position));
 
 		virtual void setPosition( irr::f32 x, irr::f32 y )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void setPosition( const irr::core::position2d<irr::s32> &pos )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual void setPosition( irr::s32 x, irr::s32 y )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		virtual const irr::core::position2d<irr::s32>& getPosition()
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 
 		MOCK_METHOD0(getRelativePosition, irr::core::position2d<irr::f32>());
 
 		virtual void setReferenceRect( irr::core::rect<irr::s32>* rect=0 )
 		{
-			throw std::exception("The method or operation is not implemented.");
+			throw NotPartOfTestException();
 		}
 	};
 }

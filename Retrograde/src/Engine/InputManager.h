@@ -45,9 +45,9 @@ namespace Engine {
 		virtual void setMouseEventBinding(const std::shared_ptr<Engine::MouseEventInputBinding> binding);
 		virtual void setMouseAnalogBinding( const std::shared_ptr<Engine::MouseAnalogInputBinding> binding );
 
-		virtual void setJoystickDeadzone(const Engine::JoystickAnalogInput& input, const irr::f32& threshold);
+		virtual void setJoystickDeadzone(const Engine::JoystickAnalogInput& input, irr::f32 threshold);
 		virtual irr::f32 getJoystickDeadzone(Engine::JoystickAnalogInput& input) const;
-		virtual void setJoystickDeadzones(const irr::f32& threshold);
+		virtual void setJoystickDeadzones(irr::f32 threshold);
 
 		virtual void setMouseCentering( bool centerMouse );
 
