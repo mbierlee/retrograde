@@ -60,7 +60,7 @@ void Engine::InputManager::handleMouseInput( const irr::SEvent& event )
 			Engine::MouseAnalogInput wheelInput = (event.MouseInput.Wheel > 0) ? Engine::EMAI_WHEEL_UP : Engine::EMAI_WHEEL_DOWN;
 			if (mouseAnalogInputBinding->hasBinding(wheelInput)) {
 				const Engine::BindingProperties& properties = mouseAnalogInputBinding->getBoundEvent(wheelInput);
-				irr::f32 magnitude = abs(event.MouseInput.Wheel);
+				irr::f32 magnitude = std::abs(event.MouseInput.Wheel);
 				eventManager->postEvent(Engine::MagnitudeEvent(properties.EventName, magnitude), this);
 			}
 		}
@@ -109,7 +109,7 @@ void Engine::InputManager::handleJoystickInput( const irr::SEvent& event )
 			Engine::JoystickAnalogInput input(i, currentMagnitude > 0);
 
 			if (joystickAnalogInputBinding->hasBinding(input)) {
-				irr::f32 eventMagnitude = abs((irr::f32)currentMagnitude) / 32768;
+				irr::f32 eventMagnitude = irr::f32(std::abs(currentMagnitude) / 32768.f);
 				if (joystickDeadzones.count(input) == 1 && joystickDeadzones.at(input) < eventMagnitude) {
 					axisMagnitude[i] = currentMagnitude = 0;
 					eventMagnitude = 0;
@@ -196,7 +196,7 @@ void Engine::InputManager::handleMouseMovement( irr::f32 posDiff, irr::f32 prevP
 {
 	Engine::MouseAnalogInput inputType = (posDiff < 0) ? negativeAxisInput : positiveAxisInput;
 	if (mouseAnalogInputBinding->hasBinding(inputType)) {
-		irr::f32 magnitude = abs(posDiff);
+		irr::f32 magnitude = std::abs(posDiff);
 		const Engine::BindingProperties& properties = mouseAnalogInputBinding->getBoundEvent(inputType);
 		if (properties.IsInverted) {
 			magnitude = 1.f - magnitude;

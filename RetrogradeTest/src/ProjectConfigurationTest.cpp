@@ -7,6 +7,7 @@ namespace RetrogradeTest {
 	class IFoo {
 	public:
 		virtual bool worldDominationIsGuaranteed() =0;
+		virtual ~IFoo() {}
 	};
 
 	class MockFoo
@@ -14,6 +15,7 @@ namespace RetrogradeTest {
 	{
 	public:
 		MOCK_METHOD0(worldDominationIsGuaranteed, bool());
+		virtual ~MockFoo() {}
 	};
 }
 
