@@ -159,7 +159,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/TestGame/src}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.other.1376602635" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11" valueType="string"/>
-								<option id="gnu.cpp.compiler.option.preprocessor.def.2065824279" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
+								<option id="gnu.cpp.compiler.option.preprocessor.def.2065824279" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="NO_IRR_COMPILE_WITH_DIRECTINPUT_JOYSTICK_"/>
 									<listOptionValue builtIn="false" value="NO_IRR_COMPILE_WITH_DIRECT3D_9"/>
 									<listOptionValue builtIn="false" value="__GNUWIN32__"/>
@@ -220,6 +220,100 @@
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
 		</cconfiguration>
+		<cconfiguration id="cdt.managedbuild.config.gnu.mingw.exe.release.118862695">
+			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="cdt.managedbuild.config.gnu.mingw.exe.release.118862695" moduleId="org.eclipse.cdt.core.settings" name="Release Win32 MinGW">
+				<externalSettings/>
+				<extensions>
+					<extension id="org.eclipse.cdt.core.GCCErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.GASErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.GLDErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.PE" point="org.eclipse.cdt.core.BinaryParser"/>
+				</extensions>
+			</storageModule>
+			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
+				<configuration artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.exe" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.exe" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.mingw.exe.release.118862695" name="Release Win32 MinGW" parent="cdt.managedbuild.config.gnu.mingw.exe.release">
+					<folderInfo id="cdt.managedbuild.config.gnu.mingw.exe.release.118862695." name="/" resourcePath="">
+						<toolChain id="cdt.managedbuild.toolchain.gnu.mingw.exe.release.1321960663" name="MinGW GCC" superClass="cdt.managedbuild.toolchain.gnu.mingw.exe.release">
+							<targetPlatform id="cdt.managedbuild.target.gnu.platform.mingw.exe.release.1487206331" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.mingw.exe.release"/>
+							<builder buildPath="${workspace_loc:/TestGame}/Release win32 MinGW" id="cdt.managedbuild.tool.gnu.builder.mingw.base.1099712633" keepEnvironmentInBuildfile="false" name="CDT Internal Builder" superClass="cdt.managedbuild.tool.gnu.builder.mingw.base"/>
+							<tool id="cdt.managedbuild.tool.gnu.assembler.mingw.exe.release.1295365076" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.mingw.exe.release">
+								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1579251939" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
+							</tool>
+							<tool id="cdt.managedbuild.tool.gnu.archiver.mingw.base.2084719502" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.mingw.base"/>
+							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.mingw.exe.release.1760739748" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.mingw.exe.release">
+								<option id="gnu.cpp.compiler.mingw.exe.release.option.optimization.level.6727381" name="Optimization Level" superClass="gnu.cpp.compiler.mingw.exe.release.option.optimization.level" value="gnu.cpp.compiler.optimization.level.most" valueType="enumerated"/>
+								<option id="gnu.cpp.compiler.mingw.exe.release.option.debugging.level.2020439669" name="Debug Level" superClass="gnu.cpp.compiler.mingw.exe.release.option.debugging.level" value="gnu.cpp.compiler.debugging.level.none" valueType="enumerated"/>
+								<option id="gnu.cpp.compiler.option.preprocessor.def.1627759180" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="NO_IRR_COMPILE_WITH_DIRECTINPUT_JOYSTICK_"/>
+									<listOptionValue builtIn="false" value="NO_IRR_COMPILE_WITH_DIRECT3D_9"/>
+									<listOptionValue builtIn="false" value="__GNUWIN32__"/>
+									<listOptionValue builtIn="false" value="_IRR_STATIC_LIB_"/>
+									<listOptionValue builtIn="false" value="_MBCS"/>
+									<listOptionValue builtIn="false" value="_WINDOWS"/>
+									<listOptionValue builtIn="false" value="WIN32"/>
+									<listOptionValue builtIn="false" value="_WIN32"/>
+									<listOptionValue builtIn="false" value="NDEBUG"/>
+								</option>
+								<option id="gnu.cpp.compiler.option.include.paths.1499181326" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${BOOST_HOME}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/include/Irrlicht&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Retrograde/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/include/Bullet&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/TestGame/src}&quot;"/>
+								</option>
+								<option id="gnu.cpp.compiler.option.other.other.1376176878" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11" valueType="string"/>
+								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.195174592" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
+							</tool>
+							<tool id="cdt.managedbuild.tool.gnu.c.compiler.mingw.exe.release.1596281314" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.mingw.exe.release">
+								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.mingw.exe.release.option.optimization.level.1567569086" name="Optimization Level" superClass="gnu.c.compiler.mingw.exe.release.option.optimization.level" valueType="enumerated"/>
+								<option id="gnu.c.compiler.mingw.exe.release.option.debugging.level.1374652597" name="Debug Level" superClass="gnu.c.compiler.mingw.exe.release.option.debugging.level" value="gnu.c.debugging.level.none" valueType="enumerated"/>
+								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.240485879" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
+							</tool>
+							<tool id="cdt.managedbuild.tool.gnu.c.linker.mingw.exe.release.843094787" name="MinGW C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.mingw.exe.release"/>
+							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.mingw.exe.release.2077005864" name="MinGW C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.mingw.exe.release">
+								<option id="gnu.cpp.link.option.libs.427711656" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
+									<listOptionValue builtIn="false" value="retrograde"/>
+									<listOptionValue builtIn="false" value="Irrlicht"/>
+									<listOptionValue builtIn="false" value="opengl32"/>
+									<listOptionValue builtIn="false" value="gdi32"/>
+									<listOptionValue builtIn="false" value="winmm"/>
+									<listOptionValue builtIn="false" value="hypodermic"/>
+									<listOptionValue builtIn="false" value="boost_signals-mgw48-mt-1_53"/>
+									<listOptionValue builtIn="false" value="boost_system-mgw48-mt-1_53"/>
+									<listOptionValue builtIn="false" value="BulletDynamics"/>
+									<listOptionValue builtIn="false" value="BulletCollision"/>
+									<listOptionValue builtIn="false" value="BulletFileLoader"/>
+									<listOptionValue builtIn="false" value="BulletSoftBody"/>
+									<listOptionValue builtIn="false" value="BulletWorldImporter"/>
+									<listOptionValue builtIn="false" value="BulletXmlWorldImporter"/>
+									<listOptionValue builtIn="false" value="ConvexDecomposition"/>
+									<listOptionValue builtIn="false" value="GIMPACTUtils"/>
+									<listOptionValue builtIn="false" value="HACD"/>
+									<listOptionValue builtIn="false" value="LinearMath"/>
+								</option>
+								<option id="gnu.cpp.link.option.paths.1734146258" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
+									<listOptionValue builtIn="false" value="&quot;${BOOST_HOME}/stage/lib&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/lib/mingw/bullet/x86/release&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/lib/mingw/hypodermic/x86/release&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/lib/mingw/irrlicht/x86/release&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Retrograde/Release Win32 MinGW}&quot;"/>
+								</option>
+								<option id="gnu.cpp.link.option.flags.1531424785" name="Linker flags" superClass="gnu.cpp.link.option.flags" value="-static-libgcc -static-libstdc++" valueType="string"/>
+								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.1165018299" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
+									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
+									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
+								</inputType>
+							</tool>
+						</toolChain>
+					</folderInfo>
+					<sourceEntries>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="src"/>
+					</sourceEntries>
+				</configuration>
+			</storageModule>
+			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
+		</cconfiguration>
 	</storageModule>
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
 		<project id="TestGame.org.eclipse.cdt.msvc.projectType.exe.964392714" name="Executable" projectType="org.eclipse.cdt.msvc.projectType.exe"/>
@@ -253,7 +347,13 @@
 		<scannerConfigBuildInfo instanceId="org.eclipse.cdt.msvc.exe.debug.614574660;org.eclipse.cdt.msvc.exe.debug.614574660.;org.eclipse.cdt.msvc.cl.c.exe.debug.1384155978;org.eclipse.cdt.msvc.cl.inputType.c.867279841">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.eclipse.cdt.msw.build.clScannerInfo"/>
 		</scannerConfigBuildInfo>
+		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.mingw.exe.release.118862695;cdt.managedbuild.config.gnu.mingw.exe.release.118862695.;cdt.managedbuild.tool.gnu.cpp.compiler.mingw.exe.release.1760739748;cdt.managedbuild.tool.gnu.cpp.compiler.input.195174592">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
 		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.mingw.exe.debug.1678790042;cdt.managedbuild.config.gnu.mingw.exe.debug.1678790042.;cdt.managedbuild.tool.gnu.c.compiler.mingw.exe.debug.1483714286;cdt.managedbuild.tool.gnu.c.compiler.input.765668481">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
+		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.mingw.exe.release.118862695;cdt.managedbuild.config.gnu.mingw.exe.release.118862695.;cdt.managedbuild.tool.gnu.c.compiler.mingw.exe.release.1596281314;cdt.managedbuild.tool.gnu.c.compiler.input.240485879">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
 		</scannerConfigBuildInfo>
 		<scannerConfigBuildInfo instanceId="org.eclipse.cdt.msvc.exe.debug.614574660;org.eclipse.cdt.msvc.exe.debug.614574660.;org.eclipse.cdt.msvc.cl.exe.debug.2125978725;org.eclipse.cdt.msvc.cl.inputType.1657804449">

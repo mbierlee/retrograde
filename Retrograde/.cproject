@@ -153,7 +153,7 @@
 									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/include/Bullet&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.other.633255862" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11" valueType="string"/>
-								<option id="gnu.cpp.compiler.option.preprocessor.def.902969092" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
+								<option id="gnu.cpp.compiler.option.preprocessor.def.902969092" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="NO_IRR_COMPILE_WITH_DIRECTINPUT_JOYSTICK_"/>
 									<listOptionValue builtIn="false" value="NO_IRR_COMPILE_WITH_DIRECT3D_9"/>
 									<listOptionValue builtIn="false" value="__GNUWIN32__"/>
@@ -218,6 +218,16 @@
 									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/include/Irrlicht&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${BOOST_HOME}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/include/Bullet&quot;"/>
+								</option>
+								<option id="gnu.cpp.compiler.option.preprocessor.def.1305042029" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="NO_IRR_COMPILE_WITH_DIRECTINPUT_JOYSTICK_"/>
+									<listOptionValue builtIn="false" value="NO_IRR_COMPILE_WITH_DIRECT3D_9"/>
+									<listOptionValue builtIn="false" value="__GNUWIN32__"/>
+									<listOptionValue builtIn="false" value="_IRR_STATIC_LIB_"/>
+									<listOptionValue builtIn="false" value="_MBCS"/>
+									<listOptionValue builtIn="false" value="_WINDOWS"/>
+									<listOptionValue builtIn="false" value="WIN32"/>
+									<listOptionValue builtIn="false" value="_WIN32"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.452840073" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
