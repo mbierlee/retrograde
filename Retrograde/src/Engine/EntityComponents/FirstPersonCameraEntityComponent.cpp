@@ -12,6 +12,7 @@
 Engine::EntityComponents::FirstPersonCameraEntityComponent::FirstPersonCameraEntityComponent(std::shared_ptr<irr::IrrlichtDevice> device, irr::f32 eyeHeightOffset)
 	: device(device)
 	, cameraSceneNode(nullptr)
+	, targetSceneNode(nullptr)
 	, eyeHeightOffset(eyeHeightOffset)
 	, syncedWithHeight(false)
 	, syncedWithHeadRotation(false)

@@ -33,7 +33,6 @@ namespace Engine { namespace Bullet {
 		irr::video::IVideoDriver* driver;
 		int debugMode;
 		irr::ILogger* logger;
-		irr::scene::ISceneManager* sceneManager;
 
 		std::vector<SDebugLine> debugLines;
 

@@ -14,6 +14,8 @@ namespace Engine { namespace Base {
 		std::map<inputIdentifierType, Engine::BindingProperties> bindings;
 
 	public:
+		virtual ~BaseInputBinding() {}
+
 		virtual void bind(const inputIdentifierType& inputIdentifier, const irr::core::stringc& eventName, bool isInverted = false)
 		{
 			Engine::BindingProperties properties(eventName, isInverted);
@@ -40,4 +42,5 @@ namespace Engine { namespace Base {
 			return bindings.count(inputIdentifier) == 1;
 		}
 	};
-}}
+}
+}

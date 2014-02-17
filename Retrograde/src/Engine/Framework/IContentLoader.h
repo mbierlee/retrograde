@@ -14,6 +14,8 @@ namespace Engine { namespace Framework {
 		virtual std::shared_ptr<T> loadContent(const irr::core::stringw& fileName) =0;
 
 	public:
+		virtual ~IContentLoader() {}
+
 		virtual bool canLoad(const irr::core::stringw& fileName) =0;
 		virtual std::shared_ptr<T> requestContent(const irr::core::stringw& fileName) =0;
 		virtual void releaseContent(const irr::core::stringw& fileName) =0;
