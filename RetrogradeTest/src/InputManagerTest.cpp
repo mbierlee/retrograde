@@ -273,6 +273,15 @@ namespace RetrogradeTest {
 		{
 			throw NotPartOfTestException();
 		}
+
+		virtual void setDoubleClickTime(irr::u32 timeMs) {
+			throw NotPartOfTestException();
+		}
+
+		virtual irr::u32 getDoubleClickTime() const {
+			throw NotPartOfTestException();
+		}
+
 	};
 
 	class MockCursorControl
