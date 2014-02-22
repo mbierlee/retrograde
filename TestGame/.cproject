@@ -262,7 +262,7 @@
 									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/include/Bullet&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/TestGame/src}&quot;"/>
 								</option>
-								<option id="gnu.cpp.compiler.option.other.other.1376176878" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11" valueType="string"/>
+								<option id="gnu.cpp.compiler.option.other.other.1376176878" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11 -mwindows" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.195174592" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.mingw.exe.release.1596281314" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.mingw.exe.release">
@@ -320,10 +320,11 @@
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="refreshScope" versionNumber="2">
+		<configuration configurationName="Release Win32"/>
 		<configuration configurationName="Release">
 			<resource resourceType="PROJECT" workspacePath="/TestGame"/>
 		</configuration>
-		<configuration configurationName="Release Win32"/>
+		<configuration configurationName="Release Win32 VC"/>
 		<configuration configurationName="Debug Win32">
 			<resource resourceType="PROJECT" workspacePath="/TestGame"/>
 		</configuration>
@@ -336,6 +337,7 @@
 		<configuration configurationName="Debug Win32 MinGW">
 			<resource resourceType="PROJECT" workspacePath="/TestGame"/>
 		</configuration>
+		<configuration configurationName="Release Win32 MinGW"/>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
 	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
