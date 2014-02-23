@@ -129,7 +129,7 @@ void Engine::EntityComponents::RigidBodyEntityComponent::initialize( Engine::Fra
 		auto loggerComponent = COMPONENT(IrrlichtLoggerEntityComponent);
 		if (loggerComponent) {
 			char logText[1024];
-			snprintf(logText, 2, "CollisionObjectEntityComponent: Entity %s(%u) has no collision model component.", entity->getType().c_str(), irr::core::stringc(entity->getId()).c_str());
+			snprintf(logText, 2, "CollisionObjectEntityComponent: Entity %s(%u) has no collision model component.", entity->getType().c_str(), entity->getId());
 			loggerComponent->log(logText);
 		}
 	}
