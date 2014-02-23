@@ -152,7 +152,7 @@
 									<listOptionValue builtIn="false" value="&quot;${BOOST_HOME}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/include/Bullet&quot;"/>
 								</option>
-								<option id="gnu.cpp.compiler.option.other.other.633255862" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11" valueType="string"/>
+								<option id="gnu.cpp.compiler.option.other.other.633255862" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11 -m32" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.preprocessor.def.902969092" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="NO_IRR_COMPILE_WITH_DIRECTINPUT_JOYSTICK_"/>
 									<listOptionValue builtIn="false" value="NO_IRR_COMPILE_WITH_DIRECT3D_9"/>
@@ -211,7 +211,7 @@
 							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.mingw.lib.release.1204475122" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.mingw.lib.release">
 								<option id="gnu.cpp.compiler.mingw.lib.release.option.optimization.level.617227524" name="Optimization Level" superClass="gnu.cpp.compiler.mingw.lib.release.option.optimization.level" value="gnu.cpp.compiler.optimization.level.most" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.mingw.lib.release.option.debugging.level.1585465469" name="Debug Level" superClass="gnu.cpp.compiler.mingw.lib.release.option.debugging.level" value="gnu.cpp.compiler.debugging.level.none" valueType="enumerated"/>
-								<option id="gnu.cpp.compiler.option.other.other.1640753886" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11" valueType="string"/>
+								<option id="gnu.cpp.compiler.option.other.other.1640753886" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11 -m32" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1793174457" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Retrograde/src}&quot;"/>
@@ -219,7 +219,7 @@
 									<listOptionValue builtIn="false" value="&quot;${BOOST_HOME}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/include/Bullet&quot;"/>
 								</option>
-								<option id="gnu.cpp.compiler.option.preprocessor.def.1305042029" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
+								<option id="gnu.cpp.compiler.option.preprocessor.def.1305042029" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="NO_IRR_COMPILE_WITH_DIRECTINPUT_JOYSTICK_"/>
 									<listOptionValue builtIn="false" value="NO_IRR_COMPILE_WITH_DIRECT3D_9"/>
 									<listOptionValue builtIn="false" value="__GNUWIN32__"/>
