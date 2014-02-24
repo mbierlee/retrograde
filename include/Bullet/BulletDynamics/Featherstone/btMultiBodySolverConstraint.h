@@ -1,6 +1,6 @@
 /*
 Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  http://continuousphysics.com/Bullet/
+Copyright (c) 2013 Erwin Coumans  http://bulletphysics.org
 
 This software is provided 'as-is', without any express or implied warranty.
 In no event will the authors be held liable for any damages arising from the use of this software.
@@ -13,29 +13,31 @@ subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 */
 
-#ifndef BT_SOLVER_CONSTRAINT_H
-#define BT_SOLVER_CONSTRAINT_H
+#ifndef BT_MULTIBODY_SOLVER_CONSTRAINT_H
+#define BT_MULTIBODY_SOLVER_CONSTRAINT_H
 
-class	btRigidBody;
 #include "LinearMath/btVector3.h"
-#include "LinearMath/btMatrix3x3.h"
-#include "btJacobianEntry.h"
 #include "LinearMath/btAlignedObjectArray.h"
 
-//#define NO_FRICTION_TANGENTIALS 1
-#include "btSolverBody.h"
-
+class btMultiBody;
+#include "BulletDynamics/ConstraintSolver/btSolverBody.h"
+#include "BulletDynamics/ConstraintSolver/btContactSolverInfo.h"
 
 ///1D constraint along a normal axis between bodyA and bodyB. It can be combined to solve contact and friction constraints.
-ATTRIBUTE_ALIGNED16 (struct)	btSolverConstraint
+ATTRIBUTE_ALIGNED16 (struct)	btMultiBodySolverConstraint
 {
 	BT_DECLARE_ALIGNED_ALLOCATOR();
 
+
+	int				m_deltaVelAindex;//more generic version of m_relpos1CrossNormal/m_contactNormal1
 	btVector3		m_relpos1CrossNormal;
 	btVector3		m_contactNormal1;
+	int				m_jacAindex;
 
+	int				m_deltaVelBindex;
 	btVector3		m_relpos2CrossNormal;
 	btVector3		m_contactNormal2; //usually m_contactNormal2 == -m_contactNormal1, but not always
+	int				m_jacBindex;
 
 	btVector3		m_angularComponentA;
 	btVector3		m_angularComponentB;
@@ -55,15 +57,19 @@ ATTRIBUTE_ALIGNED16 (struct)	btSolverConstraint
 	{
 		void*		m_originalContactPoint;
 		btScalar	m_unusedPadding4;
-		int			m_numRowsForNonContactConstraint;
 	};
 
 	int	m_overrideNumSolverIterations;
     int			m_frictionIndex;
-	int m_solverBodyIdA;
-	int m_solverBodyIdB;
 
-    
+	int m_solverBodyIdA;
+	btMultiBody* m_multiBodyA;
+	int			m_linkA;
+	
+	int m_solverBodyIdB;
+	btMultiBody* m_multiBodyB;
+	int			m_linkB;
+
 	enum		btSolverConstraintType
 	{
 		BT_SOLVER_CONTACT_1D = 0,
@@ -71,10 +77,6 @@ ATTRIBUTE_ALIGNED16 (struct)	btSolverConstraint
 	};
 };
 
-typedef btAlignedObjectArray<btSolverConstraint>	btConstraintArray;
+typedef btAlignedObjectArray<btMultiBodySolverConstraint>	btMultiBodyConstraintArray;
 
-
-#endif //BT_SOLVER_CONSTRAINT_H
-
-
-
+#endif //BT_MULTIBODY_SOLVER_CONSTRAINT_H
