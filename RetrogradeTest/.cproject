@@ -174,22 +174,22 @@
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.mingw.exe.debug.1463938428" name="MinGW C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.mingw.exe.debug"/>
 							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.mingw.exe.debug.1184950129" name="MinGW C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.mingw.exe.debug">
 								<option id="gnu.cpp.link.option.paths.252013044" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/lib/mingw/bullet/x86/release/&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/lib/mingw/bullet/x86/debug/&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/lib/mingw/gmock/x86/debug/&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/lib/mingw/gtest/x86/debug/&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/Retrograde/Debug Win32 MinGW&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.libs.1418786030" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
-									<listOptionValue builtIn="false" value="BulletDynamics"/>
-									<listOptionValue builtIn="false" value="BulletCollision"/>
-									<listOptionValue builtIn="false" value="BulletFileLoader"/>
-									<listOptionValue builtIn="false" value="BulletSoftBody"/>
-									<listOptionValue builtIn="false" value="BulletWorldImporter"/>
-									<listOptionValue builtIn="false" value="BulletXmlWorldImporter"/>
-									<listOptionValue builtIn="false" value="ConvexDecomposition"/>
-									<listOptionValue builtIn="false" value="GIMPACTUtils"/>
-									<listOptionValue builtIn="false" value="HACD"/>
-									<listOptionValue builtIn="false" value="LinearMath"/>
+									<listOptionValue builtIn="false" value="BulletDynamics_Debug"/>
+									<listOptionValue builtIn="false" value="BulletCollision_Debug"/>
+									<listOptionValue builtIn="false" value="BulletFileLoader_Debug"/>
+									<listOptionValue builtIn="false" value="BulletSoftBody_Debug"/>
+									<listOptionValue builtIn="false" value="BulletWorldImporter_Debug"/>
+									<listOptionValue builtIn="false" value="BulletXmlWorldImporter_Debug"/>
+									<listOptionValue builtIn="false" value="ConvexDecomposition_Debug"/>
+									<listOptionValue builtIn="false" value="GIMPACTUtils_Debug"/>
+									<listOptionValue builtIn="false" value="HACD_Debug"/>
+									<listOptionValue builtIn="false" value="LinearMath_Debug"/>
 									<listOptionValue builtIn="false" value="gtest"/>
 									<listOptionValue builtIn="false" value="gmock"/>
 									<listOptionValue builtIn="false" value="retrograde"/>
