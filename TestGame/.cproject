@@ -180,7 +180,7 @@
 							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.mingw.exe.debug.141450318" name="MinGW C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.mingw.exe.debug">
 								<option id="gnu.cpp.link.option.paths.1245212217" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="&quot;${BOOST_HOME}/stage/lib&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/lib/mingw/bullet/x86/release&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/lib/mingw/bullet/x86/debug&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/lib/mingw/hypodermic/x86/debug&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/lib/mingw/irrlicht/x86/debug&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Retrograde/Debug Win32 MinGW}&quot;"/>
@@ -192,18 +192,18 @@
 									<listOptionValue builtIn="false" value="gdi32"/>
 									<listOptionValue builtIn="false" value="winmm"/>
 									<listOptionValue builtIn="false" value="hypodermic"/>
-									<listOptionValue builtIn="false" value="boost_signals-mgw48-mt-d-1_53"/>
-									<listOptionValue builtIn="false" value="boost_system-mgw48-mt-d-1_53"/>
-									<listOptionValue builtIn="false" value="BulletDynamics"/>
-									<listOptionValue builtIn="false" value="BulletCollision"/>
-									<listOptionValue builtIn="false" value="BulletFileLoader"/>
-									<listOptionValue builtIn="false" value="BulletSoftBody"/>
-									<listOptionValue builtIn="false" value="BulletWorldImporter"/>
-									<listOptionValue builtIn="false" value="BulletXmlWorldImporter"/>
-									<listOptionValue builtIn="false" value="ConvexDecomposition"/>
-									<listOptionValue builtIn="false" value="GIMPACTUtils"/>
-									<listOptionValue builtIn="false" value="HACD"/>
-									<listOptionValue builtIn="false" value="LinearMath"/>
+									<listOptionValue builtIn="false" value="boost_signals-mgw48-mt-d-1_55"/>
+									<listOptionValue builtIn="false" value="boost_system-mgw48-mt-d-1_55"/>
+									<listOptionValue builtIn="false" value="BulletDynamics_Debug"/>
+									<listOptionValue builtIn="false" value="BulletCollision_Debug"/>
+									<listOptionValue builtIn="false" value="BulletFileLoader_Debug"/>
+									<listOptionValue builtIn="false" value="BulletSoftBody_Debug"/>
+									<listOptionValue builtIn="false" value="BulletWorldImporter_Debug"/>
+									<listOptionValue builtIn="false" value="BulletXmlWorldImporter_Debug"/>
+									<listOptionValue builtIn="false" value="ConvexDecomposition_Debug"/>
+									<listOptionValue builtIn="false" value="GIMPACTUtils_Debug"/>
+									<listOptionValue builtIn="false" value="HACD_Debug"/>
+									<listOptionValue builtIn="false" value="LinearMath_Debug"/>
 								</option>
 								<option id="gnu.cpp.link.option.flags.893420333" name="Linker flags" superClass="gnu.cpp.link.option.flags" value="-static-libgcc -static-libstdc++" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.2122305812" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
