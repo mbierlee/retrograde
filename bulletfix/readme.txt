@@ -1,0 +1,1 @@
+This code fixes some trivial stuff that seems to trip up the MinGW GCC 4.8.0 to 4.8.2 compilers. Apply these changes to successfully build bullet with full optimization.

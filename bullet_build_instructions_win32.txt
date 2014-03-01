@@ -4,6 +4,6 @@ CMake should have put a MinGW makefile in the directory you chose for output. Ma
 You might get errors if you don't have certain other libraries, like GLUT. If that's the case, try unchecking all the options in CMake-gui, and then configure and generate again.
 If all goes well, the output directory should now have a 'lib' directory that contains all your .a files, while the .h files can all be taken from bullet-2.77/src.
 
-NOTE: If the compiler crashes during compilation, you need to add -O1 to the compiler flags. Any higher optimizations makes GCC crash with bullet for some reason.
+NOTE: If the compiler crashes during compilation, you need to add -O1 to the compiler flags. Any higher optimizations makes GCC crash with bullet for some reason. (Or use the code from bulletfix)
 
 NOTE2: Note that the dynamics lib must be linked before the collision lib (the reverse of the order given by alphabetical rules of windows file system).
