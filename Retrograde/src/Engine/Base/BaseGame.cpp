@@ -3,7 +3,7 @@
 Engine::Base::BaseGame::BaseGame(std::shared_ptr<irr::IrrlichtDevice> device
 								 , std::shared_ptr<Engine::Framework::IEntityManager> entityManager
 								 , std::shared_ptr<Engine::Framework::IEventManager> eventManager
-								 , std::shared_ptr<Engine::Framework::IFactoryManager> factoryManager
+								 , std::shared_ptr<Engine::Framework::IEntityFactoryService> factoryManager
 								 , std::shared_ptr<Engine::Framework::IInputManager> inputManager)
 								 : isExitRequested(false)
 								 , device(device)

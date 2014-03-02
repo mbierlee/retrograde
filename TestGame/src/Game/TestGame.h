@@ -24,7 +24,7 @@ namespace Game {
 			, std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager
 			, std::shared_ptr<Engine::Framework::IEntityManager> entityManager
 			, std::shared_ptr<Engine::Framework::IEventManager> eventManager
-			, std::shared_ptr<Engine::Framework::IFactoryManager> factoryManager
+			, std::shared_ptr<Engine::Framework::IEntityFactoryService> factoryManager
 			, std::shared_ptr<Engine::Framework::IInputManager> inputManager);
 
 		virtual ~TestGame(void);

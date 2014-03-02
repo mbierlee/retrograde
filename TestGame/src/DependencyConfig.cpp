@@ -6,7 +6,7 @@
 #include <Engine/PhysicsManager.h>
 #include <Engine/EntityManager.h>
 #include <Engine/EventManager.h>
-#include <Engine/FactoryManager.h>
+#include <Engine/EntityFactoryService.h>
 #include <Engine/Bullet/IrrlichtPhysicsDebugDrawer.h>
 #include <Engine/EntityFactories/DebugEntityFactory.h>
 #include <Engine/EntityFactories/DefaultEntityFactory.h>
@@ -36,7 +36,7 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 	builder.registerType<Engine::EventManager>()->as<Engine::Framework::IEventManager>()->singleInstance();
 
 	//Setup Factory Manager
-	builder.registerType<Engine::FactoryManager>()->as<Engine::Framework::IFactoryManager>()->singleInstance();
+	builder.registerType<Engine::EntityFactoryService>()->as<Engine::Framework::IEntityFactoryService>()->singleInstance();
 
 	//Setup default entity factory
 	builder.registerType<Engine::EntityFactories::DefaultEntityFactory>(CREATE(new Engine::EntityFactories::DefaultEntityFactory(INJECT(irr::IrrlichtDevice))));
@@ -56,14 +56,14 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 		, INJECT(Engine::Framework::IPhysicsManager)
 		, INJECT(Engine::Framework::IEntityManager)
 		, INJECT(Engine::Framework::IEventManager)
-		, INJECT(Engine::Framework::IFactoryManager)
+		, INJECT(Engine::Framework::IEntityFactoryService)
 		, INJECT(Engine::Framework::IInputManager)
 		)))->as<Engine::Framework::IGame>()->singleInstance();
 
 	std::shared_ptr<Hypodermic::IContainer> typeContainer = builder.build();
 
 	//Run-time dependencies
-	std::shared_ptr<Engine::Framework::IFactoryManager> factoryManager = typeContainer->resolve<Engine::Framework::IFactoryManager>();
+	std::shared_ptr<Engine::Framework::IEntityFactoryService> factoryManager = typeContainer->resolve<Engine::Framework::IEntityFactoryService>();
 	factoryManager->registerFactory(typeContainer->resolve<Engine::EntityFactories::DefaultEntityFactory>());
 	factoryManager->registerFactory(typeContainer->resolve<Engine::EntityFactories::DebugEntityFactory>());
 	factoryManager->registerFactory(typeContainer->resolve<Game::GameEntityFactory>());
