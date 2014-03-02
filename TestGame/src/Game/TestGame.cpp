@@ -16,9 +16,9 @@ Game::TestGame::TestGame(std::shared_ptr<irr::IrrlichtDevice> device
 						 , std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager
 						 , std::shared_ptr<Engine::Framework::IEntityManager> entityManager
 						 , std::shared_ptr<Engine::Framework::IEventManager> eventManager
-						 , std::shared_ptr<Engine::Framework::IEntityFactoryService> factoryManager
+						 , std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService
 						 , std::shared_ptr<Engine::Framework::IInputManager> inputManager)
-						 : Engine::Base::BaseGame(device, entityManager, eventManager, factoryManager, inputManager)
+						 : Engine::Base::BaseGame(device, entityManager, eventManager, entityFactoryService, inputManager)
 						 , physicsManager(physicsManager)
 {
 }
@@ -48,10 +48,10 @@ void Game::TestGame::initialize()
 	physicsManager->initialize();
 	physicsManager->setDebugDrawing(true);
 
-	entityManager->addEntity(factoryManager->createEntity(ENTITY_PLAYER));
-	entityManager->addEntity(factoryManager->createEntity(ENTITY_DEBUG_PHYS_FLOOR));
-	entityManager->addEntity(factoryManager->createEntity(ENTITY_DEBUG_PHYS_CUBE));
-	//entityManager->addEntity(factoryManager->createEntity(ENTITY_DEBUG_FLY_CAMERA));
+	entityManager->addEntity(entityFactoryService->createEntity(ENTITY_PLAYER));
+	entityManager->addEntity(entityFactoryService->createEntity(ENTITY_DEBUG_PHYS_FLOOR));
+	entityManager->addEntity(entityFactoryService->createEntity(ENTITY_DEBUG_PHYS_CUBE));
+	//entityManager->addEntity(entityFactoryService->createEntity(ENTITY_DEBUG_FLY_CAMERA));
 
 	sceneManager->loadScene("data/TestMap.irr");
 }

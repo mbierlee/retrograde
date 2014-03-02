@@ -63,10 +63,10 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 	std::shared_ptr<Hypodermic::IContainer> typeContainer = builder.build();
 
 	//Run-time dependencies
-	std::shared_ptr<Engine::Framework::IEntityFactoryService> factoryManager = typeContainer->resolve<Engine::Framework::IEntityFactoryService>();
-	factoryManager->registerFactory(typeContainer->resolve<Engine::EntityFactories::DefaultEntityFactory>());
-	factoryManager->registerFactory(typeContainer->resolve<Engine::EntityFactories::DebugEntityFactory>());
-	factoryManager->registerFactory(typeContainer->resolve<Game::GameEntityFactory>());
+	std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService = typeContainer->resolve<Engine::Framework::IEntityFactoryService>();
+	entityFactoryService->registerFactory(typeContainer->resolve<Engine::EntityFactories::DefaultEntityFactory>());
+	entityFactoryService->registerFactory(typeContainer->resolve<Engine::EntityFactories::DebugEntityFactory>());
+	entityFactoryService->registerFactory(typeContainer->resolve<Game::GameEntityFactory>());
 
 	return typeContainer;
 }

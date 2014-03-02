@@ -25,7 +25,7 @@ namespace Engine { namespace Base {
 		irr::scene::ISceneManager* sceneManager;
 		std::shared_ptr<Engine::Framework::IEntityManager> entityManager;
 		std::shared_ptr<Engine::Framework::IEventManager> eventManager;
-		std::shared_ptr<Engine::Framework::IEntityFactoryService> factoryManager;
+		std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService;
 		std::shared_ptr<Engine::Framework::IInputManager> inputManager;
 		irr::u32 lastFrameTime, frameTime, deltaTime;
 
@@ -33,7 +33,7 @@ namespace Engine { namespace Base {
 		BaseGame(std::shared_ptr<irr::IrrlichtDevice> device
 			, std::shared_ptr<Engine::Framework::IEntityManager> entityManager
 			, std::shared_ptr<Engine::Framework::IEventManager> eventManager
-			, std::shared_ptr<Engine::Framework::IEntityFactoryService> factoryManager
+			, std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService
 			, std::shared_ptr<Engine::Framework::IInputManager> inputManager);
 
 		virtual ~BaseGame();
