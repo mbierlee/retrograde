@@ -48,10 +48,10 @@ void Game::TestGame::initialize()
 	physicsManager->initialize();
 	physicsManager->setDebugDrawing(true);
 
-	entityManager->addEntity(factoryManager->create(ENTITY_PLAYER));
-	entityManager->addEntity(factoryManager->create(ENTITY_DEBUG_PHYS_FLOOR));
-	entityManager->addEntity(factoryManager->create(ENTITY_DEBUG_PHYS_CUBE));
-	//entityManager->addEntity(factoryManager->create(ENTITY_DEBUG_FLY_CAMERA));
+	entityManager->addEntity(factoryManager->createEntity(ENTITY_PLAYER));
+	entityManager->addEntity(factoryManager->createEntity(ENTITY_DEBUG_PHYS_FLOOR));
+	entityManager->addEntity(factoryManager->createEntity(ENTITY_DEBUG_PHYS_CUBE));
+	//entityManager->addEntity(factoryManager->createEntity(ENTITY_DEBUG_FLY_CAMERA));
 
 	sceneManager->loadScene("data/TestMap.irr");
 }

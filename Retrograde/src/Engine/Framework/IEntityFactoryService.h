@@ -11,7 +11,7 @@ namespace Engine { namespace Framework {
 	public:
 		virtual ~IEntityFactoryService() {};
 
-		virtual std::shared_ptr<Engine::Framework::IEntity> create(irr::core::stringc entityType) =0;
+		virtual std::shared_ptr<Engine::Framework::IEntity> createEntity(irr::core::stringc entityType) =0;
 		virtual void registerFactory(std::shared_ptr<Engine::Framework::IEntityFactory> factory) =0;
 		virtual void clearRegistry() =0;
 	};

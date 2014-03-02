@@ -10,7 +10,7 @@ void Engine::EntityFactoryService::clearRegistry()
 	factoryRegistry.clear();
 }
 
-std::shared_ptr<Engine::Framework::IEntity> Engine::EntityFactoryService::create(irr::core::stringc entityType)
+std::shared_ptr<Engine::Framework::IEntity> Engine::EntityFactoryService::createEntity(irr::core::stringc entityType)
 {
 	for (auto factory : factoryRegistry) {
 		std::shared_ptr<Engine::Framework::IEntity> entity = factory->create(entityType);

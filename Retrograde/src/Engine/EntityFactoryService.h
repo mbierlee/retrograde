@@ -12,7 +12,7 @@ namespace Engine {
 		std::vector<std::shared_ptr<Engine::Framework::IEntityFactory>> factoryRegistry;
 
 	public:
-		virtual std::shared_ptr<Engine::Framework::IEntity> create(irr::core::stringc entityType);
+		virtual std::shared_ptr<Engine::Framework::IEntity> createEntity(irr::core::stringc entityType);
 		virtual void registerFactory( std::shared_ptr<Engine::Framework::IEntityFactory> factory );
 		virtual void clearRegistry();
 	};
