@@ -5,7 +5,7 @@
 
 #include <Engine/Entity.h>
 #include <Engine/DefaultEntityDefinitions.h>
-#include <Engine/PhysicsManager.h>
+#include <Engine/PhysicsService.h>
 #include <Engine/EntityFactories/DefaultEntityFactory.h>
 #include <Engine/EntityFactories/DebugEntityFactory.h>
 #include <Engine/KeyboardInputBinding.h>
@@ -13,13 +13,13 @@
 #include <ICameraSceneNode.h>
 
 Game::TestGame::TestGame(std::shared_ptr<irr::IrrlichtDevice> device
-						 , std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager
+						 , std::shared_ptr<Engine::Framework::IPhysicsService> physicsService
 						 , std::shared_ptr<Engine::Framework::IEntityManager> entityManager
 						 , std::shared_ptr<Engine::Framework::IEventManager> eventManager
 						 , std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService
 						 , std::shared_ptr<Engine::Framework::IInputManager> inputManager)
 						 : Engine::Base::BaseGame(device, entityManager, eventManager, entityFactoryService, inputManager)
-						 , physicsManager(physicsManager)
+						 , physicsService(physicsService)
 {
 }
 
@@ -45,8 +45,8 @@ void Game::TestGame::initialize()
 	keyboardInputBinding->bind(irr::KEY_RIGHT, EV_TURN_RIGHT);
 	inputManager->setKeyboardBinding(keyboardInputBinding);
 
-	physicsManager->initialize();
-	physicsManager->setDebugDrawing(true);
+	physicsService->initialize();
+	physicsService->setDebugDrawing(true);
 
 	entityManager->addEntity(entityFactoryService->createEntity(ENTITY_PLAYER));
 	entityManager->addEntity(entityFactoryService->createEntity(ENTITY_DEBUG_PHYS_FLOOR));
@@ -58,13 +58,13 @@ void Game::TestGame::initialize()
 
 void Game::TestGame::update(){
 	Engine::Base::BaseGame::update();
-	physicsManager->update((irr::f32)deltaTime);
+	physicsService->update((irr::f32)deltaTime);
 }
 
 void Game::TestGame::draw()
 {
 	driver->beginScene();
-	physicsManager->drawDebugData();
+	physicsService->drawDebugData();
 	sceneManager->drawAll();
 	driver->endScene();
 }

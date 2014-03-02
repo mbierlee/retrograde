@@ -1,14 +1,14 @@
 #pragma once
 
-#include "Engine/Framework/IPhysicsManager.h"
+#include "Engine/Framework/IPhysicsService.h"
 
 #include <btBulletDynamicsCommon.h>
 
 #include <memory>
 
 namespace Engine {
-	class PhysicsManager
-		: public Engine::Framework::IPhysicsManager
+	class PhysicsService
+		: public Engine::Framework::IPhysicsService
 	{
 	private:
 		btDefaultCollisionConfiguration* collisionConfiguration;
@@ -21,7 +21,7 @@ namespace Engine {
 		bool debugModeEnabled;
 
 	public:
-		PhysicsManager(std::shared_ptr<btIDebugDraw> debugDrawer);
+		PhysicsService(std::shared_ptr<btIDebugDraw> debugDrawer);
 
 		virtual void initialize();
 		virtual void setGravity(const irr::core::vector3df& gravity);

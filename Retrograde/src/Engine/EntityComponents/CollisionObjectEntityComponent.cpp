@@ -9,9 +9,9 @@
 #include "Engine/EntityComponents/FrictionEntityComponent.h"
 #include "Engine/UnitTransformationUtil.h"
 
-Engine::EntityComponents::CollisionObjectEntityComponent::CollisionObjectEntityComponent(std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager)
+Engine::EntityComponents::CollisionObjectEntityComponent::CollisionObjectEntityComponent(std::shared_ptr<Engine::Framework::IPhysicsService> physicsService)
 	: collisionObject(nullptr)
-	, physicsManager(physicsManager)
+	, physicsService(physicsService)
 {
 }
 
@@ -82,9 +82,9 @@ void Engine::EntityComponents::CollisionObjectEntityComponent::initialize( Engin
 			irr::s16 mask = collisionMaskComponent ? collisionMaskComponent->getMask() : btBroadphaseProxy::AllFilter ^ btBroadphaseProxy::StaticFilter;
 
 			if (collisionGroupComponent || collisionMaskComponent) {
-				physicsManager->registerCollisionObject(std::static_pointer_cast<Engine::EntityComponents::CollisionObjectEntityComponent>(shared_from_this()), group, mask);
+				physicsService->registerCollisionObject(std::static_pointer_cast<Engine::EntityComponents::CollisionObjectEntityComponent>(shared_from_this()), group, mask);
 			} else {
-				physicsManager->registerCollisionObject(std::static_pointer_cast<Engine::EntityComponents::CollisionObjectEntityComponent>(shared_from_this()));
+				physicsService->registerCollisionObject(std::static_pointer_cast<Engine::EntityComponents::CollisionObjectEntityComponent>(shared_from_this()));
 			}
 		}
 	} else {

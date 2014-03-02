@@ -4,8 +4,8 @@
 #include <Engine/EntityComponents/CollisionObjectEntityComponent.h>
 
 TEST(CollisionObjectEntityComponentTest, testComponentFamilyType) {
-	std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager;
-	Engine::EntityComponents::CollisionObjectEntityComponent collisionObjectEntityComponent(physicsManager);
+	std::shared_ptr<Engine::Framework::IPhysicsService> physicsService;
+	Engine::EntityComponents::CollisionObjectEntityComponent collisionObjectEntityComponent(physicsService);
 	EXPECT_STREQ("CollisionObjectEntityComponent", Engine::EntityComponents::CollisionObjectEntityComponent::componentType().c_str());
 	EXPECT_STREQ("CollisionObjectEntityComponent", Engine::EntityComponents::CollisionObjectEntityComponent::familyType().c_str());
 	EXPECT_STREQ("CollisionObjectEntityComponent", collisionObjectEntityComponent.getComponentType().c_str());

@@ -1,7 +1,7 @@
 #include "DebugEntityFactory.h"
 
 #include "Engine/DefaultEntityDefinitions.h"
-#include "Engine/Framework/IPhysicsManager.h"
+#include "Engine/Framework/IPhysicsService.h"
 #include "Engine/Entity.h"
 #include "Engine/EntityComponents/PositionEntityComponent.h"
 #include "Engine/EntityComponents/RotationEntityComponent.h"
@@ -26,9 +26,9 @@
 
 #include <memory>
 
-Engine::EntityFactories::DebugEntityFactory::DebugEntityFactory(std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager)
+Engine::EntityFactories::DebugEntityFactory::DebugEntityFactory(std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IPhysicsService> physicsService)
 	: device(device)
-	, physicsManager(physicsManager)
+	, physicsService(physicsService)
 {
 }
 
@@ -78,7 +78,7 @@ std::shared_ptr<Engine::Framework::IEntity> Engine::EntityFactories::DebugEntity
 	ADD_COMPONENT(MassEntityComponent, 1.f);
 	ADD_COMPONENT(InertiaEntityComponent);
 	ADD_COMPONENT(CollisionModelEntityComponent ,collisionShape);
-	ADD_COMPONENT(RigidBodyEntityComponent, physicsManager);
+	ADD_COMPONENT(RigidBodyEntityComponent, physicsService);
 	ADD_COMPONENT(IrrlichtLoggerEntityComponent, device->getLogger());
 	ADD_COMPONENT(VisualMaterialEntityComponent, material);
 	ADD_COMPONENT(TextureEntityComponent, driver->getTexture("data/default_texture.jpg"));
@@ -92,6 +92,6 @@ std::shared_ptr<Engine::Framework::IEntity> Engine::EntityFactories::DebugEntity
 
 	ADD_COMPONENT(PositionEntityComponent, irr::core::vector3df(0., -1., 0.));
 	ADD_COMPONENT(CollisionModelEntityComponent, shape);
-	ADD_COMPONENT(CollisionObjectEntityComponent ,physicsManager);
+	ADD_COMPONENT(CollisionObjectEntityComponent ,physicsService);
 	return entity;
 }

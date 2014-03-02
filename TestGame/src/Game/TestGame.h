@@ -2,7 +2,7 @@
 
 #include <Engine/Base/BaseGame.h>
 #include <Engine/Framework/IEntity.h>
-#include <Engine/Framework/IPhysicsManager.h>
+#include <Engine/Framework/IPhysicsService.h>
 #include <Engine/Framework/IEventObserver.h>
 #include <Engine/Framework/IInputManager.h>
 
@@ -17,11 +17,11 @@ namespace Game {
 		, public std::enable_shared_from_this<Game::TestGame>
 	{
 	private:
-		std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager;
+		std::shared_ptr<Engine::Framework::IPhysicsService> physicsService;
 
 	public:
 		TestGame(std::shared_ptr<irr::IrrlichtDevice> device
-			, std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager
+			, std::shared_ptr<Engine::Framework::IPhysicsService> physicsService
 			, std::shared_ptr<Engine::Framework::IEntityManager> entityManager
 			, std::shared_ptr<Engine::Framework::IEventManager> eventManager
 			, std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService

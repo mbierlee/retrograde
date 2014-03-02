@@ -14,11 +14,11 @@ namespace Engine {
 	}
 
 	namespace Framework {
-		class IPhysicsManager
+		class IPhysicsService
 			: public Engine::Framework::IIDebugDrawer
 		{
 		public:
-			virtual ~IPhysicsManager() {}
+			virtual ~IPhysicsService() {}
 
 			virtual void initialize() =0;
 			virtual void setGravity(const irr::core::vector3df& gravity) =0;

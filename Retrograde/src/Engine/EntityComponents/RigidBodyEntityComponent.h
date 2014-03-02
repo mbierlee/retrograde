@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Engine/Base/BaseEntityComponent.h"
-#include "Engine/Framework/IPhysicsManager.h"
+#include "Engine/Framework/IPhysicsService.h"
 #include "Engine/Bullet/HandledMotionState.h"
 
 #include  <btBulletDynamicsCommon.h>
@@ -13,10 +13,10 @@ namespace Engine { namespace EntityComponents {
 	private:
 		btRigidBody* rigidBody;
 		Engine::Bullet::HandledMotionState* motionState;
-		std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager;
+		std::shared_ptr<Engine::Framework::IPhysicsService> physicsService;
 
 	public:
-		RigidBodyEntityComponent(std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager);
+		RigidBodyEntityComponent(std::shared_ptr<Engine::Framework::IPhysicsService> physicsService);
 
 		virtual const irr::core::stringc getComponentType() const;
 		virtual const irr::core::stringc getFamilyType() const;

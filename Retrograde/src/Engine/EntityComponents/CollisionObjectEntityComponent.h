@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Engine/Base/BaseEntityComponent.h"
-#include "Engine/Framework/IPhysicsManager.h"
+#include "Engine/Framework/IPhysicsService.h"
 
 #include <btBulletCollisionCommon.h>
 
@@ -13,11 +13,11 @@ namespace Engine { namespace EntityComponents {
 	{
 	private:
 		btCollisionObject* collisionObject;
-		std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager;
+		std::shared_ptr<Engine::Framework::IPhysicsService> physicsService;
 		void initialize( Engine::Framework::IEntity* entity );
 
 	public:
-		CollisionObjectEntityComponent(std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager);
+		CollisionObjectEntityComponent(std::shared_ptr<Engine::Framework::IPhysicsService> physicsService);
 
 		virtual const irr::core::stringc getComponentType() const;
 		virtual const irr::core::stringc getFamilyType() const;

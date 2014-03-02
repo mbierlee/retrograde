@@ -3,7 +3,7 @@
 #include "Game/TestGame.h"
 #include "Game/GameEntityFactory.h"
 
-#include <Engine/PhysicsManager.h>
+#include <Engine/PhysicsService.h>
 #include <Engine/EntityManager.h>
 #include <Engine/EventManager.h>
 #include <Engine/EntityFactoryService.h>
@@ -27,7 +27,7 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 	builder.registerType<Engine::Bullet::IrrlichtPhysicsDebugDrawer>(CREATE(new Engine::Bullet::IrrlichtPhysicsDebugDrawer(INJECT(irr::IrrlichtDevice))))->as<btIDebugDraw>();
 
 	//Setup Physics Manager
-	builder.registerType<Engine::PhysicsManager>(CREATE(new Engine::PhysicsManager(INJECT(btIDebugDraw))))->as<Engine::Framework::IPhysicsManager>()->singleInstance();
+	builder.registerType<Engine::PhysicsService>(CREATE(new Engine::PhysicsService(INJECT(btIDebugDraw))))->as<Engine::Framework::IPhysicsService>()->singleInstance();
 
 	//Setup Entity Manager
 	builder.registerType<Engine::EntityManager>()->as<Engine::Framework::IEntityManager>()->singleInstance();
@@ -42,10 +42,10 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 	builder.registerType<Engine::EntityFactories::DefaultEntityFactory>(CREATE(new Engine::EntityFactories::DefaultEntityFactory(INJECT(irr::IrrlichtDevice))));
 
 	//Setup debug entity factory
-	builder.registerType<Engine::EntityFactories::DebugEntityFactory>(CREATE(new Engine::EntityFactories::DebugEntityFactory(INJECT(irr::IrrlichtDevice), INJECT(Engine::Framework::IPhysicsManager))));
+	builder.registerType<Engine::EntityFactories::DebugEntityFactory>(CREATE(new Engine::EntityFactories::DebugEntityFactory(INJECT(irr::IrrlichtDevice), INJECT(Engine::Framework::IPhysicsService))));
 
 	//Setup game entity factory
-	builder.registerType<Game::GameEntityFactory>(CREATE(new Game::GameEntityFactory(INJECT(irr::IrrlichtDevice), INJECT(Engine::Framework::IPhysicsManager), INJECT(Engine::Framework::IEventManager))));
+	builder.registerType<Game::GameEntityFactory>(CREATE(new Game::GameEntityFactory(INJECT(irr::IrrlichtDevice), INJECT(Engine::Framework::IPhysicsService), INJECT(Engine::Framework::IEventManager))));
 
 	//Setup Input Manager
 	builder.registerType<Engine::InputManager>(CREATE(new Engine::InputManager(INJECT(irr::IrrlichtDevice), INJECT(Engine::Framework::IEventManager))))->as<Engine::Framework::IInputManager>()->singleInstance();
@@ -53,7 +53,7 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 	//Setup Game
 	builder.registerType<Game::TestGame>(CREATE(new Game::TestGame(
 		INJECT(irr::IrrlichtDevice)
-		, INJECT(Engine::Framework::IPhysicsManager)
+		, INJECT(Engine::Framework::IPhysicsService)
 		, INJECT(Engine::Framework::IEntityManager)
 		, INJECT(Engine::Framework::IEventManager)
 		, INJECT(Engine::Framework::IEntityFactoryService)

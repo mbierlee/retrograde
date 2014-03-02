@@ -12,10 +12,10 @@
 #include "Engine/EntityComponents/FrictionEntityComponent.h"
 #include "Engine/UnitTransformationUtil.h"
 
-Engine::EntityComponents::RigidBodyEntityComponent::RigidBodyEntityComponent(std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager)
+Engine::EntityComponents::RigidBodyEntityComponent::RigidBodyEntityComponent(std::shared_ptr<Engine::Framework::IPhysicsService> physicsService)
 	: rigidBody(nullptr)
 	, motionState(nullptr)
-	, physicsManager(physicsManager)
+	, physicsService(physicsService)
 {
 }
 
@@ -120,9 +120,9 @@ void Engine::EntityComponents::RigidBodyEntityComponent::initialize( Engine::Fra
 			irr::s16 mask = collisionMaskComponent ? collisionMaskComponent->getMask() : 0;
 
 			if (collisionGroupComponent || collisionMaskComponent) {
-				physicsManager->registerRigidBody(std::static_pointer_cast<Engine::EntityComponents::RigidBodyEntityComponent>(shared_from_this()), group, mask);
+				physicsService->registerRigidBody(std::static_pointer_cast<Engine::EntityComponents::RigidBodyEntityComponent>(shared_from_this()), group, mask);
 			} else {
-				physicsManager->registerRigidBody(std::static_pointer_cast<Engine::EntityComponents::RigidBodyEntityComponent>(shared_from_this()));
+				physicsService->registerRigidBody(std::static_pointer_cast<Engine::EntityComponents::RigidBodyEntityComponent>(shared_from_this()));
 			}
 		}
 	} else {

@@ -24,9 +24,9 @@
 #include <memory>
 #include <ISceneManager.h>
 
-Game::GameEntityFactory::GameEntityFactory( std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IPhysicsManager> physicsManager, std::shared_ptr<Engine::Framework::IEventManager> eventManager )
+Game::GameEntityFactory::GameEntityFactory( std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IPhysicsService> physicsService, std::shared_ptr<Engine::Framework::IEventManager> eventManager )
 	: device(device)
-	, physicsManager(physicsManager)
+	, physicsService(physicsService)
 	, eventManager(eventManager)
 {
 }
@@ -59,7 +59,7 @@ std::shared_ptr<Engine::Framework::IEntity> Game::GameEntityFactory::makePlayer(
 	ADD_COMPONENT(SceneNodeEntityComponent, device, device->getSceneManager()->getRootSceneNode());
 	ADD_COMPONENT(FirstPersonCameraEntityComponent, device, 0.1f);
 	ADD_COMPONENT(HeightEntityComponent, height);
-	ADD_COMPONENT(RigidBodyEntityComponent, physicsManager);
+	ADD_COMPONENT(RigidBodyEntityComponent, physicsService);
 	ADD_COMPONENT(CollisionModelEntityComponent, shape);
 	ADD_COMPONENT(OriginOffsetEntityComponent, irr::core::vector3df(0, (irr::f32) -(height/2.f), 0));
 	Engine::EntityComponents::FirstPersonInputEntityComponent* inputEc = new Engine::EntityComponents::FirstPersonInputEntityComponent(
