@@ -1,11 +1,11 @@
-#include "EntityManager.h"
+#include "EntityService.h"
 
-Engine::EntityManager::EntityManager()
+Engine::EntityService::EntityService()
 	: nextAllocatableId(1)
 {
 }
 
-void Engine::EntityManager::addEntity( std::shared_ptr<Engine::Framework::IEntity> entity )
+void Engine::EntityService::addEntity( std::shared_ptr<Engine::Framework::IEntity> entity )
 {
 	if (!entity) {
 		//TODO: Log stuff
@@ -24,7 +24,7 @@ void Engine::EntityManager::addEntity( std::shared_ptr<Engine::Framework::IEntit
 	entities.push_back(entity);
 }
 
-void Engine::EntityManager::removeEntity( std::shared_ptr<Engine::Framework::IEntity> entity )
+void Engine::EntityService::removeEntity( std::shared_ptr<Engine::Framework::IEntity> entity )
 {
 	if (!entity) {
 		//TODO: Log stuff
@@ -39,7 +39,7 @@ void Engine::EntityManager::removeEntity( std::shared_ptr<Engine::Framework::IEn
 	entities.remove(entity);
 }
 
-void Engine::EntityManager::removeEntity( irr::u32 entityId )
+void Engine::EntityService::removeEntity( irr::u32 entityId )
 {
 	if (entityId == 0)
 		return;
@@ -56,19 +56,19 @@ void Engine::EntityManager::removeEntity( irr::u32 entityId )
 	}
 }
 
-void Engine::EntityManager::clearEntities()
+void Engine::EntityService::clearEntities()
 {
 	entities.clear();
 	recycledIds.clear();
 	nextAllocatableId = 1;
 }
 
-irr::u32 Engine::EntityManager::entityCount()
+irr::u32 Engine::EntityService::entityCount()
 {
 	return entities.size();
 }
 
-std::shared_ptr<Engine::Framework::IEntity> Engine::EntityManager::getEntity( irr::u32 entityId )
+std::shared_ptr<Engine::Framework::IEntity> Engine::EntityService::getEntity( irr::u32 entityId )
 {
 	if (entityId == 0)
 		return std::shared_ptr<Engine::Framework::IEntity>();
@@ -82,7 +82,7 @@ std::shared_ptr<Engine::Framework::IEntity> Engine::EntityManager::getEntity( ir
 	return std::shared_ptr<Engine::Framework::IEntity>();
 }
 
-std::shared_ptr<Engine::Framework::IEntity> Engine::EntityManager::getEntity( irr::core::stringc entityType )
+std::shared_ptr<Engine::Framework::IEntity> Engine::EntityService::getEntity( irr::core::stringc entityType )
 {
 	for (auto& entity : entities) {
 		if (entity->getType() == entityType) {
@@ -93,7 +93,7 @@ std::shared_ptr<Engine::Framework::IEntity> Engine::EntityManager::getEntity( ir
 	return std::shared_ptr<Engine::Framework::IEntity>();
 }
 
-void Engine::EntityManager::updateEntities( irr::u32 frameTime, irr::u32 lastFrameTime )
+void Engine::EntityService::updateEntities( irr::u32 frameTime, irr::u32 lastFrameTime )
 {
 	for (auto& entity : entities) {
 		entity->update(frameTime, lastFrameTime);

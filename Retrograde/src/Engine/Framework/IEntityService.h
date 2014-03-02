@@ -6,9 +6,9 @@
 #include "irrString.h"
 
 namespace Engine { namespace Framework {
-	class IEntityManager {
+	class IEntityService {
 	public:
-		virtual ~IEntityManager() {};
+		virtual ~IEntityService() {};
 
 		virtual void addEntity(std::shared_ptr<Engine::Framework::IEntity> entity) =0;
 		virtual void removeEntity(std::shared_ptr<Engine::Framework::IEntity> entity) =0;

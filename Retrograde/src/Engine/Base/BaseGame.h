@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Engine/Framework/IGame.h"
-#include "Engine/Framework/IEntityManager.h"
+#include "Engine/Framework/IEntityService.h"
 #include "Engine/Framework/IEventManager.h"
 #include "Engine/Framework/IEntityFactoryService.h"
 #include "Engine/Framework/IInputManager.h"
@@ -23,7 +23,7 @@ namespace Engine { namespace Base {
 		std::shared_ptr<irr::IrrlichtDevice> device;
 		irr::video::IVideoDriver* driver;
 		irr::scene::ISceneManager* sceneManager;
-		std::shared_ptr<Engine::Framework::IEntityManager> entityManager;
+		std::shared_ptr<Engine::Framework::IEntityService> entityService;
 		std::shared_ptr<Engine::Framework::IEventManager> eventManager;
 		std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService;
 		std::shared_ptr<Engine::Framework::IInputManager> inputManager;
@@ -31,7 +31,7 @@ namespace Engine { namespace Base {
 
 	public:
 		BaseGame(std::shared_ptr<irr::IrrlichtDevice> device
-			, std::shared_ptr<Engine::Framework::IEntityManager> entityManager
+			, std::shared_ptr<Engine::Framework::IEntityService> entityService
 			, std::shared_ptr<Engine::Framework::IEventManager> eventManager
 			, std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService
 			, std::shared_ptr<Engine::Framework::IInputManager> inputManager);

@@ -1,13 +1,13 @@
 #include "BaseGame.h"
 
 Engine::Base::BaseGame::BaseGame(std::shared_ptr<irr::IrrlichtDevice> device
-								 , std::shared_ptr<Engine::Framework::IEntityManager> entityManager
+								 , std::shared_ptr<Engine::Framework::IEntityService> entityService
 								 , std::shared_ptr<Engine::Framework::IEventManager> eventManager
 								 , std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService
 								 , std::shared_ptr<Engine::Framework::IInputManager> inputManager)
 								 : isExitRequested(false)
 								 , device(device)
-								 , entityManager(entityManager)
+								 , entityService(entityService)
 								 , eventManager(eventManager)
 								 , entityFactoryService(entityFactoryService)
 								 , inputManager(inputManager)
@@ -39,8 +39,8 @@ void Engine::Base::BaseGame::update()
 	frameTime = device ? device->getTimer()->getTime() : 0;
 	deltaTime = frameTime - lastFrameTime;
 
-	if (entityManager) {
-		entityManager->updateEntities(frameTime, lastFrameTime);
+	if (entityService) {
+		entityService->updateEntities(frameTime, lastFrameTime);
 	}
 
 	lastFrameTime = frameTime;

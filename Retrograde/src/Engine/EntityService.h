@@ -1,13 +1,13 @@
 #pragma once
 
-#include "Engine/Framework/IEntityManager.h"
+#include "Engine/Framework/IEntityService.h"
 
 #include <list>
 #include <vector>
 
 namespace Engine {
-	class EntityManager
-		: public Engine::Framework::IEntityManager
+	class EntityService
+		: public Engine::Framework::IEntityService
 	{
 	private:
 		std::list<std::shared_ptr<Engine::Framework::IEntity>> entities;
@@ -15,7 +15,7 @@ namespace Engine {
 		std::vector<irr::u32> recycledIds;
 
 	public:
-		EntityManager();
+		EntityService();
 
 		virtual void addEntity( std::shared_ptr<Engine::Framework::IEntity> entity );
 		virtual void removeEntity( std::shared_ptr<Engine::Framework::IEntity> entity );
