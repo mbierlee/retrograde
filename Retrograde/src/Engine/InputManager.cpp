@@ -6,8 +6,8 @@
 
 #include <cmath>
 
-Engine::InputManager::InputManager(std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IEventManager> eventManager, irr::ILogger* logger)
-	: eventManager(eventManager)
+Engine::InputManager::InputManager(std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IEventService> eventService, irr::ILogger* logger)
+	: eventService(eventService)
 	, logger(logger)
 	, cancelAxes(true)
 	, device(device)
@@ -36,7 +36,7 @@ void Engine::InputManager::handleMouseInput( const irr::SEvent& event )
 		if (mouseEventInputBinding->hasBinding(event.MouseInput.Event)) {
 			const Engine::BindingProperties& properties = mouseEventInputBinding->getBoundEvent(event.MouseInput.Event);
 			irr::f32 magnitude = !properties.IsInverted ? 1.f : 0;
-			eventManager->postEvent(Engine::MagnitudeEvent(properties.EventName, magnitude), this);
+			eventService->postEvent(Engine::MagnitudeEvent(properties.EventName, magnitude), this);
 		}
 	}
 
@@ -61,7 +61,7 @@ void Engine::InputManager::handleMouseInput( const irr::SEvent& event )
 			if (mouseAnalogInputBinding->hasBinding(wheelInput)) {
 				const Engine::BindingProperties& properties = mouseAnalogInputBinding->getBoundEvent(wheelInput);
 				irr::f32 magnitude = std::abs(event.MouseInput.Wheel);
-				eventManager->postEvent(Engine::MagnitudeEvent(properties.EventName, magnitude), this);
+				eventService->postEvent(Engine::MagnitudeEvent(properties.EventName, magnitude), this);
 			}
 		}
 	}
@@ -77,7 +77,7 @@ void Engine::InputManager::handleKeyboardInput( const irr::SEvent& event )
 				magnitude = 1.f - magnitude;
 			}
 
-			eventManager->postEvent(Engine::MagnitudeEvent(properties.EventName, event.KeyInput.PressedDown ? 1.f : 0), this);
+			eventService->postEvent(Engine::MagnitudeEvent(properties.EventName, event.KeyInput.PressedDown ? 1.f : 0), this);
 		}
 	}
 }
@@ -96,7 +96,7 @@ void Engine::InputManager::handleJoystickInput( const irr::SEvent& event )
 					magnitude = 1.f - magnitude;
 				}
 
-				eventManager->postEvent(Engine::MagnitudeEvent(properties.EventName, magnitude), this);
+				eventService->postEvent(Engine::MagnitudeEvent(properties.EventName, magnitude), this);
 			}
 		}
 	}
@@ -117,7 +117,7 @@ void Engine::InputManager::handleJoystickInput( const irr::SEvent& event )
 
 				if (previousMagnitude != currentMagnitude) {
 					const Engine::BindingProperties& properties = joystickAnalogInputBinding->getBoundEvent(input);
-					eventManager->postEvent(Engine::MagnitudeEvent(properties.EventName, eventMagnitude), this);
+					eventService->postEvent(Engine::MagnitudeEvent(properties.EventName, eventMagnitude), this);
 
 					// Cancel out the effect of the event on the other end of the axis.
 					// When, for example, the magnitude was negative before and is positive now, we cancel
@@ -128,7 +128,7 @@ void Engine::InputManager::handleJoystickInput( const irr::SEvent& event )
 							if (joystickAnalogInputBinding->hasBinding(oppositeInput)) {
 								const Engine::BindingProperties& oppositeProperties = joystickAnalogInputBinding->getBoundEvent(oppositeInput);
 								irr::f32 magnitude = oppositeProperties.IsInverted ? 1.f : 0;
-								eventManager->postEvent(Engine::MagnitudeEvent(oppositeProperties.EventName, magnitude), this);
+								eventService->postEvent(Engine::MagnitudeEvent(oppositeProperties.EventName, magnitude), this);
 							}
 					}
 				}
@@ -202,7 +202,7 @@ void Engine::InputManager::handleMouseMovement( irr::f32 posDiff, irr::f32 prevP
 			magnitude = 1.f - magnitude;
 		}
 
-		eventManager->postEvent(Engine::MagnitudeEvent(properties.EventName, magnitude), this);
+		eventService->postEvent(Engine::MagnitudeEvent(properties.EventName, magnitude), this);
 		if (centerMouse) {
 			relativeMousePosition = irr::core::position2df(0.5);
 			cursorControl->setPosition(relativeMousePosition);
@@ -215,7 +215,7 @@ void Engine::InputManager::handleMouseMovement( irr::f32 posDiff, irr::f32 prevP
 	if (previousInputType != inputType) {
 		if (mouseAnalogInputBinding->hasBinding(previousInputType)) {
 			const Engine::BindingProperties& properties = mouseAnalogInputBinding->getBoundEvent(previousInputType);
-			eventManager->postEvent(Engine::MagnitudeEvent(properties.EventName, 0), this);
+			eventService->postEvent(Engine::MagnitudeEvent(properties.EventName, 0), this);
 		}
 	}
 }

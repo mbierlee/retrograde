@@ -2,7 +2,7 @@
 
 #include <Engine/Framework/IEntityFactory.h>
 #include <Engine/Framework/IPhysicsService.h>
-#include <Engine/Framework/IEventManager.h>
+#include <Engine/Framework/IEventService.h>
 
 #include <IrrlichtDevice.h>
 
@@ -14,10 +14,10 @@ namespace Game {
 		virtual std::shared_ptr<Engine::Framework::IEntity> makePlayer();
 		std::shared_ptr<irr::IrrlichtDevice> device;
 		std::shared_ptr<Engine::Framework::IPhysicsService> physicsService;
-		std::shared_ptr<Engine::Framework::IEventManager> eventManager;
+		std::shared_ptr<Engine::Framework::IEventService> eventService;
 
 	public:
-		GameEntityFactory(std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IPhysicsService> physicsService, std::shared_ptr<Engine::Framework::IEventManager> eventManager);
+		GameEntityFactory(std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IPhysicsService> physicsService, std::shared_ptr<Engine::Framework::IEventService> eventService);
 
 		virtual std::shared_ptr<Engine::Framework::IEntity> create( irr::core::stringc entityType );
 		virtual void clearPool();

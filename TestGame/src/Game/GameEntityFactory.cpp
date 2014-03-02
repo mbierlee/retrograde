@@ -24,10 +24,10 @@
 #include <memory>
 #include <ISceneManager.h>
 
-Game::GameEntityFactory::GameEntityFactory( std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IPhysicsService> physicsService, std::shared_ptr<Engine::Framework::IEventManager> eventManager )
+Game::GameEntityFactory::GameEntityFactory( std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IPhysicsService> physicsService, std::shared_ptr<Engine::Framework::IEventService> eventService )
 	: device(device)
 	, physicsService(physicsService)
-	, eventManager(eventManager)
+	, eventService(eventService)
 {
 }
 
@@ -72,6 +72,6 @@ std::shared_ptr<Engine::Framework::IEntity> Game::GameEntityFactory::makePlayer(
 		);
 
 	entity->addComponent(std::shared_ptr<Engine::EntityComponents::FirstPersonInputEntityComponent>(inputEc));
-	eventManager->registerObserver(entity);
+	eventService->registerObserver(entity);
 	return entity;
 }

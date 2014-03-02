@@ -6,9 +6,9 @@
 #include <memory>
 
 namespace Engine { namespace Framework {
-	class IEventManager {
+	class IEventService {
 	public:
-		virtual ~IEventManager() {}
+		virtual ~IEventService() {}
 
 		virtual void postEvent(const Engine::Framework::IEvent& event, void* source) =0;
 

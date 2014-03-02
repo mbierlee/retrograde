@@ -15,10 +15,10 @@
 Game::TestGame::TestGame(std::shared_ptr<irr::IrrlichtDevice> device
 						 , std::shared_ptr<Engine::Framework::IPhysicsService> physicsService
 						 , std::shared_ptr<Engine::Framework::IEntityService> entityService
-						 , std::shared_ptr<Engine::Framework::IEventManager> eventManager
+						 , std::shared_ptr<Engine::Framework::IEventService> eventService
 						 , std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService
 						 , std::shared_ptr<Engine::Framework::IInputManager> inputManager)
-						 : Engine::Base::BaseGame(device, entityService, eventManager, entityFactoryService, inputManager)
+						 : Engine::Base::BaseGame(device, entityService, eventService, entityFactoryService, inputManager)
 						 , physicsService(physicsService)
 {
 }
@@ -31,7 +31,7 @@ void Game::TestGame::initialize()
 {
 	BaseGame::initialize();
 
-	eventManager->registerObserver(shared_from_this());
+	eventService->registerObserver(shared_from_this());
 	device->setEventReceiver(dynamic_cast<irr::IEventReceiver*>(inputManager.get()));
 
 	inputManager->setMouseCentering(true);

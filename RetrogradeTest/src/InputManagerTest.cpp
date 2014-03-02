@@ -4,7 +4,7 @@
 #include <gmock/gmock.h>
 
 #include <Engine/InputManager.h>
-#include <Engine/Framework/IEventManager.h>
+#include <Engine/Framework/IEventService.h>
 #include <Engine/Event.h>
 #include <Engine/MagnitudeEvent.h>
 #include <Engine/KeyboardInputBinding.h>
@@ -23,8 +23,8 @@ using ::testing::AtLeast;
 using ::testing::_;
 
 namespace RetrogradeTest {
-	class MockEventManager
-		: public Engine::Framework::IEventManager
+	class MockEventService
+		: public Engine::Framework::IEventService
 	{
 	public:
 		MOCK_METHOD2(postEvent, void(const Engine::Framework::IEvent& event, void* source));
@@ -332,8 +332,8 @@ namespace RetrogradeTest {
 
 TEST(InputManagerTest, testHandleKeyboardInput) {
 	std::shared_ptr<irr::IrrlichtDevice> nullDevice;
-	std::shared_ptr<RetrogradeTest::MockEventManager> mockEventManager = std::make_shared<RetrogradeTest::MockEventManager>();
-	Engine::InputManager inputManager(nullDevice, mockEventManager);
+	std::shared_ptr<RetrogradeTest::MockEventService> mockEventService = std::make_shared<RetrogradeTest::MockEventService>();
+	Engine::InputManager inputManager(nullDevice, mockEventService);
 
 	irr::SEvent event;
 	event.EventType = irr::EET_KEY_INPUT_EVENT;
@@ -344,8 +344,8 @@ TEST(InputManagerTest, testHandleKeyboardInput) {
 	keyboardBinding->bind(irr::KEY_RETURN, "ev_test_pressed");
 	inputManager.setKeyboardBinding(keyboardBinding);
 
-	EXPECT_CALL(*mockEventManager, postEvent(Eq(Engine::MagnitudeEvent("ev_test_pressed", 1.0f)), &inputManager)).WillOnce(Return());
-	EXPECT_CALL(*mockEventManager, postEvent(Eq(Engine::MagnitudeEvent("ev_test_pressed", 0)), &inputManager)).WillOnce(Return());
+	EXPECT_CALL(*mockEventService, postEvent(Eq(Engine::MagnitudeEvent("ev_test_pressed", 1.0f)), &inputManager)).WillOnce(Return());
+	EXPECT_CALL(*mockEventService, postEvent(Eq(Engine::MagnitudeEvent("ev_test_pressed", 0)), &inputManager)).WillOnce(Return());
 
 	EXPECT_FALSE(inputManager.OnEvent(event));
 	event.KeyInput.PressedDown = false;
@@ -355,8 +355,8 @@ TEST(InputManagerTest, testHandleKeyboardInput) {
 TEST(InputManagerTest, testHandleKeyboardInputWithNoBinding) {
 	std::shared_ptr<irr::IrrlichtDevice> nullDevice;
 	RetrogradeTest::MockLogger mockLogger;
-	std::shared_ptr<Engine::Framework::IEventManager> nullEventManager;
-	Engine::InputManager inputManager(nullDevice, nullEventManager, &mockLogger);
+	std::shared_ptr<Engine::Framework::IEventService> nullEventService;
+	Engine::InputManager inputManager(nullDevice, nullEventService, &mockLogger);
 
 	irr::SEvent event;
 	event.EventType = irr::EET_KEY_INPUT_EVENT;
@@ -367,8 +367,8 @@ TEST(InputManagerTest, testHandleKeyboardInputWithNoBinding) {
 
 TEST(InputManagerTest, testHandleJoystickDigitalInput) {
 	std::shared_ptr<irr::IrrlichtDevice> nullDevice;
-	std::shared_ptr<RetrogradeTest::MockEventManager> mockEventManager = std::make_shared<RetrogradeTest::MockEventManager>();
-	Engine::InputManager inputManager(nullDevice, mockEventManager);
+	std::shared_ptr<RetrogradeTest::MockEventService> mockEventService = std::make_shared<RetrogradeTest::MockEventService>();
+	Engine::InputManager inputManager(nullDevice, mockEventService);
 
 	irr::SEvent event;
 	event.EventType = irr::EET_JOYSTICK_INPUT_EVENT;
@@ -378,8 +378,8 @@ TEST(InputManagerTest, testHandleJoystickDigitalInput) {
 	joystickBinding->bind(1, "ev_test_pressed");
 	inputManager.setJoystickDigitalBinding(joystickBinding);
 
-	EXPECT_CALL(*mockEventManager, postEvent(Eq(Engine::MagnitudeEvent("ev_test_pressed", 1.f)), &inputManager)).WillOnce(Return());
-	EXPECT_CALL(*mockEventManager, postEvent(Eq(Engine::MagnitudeEvent("ev_test_pressed", 0)), &inputManager)).WillOnce(Return());
+	EXPECT_CALL(*mockEventService, postEvent(Eq(Engine::MagnitudeEvent("ev_test_pressed", 1.f)), &inputManager)).WillOnce(Return());
+	EXPECT_CALL(*mockEventService, postEvent(Eq(Engine::MagnitudeEvent("ev_test_pressed", 0)), &inputManager)).WillOnce(Return());
 
 	EXPECT_FALSE(inputManager.OnEvent(event));
 	event.JoystickEvent.ButtonStates = 0;
@@ -388,8 +388,8 @@ TEST(InputManagerTest, testHandleJoystickDigitalInput) {
 
 TEST(InputManagerTest, testHandleJoystickAnalogInput) {
 	std::shared_ptr<irr::IrrlichtDevice> nullDevice;
-	std::shared_ptr<RetrogradeTest::MockEventManager> mockEventManager = std::make_shared<RetrogradeTest::MockEventManager>();
-	Engine::InputManager inputManager(nullDevice, mockEventManager);
+	std::shared_ptr<RetrogradeTest::MockEventService> mockEventService = std::make_shared<RetrogradeTest::MockEventService>();
+	Engine::InputManager inputManager(nullDevice, mockEventService);
 
 	irr::SEvent event;
 	event.EventType = irr::EET_JOYSTICK_INPUT_EVENT;
@@ -400,9 +400,9 @@ TEST(InputManagerTest, testHandleJoystickAnalogInput) {
 	joystickBinding->bind(Engine::JoystickAnalogInput(irr::SEvent::SJoystickEvent::AXIS_X, false), "ev_xaxis_left");
 	inputManager.setJoystickAnalogBinding(joystickBinding);
 
-	EXPECT_CALL(*mockEventManager, postEvent(Eq(Engine::MagnitudeEvent("ev_xaxis_right", 300 / 32768.f)), &inputManager)).WillOnce(Return());
-	EXPECT_CALL(*mockEventManager, postEvent(Eq(Engine::MagnitudeEvent("ev_xaxis_left", 300 / 32768.f)), &inputManager)).WillOnce(Return());
-	EXPECT_CALL(*mockEventManager, postEvent(Eq(Engine::MagnitudeEvent("ev_xaxis_right", 0.f)), &inputManager)).WillOnce(Return());
+	EXPECT_CALL(*mockEventService, postEvent(Eq(Engine::MagnitudeEvent("ev_xaxis_right", 300 / 32768.f)), &inputManager)).WillOnce(Return());
+	EXPECT_CALL(*mockEventService, postEvent(Eq(Engine::MagnitudeEvent("ev_xaxis_left", 300 / 32768.f)), &inputManager)).WillOnce(Return());
+	EXPECT_CALL(*mockEventService, postEvent(Eq(Engine::MagnitudeEvent("ev_xaxis_right", 0.f)), &inputManager)).WillOnce(Return());
 
 	EXPECT_FALSE(inputManager.OnEvent(event));
 	event.JoystickEvent.Axis[event.JoystickEvent.AXIS_X] = -300;
@@ -412,8 +412,8 @@ TEST(InputManagerTest, testHandleJoystickAnalogInput) {
 TEST(InputManagerTest, testHandleJoystickInputWithNoBinding) {
 	std::shared_ptr<irr::IrrlichtDevice> nullDevice;
 	RetrogradeTest::MockLogger mockLogger;
-	std::shared_ptr<Engine::Framework::IEventManager> nullEventManager;
-	Engine::InputManager inputManager(nullDevice, nullEventManager, &mockLogger);
+	std::shared_ptr<Engine::Framework::IEventService> nullEventService;
+	Engine::InputManager inputManager(nullDevice, nullEventService, &mockLogger);
 
 	irr::SEvent event;
 	event.EventType = irr::EET_JOYSTICK_INPUT_EVENT;
@@ -424,8 +424,8 @@ TEST(InputManagerTest, testHandleJoystickInputWithNoBinding) {
 
 TEST(InputManagerTest, testHandleMouseEventBinding) {
 	std::shared_ptr<irr::IrrlichtDevice> nullDevice;
-	std::shared_ptr<RetrogradeTest::MockEventManager> mockEventManager = std::make_shared<RetrogradeTest::MockEventManager>();
-	Engine::InputManager inputManager(nullDevice, mockEventManager);
+	std::shared_ptr<RetrogradeTest::MockEventService> mockEventService = std::make_shared<RetrogradeTest::MockEventService>();
+	Engine::InputManager inputManager(nullDevice, mockEventService);
 
 	irr::SEvent event;
 	event.EventType = irr::EET_MOUSE_INPUT_EVENT;
@@ -436,8 +436,8 @@ TEST(InputManagerTest, testHandleMouseEventBinding) {
 	mouseBinding->bind(irr::EMIE_LMOUSE_LEFT_UP, "ev_clickyclicky", true);
 	inputManager.setMouseEventBinding(mouseBinding);
 
-	EXPECT_CALL(*mockEventManager, postEvent(Eq(Engine::MagnitudeEvent("ev_clickyclicky", 1.f)), &inputManager)).WillOnce(Return());
-	EXPECT_CALL(*mockEventManager, postEvent(Eq(Engine::MagnitudeEvent("ev_clickyclicky", 0)), &inputManager)).WillOnce(Return());
+	EXPECT_CALL(*mockEventService, postEvent(Eq(Engine::MagnitudeEvent("ev_clickyclicky", 1.f)), &inputManager)).WillOnce(Return());
+	EXPECT_CALL(*mockEventService, postEvent(Eq(Engine::MagnitudeEvent("ev_clickyclicky", 0)), &inputManager)).WillOnce(Return());
 
 	EXPECT_FALSE(inputManager.OnEvent(event));
 	event.MouseInput.Event = irr::EMIE_LMOUSE_LEFT_UP;
@@ -447,8 +447,8 @@ TEST(InputManagerTest, testHandleMouseEventBinding) {
 TEST(InputManagerTest, testHandleMouseEventBindingWithNoBinding) {
 	std::shared_ptr<irr::IrrlichtDevice> nullDevice;
 	RetrogradeTest::MockLogger mockLogger;
-	std::shared_ptr<Engine::Framework::IEventManager> nullEventManager;
-	Engine::InputManager inputManager(nullDevice, nullEventManager, &mockLogger);
+	std::shared_ptr<Engine::Framework::IEventService> nullEventService;
+	Engine::InputManager inputManager(nullDevice, nullEventService, &mockLogger);
 
 	irr::SEvent event;
 	event.EventType = irr::EET_MOUSE_INPUT_EVENT;
@@ -460,10 +460,10 @@ TEST(InputManagerTest, testHandleMouseEventBindingWithNoBinding) {
 TEST(InputManagerTest, testHandleMouseAnalogBinding) {
 	std::shared_ptr<RetrogradeTest::MockDevice> mockDevice = std::make_shared<RetrogradeTest::MockDevice>();
 	std::shared_ptr<RetrogradeTest::MockCursorControl> mockCursorControl = std::make_shared<RetrogradeTest::MockCursorControl>();
-	std::shared_ptr<RetrogradeTest::MockEventManager> mockEventManager = std::make_shared<RetrogradeTest::MockEventManager>();
+	std::shared_ptr<RetrogradeTest::MockEventService> mockEventService = std::make_shared<RetrogradeTest::MockEventService>();
 	EXPECT_CALL(*mockDevice, getCursorControl()).WillOnce(Return(mockCursorControl.get()));
 	EXPECT_CALL(*mockCursorControl, getRelativePosition()).WillOnce(Return(irr::core::position2df(0.5f, 0.5f)));
-	Engine::InputManager inputManager(mockDevice, mockEventManager);
+	Engine::InputManager inputManager(mockDevice, mockEventService);
 
 	irr::SEvent event;
 	event.EventType = irr::EET_MOUSE_INPUT_EVENT;
@@ -479,40 +479,40 @@ TEST(InputManagerTest, testHandleMouseAnalogBinding) {
 	inputManager.setMouseAnalogBinding(mouseBinding);
 
 	EXPECT_CALL(*mockCursorControl, getRelativePosition()).WillOnce(Return(irr::core::position2df(0.f, 0.5f)));
-	EXPECT_CALL(*mockEventManager, postEvent(Eq(Engine::MagnitudeEvent("ev_left", 0.5f)), &inputManager)).WillOnce(Return());
-	EXPECT_CALL(*mockEventManager, postEvent(Eq(Engine::MagnitudeEvent("ev_right", 0)), &inputManager)).WillOnce(Return());
+	EXPECT_CALL(*mockEventService, postEvent(Eq(Engine::MagnitudeEvent("ev_left", 0.5f)), &inputManager)).WillOnce(Return());
+	EXPECT_CALL(*mockEventService, postEvent(Eq(Engine::MagnitudeEvent("ev_right", 0)), &inputManager)).WillOnce(Return());
 	EXPECT_FALSE(inputManager.OnEvent(event));
 
 	EXPECT_CALL(*mockCursorControl, getRelativePosition()).WillOnce(Return(irr::core::position2df(1.f, 0.5f)));
-	EXPECT_CALL(*mockEventManager, postEvent(Eq(Engine::MagnitudeEvent("ev_right", 1.f)), &inputManager)).WillOnce(Return());
-	EXPECT_CALL(*mockEventManager, postEvent(Eq(Engine::MagnitudeEvent("ev_left", 0)), &inputManager)).WillOnce(Return());
+	EXPECT_CALL(*mockEventService, postEvent(Eq(Engine::MagnitudeEvent("ev_right", 1.f)), &inputManager)).WillOnce(Return());
+	EXPECT_CALL(*mockEventService, postEvent(Eq(Engine::MagnitudeEvent("ev_left", 0)), &inputManager)).WillOnce(Return());
 	EXPECT_FALSE(inputManager.OnEvent(event));
 
 	EXPECT_CALL(*mockCursorControl, getRelativePosition()).WillOnce(Return(irr::core::position2df(1.f, 0)));
-	EXPECT_CALL(*mockEventManager, postEvent(Eq(Engine::MagnitudeEvent("ev_up", 0.5f)), &inputManager)).WillOnce(Return());
-	EXPECT_CALL(*mockEventManager, postEvent(Eq(Engine::MagnitudeEvent("ev_down", 0)), &inputManager)).WillOnce(Return());
+	EXPECT_CALL(*mockEventService, postEvent(Eq(Engine::MagnitudeEvent("ev_up", 0.5f)), &inputManager)).WillOnce(Return());
+	EXPECT_CALL(*mockEventService, postEvent(Eq(Engine::MagnitudeEvent("ev_down", 0)), &inputManager)).WillOnce(Return());
 	EXPECT_FALSE(inputManager.OnEvent(event));
 
 	EXPECT_CALL(*mockCursorControl, getRelativePosition()).WillOnce(Return(irr::core::position2df(1.f, 1.f)));
-	EXPECT_CALL(*mockEventManager, postEvent(Eq(Engine::MagnitudeEvent("ev_down", 1.f)), &inputManager)).WillOnce(Return());
-	EXPECT_CALL(*mockEventManager, postEvent(Eq(Engine::MagnitudeEvent("ev_up", 0)), &inputManager)).WillOnce(Return());
+	EXPECT_CALL(*mockEventService, postEvent(Eq(Engine::MagnitudeEvent("ev_down", 1.f)), &inputManager)).WillOnce(Return());
+	EXPECT_CALL(*mockEventService, postEvent(Eq(Engine::MagnitudeEvent("ev_up", 0)), &inputManager)).WillOnce(Return());
 	EXPECT_FALSE(inputManager.OnEvent(event));
 
 	event.EventType = irr::EET_MOUSE_INPUT_EVENT;
 	event.MouseInput.Event = irr::EMIE_MOUSE_WHEEL;
 	event.MouseInput.Wheel = 1.f;
-	EXPECT_CALL(*mockEventManager, postEvent(Eq(Engine::MagnitudeEvent("ev_wheel_up", 1.f)), &inputManager)).WillOnce(Return());
+	EXPECT_CALL(*mockEventService, postEvent(Eq(Engine::MagnitudeEvent("ev_wheel_up", 1.f)), &inputManager)).WillOnce(Return());
 	EXPECT_FALSE(inputManager.OnEvent(event));
 
 	event.MouseInput.Wheel = -1.f;
-	EXPECT_CALL(*mockEventManager, postEvent(Eq(Engine::MagnitudeEvent("ev_wheel_down", 1.f)), &inputManager)).WillOnce(Return());
+	EXPECT_CALL(*mockEventService, postEvent(Eq(Engine::MagnitudeEvent("ev_wheel_down", 1.f)), &inputManager)).WillOnce(Return());
 	EXPECT_FALSE(inputManager.OnEvent(event));
 }
 
 TEST(InputManagerTest, testHandleJoystickDeadzones) {
 	std::shared_ptr<irr::IrrlichtDevice> nullDevice;
-	std::shared_ptr<RetrogradeTest::MockEventManager> mockEventManager = std::make_shared<RetrogradeTest::MockEventManager>();
-	Engine::InputManager inputManager(nullDevice, mockEventManager);
+	std::shared_ptr<RetrogradeTest::MockEventService> mockEventService = std::make_shared<RetrogradeTest::MockEventService>();
+	Engine::InputManager inputManager(nullDevice, mockEventService);
 
 	irr::SEvent event;
 	event.EventType = irr::EET_JOYSTICK_INPUT_EVENT;
@@ -528,46 +528,46 @@ TEST(InputManagerTest, testHandleJoystickDeadzones) {
 	inputManager.setJoystickDeadzones(deadzone);
 
 	event.JoystickEvent.Axis[event.JoystickEvent.AXIS_X] = 100;
-	EXPECT_CALL(*mockEventManager, postEvent(_, _)).Times(1);
+	EXPECT_CALL(*mockEventService, postEvent(_, _)).Times(1);
 	EXPECT_FALSE(inputManager.OnEvent(event));
 
 	event.JoystickEvent.Axis[event.JoystickEvent.AXIS_X] = 300;
-	EXPECT_CALL(*mockEventManager, postEvent(_, _)).Times(1);
+	EXPECT_CALL(*mockEventService, postEvent(_, _)).Times(1);
 	EXPECT_FALSE(inputManager.OnEvent(event));
 
 	event.JoystickEvent.Axis[event.JoystickEvent.AXIS_X] = -100;
-	EXPECT_CALL(*mockEventManager, postEvent(_, _)).Times(1);
+	EXPECT_CALL(*mockEventService, postEvent(_, _)).Times(1);
 	EXPECT_FALSE(inputManager.OnEvent(event));
 
 	event.JoystickEvent.Axis[event.JoystickEvent.AXIS_X] = -300;
-	EXPECT_CALL(*mockEventManager, postEvent(_, _)).Times(1);
+	EXPECT_CALL(*mockEventService, postEvent(_, _)).Times(1);
 	EXPECT_FALSE(inputManager.OnEvent(event));
 
 	event.JoystickEvent.Axis[event.JoystickEvent.AXIS_Y] = -100;
-	EXPECT_CALL(*mockEventManager, postEvent(_, _)).Times(1);
+	EXPECT_CALL(*mockEventService, postEvent(_, _)).Times(1);
 	EXPECT_FALSE(inputManager.OnEvent(event));
 
 	event.JoystickEvent.Axis[event.JoystickEvent.AXIS_Y] = -300;
-	EXPECT_CALL(*mockEventManager, postEvent(_, _)).Times(1);
+	EXPECT_CALL(*mockEventService, postEvent(_, _)).Times(1);
 	EXPECT_FALSE(inputManager.OnEvent(event));
 
 	event.JoystickEvent.Axis[event.JoystickEvent.AXIS_Y] = 100;
-	EXPECT_CALL(*mockEventManager, postEvent(_, _)).Times(1);
+	EXPECT_CALL(*mockEventService, postEvent(_, _)).Times(1);
 	EXPECT_FALSE(inputManager.OnEvent(event));
 
 	event.JoystickEvent.Axis[event.JoystickEvent.AXIS_Y] = 300;
-	EXPECT_CALL(*mockEventManager, postEvent(_, _)).Times(1);
+	EXPECT_CALL(*mockEventService, postEvent(_, _)).Times(1);
 	EXPECT_FALSE(inputManager.OnEvent(event));
 }
 
 TEST(InputManagerTest, testMouseCentering) {
 	std::shared_ptr<RetrogradeTest::MockDevice> mockDevice = std::make_shared<RetrogradeTest::MockDevice>();
 	std::shared_ptr<RetrogradeTest::MockCursorControl> mockCursorControl = std::make_shared<RetrogradeTest::MockCursorControl>();
-	std::shared_ptr<RetrogradeTest::MockEventManager> mockEventManager = std::make_shared<RetrogradeTest::MockEventManager>();
+	std::shared_ptr<RetrogradeTest::MockEventService> mockEventService = std::make_shared<RetrogradeTest::MockEventService>();
 	EXPECT_CALL(*mockDevice, getCursorControl()).WillOnce(Return(mockCursorControl.get()));
 	EXPECT_CALL(*mockCursorControl, setPosition(irr::core::position2df(0.5f))).WillRepeatedly(Return());
 	EXPECT_CALL(*mockCursorControl, getRelativePosition()).WillOnce(Return(irr::core::position2df(0.5f)));
-	Engine::InputManager inputManager(mockDevice, mockEventManager);
+	Engine::InputManager inputManager(mockDevice, mockEventService);
 	inputManager.setMouseCentering(true);
 
 	irr::SEvent event;
@@ -578,7 +578,7 @@ TEST(InputManagerTest, testMouseCentering) {
 	inputManager.setMouseAnalogBinding(mouseBinding);
 
 	EXPECT_CALL(*mockCursorControl, getRelativePosition()).WillOnce(Return(irr::core::position2df(0.f, 0.5f)));
-	EXPECT_CALL(*mockEventManager, postEvent(Eq(Engine::MagnitudeEvent("ev_left", 0.5f)), &inputManager)).WillOnce(Return());
+	EXPECT_CALL(*mockEventService, postEvent(Eq(Engine::MagnitudeEvent("ev_left", 0.5f)), &inputManager)).WillOnce(Return());
 	EXPECT_FALSE(inputManager.OnEvent(event));
 	EXPECT_CALL(*mockCursorControl, getRelativePosition()).WillOnce(Return(irr::core::position2df(0.5f)));
 	EXPECT_EQ(irr::core::position2df(0.5f), inputManager.getRelativeMousePosition());

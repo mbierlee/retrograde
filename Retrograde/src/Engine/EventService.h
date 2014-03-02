@@ -1,12 +1,12 @@
 #pragma once
 
-#include "Engine/Framework/IEventManager.h"
+#include "Engine/Framework/IEventService.h"
 
 #include <list>
 
 namespace Engine {
-	class EventManager
-		: public Engine::Framework::IEventManager
+	class EventService
+		: public Engine::Framework::IEventService
 	{
 	private:
 		std::list<std::shared_ptr<Engine::Framework::IEventObserver>> observers;

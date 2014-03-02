@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Engine/Framework/IInputManager.h"
-#include "Engine/Framework/IEventManager.h"
+#include "Engine/Framework/IEventService.h"
 
 #include <ILogger.h>
 #include <IrrlichtDevice.h>
@@ -18,7 +18,7 @@ namespace Engine {
 		std::shared_ptr<Engine::JoystickAnalogInputBinding> joystickAnalogInputBinding;
 		std::shared_ptr<Engine::MouseEventInputBinding> mouseEventInputBinding;
 		std::shared_ptr<Engine::MouseAnalogInputBinding> mouseAnalogInputBinding;
-		std::shared_ptr<Engine::Framework::IEventManager> eventManager;
+		std::shared_ptr<Engine::Framework::IEventService> eventService;
 		irr::ILogger* logger;
 		bool joystickButtonPressedState[irr::SEvent::SJoystickEvent::NUMBER_OF_BUTTONS];
 		irr::s16 axisMagnitude[irr::SEvent::SJoystickEvent::NUMBER_OF_AXES];
@@ -33,7 +33,7 @@ namespace Engine {
 		void handleMouseMovement( irr::f32 posDiff, irr::f32 prevPosDiff, Engine::MouseAnalogInput negativeAxisInput, Engine::MouseAnalogInput positiveAxisInput );
 
 	public:
-		InputManager(std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IEventManager> eventManager, irr::ILogger* logger = nullptr);
+		InputManager(std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IEventService> eventService, irr::ILogger* logger = nullptr);
 
 		virtual void handleMouseInput(const irr::SEvent& event);
 		virtual void handleKeyboardInput(const irr::SEvent& event);

@@ -5,7 +5,7 @@
 
 #include <Engine/PhysicsService.h>
 #include <Engine/EntityService.h>
-#include <Engine/EventManager.h>
+#include <Engine/EventService.h>
 #include <Engine/EntityFactoryService.h>
 #include <Engine/Bullet/IrrlichtPhysicsDebugDrawer.h>
 #include <Engine/EntityFactories/DebugEntityFactory.h>
@@ -33,7 +33,7 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 	builder.registerType<Engine::EntityService>()->as<Engine::Framework::IEntityService>()->singleInstance();
 
 	//Setup Event Manager
-	builder.registerType<Engine::EventManager>()->as<Engine::Framework::IEventManager>()->singleInstance();
+	builder.registerType<Engine::EventService>()->as<Engine::Framework::IEventService>()->singleInstance();
 
 	//Setup Factory Manager
 	builder.registerType<Engine::EntityFactoryService>()->as<Engine::Framework::IEntityFactoryService>()->singleInstance();
@@ -45,17 +45,17 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 	builder.registerType<Engine::EntityFactories::DebugEntityFactory>(CREATE(new Engine::EntityFactories::DebugEntityFactory(INJECT(irr::IrrlichtDevice), INJECT(Engine::Framework::IPhysicsService))));
 
 	//Setup game entity factory
-	builder.registerType<Game::GameEntityFactory>(CREATE(new Game::GameEntityFactory(INJECT(irr::IrrlichtDevice), INJECT(Engine::Framework::IPhysicsService), INJECT(Engine::Framework::IEventManager))));
+	builder.registerType<Game::GameEntityFactory>(CREATE(new Game::GameEntityFactory(INJECT(irr::IrrlichtDevice), INJECT(Engine::Framework::IPhysicsService), INJECT(Engine::Framework::IEventService))));
 
 	//Setup Input Manager
-	builder.registerType<Engine::InputManager>(CREATE(new Engine::InputManager(INJECT(irr::IrrlichtDevice), INJECT(Engine::Framework::IEventManager))))->as<Engine::Framework::IInputManager>()->singleInstance();
+	builder.registerType<Engine::InputManager>(CREATE(new Engine::InputManager(INJECT(irr::IrrlichtDevice), INJECT(Engine::Framework::IEventService))))->as<Engine::Framework::IInputManager>()->singleInstance();
 
 	//Setup Game
 	builder.registerType<Game::TestGame>(CREATE(new Game::TestGame(
 		INJECT(irr::IrrlichtDevice)
 		, INJECT(Engine::Framework::IPhysicsService)
 		, INJECT(Engine::Framework::IEntityService)
-		, INJECT(Engine::Framework::IEventManager)
+		, INJECT(Engine::Framework::IEventService)
 		, INJECT(Engine::Framework::IEntityFactoryService)
 		, INJECT(Engine::Framework::IInputManager)
 		)))->as<Engine::Framework::IGame>()->singleInstance();
