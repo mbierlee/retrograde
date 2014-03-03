@@ -10,7 +10,7 @@
 #include <Engine/Bullet/IrrlichtPhysicsDebugDrawer.h>
 #include <Engine/EntityFactories/DebugEntityFactory.h>
 #include <Engine/EntityFactories/DefaultEntityFactory.h>
-#include <Engine/InputManager.h>
+#include <Engine/InputService.h>
 
 #include <Hypodermic/ContainerBuilder.h>
 #include <Hypodermic/Helpers.h>
@@ -48,7 +48,7 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 	builder.registerType<Game::GameEntityFactory>(CREATE(new Game::GameEntityFactory(INJECT(irr::IrrlichtDevice), INJECT(Engine::Framework::IPhysicsService), INJECT(Engine::Framework::IEventService))));
 
 	//Setup Input Manager
-	builder.registerType<Engine::InputManager>(CREATE(new Engine::InputManager(INJECT(irr::IrrlichtDevice), INJECT(Engine::Framework::IEventService))))->as<Engine::Framework::IInputManager>()->singleInstance();
+	builder.registerType<Engine::InputService>(CREATE(new Engine::InputService(INJECT(irr::IrrlichtDevice), INJECT(Engine::Framework::IEventService))))->as<Engine::Framework::IInputService>()->singleInstance();
 
 	//Setup Game
 	builder.registerType<Game::TestGame>(CREATE(new Game::TestGame(
@@ -57,7 +57,7 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 		, INJECT(Engine::Framework::IEntityService)
 		, INJECT(Engine::Framework::IEventService)
 		, INJECT(Engine::Framework::IEntityFactoryService)
-		, INJECT(Engine::Framework::IInputManager)
+		, INJECT(Engine::Framework::IInputService)
 		)))->as<Engine::Framework::IGame>()->singleInstance();
 
 	std::shared_ptr<Hypodermic::IContainer> typeContainer = builder.build();

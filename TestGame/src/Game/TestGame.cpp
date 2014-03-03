@@ -17,8 +17,8 @@ Game::TestGame::TestGame(std::shared_ptr<irr::IrrlichtDevice> device
 						 , std::shared_ptr<Engine::Framework::IEntityService> entityService
 						 , std::shared_ptr<Engine::Framework::IEventService> eventService
 						 , std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService
-						 , std::shared_ptr<Engine::Framework::IInputManager> inputManager)
-						 : Engine::Base::BaseGame(device, entityService, eventService, entityFactoryService, inputManager)
+						 , std::shared_ptr<Engine::Framework::IInputService> inputService)
+						 : Engine::Base::BaseGame(device, entityService, eventService, entityFactoryService, inputService)
 						 , physicsService(physicsService)
 {
 }
@@ -32,9 +32,9 @@ void Game::TestGame::initialize()
 	BaseGame::initialize();
 
 	eventService->registerObserver(shared_from_this());
-	device->setEventReceiver(dynamic_cast<irr::IEventReceiver*>(inputManager.get()));
+	device->setEventReceiver(dynamic_cast<irr::IEventReceiver*>(inputService.get()));
 
-	inputManager->setMouseCentering(true);
+	inputService->setMouseCentering(true);
 	std::shared_ptr<Engine::KeyboardInputBinding> keyboardInputBinding = std::make_shared<Engine::KeyboardInputBinding>();
 	keyboardInputBinding->bind(irr::KEY_ESCAPE, EV_QUIT);
 	keyboardInputBinding->bind(irr::KEY_KEY_W, EV_MOVE_FORWARD);
@@ -43,7 +43,7 @@ void Game::TestGame::initialize()
 	keyboardInputBinding->bind(irr::KEY_KEY_D, EV_MOVE_RIGHT);
 	keyboardInputBinding->bind(irr::KEY_LEFT, EV_TURN_LEFT);
 	keyboardInputBinding->bind(irr::KEY_RIGHT, EV_TURN_RIGHT);
-	inputManager->setKeyboardBinding(keyboardInputBinding);
+	inputService->setKeyboardBinding(keyboardInputBinding);
 
 	physicsService->initialize();
 	physicsService->setDebugDrawing(true);

@@ -4,7 +4,7 @@
 #include <Engine/Framework/IEntity.h>
 #include <Engine/Framework/IPhysicsService.h>
 #include <Engine/Framework/IEventObserver.h>
-#include <Engine/Framework/IInputManager.h>
+#include <Engine/Framework/IInputService.h>
 
 #include "irrlicht.h"
 
@@ -25,7 +25,7 @@ namespace Game {
 			, std::shared_ptr<Engine::Framework::IEntityService> entityService
 			, std::shared_ptr<Engine::Framework::IEventService> eventService
 			, std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService
-			, std::shared_ptr<Engine::Framework::IInputManager> inputManager);
+			, std::shared_ptr<Engine::Framework::IInputService> inputService);
 
 		virtual ~TestGame(void);
 

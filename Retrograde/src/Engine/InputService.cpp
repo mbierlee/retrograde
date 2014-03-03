@@ -1,4 +1,4 @@
-#include "InputManager.h"
+#include "InputService.h"
 
 #include "Engine\Event.h"
 #include "Engine\MagnitudeEvent.h"
@@ -6,7 +6,7 @@
 
 #include <cmath>
 
-Engine::InputManager::InputManager(std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IEventService> eventService, irr::ILogger* logger)
+Engine::InputService::InputService(std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IEventService> eventService, irr::ILogger* logger)
 	: eventService(eventService)
 	, logger(logger)
 	, cancelAxes(true)
@@ -30,7 +30,7 @@ Engine::InputManager::InputManager(std::shared_ptr<irr::IrrlichtDevice> device, 
 	}
 }
 
-void Engine::InputManager::handleMouseInput( const irr::SEvent& event )
+void Engine::InputService::handleMouseInput( const irr::SEvent& event )
 {
 	if (mouseEventInputBinding) {
 		if (mouseEventInputBinding->hasBinding(event.MouseInput.Event)) {
@@ -67,7 +67,7 @@ void Engine::InputManager::handleMouseInput( const irr::SEvent& event )
 	}
 }
 
-void Engine::InputManager::handleKeyboardInput( const irr::SEvent& event )
+void Engine::InputService::handleKeyboardInput( const irr::SEvent& event )
 {
 	if (keyboardInputBinding) {
 		if (keyboardInputBinding->hasBinding(event.KeyInput.Key)) {
@@ -82,7 +82,7 @@ void Engine::InputManager::handleKeyboardInput( const irr::SEvent& event )
 	}
 }
 
-void Engine::InputManager::handleJoystickInput( const irr::SEvent& event )
+void Engine::InputService::handleJoystickInput( const irr::SEvent& event )
 {
 	if (joystickDigitalInputBinding) {
 		for (irr::u32 i = 0; i < event.JoystickEvent.NUMBER_OF_BUTTONS; ++i) {
@@ -137,12 +137,12 @@ void Engine::InputManager::handleJoystickInput( const irr::SEvent& event )
 	}
 }
 
-void Engine::InputManager::setKeyboardBinding( const std::shared_ptr<Engine::KeyboardInputBinding> binding )
+void Engine::InputService::setKeyboardBinding( const std::shared_ptr<Engine::KeyboardInputBinding> binding )
 {
 	keyboardInputBinding = binding;
 }
 
-bool Engine::InputManager::OnEvent( const irr::SEvent& event )
+bool Engine::InputService::OnEvent( const irr::SEvent& event )
 {
 	switch (event.EventType)
 	{
@@ -162,37 +162,37 @@ bool Engine::InputManager::OnEvent( const irr::SEvent& event )
 	return false;
 }
 
-void Engine::InputManager::setJoystickDigitalBinding( const std::shared_ptr<Engine::JoystickDigitalInputBinding> binding )
+void Engine::InputService::setJoystickDigitalBinding( const std::shared_ptr<Engine::JoystickDigitalInputBinding> binding )
 {
 	joystickDigitalInputBinding = binding;
 }
 
-void Engine::InputManager::setJoystickAnalogBinding( const std::shared_ptr<Engine::JoystickAnalogInputBinding> binding )
+void Engine::InputService::setJoystickAnalogBinding( const std::shared_ptr<Engine::JoystickAnalogInputBinding> binding )
 {
 	joystickAnalogInputBinding = binding;
 }
 
-void Engine::InputManager::setMouseEventBinding( const std::shared_ptr<Engine::MouseEventInputBinding> binding )
+void Engine::InputService::setMouseEventBinding( const std::shared_ptr<Engine::MouseEventInputBinding> binding )
 {
 	mouseEventInputBinding = binding;
 }
 
-void Engine::InputManager::setMouseAnalogBinding( const std::shared_ptr<Engine::MouseAnalogInputBinding> binding )
+void Engine::InputService::setMouseAnalogBinding( const std::shared_ptr<Engine::MouseAnalogInputBinding> binding )
 {
 	mouseAnalogInputBinding = binding;
 }
 
-const irr::core::position2df Engine::InputManager::getRelativeMousePosition() const
+const irr::core::position2df Engine::InputService::getRelativeMousePosition() const
 {
 	return cursorControl->getRelativePosition();
 }
 
-const irr::core::position2di& Engine::InputManager::getAbsoluteMousePosition() const
+const irr::core::position2di& Engine::InputService::getAbsoluteMousePosition() const
 {
 	return cursorControl->getPosition();
 }
 
-void Engine::InputManager::handleMouseMovement( irr::f32 posDiff, irr::f32 prevPosDiff, Engine::MouseAnalogInput negativeAxisInput, Engine::MouseAnalogInput positiveAxisInput )
+void Engine::InputService::handleMouseMovement( irr::f32 posDiff, irr::f32 prevPosDiff, Engine::MouseAnalogInput negativeAxisInput, Engine::MouseAnalogInput positiveAxisInput )
 {
 	Engine::MouseAnalogInput inputType = (posDiff < 0) ? negativeAxisInput : positiveAxisInput;
 	if (mouseAnalogInputBinding->hasBinding(inputType)) {
@@ -220,12 +220,12 @@ void Engine::InputManager::handleMouseMovement( irr::f32 posDiff, irr::f32 prevP
 	}
 }
 
-void Engine::InputManager::setJoystickDeadzone(const Engine::JoystickAnalogInput& input, irr::f32 threshold)
+void Engine::InputService::setJoystickDeadzone(const Engine::JoystickAnalogInput& input, irr::f32 threshold)
 {
 	joystickDeadzones.insert(std::pair<Engine::JoystickAnalogInput, irr::f32>(input, threshold));
 }
 
-void Engine::InputManager::setJoystickDeadzones(irr::f32 threshold)
+void Engine::InputService::setJoystickDeadzones(irr::f32 threshold)
 {
 	for (irr::u32 i =0; i < irr::SEvent::SJoystickEvent::NUMBER_OF_AXES; ++i)
 	{
@@ -234,12 +234,12 @@ void Engine::InputManager::setJoystickDeadzones(irr::f32 threshold)
 	}
 }
 
-irr::f32 Engine::InputManager::getJoystickDeadzone(Engine::JoystickAnalogInput& input) const
+irr::f32 Engine::InputService::getJoystickDeadzone(Engine::JoystickAnalogInput& input) const
 {
 	return joystickDeadzones.at(input);
 }
 
-void Engine::InputManager::setMouseCentering( bool centerMouse )
+void Engine::InputService::setMouseCentering( bool centerMouse )
 {
 	this->centerMouse = centerMouse;
 }

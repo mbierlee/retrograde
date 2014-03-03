@@ -4,13 +4,13 @@ Engine::Base::BaseGame::BaseGame(std::shared_ptr<irr::IrrlichtDevice> device
 								 , std::shared_ptr<Engine::Framework::IEntityService> entityService
 								 , std::shared_ptr<Engine::Framework::IEventService> eventService
 								 , std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService
-								 , std::shared_ptr<Engine::Framework::IInputManager> inputManager)
+								 , std::shared_ptr<Engine::Framework::IInputService> inputService)
 								 : isExitRequested(false)
 								 , device(device)
 								 , entityService(entityService)
 								 , eventService(eventService)
 								 , entityFactoryService(entityFactoryService)
-								 , inputManager(inputManager)
+								 , inputService(inputService)
 								 , lastFrameTime(0)
 								 , frameTime(0)
 								 , deltaTime(0)

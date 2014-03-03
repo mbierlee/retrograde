@@ -4,7 +4,7 @@
 #include "Engine/Framework/IEntityService.h"
 #include "Engine/Framework/IEventService.h"
 #include "Engine/Framework/IEntityFactoryService.h"
-#include "Engine/Framework/IInputManager.h"
+#include "Engine/Framework/IInputService.h"
 
 #include "irrlicht.h"
 #include "IVideoDriver.h"
@@ -26,7 +26,7 @@ namespace Engine { namespace Base {
 		std::shared_ptr<Engine::Framework::IEntityService> entityService;
 		std::shared_ptr<Engine::Framework::IEventService> eventService;
 		std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService;
-		std::shared_ptr<Engine::Framework::IInputManager> inputManager;
+		std::shared_ptr<Engine::Framework::IInputService> inputService;
 		irr::u32 lastFrameTime, frameTime, deltaTime;
 
 	public:
@@ -34,7 +34,7 @@ namespace Engine { namespace Base {
 			, std::shared_ptr<Engine::Framework::IEntityService> entityService
 			, std::shared_ptr<Engine::Framework::IEventService> eventService
 			, std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService
-			, std::shared_ptr<Engine::Framework::IInputManager> inputManager);
+			, std::shared_ptr<Engine::Framework::IInputService> inputService);
 
 		virtual ~BaseGame();
 
