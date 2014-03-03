@@ -26,16 +26,16 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 	//Setup Physics Debug Drawer
 	builder.registerType<Engine::Bullet::IrrlichtPhysicsDebugDrawer>(CREATE(new Engine::Bullet::IrrlichtPhysicsDebugDrawer(INJECT(irr::IrrlichtDevice))))->as<btIDebugDraw>();
 
-	//Setup Physics Manager
+	//Setup Physics Service
 	builder.registerType<Engine::PhysicsService>(CREATE(new Engine::PhysicsService(INJECT(btIDebugDraw))))->as<Engine::Framework::IPhysicsService>()->singleInstance();
 
-	//Setup Entity Manager
+	//Setup Entity Service
 	builder.registerType<Engine::EntityService>()->as<Engine::Framework::IEntityService>()->singleInstance();
 
-	//Setup Event Manager
+	//Setup Event Service
 	builder.registerType<Engine::EventService>()->as<Engine::Framework::IEventService>()->singleInstance();
 
-	//Setup Factory Manager
+	//Setup Factory Service
 	builder.registerType<Engine::EntityFactoryService>()->as<Engine::Framework::IEntityFactoryService>()->singleInstance();
 
 	//Setup default entity factory
@@ -47,7 +47,7 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 	//Setup game entity factory
 	builder.registerType<Game::GameEntityFactory>(CREATE(new Game::GameEntityFactory(INJECT(irr::IrrlichtDevice), INJECT(Engine::Framework::IPhysicsService), INJECT(Engine::Framework::IEventService))));
 
-	//Setup Input Manager
+	//Setup Input Service
 	builder.registerType<Engine::InputService>(CREATE(new Engine::InputService(INJECT(irr::IrrlichtDevice), INJECT(Engine::Framework::IEventService))))->as<Engine::Framework::IInputService>()->singleInstance();
 
 	//Setup Game
