@@ -3,6 +3,8 @@
 #include <Engine/Event.h>
 #include <irrString.h>
 
+namespace RetrogradeTest {
+
 TEST(EventTest, testSetGetName) {
 	Engine::Event event("TestEvent");
 	EXPECT_EQ(irr::core::stringc("TestEvent"), event.getName());
@@ -19,4 +21,6 @@ TEST(EventTest, testDifferentInstancesOfSameEventAreEqual) {
 
 	delete event3;
 	delete event4;
+}
+
 }

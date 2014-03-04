@@ -2,6 +2,8 @@
 
 #include <Engine/EntityComponents/FreeflightCameraEntityComponent.h>
 
+namespace RetrogradeTest { namespace EntityComponents {
+
 TEST(FreeflightCameraEntityComponentTest, testComponentFamilyType) {
 	Engine::EntityComponents::FreeflightCameraEntityComponent freeflightCameraEntityComponent(nullptr);
 	EXPECT_STREQ("FreeflightCameraEntityComponent", Engine::EntityComponents::FreeflightCameraEntityComponent::componentType().c_str());
@@ -9,3 +11,5 @@ TEST(FreeflightCameraEntityComponentTest, testComponentFamilyType) {
 	EXPECT_STREQ("FreeflightCameraEntityComponent", freeflightCameraEntityComponent.getComponentType().c_str());
 	EXPECT_STREQ("CameraEntityComponent", freeflightCameraEntityComponent.getFamilyType().c_str());
 }
+
+}}

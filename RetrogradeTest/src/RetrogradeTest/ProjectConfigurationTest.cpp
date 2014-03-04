@@ -17,7 +17,6 @@ namespace RetrogradeTest {
 		MOCK_METHOD0(worldDominationIsGuaranteed, bool());
 		virtual ~MockFoo() {}
 	};
-}
 
 TEST(ProjectConfigurationTest, testGoogleTestWorks) {
 	SUCCEED();
@@ -33,4 +32,6 @@ TEST(ProjectConfigurationTest, testGoogleMockWorks) {
 	EXPECT_TRUE(mockFoo.worldDominationIsGuaranteed());
 	EXPECT_TRUE(mockFoo.worldDominationIsGuaranteed());
 	EXPECT_TRUE(mockFoo.worldDominationIsGuaranteed());
+}
+
 }

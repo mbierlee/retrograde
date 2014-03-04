@@ -3,6 +3,8 @@
 #include <Engine/EntityComponents/CollisionModelEntityComponent.h>
 #include <Bullet/BulletCollision/CollisionShapes/btSphereShape.h>
 
+namespace RetrogradeTest { namespace EntityComponents {
+
 TEST(CollisionModelEntityComponentTest, testSetTroughConstructor) {
 	auto shape = std::make_shared<btSphereShape>(btScalar(5.));
 	Engine::EntityComponents::CollisionModelEntityComponent collisionModelEntityComponent(shape);
@@ -17,3 +19,5 @@ TEST(CollisionModelEntityComponentTest, testComponentFamilyType) {
 	EXPECT_STREQ("CollisionModelEntityComponent", collisionModelEntityComponent.getComponentType().c_str());
 	EXPECT_STREQ("CollisionModelEntityComponent", collisionModelEntityComponent.getFamilyType().c_str());
 }
+
+}}

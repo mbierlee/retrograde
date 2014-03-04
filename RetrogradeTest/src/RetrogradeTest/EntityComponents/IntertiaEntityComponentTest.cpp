@@ -4,6 +4,8 @@
 
 #include <vector3d.h>
 
+namespace RetrogradeTest { namespace EntityComponents {
+
 TEST(InertiaEntityComponentTest, testComponentFamilyType) {
 	Engine::EntityComponents::InertiaEntityComponent inertiaEntityComponent;
 	EXPECT_STREQ("InertiaEntityComponent", Engine::EntityComponents::InertiaEntityComponent::componentType().c_str());
@@ -23,3 +25,5 @@ TEST(InertiaEntityComponentTest, testGetSet) {
 	inertiaEntityComponent.setInertia(irr::core::vector3df(9.34f, 8.44f, 10.f));
 	EXPECT_EQ(irr::core::vector3df(9.34f, 8.44f, 10.f), inertiaEntityComponent.getIntertia());
 }
+
+}}

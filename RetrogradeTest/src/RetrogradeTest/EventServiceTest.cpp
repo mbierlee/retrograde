@@ -12,7 +12,6 @@ namespace RetrogradeTest {
 	public:
 		MOCK_METHOD2(handleEvent, void(const Engine::Framework::IEvent& event, void* source));
 	};
-}
 
 TEST(EventServiceTest, testRegisterObserver) {
 	Engine::EventService eventService;
@@ -56,4 +55,6 @@ TEST(EventServiceTest, testPostEvent) {
 	EXPECT_CALL(*observer, handleEvent(Eq(testEvent), Eq(nullptr))).Times(1);
 
 	eventService.postEvent(testEvent, nullptr);
+}
+
 }

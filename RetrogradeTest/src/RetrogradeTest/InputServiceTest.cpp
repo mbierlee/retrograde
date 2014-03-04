@@ -328,7 +328,6 @@ namespace RetrogradeTest {
 			throw NotPartOfTestException();
 		}
 	};
-}
 
 TEST(InputServiceTest, testHandleKeyboardInput) {
 	std::shared_ptr<irr::IrrlichtDevice> nullDevice;
@@ -582,4 +581,6 @@ TEST(InputServiceTest, testMouseCentering) {
 	EXPECT_FALSE(inputService.OnEvent(event));
 	EXPECT_CALL(*mockCursorControl, getRelativePosition()).WillOnce(Return(irr::core::position2df(0.5f)));
 	EXPECT_EQ(irr::core::position2df(0.5f), inputService.getRelativeMousePosition());
+}
+
 }

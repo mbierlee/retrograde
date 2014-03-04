@@ -17,7 +17,6 @@ public:
 	}
 
 };
-}
 
 TEST(EntityFactoryServiceTest, testRegisterFactory) {
 	auto mockEntityFactory = std::make_shared<RetrogradeTest::MockEntityFactory>();
@@ -41,4 +40,6 @@ TEST(EntityFactoryServiceTest, testCreateEntity) {
 	auto actualEntity = entityFactoryService.createEntity("TestEntity");
 
 	EXPECT_EQ(expectedEntity, actualEntity);
+}
+
 }

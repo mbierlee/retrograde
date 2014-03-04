@@ -2,6 +2,8 @@
 
 #include <Engine/EntityComponents/CollisionGroupEntityComponent.h>
 
+namespace RetrogradeTest { namespace EntityComponents {
+
 TEST(CollisionGroupEntityComponentTest, testSetTroughConstructor) {
 	Engine::EntityComponents::CollisionGroupEntityComponent collisionGroupEntityComponent(456);
 	EXPECT_EQ(456, collisionGroupEntityComponent.getGroup());
@@ -14,3 +16,5 @@ TEST(CollisionGroupEntityComponentTest, testComponentFamilyType) {
 	EXPECT_STREQ("CollisionGroupEntityComponent", collisionGroupEntityComponent.getComponentType().c_str());
 	EXPECT_STREQ("CollisionGroupEntityComponent", collisionGroupEntityComponent.getFamilyType().c_str());
 }
+
+}}

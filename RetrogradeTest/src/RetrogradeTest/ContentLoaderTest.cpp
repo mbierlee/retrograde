@@ -41,7 +41,6 @@ namespace RetrogradeTest {
 			return true;
 		}
 	};
-}
 
 TEST(ContentLoaderTest, testRequestCachedContent) {
 	RetrogradeTest::TestContentLoader loader;
@@ -69,4 +68,6 @@ TEST(ContentLoaderTest, testCacheSize) {
 	loader.releaseContent("AnotherFile");
 	loader.releaseContent("YetAnotherFile");
 	EXPECT_EQ(0, loader.cacheSize());
+}
+
 }

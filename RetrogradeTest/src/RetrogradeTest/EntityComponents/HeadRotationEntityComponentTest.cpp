@@ -7,6 +7,8 @@
 
 #include <quaternion.h>
 
+namespace RetrogradeTest { namespace EntityComponents {
+
 TEST(HeadRotationEntityComponentTest, testComponentFamilyType) {
 	Engine::EntityComponents::HeadRotationEntityComponent headRotationEntityComponent;
 	EXPECT_STREQ("HeadRotationEntityComponent", Engine::EntityComponents::HeadRotationEntityComponent::componentType().c_str());
@@ -19,3 +21,5 @@ TEST(HeadRotationEntityComponentTest, testSetTroughConstructor) {
 	Engine::EntityComponents::HeadRotationEntityComponent headRotationEntityComponent(irr::core::quaternion(1.f, 2.f, 3.f, 4.f));
 	EXPECT_EQ(irr::core::quaternion(1.f, 2.f, 3.f, 4.f), headRotationEntityComponent.getRotation());
 }
+
+}}

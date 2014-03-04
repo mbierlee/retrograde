@@ -4,6 +4,8 @@
 #include <vector3d.h>
 #include <quaternion.h>
 
+namespace RetrogradeTest { namespace EntityComponents {
+
 TEST(RotationEntityComponentTest, testSetTroughConstructor) {
 	Engine::EntityComponents::RotationEntityComponent rotationEntityComponentEuler(irr::core::vector3df(1.f, 0.733f, 1.2f));
 	EXPECT_EQ(irr::core::vector3df(1.f, 0.733f, 1.2f), rotationEntityComponentEuler.getEulerRotation());
@@ -32,3 +34,5 @@ TEST(RotationEntityComponentTest, testComponentFamilyType) {
 	EXPECT_STREQ("RotationEntityComponent", rotationEntityComponent.getComponentType().c_str());
 	EXPECT_STREQ("RotationEntityComponent", rotationEntityComponent.getFamilyType().c_str());
 }
+
+}}

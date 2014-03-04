@@ -1,4 +1,4 @@
-#include "NotPartOfTestException.h"
+#include "RetrogradeTest/NotPartOfTestException.h"
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
@@ -42,7 +42,8 @@ namespace RetrogradeTest {
 			throw NotPartOfTestException();
 		}
 	};
-}
+
+namespace EntityComponents {
 
 TEST(IrrlichtLoggerEntityComponentTest, testComponentFamilyType) {
 	Engine::EntityComponents::IrrlichtLoggerEntityComponent irrlichtLoggerEntityComponent(nullptr);
@@ -71,3 +72,6 @@ TEST(IrrlichtLoggerEntityComponentTest, testLogging) {
 	irrlichtLoggerEntityComponent.log(testLogErrorWide, irr::ELL_ERROR);
 	irrlichtLoggerEntityComponent.log(testLogWarningWide, irr::ELL_WARNING);
 }
+
+}}
+

@@ -3,6 +3,8 @@
 #include <Engine/EntityComponents/PositionEntityComponent.h>
 #include <vector3d.h>
 
+namespace RetrogradeTest { namespace EntityComponents {
+
 TEST(PositionEntityComponentTest, testSetTroughConstructor) {
 	Engine::EntityComponents::PositionEntityComponent positionComponent(irr::core::vector3df(1.f,2.f,3.f));
 	EXPECT_EQ(irr::core::vector3df(1.f, 2.f, 3.f), positionComponent.getPosition());
@@ -22,3 +24,5 @@ TEST(PositionEntityComponentTest, testComponentFamilyType) {
 	EXPECT_STREQ("PositionEntityComponent", positionComponent.getComponentType().c_str());
 	EXPECT_STREQ("PositionEntityComponent", positionComponent.getFamilyType().c_str());
 }
+
+}}

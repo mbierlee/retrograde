@@ -11,7 +11,6 @@ namespace RetrogradeTest {
 	public:
 		MOCK_METHOD2(update, void(irr::u32 frameTime, irr::u32 lastFrameTime));
 	};
-}
 
 TEST(EntityServiceTest, testAddEntity) {
 	Engine::EntityService entityService;
@@ -69,4 +68,6 @@ TEST(EntityServiceTest, testUpdateEntities) {
 	entityService.addEntity(entity);
 
 	entityService.updateEntities(1, 2);
+}
+
 }
