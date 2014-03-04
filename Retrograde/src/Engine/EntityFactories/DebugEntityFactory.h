@@ -5,6 +5,8 @@
 
 #include <IrrlichtDevice.h>
 
+#include <Hypodermic/AutowiredConstructor.h>
+
 namespace Engine { namespace EntityFactories {
 	class DebugEntityFactory
 		: public Engine::Framework::IEntityFactory
@@ -18,6 +20,8 @@ namespace Engine { namespace EntityFactories {
 		std::shared_ptr<Engine::Framework::IEntity> makeDebugPhysFloor();
 
 	public:
+		typedef Hypodermic::AutowiredConstructor<DebugEntityFactory(irr::IrrlichtDevice*, Engine::Framework::IPhysicsService*)> AutowiredSignature;
+
 		DebugEntityFactory(std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IPhysicsService> physicsService);
 
 		virtual std::shared_ptr<Engine::Framework::IEntity> create(irr::core::stringc entityType);

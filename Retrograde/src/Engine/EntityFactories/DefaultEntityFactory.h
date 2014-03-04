@@ -4,6 +4,8 @@
 
 #include <IrrlichtDevice.h>
 
+#include <Hypodermic/AutowiredConstructor.h>
+
 namespace Engine { namespace EntityFactories {
 	class DefaultEntityFactory
 		: public Engine::Framework::IEntityFactory
@@ -12,6 +14,8 @@ namespace Engine { namespace EntityFactories {
 		std::shared_ptr<irr::IrrlichtDevice> device;
 
 	public:
+		typedef Hypodermic::AutowiredConstructor<DefaultEntityFactory(irr::IrrlichtDevice*)> AutowiredSignature;
+
 		DefaultEntityFactory(std::shared_ptr<irr::IrrlichtDevice> device);
 		virtual ~DefaultEntityFactory();
 

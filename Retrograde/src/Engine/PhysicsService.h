@@ -4,6 +4,8 @@
 
 #include <btBulletDynamicsCommon.h>
 
+#include <Hypodermic/AutowiredConstructor.h>
+
 #include <memory>
 
 namespace Engine {
@@ -21,6 +23,8 @@ namespace Engine {
 		bool debugModeEnabled;
 
 	public:
+		typedef Hypodermic::AutowiredConstructor<PhysicsService(btIDebugDraw*)> AutowiredSignature;
+
 		PhysicsService(std::shared_ptr<btIDebugDraw> debugDrawer);
 
 		virtual void initialize();

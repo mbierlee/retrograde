@@ -24,10 +24,10 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 	builder.registerInstance(irrlichtDevice);
 
 	//Setup Physics Debug Drawer
-	builder.registerType<Engine::Bullet::IrrlichtPhysicsDebugDrawer>(CREATE(new Engine::Bullet::IrrlichtPhysicsDebugDrawer(INJECT(irr::IrrlichtDevice))))->as<btIDebugDraw>();
+	builder.autowireType<Engine::Bullet::IrrlichtPhysicsDebugDrawer>()->as<btIDebugDraw>();
 
 	//Setup Physics Service
-	builder.registerType<Engine::PhysicsService>(CREATE(new Engine::PhysicsService(INJECT(btIDebugDraw))))->as<Engine::Framework::IPhysicsService>()->singleInstance();
+	builder.autowireType<Engine::PhysicsService>()->as<Engine::Framework::IPhysicsService>()->singleInstance();
 
 	//Setup Entity Service
 	builder.registerType<Engine::EntityService>()->as<Engine::Framework::IEntityService>()->singleInstance();
@@ -39,26 +39,19 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 	builder.registerType<Engine::EntityFactoryService>()->as<Engine::Framework::IEntityFactoryService>()->singleInstance();
 
 	//Setup default entity factory
-	builder.registerType<Engine::EntityFactories::DefaultEntityFactory>(CREATE(new Engine::EntityFactories::DefaultEntityFactory(INJECT(irr::IrrlichtDevice))));
+	builder.autowireType<Engine::EntityFactories::DefaultEntityFactory>();
 
 	//Setup debug entity factory
-	builder.registerType<Engine::EntityFactories::DebugEntityFactory>(CREATE(new Engine::EntityFactories::DebugEntityFactory(INJECT(irr::IrrlichtDevice), INJECT(Engine::Framework::IPhysicsService))));
+	builder.autowireType<Engine::EntityFactories::DebugEntityFactory>();
 
 	//Setup game entity factory
-	builder.registerType<Game::GameEntityFactory>(CREATE(new Game::GameEntityFactory(INJECT(irr::IrrlichtDevice), INJECT(Engine::Framework::IPhysicsService), INJECT(Engine::Framework::IEventService))));
+	builder.autowireType<Game::GameEntityFactory>();
 
 	//Setup Input Service
-	builder.registerType<Engine::InputService>(CREATE(new Engine::InputService(INJECT(irr::IrrlichtDevice), INJECT(Engine::Framework::IEventService))))->as<Engine::Framework::IInputService>()->singleInstance();
+	builder.autowireType<Engine::InputService>()->as<Engine::Framework::IInputService>()->singleInstance();
 
 	//Setup Game
-	builder.registerType<Game::TestGame>(CREATE(new Game::TestGame(
-		INJECT(irr::IrrlichtDevice)
-		, INJECT(Engine::Framework::IPhysicsService)
-		, INJECT(Engine::Framework::IEntityService)
-		, INJECT(Engine::Framework::IEventService)
-		, INJECT(Engine::Framework::IEntityFactoryService)
-		, INJECT(Engine::Framework::IInputService)
-		)))->as<Engine::Framework::IGame>()->singleInstance();
+	builder.autowireType<Game::TestGame>()->as<Engine::Framework::IGame>()->singleInstance();
 
 	std::shared_ptr<Hypodermic::IContainer> typeContainer = builder.build();
 

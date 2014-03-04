@@ -4,10 +4,12 @@
 
 #include <btBulletDynamicsCommon.h>
 
-#include "IrrlichtDevice.h"
-#include "IVideoDriver.h"
-#include "irrString.h"
-#include "ISceneManager.h"
+#include <Hypodermic/AutowiredConstructor.h>
+
+#include <IrrlichtDevice.h>
+#include <IVideoDriver.h>
+#include <irrString.h>
+#include <ISceneManager.h>
 
 #include <memory>
 #include <vector>
@@ -37,6 +39,8 @@ namespace Engine { namespace Bullet {
 		std::vector<SDebugLine> debugLines;
 
 	public:
+		typedef Hypodermic::AutowiredConstructor<IrrlichtPhysicsDebugDrawer(irr::IrrlichtDevice*)> AutowiredSignature;
+
 		IrrlichtPhysicsDebugDrawer(std::shared_ptr<irr::IrrlichtDevice> device);
 
 		virtual void drawLine( const btVector3& from,const btVector3& to,const btVector3& color );

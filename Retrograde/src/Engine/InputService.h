@@ -7,6 +7,8 @@
 #include <IrrlichtDevice.h>
 #include <ICursorControl.h>
 
+#include <Hypodermic/AutowiredConstructor.h>
+
 namespace Engine {
 	class InputService
 		: public Engine::Framework::IInputService
@@ -33,6 +35,8 @@ namespace Engine {
 		void handleMouseMovement( irr::f32 posDiff, irr::f32 prevPosDiff, Engine::MouseAnalogInput negativeAxisInput, Engine::MouseAnalogInput positiveAxisInput );
 
 	public:
+		typedef Hypodermic::AutowiredConstructor<InputService(irr::IrrlichtDevice*, Engine::Framework::IEventService*)> AutowiredSignature;
+
 		InputService(std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IEventService> eventService, irr::ILogger* logger = nullptr);
 
 		virtual void handleMouseInput(const irr::SEvent& event);

@@ -6,9 +6,11 @@
 #include <Engine/Framework/IEventObserver.h>
 #include <Engine/Framework/IInputService.h>
 
-#include "irrlicht.h"
+#include <irrlicht.h>
 
 #include <memory>
+
+#include <Hypodermic/AutowiredConstructor.h>
 
 namespace Game {
 	class TestGame
@@ -20,6 +22,8 @@ namespace Game {
 		std::shared_ptr<Engine::Framework::IPhysicsService> physicsService;
 
 	public:
+		typedef Hypodermic::AutowiredConstructor<TestGame(irr::IrrlichtDevice*, Engine::Framework::IPhysicsService*, Engine::Framework::IEntityService*, Engine::Framework::IEventService*, Engine::Framework::IEntityFactoryService*, Engine::Framework::IInputService*)> AutowiredSignature;
+
 		TestGame(std::shared_ptr<irr::IrrlichtDevice> device
 			, std::shared_ptr<Engine::Framework::IPhysicsService> physicsService
 			, std::shared_ptr<Engine::Framework::IEntityService> entityService
