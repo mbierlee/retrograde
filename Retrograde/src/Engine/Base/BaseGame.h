@@ -12,35 +12,36 @@
 
 #include <memory>
 
-namespace Engine { namespace Base {
-	class BaseGame
-		: public Engine::Framework::IGame
-	{
-	private:
-		bool isExitRequested;
+namespace Engine {
+namespace Base {
 
-	protected:
-		std::shared_ptr<irr::IrrlichtDevice> device;
-		irr::video::IVideoDriver* driver;
-		irr::scene::ISceneManager* sceneManager;
-		std::shared_ptr<Engine::Framework::IEntityService> entityService;
-		std::shared_ptr<Engine::Framework::IEventService> eventService;
-		std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService;
-		std::shared_ptr<Engine::Framework::IInputService> inputService;
-		irr::u32 lastFrameTime, frameTime, deltaTime;
+class BaseGame: public Engine::Framework::IGame {
+private:
+	bool isExitRequested;
 
-	public:
-		BaseGame(std::shared_ptr<irr::IrrlichtDevice> device
-			, std::shared_ptr<Engine::Framework::IEntityService> entityService
-			, std::shared_ptr<Engine::Framework::IEventService> eventService
-			, std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService
-			, std::shared_ptr<Engine::Framework::IInputService> inputService);
+protected:
+	std::shared_ptr<irr::IrrlichtDevice> device;
+	irr::video::IVideoDriver* driver;
+	irr::scene::ISceneManager* sceneManager;
+	std::shared_ptr<Engine::Framework::IEntityService> entityService;
+	std::shared_ptr<Engine::Framework::IEventService> eventService;
+	std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService;
+	std::shared_ptr<Engine::Framework::IInputService> inputService;
+	irr::u32 lastFrameTime, frameTime, deltaTime;
 
-		virtual ~BaseGame();
+public:
+	BaseGame(std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IEntityService> entityService,
+			std::shared_ptr<Engine::Framework::IEventService> eventService,
+			std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService,
+			std::shared_ptr<Engine::Framework::IInputService> inputService);
 
-		virtual bool exitRequested();
-		virtual void requestExit();
-		virtual void update();
-		virtual void initialize();
-	};
-}}
+	virtual ~BaseGame();
+
+	virtual bool exitRequested() override;
+	virtual void requestExit() override;
+	virtual void update() override;
+	virtual void initialize() override;
+};
+
+}
+}

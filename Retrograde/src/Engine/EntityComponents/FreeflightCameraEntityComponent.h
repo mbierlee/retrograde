@@ -9,23 +9,25 @@
 
 #include <queue>
 
-namespace Engine { namespace EntityComponents {
-	class FreeflightCameraEntityComponent
-		: public Engine::Base::BaseEntityComponent
-	{
-	private:
-		std::shared_ptr<irr::IrrlichtDevice> device;
-		irr::scene::ICameraSceneNode* cameraSceneNode;
+namespace Engine {
+namespace EntityComponents {
 
-	public:
-		FreeflightCameraEntityComponent(std::shared_ptr<irr::IrrlichtDevice> device);
+class FreeflightCameraEntityComponent: public Engine::Base::BaseEntityComponent {
+private:
+	std::shared_ptr<irr::IrrlichtDevice> device;
+	irr::scene::ICameraSceneNode* cameraSceneNode;
 
-		virtual const irr::core::stringc getComponentType() const;
-		virtual const irr::core::stringc getFamilyType() const;
-		static const irr::core::stringc componentType();
-		static const irr::core::stringc familyType();
+public:
+	FreeflightCameraEntityComponent(std::shared_ptr<irr::IrrlichtDevice> device);
 
-		virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime);
-		void initialize(Engine::Framework::IEntity* entity);
-	};
-}}
+	virtual const irr::core::stringc getComponentType() const override;
+	virtual const irr::core::stringc getFamilyType() const override;
+	static const irr::core::stringc componentType();
+	static const irr::core::stringc familyType();
+
+	virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime) override;
+	void initialize(Engine::Framework::IEntity* entity);
+};
+
+}
+}

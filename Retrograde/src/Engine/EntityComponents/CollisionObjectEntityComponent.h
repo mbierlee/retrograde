@@ -7,25 +7,27 @@
 
 #include <memory>
 
-namespace Engine { namespace EntityComponents {
-	class CollisionObjectEntityComponent
-		: public Engine::Base::BaseEntityComponent
-	{
-	private:
-		btCollisionObject* collisionObject;
-		std::shared_ptr<Engine::Framework::IPhysicsService> physicsService;
-		void initialize( Engine::Framework::IEntity* entity );
+namespace Engine {
+namespace EntityComponents {
 
-	public:
-		CollisionObjectEntityComponent(std::shared_ptr<Engine::Framework::IPhysicsService> physicsService);
+class CollisionObjectEntityComponent: public Engine::Base::BaseEntityComponent {
+private:
+	btCollisionObject* collisionObject;
+	std::shared_ptr<Engine::Framework::IPhysicsService> physicsService;
+	void initialize(Engine::Framework::IEntity* entity);
 
-		virtual const irr::core::stringc getComponentType() const;
-		virtual const irr::core::stringc getFamilyType() const;
-		static const irr::core::stringc componentType();
-		static const irr::core::stringc familyType();
+public:
+	CollisionObjectEntityComponent(std::shared_ptr<Engine::Framework::IPhysicsService> physicsService);
 
-		virtual void update( Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime );
+	virtual const irr::core::stringc getComponentType() const override;
+	virtual const irr::core::stringc getFamilyType() const override;
+	static const irr::core::stringc componentType();
+	static const irr::core::stringc familyType();
 
-		btCollisionObject* getCollisionObject() const;
-	};
-}}
+	virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime) override;
+
+	btCollisionObject* getCollisionObject() const;
+};
+
+}
+}

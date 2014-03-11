@@ -5,28 +5,29 @@
 
 #include <irrString.h>
 
-namespace Engine { namespace EntityComponents {
-	class FirstPersonInputEntityComponent
-		: public Engine::Base::BaseEntityComponent
-	{
-	private:
-		bool subscribedToEvents;
-		irr::core::stringc moveForwardEvent, moveBackwardEvent, moveLeftEvent, moveRightEvent, turnLeftEvent, turnRightEvent;
-		irr::f32 forwardMagnitude, backwardsMagnitude, leftMagnitude, rightMagnitude, turnLeftMagnitude, turnRightMagnitude;
-		bool previouslyMoving;
+namespace Engine {
+namespace EntityComponents {
 
-	public:
-		FirstPersonInputEntityComponent(irr::core::stringc moveForwardEvent, irr::core::stringc moveBackwardEvent,
-			irr::core::stringc moveLeftEvent, irr::core::stringc moveRightEvent,
-			irr::core::stringc turnLeftEvent, irr::core::stringc turnRightEvent);
+class FirstPersonInputEntityComponent: public Engine::Base::BaseEntityComponent {
+private:
+	bool subscribedToEvents;
+	irr::core::stringc moveForwardEvent, moveBackwardEvent, moveLeftEvent, moveRightEvent, turnLeftEvent, turnRightEvent;
+	irr::f32 forwardMagnitude, backwardsMagnitude, leftMagnitude, rightMagnitude, turnLeftMagnitude, turnRightMagnitude;
+	bool previouslyMoving;
 
-		virtual const irr::core::stringc getComponentType() const;
-		virtual const irr::core::stringc getFamilyType() const;
-		static const irr::core::stringc componentType();
-		static const irr::core::stringc familyType();
+public:
+	FirstPersonInputEntityComponent(irr::core::stringc moveForwardEvent, irr::core::stringc moveBackwardEvent, irr::core::stringc moveLeftEvent,
+			irr::core::stringc moveRightEvent, irr::core::stringc turnLeftEvent, irr::core::stringc turnRightEvent);
 
-		virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime);
+	virtual const irr::core::stringc getComponentType() const override;
+	virtual const irr::core::stringc getFamilyType() const override;
+	static const irr::core::stringc componentType();
+	static const irr::core::stringc familyType();
 
-		virtual void handleEvent( const Engine::Framework::IEvent& event, Engine::Framework::IEntity* entity, void* source );
-	};
-}}
+	virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime) override;
+
+	virtual void handleEvent(const Engine::Framework::IEvent& event, Engine::Framework::IEntity* entity, void* source) override;
+};
+
+}
+}

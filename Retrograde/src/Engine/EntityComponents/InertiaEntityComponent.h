@@ -4,24 +4,26 @@
 
 #include <vector3d.h>
 
-namespace Engine { namespace EntityComponents {
-	class InertiaEntityComponent
-		: public Engine::Base::BaseEntityComponent
-	{
-	private:
-		irr::core::vector3df inertia;
+namespace Engine {
+namespace EntityComponents {
 
-	public:
-		InertiaEntityComponent(irr::core::vector3df inertia = irr::core::vector3df(0));
+class InertiaEntityComponent: public Engine::Base::BaseEntityComponent {
+private:
+	irr::core::vector3df inertia;
 
-		virtual const irr::core::stringc getComponentType() const;
-		virtual const irr::core::stringc getFamilyType() const;
-		static const irr::core::stringc componentType();
-		static const irr::core::stringc familyType();
+public:
+	InertiaEntityComponent(irr::core::vector3df inertia = irr::core::vector3df(0));
 
-		virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime);
+	virtual const irr::core::stringc getComponentType() const override;
+	virtual const irr::core::stringc getFamilyType() const override;
+	static const irr::core::stringc componentType();
+	static const irr::core::stringc familyType();
 
-		irr::core::vector3df getIntertia() const;
-		void setInertia(irr::core::vector3df inertia);
-	};
-}}
+	virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime) override;
+
+	irr::core::vector3df getIntertia() const;
+	void setInertia(irr::core::vector3df inertia);
+};
+
+}
+}

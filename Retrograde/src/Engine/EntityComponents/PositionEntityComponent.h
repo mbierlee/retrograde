@@ -4,24 +4,26 @@
 
 #include "vector3d.h"
 
-namespace Engine { namespace EntityComponents {
-	class PositionEntityComponent
-		: public Engine::Base::BaseEntityComponent
-	{
-	private:
-		irr::core::vector3df position;
+namespace Engine {
+namespace EntityComponents {
 
-	public:
-		PositionEntityComponent(const irr::core::vector3df& position = irr::core::vector3df(0));
+class PositionEntityComponent: public Engine::Base::BaseEntityComponent {
+private:
+	irr::core::vector3df position;
 
-		virtual const irr::core::stringc getComponentType() const;
-		virtual const irr::core::stringc getFamilyType() const;
-		virtual void update( Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime );
+public:
+	PositionEntityComponent(const irr::core::vector3df& position = irr::core::vector3df(0));
 
-		static const irr::core::stringc componentType();
-		static const irr::core::stringc familyType();
+	virtual const irr::core::stringc getComponentType() const override;
+	virtual const irr::core::stringc getFamilyType() const override;
+	virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime) override;
 
-		const irr::core::vector3df& getPosition() const;
-		void setPosition(const irr::core::vector3df& position);
-	};
-}}
+	static const irr::core::stringc componentType();
+	static const irr::core::stringc familyType();
+
+	const irr::core::vector3df& getPosition() const;
+	void setPosition(const irr::core::vector3df& position);
+};
+
+}
+}

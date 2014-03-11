@@ -8,31 +8,32 @@
 #include <IrrlichtDevice.h>
 #include <aabbox3d.h>
 
-namespace Engine { namespace EntityComponents {
-	class SceneNodeEntityComponent
-		: public Engine::Base::BaseEntityComponent
-		, public irr::scene::ISceneNode
-	{
-	private:
-		bool registeredWithRotation;
-		bool registeredWithPosition;
-		irr::core::aabbox3df aabbox;
-		void setPositionFromComponent(std::shared_ptr<Engine::EntityComponents::PositionEntityComponent> component);
-		void setRotationFromComponent(std::shared_ptr<Engine::EntityComponents::RotationEntityComponent> component);
+namespace Engine {
+namespace EntityComponents {
 
-	public:
-		SceneNodeEntityComponent(std::shared_ptr<irr::IrrlichtDevice> device, irr::scene::ISceneNode* parent = nullptr);
+class SceneNodeEntityComponent: public Engine::Base::BaseEntityComponent, public irr::scene::ISceneNode {
+private:
+	bool registeredWithRotation;
+	bool registeredWithPosition;
+	irr::core::aabbox3df aabbox;
+	void setPositionFromComponent(std::shared_ptr<Engine::EntityComponents::PositionEntityComponent> component);
+	void setRotationFromComponent(std::shared_ptr<Engine::EntityComponents::RotationEntityComponent> component);
 
-		virtual const irr::core::stringc getComponentType() const;
-		virtual const irr::core::stringc getFamilyType() const;
-		static const irr::core::stringc componentType();
-		static const irr::core::stringc familyType();
+public:
+	SceneNodeEntityComponent(std::shared_ptr<irr::IrrlichtDevice> device, irr::scene::ISceneNode* parent = nullptr);
 
-		virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime);
-		virtual void handleNotification( std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent );
+	virtual const irr::core::stringc getComponentType() const override;
+	virtual const irr::core::stringc getFamilyType() const override;
+	static const irr::core::stringc componentType();
+	static const irr::core::stringc familyType();
 
-		virtual void render();
-		virtual const irr::core::aabbox3d<irr::f32>& getBoundingBox() const;
-		virtual void OnRegisterSceneNode();
-	};
-}}
+	virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime) override;
+	virtual void handleNotification(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent) override;
+
+	virtual void render() override;
+	virtual const irr::core::aabbox3d<irr::f32>& getBoundingBox() const override;
+	virtual void OnRegisterSceneNode() override;
+};
+
+}
+}

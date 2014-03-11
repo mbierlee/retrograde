@@ -7,28 +7,30 @@
 #include <IrrlichtDevice.h>
 #include <SMaterial.h>
 
-namespace Engine { namespace EntityComponents {
-	class VisualModelEntityComponent
-		: public Engine::Base::BaseEntityComponent
-	{
-	private:
-		irr::scene::IMesh* mesh;
-		irr::scene::IMeshSceneNode* meshSceneNode;
-		std::shared_ptr<irr::IrrlichtDevice> device;
-		bool usingMaterialComponent;
+namespace Engine {
+namespace EntityComponents {
 
-	public:
-		VisualModelEntityComponent(std::shared_ptr<irr::IrrlichtDevice> device, irr::scene::IMesh* mesh);
+class VisualModelEntityComponent: public Engine::Base::BaseEntityComponent {
+private:
+	irr::scene::IMesh* mesh;
+	irr::scene::IMeshSceneNode* meshSceneNode;
+	std::shared_ptr<irr::IrrlichtDevice> device;
+	bool usingMaterialComponent;
 
-		virtual const irr::core::stringc getComponentType() const;
-		virtual const irr::core::stringc getFamilyType() const;
-		static const irr::core::stringc componentType();
-		static const irr::core::stringc familyType();
+public:
+	VisualModelEntityComponent(std::shared_ptr<irr::IrrlichtDevice> device, irr::scene::IMesh* mesh);
 
-		virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime);
+	virtual const irr::core::stringc getComponentType() const override;
+	virtual const irr::core::stringc getFamilyType() const override;
+	static const irr::core::stringc componentType();
+	static const irr::core::stringc familyType();
 
-		void initialize(Engine::Framework::IEntity* entity);
-		virtual bool isInitialized() const;
-		virtual void handleNotification( std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent );
-	};
-}}
+	virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime);
+
+	void initialize(Engine::Framework::IEntity* entity);
+	virtual bool isInitialized() const override;
+	virtual void handleNotification(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent) override;
+};
+
+}
+}

@@ -9,38 +9,39 @@
 #include <memory>
 
 namespace Engine {
-	class PhysicsService
-		: public Engine::Framework::IPhysicsService
-	{
-	private:
-		btDefaultCollisionConfiguration* collisionConfiguration;
-		btCollisionDispatcher* dispatcher;
-		btBroadphaseInterface* overlappingPairCache;
-		btSequentialImpulseConstraintSolver* solver;
-		btDiscreteDynamicsWorld* dynamicsWorld;
 
-		std::shared_ptr<btIDebugDraw> debugDrawer;
-		bool debugModeEnabled;
+class PhysicsService: public Engine::Framework::IPhysicsService {
+private:
+	btDefaultCollisionConfiguration* collisionConfiguration;
+	btCollisionDispatcher* dispatcher;
+	btBroadphaseInterface* overlappingPairCache;
+	btSequentialImpulseConstraintSolver* solver;
+	btDiscreteDynamicsWorld* dynamicsWorld;
 
-	public:
-		typedef Hypodermic::AutowiredConstructor<PhysicsService(btIDebugDraw*)> AutowiredSignature;
+	std::shared_ptr<btIDebugDraw> debugDrawer;
+	bool debugModeEnabled;
 
-		PhysicsService(std::shared_ptr<btIDebugDraw> debugDrawer);
+public:
+	typedef Hypodermic::AutowiredConstructor<PhysicsService(btIDebugDraw*)> AutowiredSignature;
 
-		virtual void initialize();
-		virtual void setGravity(const irr::core::vector3df& gravity);
-		virtual void update(irr::f32 timeStep);
+	PhysicsService(std::shared_ptr<btIDebugDraw> debugDrawer);
 
-		virtual void setDebugDrawing( bool enableDebugDrawing );
+	virtual void initialize() override;
+	virtual void setGravity(const irr::core::vector3df& gravity) override;
+	virtual void update(irr::f32 timeStep) override;
 
-		virtual void drawDebugData();
+	virtual void setDebugDrawing(bool enableDebugDrawing) override;
 
-		virtual void registerCollisionObject(std::shared_ptr<Engine::EntityComponents::CollisionObjectEntityComponent> collisionObject);
+	virtual void drawDebugData() override;
 
-		virtual void registerCollisionObject( std::shared_ptr<Engine::EntityComponents::CollisionObjectEntityComponent> collisionObject, irr::s16 group, irr::s16 mask );
+	virtual void registerCollisionObject(std::shared_ptr<Engine::EntityComponents::CollisionObjectEntityComponent> collisionObject) override;
 
-		virtual void registerRigidBody( std::shared_ptr<Engine::EntityComponents::RigidBodyEntityComponent> rigidBody );
+	virtual void registerCollisionObject(std::shared_ptr<Engine::EntityComponents::CollisionObjectEntityComponent> collisionObject, irr::s16 group,
+			irr::s16 mask) override;
 
-		virtual void registerRigidBody( std::shared_ptr<Engine::EntityComponents::RigidBodyEntityComponent> rigidBody, irr::s16 group, irr::s16 mask );
-	};
+	virtual void registerRigidBody(std::shared_ptr<Engine::EntityComponents::RigidBodyEntityComponent> rigidBody) override;
+
+	virtual void registerRigidBody(std::shared_ptr<Engine::EntityComponents::RigidBodyEntityComponent> rigidBody, irr::s16 group, irr::s16 mask) override;
+};
+
 }

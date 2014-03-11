@@ -19,7 +19,7 @@ namespace Engine { namespace EntityFactories {
 		DefaultEntityFactory(std::shared_ptr<irr::IrrlichtDevice> device);
 		virtual ~DefaultEntityFactory();
 
-		virtual std::shared_ptr<Engine::Framework::IEntity> create(irr::core::stringc entityType);
-		virtual void clearPool();
+		virtual std::shared_ptr<Engine::Framework::IEntity> create(irr::core::stringc entityType) override;
+		virtual void clearPool() override;
 	};
 }}

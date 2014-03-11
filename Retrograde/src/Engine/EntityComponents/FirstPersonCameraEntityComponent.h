@@ -5,34 +5,36 @@
 #include <IrrlichtDevice.h>
 #include <ICameraSceneNode.h>
 
-namespace Engine { namespace EntityComponents {
-	class FirstPersonCameraEntityComponent
-		: public Engine::Base::BaseEntityComponent
-	{
-	private:
-		std::shared_ptr<irr::IrrlichtDevice> device;
-		irr::scene::ICameraSceneNode* cameraSceneNode;
-		irr::scene::ISceneNode* targetSceneNode;
-		irr::f32 eyeHeightOffset;
-		bool syncedWithHeight, syncedWithHeadRotation;
+namespace Engine {
+namespace EntityComponents {
 
-		void setEyeHeight( irr::f32 param1 );
-		void setCameraRotation(const irr::core::quaternion& headRotation);
+class FirstPersonCameraEntityComponent: public Engine::Base::BaseEntityComponent {
+private:
+	std::shared_ptr<irr::IrrlichtDevice> device;
+	irr::scene::ICameraSceneNode* cameraSceneNode;
+	irr::scene::ISceneNode* targetSceneNode;
+	irr::f32 eyeHeightOffset;
+	bool syncedWithHeight, syncedWithHeadRotation;
 
-	public:
-		FirstPersonCameraEntityComponent(std::shared_ptr<irr::IrrlichtDevice> device, irr::f32 eyeHeightOffset = 0.);
+	void setEyeHeight(irr::f32 param1);
+	void setCameraRotation(const irr::core::quaternion& headRotation);
 
-		virtual const irr::core::stringc getComponentType() const;
-		virtual const irr::core::stringc getFamilyType() const;
-		static const irr::core::stringc componentType();
-		static const irr::core::stringc familyType();
+public:
+	FirstPersonCameraEntityComponent(std::shared_ptr<irr::IrrlichtDevice> device, irr::f32 eyeHeightOffset = 0.);
 
-		void initialize(Engine::Framework::IEntity* entity);
+	virtual const irr::core::stringc getComponentType() const override;
+	virtual const irr::core::stringc getFamilyType() const override;
+	static const irr::core::stringc componentType();
+	static const irr::core::stringc familyType();
 
-		irr::f32 getEyeHeightOffset() const;
-		void setEyeHeightOffset(irr::f32 eyeHeightOffset);
+	void initialize(Engine::Framework::IEntity* entity);
 
-		virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime);
-		virtual void handleNotification( std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent );
-	};
-}}
+	irr::f32 getEyeHeightOffset() const;
+	void setEyeHeightOffset(irr::f32 eyeHeightOffset);
+
+	virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime) override;
+	virtual void handleNotification(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent) override;
+};
+
+}
+}

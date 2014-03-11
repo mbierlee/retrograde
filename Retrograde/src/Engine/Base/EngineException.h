@@ -15,7 +15,7 @@ public:
 	EngineException();
 	EngineException(irr::core::stringc message);
 	virtual ~EngineException();
-	virtual const char* what() const _GLIBCXX_USE_NOEXCEPT;
+	virtual const char* what() const _GLIBCXX_USE_NOEXCEPT override;
 };
 
 }

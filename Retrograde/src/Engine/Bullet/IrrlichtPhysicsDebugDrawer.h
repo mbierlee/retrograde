@@ -52,6 +52,6 @@ namespace Engine { namespace Bullet {
 		virtual void setDebugMode( int debugMode );
 		virtual int getDebugMode() const;
 
-		virtual void drawDebugData();
+		virtual void drawDebugData() override;
 	};
 }}

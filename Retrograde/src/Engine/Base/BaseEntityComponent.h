@@ -4,26 +4,27 @@
 
 #include <vector>
 
-namespace Engine { namespace Base {
-	class BaseEntityComponent
-		: public Engine::Framework::IEntityComponent
-		, public std::enable_shared_from_this<Engine::Base::BaseEntityComponent>
-	{
-	private:
-		std::vector<std::shared_ptr<Engine::Framework::IEntityComponent>> notificationSubscribers;
+namespace Engine {
+namespace Base {
 
-	protected:
-		void notifyAll();
-		bool initialized;
+class BaseEntityComponent: public Engine::Framework::IEntityComponent, public std::enable_shared_from_this<Engine::Base::BaseEntityComponent> {
+private:
+	std::vector<std::shared_ptr<Engine::Framework::IEntityComponent>> notificationSubscribers;
 
-	public:
-		BaseEntityComponent();
+protected:
+	void notifyAll();
+	bool initialized;
 
-		virtual void subscribeNotifications(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent);
-		virtual void unsubscribeNotifications(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent);
-		virtual void handleNotification(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent);
-		virtual void handleEvent( const Engine::Framework::IEvent& event, Engine::Framework::IEntity* entity, void* source );
-		virtual void cleanup( Engine::Framework::IEntity* entity );
-		virtual bool isInitialized() const;
-	};
-}}
+public:
+	BaseEntityComponent();
+
+	virtual void subscribeNotifications(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent) override;
+	virtual void unsubscribeNotifications(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent) override;
+	virtual void handleNotification(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent) override;
+	virtual void handleEvent(const Engine::Framework::IEvent& event, Engine::Framework::IEntity* entity, void* source) override;
+	virtual void cleanup(Engine::Framework::IEntity* entity) override;
+	virtual bool isInitialized() const override;
+};
+
+}
+}

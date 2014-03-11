@@ -12,6 +12,6 @@ namespace Engine {
 	public:
 		MagnitudeEvent(const irr::core::stringc& eventName, irr::f32 magnitude);
 		irr::f32 getMagnitude() const;
-		virtual bool operator ==( const IEvent& obj ) const;
+		virtual bool operator ==( const IEvent& obj ) const override;
 	};
 }

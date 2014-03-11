@@ -4,24 +4,26 @@
 
 #include <irrTypes.h>
 
-namespace Engine { namespace EntityComponents {
-	class MassEntityComponent
-		: public Engine::Base::BaseEntityComponent
-	{
-	private:
-		irr::f32 mass;
+namespace Engine {
+namespace EntityComponents {
 
-	public:
-		MassEntityComponent(irr::f32 mass = 0.);
+class MassEntityComponent: public Engine::Base::BaseEntityComponent {
+private:
+	irr::f32 mass;
 
-		virtual const irr::core::stringc getComponentType() const;
-		virtual const irr::core::stringc getFamilyType() const;
-		static const irr::core::stringc componentType();
-		static const irr::core::stringc familyType();
+public:
+	MassEntityComponent(irr::f32 mass = 0.);
 
-		virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime);
+	virtual const irr::core::stringc getComponentType() const override;
+	virtual const irr::core::stringc getFamilyType() const override;
+	static const irr::core::stringc componentType();
+	static const irr::core::stringc familyType();
 
-		irr::f32 getMass() const;
-		void setMass(irr::f32 mass);
-	};
-}}
+	virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime) override;
+
+	irr::f32 getMass() const;
+	void setMass(irr::f32 mass);
+};
+
+}
+}

@@ -7,21 +7,27 @@
 
 #include "irrString.h"
 
-namespace Engine { namespace Framework {
-	class IEntityComponent {
-	public:
-		virtual ~IEntityComponent() {};
+namespace Engine {
+namespace Framework {
 
-		virtual const irr::core::stringc getComponentType() const =0;
-		virtual const irr::core::stringc getFamilyType() const =0;
+class IEntityComponent {
+public:
+	virtual ~IEntityComponent() {
+	}
+	;
 
-		virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime) =0;
-		virtual void cleanup(Engine::Framework::IEntity* entity) =0;
+	virtual const irr::core::stringc getComponentType() const =0;
+	virtual const irr::core::stringc getFamilyType() const =0;
 
-		virtual void subscribeNotifications(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent) =0;
-		virtual void unsubscribeNotifications(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent) =0;
-		virtual void handleNotification(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent) =0;
-		virtual void handleEvent(const Engine::Framework::IEvent& event, Engine::Framework::IEntity* entity, void* source) =0;
-		virtual bool isInitialized() const =0;
-	};
-}}
+	virtual void update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime) =0;
+	virtual void cleanup(Engine::Framework::IEntity* entity) =0;
+
+	virtual void subscribeNotifications(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent) =0;
+	virtual void unsubscribeNotifications(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent) =0;
+	virtual void handleNotification(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent) =0;
+	virtual void handleEvent(const Engine::Framework::IEvent& event, Engine::Framework::IEntity* entity, void* source) =0;
+	virtual bool isInitialized() const =0;
+};
+
+}
+}

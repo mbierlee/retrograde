@@ -30,13 +30,13 @@ namespace RetrogradeTest {
 		: public Engine::Base::BaseContentLoader<DummyContent>
 	{
 	protected:
-		virtual std::shared_ptr<DummyContent> loadContent( const irr::core::stringw& fileName )
+		virtual std::shared_ptr<DummyContent> loadContent( const irr::core::stringw& fileName ) override
 		{
 			return std::shared_ptr<DummyContent>(new DummyContent());
 		}
 
 	public:
-		virtual bool canLoad(const irr::core::stringw& fileName)
+		virtual bool canLoad(const irr::core::stringw& fileName) override
 		{
 			return true;
 		}
