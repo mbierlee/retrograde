@@ -13,32 +13,30 @@
 #include <Hypodermic/AutowiredConstructor.h>
 
 namespace Game {
-	class TestGame
-		: public Engine::Base::BaseGame
-		, public Engine::Framework::IEventObserver
-		, public std::enable_shared_from_this<Game::TestGame>
-	{
-	private:
-		std::shared_ptr<Engine::Framework::IPhysicsService> physicsService;
 
-	public:
-		typedef Hypodermic::AutowiredConstructor<TestGame(irr::IrrlichtDevice*, Engine::Framework::IPhysicsService*, Engine::Framework::IEntityService*, Engine::Framework::IEventService*, Engine::Framework::IEntityFactoryService*, Engine::Framework::IInputService*)> AutowiredSignature;
+class TestGame: public Engine::Base::BaseGame, public Engine::Framework::IEventObserver, public std::enable_shared_from_this<Game::TestGame> {
+private:
+	std::shared_ptr<Engine::Framework::IPhysicsService> physicsService;
 
-		TestGame(std::shared_ptr<irr::IrrlichtDevice> device
-			, std::shared_ptr<Engine::Framework::IPhysicsService> physicsService
-			, std::shared_ptr<Engine::Framework::IEntityService> entityService
-			, std::shared_ptr<Engine::Framework::IEventService> eventService
-			, std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService
-			, std::shared_ptr<Engine::Framework::IInputService> inputService);
+public:
+	typedef Hypodermic::AutowiredConstructor<
+			TestGame(irr::IrrlichtDevice*, Engine::Framework::IPhysicsService*, Engine::Framework::IEntityService*, Engine::Framework::IEventService*,
+					Engine::Framework::IEntityFactoryService*, Engine::Framework::IInputService*)> AutowiredSignature;
 
-		virtual ~TestGame(void);
+	TestGame(std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IPhysicsService> physicsService,
+			std::shared_ptr<Engine::Framework::IEntityService> entityService, std::shared_ptr<Engine::Framework::IEventService> eventService,
+			std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService,
+			std::shared_ptr<Engine::Framework::IInputService> inputService);
 
-		virtual void initialize();
+	virtual ~TestGame(void);
 
-		virtual void update();
+	virtual void initialize() override;
 
-		virtual void draw();
+	virtual void update() override;
 
-		virtual void handleEvent( const Engine::Framework::IEvent& event, void* source );
-	};
+	virtual void draw() override;
+
+	virtual void handleEvent(const Engine::Framework::IEvent& event, void* source) override;
+};
+
 }

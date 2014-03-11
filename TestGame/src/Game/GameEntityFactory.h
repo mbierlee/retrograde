@@ -9,21 +9,23 @@
 #include <Hypodermic/AutowiredConstructor.h>
 
 namespace Game {
-	class GameEntityFactory
-		: public Engine::Framework::IEntityFactory
-	{
-	private:
-		virtual std::shared_ptr<Engine::Framework::IEntity> makePlayer();
-		std::shared_ptr<irr::IrrlichtDevice> device;
-		std::shared_ptr<Engine::Framework::IPhysicsService> physicsService;
-		std::shared_ptr<Engine::Framework::IEventService> eventService;
 
-	public:
-		typedef Hypodermic::AutowiredConstructor<GameEntityFactory(irr::IrrlichtDevice*, Engine::Framework::IPhysicsService*, Engine::Framework::IEventService*)> AutowiredSignature;
+class GameEntityFactory: public Engine::Framework::IEntityFactory {
+private:
+	virtual std::shared_ptr<Engine::Framework::IEntity> makePlayer();
+	std::shared_ptr<irr::IrrlichtDevice> device;
+	std::shared_ptr<Engine::Framework::IPhysicsService> physicsService;
+	std::shared_ptr<Engine::Framework::IEventService> eventService;
 
-		GameEntityFactory(std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IPhysicsService> physicsService, std::shared_ptr<Engine::Framework::IEventService> eventService);
+public:
+	typedef Hypodermic::AutowiredConstructor<
+			GameEntityFactory(irr::IrrlichtDevice*, Engine::Framework::IPhysicsService*, Engine::Framework::IEventService*)> AutowiredSignature;
 
-		virtual std::shared_ptr<Engine::Framework::IEntity> create( irr::core::stringc entityType );
-		virtual void clearPool();
-	};
+	GameEntityFactory(std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IPhysicsService> physicsService,
+			std::shared_ptr<Engine::Framework::IEventService> eventService);
+
+	virtual std::shared_ptr<Engine::Framework::IEntity> create(irr::core::stringc entityType) override;
+	virtual void clearPool() override;
+};
+
 }
