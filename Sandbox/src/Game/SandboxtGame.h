@@ -14,21 +14,21 @@
 
 namespace Game {
 
-class TestGame: public Engine::Base::BaseGame, public Engine::Framework::IEventObserver, public std::enable_shared_from_this<Game::TestGame> {
+class SandboxGame: public Engine::Base::BaseGame, public Engine::Framework::IEventObserver, public std::enable_shared_from_this<Game::SandboxGame> {
 private:
 	std::shared_ptr<Engine::Framework::IPhysicsService> physicsService;
 
 public:
 	typedef Hypodermic::AutowiredConstructor<
-			TestGame(irr::IrrlichtDevice*, Engine::Framework::IPhysicsService*, Engine::Framework::IEntityService*, Engine::Framework::IEventService*,
+			SandboxGame(irr::IrrlichtDevice*, Engine::Framework::IPhysicsService*, Engine::Framework::IEntityService*, Engine::Framework::IEventService*,
 					Engine::Framework::IEntityFactoryService*, Engine::Framework::IInputService*)> AutowiredSignature;
 
-	TestGame(std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IPhysicsService> physicsService,
+	SandboxGame(std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IPhysicsService> physicsService,
 			std::shared_ptr<Engine::Framework::IEntityService> entityService, std::shared_ptr<Engine::Framework::IEventService> eventService,
 			std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService,
 			std::shared_ptr<Engine::Framework::IInputService> inputService);
 
-	virtual ~TestGame(void);
+	virtual ~SandboxGame(void);
 
 	virtual void initialize() override;
 

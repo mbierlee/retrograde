@@ -1,4 +1,4 @@
-#include "TestGame.h"
+#include "SandboxtGame.h"
 
 #include "Game/GameEventDefinitions.h"
 #include "Game/GameEntityDefinitions.h"
@@ -12,7 +12,7 @@
 
 #include <ICameraSceneNode.h>
 
-Game::TestGame::TestGame(std::shared_ptr<irr::IrrlichtDevice> device
+Game::SandboxGame::SandboxGame(std::shared_ptr<irr::IrrlichtDevice> device
 						 , std::shared_ptr<Engine::Framework::IPhysicsService> physicsService
 						 , std::shared_ptr<Engine::Framework::IEntityService> entityService
 						 , std::shared_ptr<Engine::Framework::IEventService> eventService
@@ -23,11 +23,11 @@ Game::TestGame::TestGame(std::shared_ptr<irr::IrrlichtDevice> device
 {
 }
 
-Game::TestGame::~TestGame(void)
+Game::SandboxGame::~SandboxGame(void)
 {
 }
 
-void Game::TestGame::initialize()
+void Game::SandboxGame::initialize()
 {
 	BaseGame::initialize();
 
@@ -56,12 +56,12 @@ void Game::TestGame::initialize()
 	sceneManager->loadScene("data/TestMap.irr");
 }
 
-void Game::TestGame::update(){
+void Game::SandboxGame::update(){
 	Engine::Base::BaseGame::update();
 	physicsService->update((irr::f32)deltaTime);
 }
 
-void Game::TestGame::draw()
+void Game::SandboxGame::draw()
 {
 	driver->beginScene();
 	physicsService->drawDebugData();
@@ -69,7 +69,7 @@ void Game::TestGame::draw()
 	driver->endScene();
 }
 
-void Game::TestGame::handleEvent( const Engine::Framework::IEvent& event, void* source )
+void Game::SandboxGame::handleEvent( const Engine::Framework::IEvent& event, void* source )
 {
 	irr::core::stringc eventName = event.getName();
 
