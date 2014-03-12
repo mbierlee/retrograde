@@ -156,7 +156,7 @@
 									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/include/Irrlicht&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Retrograde/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/include/Bullet&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/TestGame/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Sandbox/src}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.other.1376602635" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11 -m32" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.preprocessor.def.2065824279" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
@@ -260,7 +260,7 @@
 									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/include/Irrlicht&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Retrograde/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${RETROGRADE_HOME}/include/Bullet&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/TestGame/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Sandbox/src}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.other.1376176878" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11 -m32" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.195174592" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
