@@ -5,9 +5,11 @@
 
 #include <boost/format.hpp>
 
-int Engine::engineMain(std::shared_ptr<Hypodermic::IContainer> (*dependencyConfigFunc)(irr::SIrrlichtCreationParameters&), irr::core::stringw gameName)
-{
-	std::wcout << boost::wformat(L"%s\nCopyright %s Lostmoment\n\nRetroGrade Engine version %s\n\n") % gameName.c_str() % RETROGRADE_COPYRIGHT_YEAR % RETROGRADE_VERSION_STRING;
+int Engine::engineMain(std::shared_ptr<Hypodermic::IContainer> (*dependencyConfigFunc)(irr::SIrrlichtCreationParameters&),
+		irr::core::stringw gameName) {
+	std::wcout
+			<< boost::wformat(
+					L"%s\nCopyright %s Lostmoment\n\nRetroGrade Engine version %s\n\n") % gameName.c_str() % RETROGRADE_COPYRIGHT_YEAR % RETROGRADE_VERSION_STRING;
 
 	irr::SIrrlichtCreationParameters deviceParams;
 	deviceParams.AntiAlias = 32U;
@@ -16,7 +18,7 @@ int Engine::engineMain(std::shared_ptr<Hypodermic::IContainer> (*dependencyConfi
 	deviceParams.DriverType = irr::video::EDT_OPENGL;
 	deviceParams.Fullscreen = false;
 	deviceParams.Vsync = true;
-	deviceParams.WindowSize = irr::core::dimension2du(1280,720);
+	deviceParams.WindowSize = irr::core::dimension2du(1280, 720);
 	deviceParams.HandleSRGB = false;
 	deviceParams.Stencilbuffer = true;
 	// TODO: config-based log levels
@@ -29,6 +31,8 @@ int Engine::engineMain(std::shared_ptr<Hypodermic::IContainer> (*dependencyConfi
 		return 1; //TODO: debug log
 	}
 
+	device->setWindowCaption(gameName.c_str());
+
 	auto game = typeContainer->resolve<Engine::Framework::IGame>();
 	if (!game) {
 		return 1; // TODO: debug log
@@ -36,7 +40,7 @@ int Engine::engineMain(std::shared_ptr<Hypodermic::IContainer> (*dependencyConfi
 
 	game->initialize();
 
-	while(device->run() && !game->exitRequested()) {
+	while (device->run() && !game->exitRequested()) {
 		game->update();
 
 		if (device->isWindowActive()) {
