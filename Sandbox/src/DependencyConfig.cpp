@@ -1,7 +1,9 @@
 #include "DependencyConfig.h"
 
-#include "Game/SandboxtGame.h"
+#include "Game/SandboxGame.h"
 #include "Game/GameEntityFactory.h"
+
+#include "Breakout/BreakoutGame.h"
 
 #include <Engine/PhysicsService.h>
 #include <Engine/EntityService.h>
@@ -51,7 +53,8 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 	builder.autowireType<Engine::InputService>()->as<Engine::Framework::IInputService>()->singleInstance();
 
 	//Setup Game
-	builder.autowireType<Game::SandboxGame>()->as<Engine::Framework::IGame>()->singleInstance();
+//	builder.autowireType<Game::SandboxGame>()->as<Engine::Framework::IGame>()->singleInstance();
+	builder.autowireType<Breakout::BreakoutGame>()->as<Engine::Framework::IGame>()->singleInstance();
 
 	std::shared_ptr<Hypodermic::IContainer> typeContainer = builder.build();
 

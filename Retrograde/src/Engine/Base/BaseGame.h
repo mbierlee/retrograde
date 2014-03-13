@@ -41,6 +41,7 @@ public:
 	virtual void requestExit() override;
 	virtual void update() override;
 	virtual void initialize() override;
+	virtual void draw() override;
 };
 
 }

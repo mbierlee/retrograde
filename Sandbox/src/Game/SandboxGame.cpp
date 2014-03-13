@@ -1,4 +1,4 @@
-#include "SandboxtGame.h"
+#include "SandboxGame.h"
 
 #include "Game/GameEventDefinitions.h"
 #include "Game/GameEntityDefinitions.h"
