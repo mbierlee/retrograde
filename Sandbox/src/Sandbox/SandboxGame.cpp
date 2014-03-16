@@ -12,7 +12,7 @@
 
 #include <ICameraSceneNode.h>
 
-Game::SandboxGame::SandboxGame(std::shared_ptr<irr::IrrlichtDevice> device
+Sandbox::SandboxGame::SandboxGame(std::shared_ptr<irr::IrrlichtDevice> device
 						 , std::shared_ptr<Engine::Framework::IPhysicsService> physicsService
 						 , std::shared_ptr<Engine::Framework::IEntityService> entityService
 						 , std::shared_ptr<Engine::Framework::IEventService> eventService
@@ -23,11 +23,11 @@ Game::SandboxGame::SandboxGame(std::shared_ptr<irr::IrrlichtDevice> device
 {
 }
 
-Game::SandboxGame::~SandboxGame(void)
+Sandbox::SandboxGame::~SandboxGame(void)
 {
 }
 
-void Game::SandboxGame::initialize()
+void Sandbox::SandboxGame::initialize()
 {
 	BaseGame::initialize();
 
@@ -56,12 +56,12 @@ void Game::SandboxGame::initialize()
 	sceneManager->loadScene("data/TestMap.irr");
 }
 
-void Game::SandboxGame::update(){
+void Sandbox::SandboxGame::update(){
 	Engine::Base::BaseGame::update();
 	physicsService->update((irr::f32)deltaTime);
 }
 
-void Game::SandboxGame::draw()
+void Sandbox::SandboxGame::draw()
 {
 	driver->beginScene();
 	physicsService->drawDebugData();
@@ -69,7 +69,7 @@ void Game::SandboxGame::draw()
 	driver->endScene();
 }
 
-void Game::SandboxGame::handleEvent( const Engine::Framework::IEvent& event, void* source )
+void Sandbox::SandboxGame::handleEvent( const Engine::Framework::IEvent& event, void* source )
 {
 	irr::core::stringc eventName = event.getName();
 

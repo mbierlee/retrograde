@@ -12,9 +12,9 @@
 
 #include <Hypodermic/AutowiredConstructor.h>
 
-namespace Game {
+namespace Sandbox {
 
-class SandboxGame: public Engine::Base::BaseGame, public Engine::Framework::IEventObserver, public std::enable_shared_from_this<Game::SandboxGame> {
+class SandboxGame: public Engine::Base::BaseGame, public Engine::Framework::IEventObserver, public std::enable_shared_from_this<Sandbox::SandboxGame> {
 private:
 	std::shared_ptr<Engine::Framework::IPhysicsService> physicsService;
 

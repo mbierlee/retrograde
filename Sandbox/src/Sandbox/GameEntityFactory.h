@@ -8,7 +8,7 @@
 
 #include <Hypodermic/AutowiredConstructor.h>
 
-namespace Game {
+namespace Sandbox {
 
 class GameEntityFactory: public Engine::Framework::IEntityFactory {
 private:

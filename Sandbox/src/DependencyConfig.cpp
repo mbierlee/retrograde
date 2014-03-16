@@ -47,7 +47,7 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 	builder.autowireType<Engine::EntityFactories::DebugEntityFactory>();
 
 	//Setup game entity factory
-	builder.autowireType<Game::GameEntityFactory>();
+	builder.autowireType<Sandbox::GameEntityFactory>();
 
 	//Setup Input Service
 	builder.autowireType<Engine::InputService>()->as<Engine::Framework::IInputService>()->singleInstance();
@@ -62,7 +62,7 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 	std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService = typeContainer->resolve<Engine::Framework::IEntityFactoryService>();
 	entityFactoryService->registerFactory(typeContainer->resolve<Engine::EntityFactories::DefaultEntityFactory>());
 	entityFactoryService->registerFactory(typeContainer->resolve<Engine::EntityFactories::DebugEntityFactory>());
-	entityFactoryService->registerFactory(typeContainer->resolve<Game::GameEntityFactory>());
+	entityFactoryService->registerFactory(typeContainer->resolve<Sandbox::GameEntityFactory>());
 
 	return typeContainer;
 }
