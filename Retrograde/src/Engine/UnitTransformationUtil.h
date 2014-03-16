@@ -7,14 +7,25 @@
 #include <SColor.h>
 
 namespace Engine {
-	btVector3 transformIrrVector(const irr::core::vector3df& vector);
-	irr::core::vector3df transformBulletVector(const btVector3& vector);
 
-	btQuaternion transformIrrQuaternion(const irr::core::quaternion& quaternion);
-	irr::core::quaternion transformBulletQuaternion(const btQuaternion& quaternion);
+/**
+ * The scale of the visual world compared to the size of the physics world.
+ */
+const irr::f32 visualWorldSize = 10.f;
 
-	irr::core::vector3df vecRadToDeg(const irr::core::vector3df& vector);
-	irr::core::vector3df vecDegToRad(const irr::core::vector3df& vector);
+btVector3 transformIrrVector(const irr::core::vector3df& vector);
+irr::core::vector3df transformBulletVector(const btVector3& vector);
 
-	irr::video::SColorf transformBulletColor(const btVector3& color);
+btQuaternion transformIrrQuaternion(const irr::core::quaternion& quaternion);
+irr::core::quaternion transformBulletQuaternion(const btQuaternion& quaternion);
+
+irr::core::vector3df vecRadToDeg(const irr::core::vector3df& vector);
+irr::core::vector3df vecDegToRad(const irr::core::vector3df& vector);
+
+irr::video::SColorf transformBulletColor(const btVector3& color);
+
+irr::core::vector3df makePhysicsToWorldsizeVector(irr::f32 x, irr::f32 y, irr::f32 z);
+irr::core::vector3df makePhysicsToWorldsizeVector(const irr::core::vector3df& vector);
+irr::core::vector3df makePhysicsToWorldsizeVector(const btVector3& vector);
+
 }

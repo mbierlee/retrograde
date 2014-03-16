@@ -4,36 +4,29 @@
 
 #include <ISceneManager.h>
 
-Engine::EntityComponents::SceneNodeEntityComponent::SceneNodeEntityComponent(std::shared_ptr<irr::IrrlichtDevice> device, irr::scene::ISceneNode* parent /*= nullptr*/)
-	: irr::scene::ISceneNode(parent, device->getSceneManager())
-	, registeredWithRotation(false)
-	, registeredWithPosition(false)
-	, aabbox(irr::core::aabbox3df(irr::core::vector3df(0)))
-{
+Engine::EntityComponents::SceneNodeEntityComponent::SceneNodeEntityComponent(std::shared_ptr<irr::IrrlichtDevice> device,
+		irr::scene::ISceneNode* parent /*= nullptr*/) :
+		irr::scene::ISceneNode(parent, device->getSceneManager()), registeredWithRotation(false), registeredWithPosition(false), aabbox(
+				irr::core::aabbox3df(irr::core::vector3df(0))) {
 }
 
-const irr::core::stringc Engine::EntityComponents::SceneNodeEntityComponent::getComponentType() const
-{
+const irr::core::stringc Engine::EntityComponents::SceneNodeEntityComponent::getComponentType() const {
 	return componentType();
 }
 
-const irr::core::stringc Engine::EntityComponents::SceneNodeEntityComponent::getFamilyType() const
-{
+const irr::core::stringc Engine::EntityComponents::SceneNodeEntityComponent::getFamilyType() const {
 	return familyType();
 }
 
-const irr::core::stringc Engine::EntityComponents::SceneNodeEntityComponent::componentType()
-{
+const irr::core::stringc Engine::EntityComponents::SceneNodeEntityComponent::componentType() {
 	return "SceneNodeEntityComponent";
 }
 
-const irr::core::stringc Engine::EntityComponents::SceneNodeEntityComponent::familyType()
-{
+const irr::core::stringc Engine::EntityComponents::SceneNodeEntityComponent::familyType() {
 	return "SceneNodeEntityComponent";
 }
 
-void Engine::EntityComponents::SceneNodeEntityComponent::update( Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime )
-{
+void Engine::EntityComponents::SceneNodeEntityComponent::update(Engine::Framework::IEntity* entity, irr::u32 frameTime, irr::u32 lastFrameTime) {
 	if (!registeredWithPosition) {
 		auto positionComponent = COMPONENT(PositionEntityComponent);
 		if (positionComponent) {
@@ -53,8 +46,7 @@ void Engine::EntityComponents::SceneNodeEntityComponent::update( Engine::Framewo
 	}
 }
 
-void Engine::EntityComponents::SceneNodeEntityComponent::handleNotification( std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent )
-{
+void Engine::EntityComponents::SceneNodeEntityComponent::handleNotification(std::shared_ptr<Engine::Framework::IEntityComponent> entityComponent) {
 	if (entityComponent->getComponentType() == PositionEntityComponent::componentType()) {
 		auto positionComponent = std::static_pointer_cast<Engine::EntityComponents::PositionEntityComponent>(entityComponent);
 		setPositionFromComponent(positionComponent);
@@ -66,17 +58,14 @@ void Engine::EntityComponents::SceneNodeEntityComponent::handleNotification( std
 	}
 }
 
-void Engine::EntityComponents::SceneNodeEntityComponent::render()
-{
+void Engine::EntityComponents::SceneNodeEntityComponent::render() {
 }
 
-const irr::core::aabbox3d<irr::f32>& Engine::EntityComponents::SceneNodeEntityComponent::getBoundingBox() const
-{
+const irr::core::aabbox3d<irr::f32>& Engine::EntityComponents::SceneNodeEntityComponent::getBoundingBox() const {
 	return aabbox;
 }
 
-void Engine::EntityComponents::SceneNodeEntityComponent::OnRegisterSceneNode()
-{
+void Engine::EntityComponents::SceneNodeEntityComponent::OnRegisterSceneNode() {
 	if (IsVisible) {
 		SceneManager->registerNodeForRendering(this);
 	}
@@ -84,12 +73,12 @@ void Engine::EntityComponents::SceneNodeEntityComponent::OnRegisterSceneNode()
 	irr::scene::ISceneNode::OnRegisterSceneNode();
 }
 
-void Engine::EntityComponents::SceneNodeEntityComponent::setPositionFromComponent(std::shared_ptr<Engine::EntityComponents::PositionEntityComponent> component)
-{
-	setPosition(component->getPosition() * 10.);
+void Engine::EntityComponents::SceneNodeEntityComponent::setPositionFromComponent(
+		std::shared_ptr<Engine::EntityComponents::PositionEntityComponent> component) {
+	setPosition(component->getPosition() * Engine::visualWorldSize);
 }
 
-void Engine::EntityComponents::SceneNodeEntityComponent::setRotationFromComponent(std::shared_ptr<Engine::EntityComponents::RotationEntityComponent> component)
-{
+void Engine::EntityComponents::SceneNodeEntityComponent::setRotationFromComponent(
+		std::shared_ptr<Engine::EntityComponents::RotationEntityComponent> component) {
 	setRotation(vecRadToDeg(component->getEulerRotation()));
 }
