@@ -1,7 +1,7 @@
 #include "DependencyConfig.h"
 
 #include "Sandbox/SandboxGame.h"
-#include "Sandbox/GameEntityFactory.h"
+#include "Sandbox/SandboxEntityFactory.h"
 
 #include "Breakout/BreakoutGame.h"
 
@@ -47,7 +47,7 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 	builder.autowireType<Engine::EntityFactories::DebugEntityFactory>();
 
 	//Setup game entity factory
-	builder.autowireType<Sandbox::GameEntityFactory>();
+	builder.autowireType<Sandbox::SandboxEntityFactory>();
 
 	//Setup Input Service
 	builder.autowireType<Engine::InputService>()->as<Engine::Framework::IInputService>()->singleInstance();
@@ -62,7 +62,7 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 	std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService = typeContainer->resolve<Engine::Framework::IEntityFactoryService>();
 	entityFactoryService->registerFactory(typeContainer->resolve<Engine::EntityFactories::DefaultEntityFactory>());
 	entityFactoryService->registerFactory(typeContainer->resolve<Engine::EntityFactories::DebugEntityFactory>());
-	entityFactoryService->registerFactory(typeContainer->resolve<Sandbox::GameEntityFactory>());
+	entityFactoryService->registerFactory(typeContainer->resolve<Sandbox::SandboxEntityFactory>());
 
 	return typeContainer;
 }

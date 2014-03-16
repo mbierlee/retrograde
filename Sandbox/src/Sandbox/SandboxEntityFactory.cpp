@@ -1,7 +1,7 @@
-#include "GameEntityFactory.h"
+#include "SandboxEntityFactory.h"
 
-#include "Sandbox/GameEntityDefinitions.h"
-#include "Sandbox/GameEventDefinitions.h"
+#include "Sandbox/SandboxEntityDefinitions.h"
+#include "Sandbox/SandboxEventDefinitions.h"
 
 #include <Engine/Entity.h>
 #include <Engine/UnitTransformationUtil.h>
@@ -24,14 +24,14 @@
 #include <memory>
 #include <ISceneManager.h>
 
-Sandbox::GameEntityFactory::GameEntityFactory( std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IPhysicsService> physicsService, std::shared_ptr<Engine::Framework::IEventService> eventService )
+Sandbox::SandboxEntityFactory::SandboxEntityFactory( std::shared_ptr<irr::IrrlichtDevice> device, std::shared_ptr<Engine::Framework::IPhysicsService> physicsService, std::shared_ptr<Engine::Framework::IEventService> eventService )
 	: device(device)
 	, physicsService(physicsService)
 	, eventService(eventService)
 {
 }
 
-std::shared_ptr<Engine::Framework::IEntity> Sandbox::GameEntityFactory::create( irr::core::stringc entityType )
+std::shared_ptr<Engine::Framework::IEntity> Sandbox::SandboxEntityFactory::create( irr::core::stringc entityType )
 {
 	if (entityType == ENTITY_PLAYER) {
 		return makePlayer();
@@ -40,11 +40,11 @@ std::shared_ptr<Engine::Framework::IEntity> Sandbox::GameEntityFactory::create( 
 	return std::shared_ptr<Engine::Framework::IEntity>();
 }
 
-void Sandbox::GameEntityFactory::clearPool()
+void Sandbox::SandboxEntityFactory::clearPool()
 {
 }
 
-std::shared_ptr<Engine::Framework::IEntity> Sandbox::GameEntityFactory::makePlayer()
+std::shared_ptr<Engine::Framework::IEntity> Sandbox::SandboxEntityFactory::makePlayer()
 {
 	auto entity = std::make_shared<Engine::Entity>(ENTITY_PLAYER);
 	irr::f32 height = 1.8f;
