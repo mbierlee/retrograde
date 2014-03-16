@@ -1,7 +1,7 @@
 #include "GameEntityFactory.h"
 
-#include "Game/GameEntityDefinitions.h"
-#include "Game/GameEventDefinitions.h"
+#include "Sandbox/GameEntityDefinitions.h"
+#include "Sandbox/GameEventDefinitions.h"
 
 #include <Engine/Entity.h>
 #include <Engine/UnitTransformationUtil.h>

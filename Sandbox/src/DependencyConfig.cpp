@@ -1,7 +1,7 @@
 #include "DependencyConfig.h"
 
-#include "Game/SandboxGame.h"
-#include "Game/GameEntityFactory.h"
+#include "Sandbox/SandboxGame.h"
+#include "Sandbox/GameEntityFactory.h"
 
 #include "Breakout/BreakoutGame.h"
 

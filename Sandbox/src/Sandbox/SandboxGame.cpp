@@ -1,7 +1,7 @@
 #include "SandboxGame.h"
 
-#include "Game/GameEventDefinitions.h"
-#include "Game/GameEntityDefinitions.h"
+#include "Sandbox/GameEventDefinitions.h"
+#include "Sandbox/GameEntityDefinitions.h"
 
 #include <Engine/Entity.h>
 #include <Engine/DefaultEntityDefinitions.h>
