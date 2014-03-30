@@ -11,5 +11,15 @@ Breakout::BreakoutGame::BreakoutGame(std::shared_ptr<irr::IrrlichtDevice> device
 }
 
 void Breakout::BreakoutGame::initialize() {
+	BaseGame::initialize();
+
 	entityService->addEntity(entityFactoryService->createEntity(ENTITY_BORDER));
+}
+
+void Breakout::BreakoutGame::update() {
+	Engine::Base::BaseGame::update();
+}
+
+void Breakout::BreakoutGame::draw() {
+	Engine::Base::BaseGame::draw();
 }
