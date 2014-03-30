@@ -41,7 +41,7 @@ void Engine::Base::BaseGame::initialize() {
 }
 
 void Engine::Base::BaseGame::draw() {
-	driver->beginScene();
+	driver->beginScene(true, true, irr::video::SColor(255, 163, 73, 164));
 	sceneManager->drawAll();
 	driver->endScene();
 }
