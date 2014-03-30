@@ -29,6 +29,8 @@ public:
 	virtual ~BreakoutGame() {
 	}
 
+	virtual void initialize() override;
+
 };
 
 }
