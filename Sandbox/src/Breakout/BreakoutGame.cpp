@@ -4,6 +4,6 @@ Breakout::BreakoutGame::BreakoutGame(std::shared_ptr<irr::IrrlichtDevice> device
 		std::shared_ptr<Engine::Framework::IEntityService> entityService, std::shared_ptr<Engine::Framework::IEventService> eventService,
 		std::shared_ptr<Engine::Framework::IEntityFactoryService> entityFactoryService,
 		std::shared_ptr<Engine::Framework::IInputService> inputService) :
-		Engine::Base::BaseGame(device, entityService, eventService, entityFactoryService, inputService) {
+		Engine::Base::BaseGame(device, entityService, eventService, entityFactoryService, inputService), physicsService(physicsService) {
 
 }

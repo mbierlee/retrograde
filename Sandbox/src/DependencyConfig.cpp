@@ -4,6 +4,7 @@
 #include "Sandbox/SandboxEntityFactory.h"
 
 #include "Breakout/BreakoutGame.h"
+#include "Breakout/BreakoutEntityFactory.h"
 
 #include <Engine/PhysicsService.h>
 #include <Engine/EntityService.h>
@@ -43,11 +44,10 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 	//Setup default entity factory
 	builder.autowireType<Engine::EntityFactories::DefaultEntityFactory>();
 
-	//Setup debug entity factory
+	//Setup debug entity factories
 	builder.autowireType<Engine::EntityFactories::DebugEntityFactory>();
-
-	//Setup game entity factory
 	builder.autowireType<Sandbox::SandboxEntityFactory>();
+	builder.autowireType<Breakout::BreakoutEntityFactory>();
 
 	//Setup Input Service
 	builder.autowireType<Engine::InputService>()->as<Engine::Framework::IInputService>()->singleInstance();
@@ -63,6 +63,7 @@ std::shared_ptr<Hypodermic::IContainer> SetupDependencies(irr::SIrrlichtCreation
 	entityFactoryService->registerFactory(typeContainer->resolve<Engine::EntityFactories::DefaultEntityFactory>());
 	entityFactoryService->registerFactory(typeContainer->resolve<Engine::EntityFactories::DebugEntityFactory>());
 	entityFactoryService->registerFactory(typeContainer->resolve<Sandbox::SandboxEntityFactory>());
+	entityFactoryService->registerFactory(typeContainer->resolve<Breakout::BreakoutEntityFactory>());
 
 	return typeContainer;
 }

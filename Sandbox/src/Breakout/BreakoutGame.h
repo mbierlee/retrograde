@@ -13,6 +13,9 @@
 namespace Breakout {
 
 class BreakoutGame: public Engine::Base::BaseGame {
+private:
+	std::shared_ptr<Engine::Framework::IPhysicsService> physicsService;
+
 public:
 	typedef Hypodermic::AutowiredConstructor<
 			BreakoutGame(irr::IrrlichtDevice*, Engine::Framework::IPhysicsService*, Engine::Framework::IEntityService*,
