@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.0" orientation="orthogonal" renderorder="right-down" width="2" height="1" tilewidth="32" tileheight="32" nextobjectid="1">
+ <tileset firstgid="1" name="pinkelephantland" tilewidth="32" tileheight="32">
+  <image source="pinkelephantland.png" width="160" height="64"/>
+ </tileset>
+ <layer name="Tile Layer 1" width="2" height="1">
+  <data>
+   <tile gid="0"/>
+   <tile gid="4"/>
+  </data>
+ </layer>
+</map>

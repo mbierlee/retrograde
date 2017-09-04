@@ -1,0 +1,60 @@
+<!--
+@license
+Copyright 2017 Mike Bierlee
+This software is licensed under the terms of the MIT license.
+The full terms of the license can be found in the LICENSE.txt file.
+-->
+
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="rg-widget.html">
+
+<dom-module id="rg-simplewidget">
+    <template>
+        <style>
+            :host {
+                display: block;
+            }
+
+            p {
+                margin: 0;
+                font-size: 0.8em;
+            }
+        </style>
+
+        <iron-ajax
+                handle-as="json"
+                on-response="_handleDataRequest"></iron-ajax>
+
+        <rg-widget widget-title="[[widgetTitle]]">
+            <p>{{content}}</p>
+        </rg-widget>
+    </template>
+
+    <script>
+        Polymer({
+            is: 'rg-simplewidget',
+
+            properties: {
+                widgetTitle: String,
+                parameters: Object
+            },
+
+            ready: function() {
+                this.widgetTitle = this.parameters.title;
+                this._fetchData();
+            },
+
+            _fetchData: function() {
+                var ajax = this.$$('iron-ajax');
+                ajax.url = "/data/" + this.parameters.resource;
+                ajax.generateRequest();
+            },
+
+            _handleDataRequest: function(event, detail) {
+                this.content = detail.xhr.response.content;
+            }
+        });
+    </script>
+
+</dom-module>

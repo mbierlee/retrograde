@@ -1,0 +1,14 @@
+{
+  "name": "remote-debugger",
+  "description": "Retrograde Remote Debugger",
+  "license": "MIT",
+  "main": "index.html",
+  "dependencies": {
+    "polymer": "Polymer/polymer#^1.7.1",
+    "iron-ajax": "^1.4.3",
+    "iron-icons": "^1.2.0"
+  },
+  "devDependencies": {
+    "webcomponentsjs": "webcomponents/webcomponentsjs#^0.7.0"
+  }
+}

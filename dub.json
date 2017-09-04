@@ -1,0 +1,54 @@
+{
+	"name": "retrograde",
+	"description": "The Retrograde Game Engine",
+	"homepage": "http://lostmoment.com",
+	"authors": ["Lostmoment", "Mike Bierlee"],
+	"copyright": "Copyright Mike Bierlee 2014-2017",
+	"license": "MIT",
+	"dependencies": {
+		"poodinis": "~>8.0",
+		"derelict-assimp3": "~>1.3.0",
+		"vibe-d:http": "0.8.1",
+		"vibe-d:data": "0.8.1",
+		"openssl": "*"
+	},
+	"configurations": [
+		{
+			"name": "build",
+			"targetType": "library"
+		},
+		{
+			"name": "sdl2-build",
+			"targetType": "library",
+			"dependencies": {
+				"derelict-sdl2": "~>2.1.4"
+			},
+			"versions": ["sdl2"]
+		},
+		{
+			"name": "sdl2-opengl-build",
+			"targetType": "library",
+			"dependencies": {
+				"derelict-sdl2": "~>2.1.4",
+				"derelict-gl3": "~>1.0.23"
+			},
+			"versions": ["sdl2", "opengl"],
+			"stringImportPaths": [
+				"shadersource/"
+			]
+		},
+		{
+			"name": "unittest",
+			"targetType": "executable",
+			"sourcePaths": [
+				"test"
+			],
+			"stringImportPaths": [
+				"test/static"
+			],
+			"dependencies": {
+				"d-unit": ">=0.8.1"
+			}
+		}
+	]
+}

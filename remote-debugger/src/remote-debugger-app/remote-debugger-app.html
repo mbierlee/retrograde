@@ -1,0 +1,45 @@
+<!--
+@license
+Copyright 2017 Mike Bierlee
+This software is licensed under the terms of the MIT license.
+The full terms of the license can be found in the LICENSE.txt file.
+-->
+
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="rg-widgets.html">
+<link rel="import" href="rg-connectionstate.html">
+
+<dom-module id="remote-debugger-app">
+    <template>
+        <style>
+            :host {
+                display: block;
+            }
+
+            header {
+                font-family: Arial, Helvetica, sans-serif;
+                color: white;
+                margin: 0 0 1.5em 0;
+            }
+
+            h1 {
+                background-color: #7FB3D5;
+                padding: 1em 2.2em;
+                margin: 0;
+                font-size: 16pt;
+            }
+        </style>
+        <header>
+            <h1>Retrograde Remote Debugger</h1>
+            <rg-connectionstate></rg-connectionstate>
+        </header>
+        <rg-widgets></rg-widgets>
+    </template>
+
+    <script>
+    Polymer({
+      is: 'remote-debugger-app'
+    });
+
+    </script>
+</dom-module>

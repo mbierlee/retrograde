@@ -1,0 +1,41 @@
+{ "height":1,
+ "layers":[
+        {
+         "data":[0, 4],
+         "height":1,
+         "name":"Tile Layer 1",
+         "opacity":1,
+         "type":"tilelayer",
+         "visible":true,
+         "width":2,
+         "x":0,
+         "y":0
+        }],
+ "nextobjectid":1,
+ "orientation":"orthogonal",
+ "properties":
+    {
+     "sjaak":"ja"
+    },
+ "renderorder":"right-down",
+ "tileheight":32,
+ "tilesets":[
+        {
+         "firstgid":1,
+         "image":"pinkelephantland.png",
+         "imageheight":64,
+         "imagewidth":160,
+         "margin":0,
+         "name":"pinkelephantland",
+         "properties":
+            {
+
+            },
+         "spacing":0,
+         "tileheight":32,
+         "tilewidth":32
+        }],
+ "tilewidth":32,
+ "version":1,
+ "width":2
+}

@@ -1,0 +1,48 @@
+<!--
+@license
+Copyright 2017 Mike Bierlee
+This software is licensed under the terms of the MIT license.
+The full terms of the license can be found in the LICENSE.txt file.
+-->
+
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<dom-module id="rg-symbol">
+    <template>
+        <style>
+            :host {
+                display: inline-block;
+            }
+
+            p {
+                margin: 0;
+                padding: 0;
+            }
+        </style>
+        <p title="{{fqn}}">{{_abbreviateNamespace(fqn)}}</p>
+    </template>
+
+    <script>
+        Polymer({
+            is: 'rg-symbol',
+
+            properties: {
+                fqn: String
+            },
+
+            _abbreviateNamespace: function(fullyQualifiedName) {
+                var name = "";
+                var parts = fullyQualifiedName.split(".");
+                if (parts.length > 0) {
+                    for(i = 0; i < parts.length-1; i++) {
+                        name += parts[i].charAt(0) + ".";
+                    }
+
+                    name += parts[parts.length-1];
+                }
+
+                return name;
+            }
+        });
+    </script>
+</dom-module>

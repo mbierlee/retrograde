@@ -1,0 +1,11 @@
+/.dub
+/retrograde.lib
+/retrograde.exe
+/.settings
+/dub.selections.json
+/.idea
+/retrograde.iml
+/out
+/.buildpath
+/.project
+/*.dll

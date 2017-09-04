@@ -1,0 +1,56 @@
+<!--
+@license
+Copyright 2017 Mike Bierlee
+This software is licensed under the terms of the MIT license.
+The full terms of the license can be found in the LICENSE.txt file.
+-->
+
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<dom-module id="rg-widget">
+    <template>
+        <style>
+            :host {
+                display: block;
+                padding: 1.4em 1em 1em 1em;
+                margin: 1.5em 0;
+                border-style: solid;
+                border-color: #5C5C5C;
+                border-width: 2px;
+                border-radius: 8px;
+                font-family: Arial, Helvetica, sans-serif;
+                color: #585858;
+            }
+
+            h4 {
+                padding: 4px 1em;
+                position: absolute;
+                margin: -3em 0;
+                background-color: #8B8B8B;
+                color: white;
+                border-style: solid;
+                border-width: 0 4px;
+                border-radius: 8px;
+                border-color: #5C5C5C;
+                display: inline-block;
+                font-size: 0.7em;
+                text-transform: capitalize;
+            }
+        </style>
+
+        <section>
+            <h4>[[widgetTitle]]</h4>
+            <content></content>
+        </section>
+    </template>
+
+    <script>
+        Polymer({
+            is: 'rg-widget',
+
+            properties: {
+                widgetTitle: String
+            }
+        });
+    </script>
+</dom-module>
