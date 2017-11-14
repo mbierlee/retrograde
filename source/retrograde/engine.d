@@ -16,15 +16,13 @@ import retrograde.application;
 import retrograde.stringid;
 import retrograde.messaging;
 
-import std.datetime;
+import std.datetime.stopwatch;
 import std.stdio;
 import std.string;
 
 const uint VERSION_MAYOR = 0;
 const uint VERSION_MINOR = 0;
 const uint VERSION_REVISION = 0;
-
-const uint MICRO_SECOND_RESOLUTION = 1000;
 
 const uint COPYRIGHT_YEAR = 2017;
 
@@ -49,16 +47,16 @@ private void logStartupInfo(Game game) {
 
 public void loopWithFixedTimeStepVariableDrawRate(Game game) {
 	auto frameTimeStopWatch = new StopWatch();
-	long lag = 0;
+	auto lag = Duration.zero;
 	frameTimeStopWatch.start();
 
 	while (!game.terminatable) {
 
-		auto elapsedFrameTime = frameTimeStopWatch.peek().usecs;
+		auto elapsedFrameTime = frameTimeStopWatch.peek();
 		frameTimeStopWatch.reset();
 		lag += elapsedFrameTime;
 
-		auto desiredFrameTime = game.msecsPerFrame * MICRO_SECOND_RESOLUTION;
+		auto desiredFrameTime = dur!"msecs"(game.msecsPerFrame);
 		auto lagCompensationFrames = 0L;
 		while (lag >= desiredFrameTime) {
 			lagCompensationFrames++;
