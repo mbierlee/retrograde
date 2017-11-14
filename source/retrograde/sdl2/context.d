@@ -11,7 +11,7 @@
 
 module retrograde.sdl2.context;
 
-version(sdl2) {
+version(Have_derelict_sdl2) {
 
 import poodinis;
 

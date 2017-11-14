@@ -11,8 +11,8 @@
 
 module retrograde.sdl2.opengl.renderer;
 
-version(sdl2) {
-version (opengl) {
+version(Have_derelict_sdl2) {
+version(Have_derelict_gl3) {
 
 import retrograde.entity;
 import retrograde.sdl2.window;

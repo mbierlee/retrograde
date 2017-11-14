@@ -11,7 +11,7 @@
 
 module retrograde.sdl2.event;
 
-version(sdl2) {
+version(Have_derelict_sdl2) {
 
 import retrograde.messaging;
 import retrograde.engine;
