@@ -6,7 +6,9 @@ The full terms of the license can be found in the LICENSE.txt file.
 -->
 
 <link rel="import" href="../../bower_components/polymer/polymer.html">
+
 <link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html">
+
 <link rel="import" href="rg-widget.html">
 
 <dom-module id="rg-simplewidget">
@@ -27,7 +29,7 @@ The full terms of the license can be found in the LICENSE.txt file.
                 on-response="_handleDataRequest"></iron-ajax>
 
         <rg-widget widget-title="[[widgetTitle]]">
-            <p>{{content}}</p>
+            <p>[[content]]</p>
         </rg-widget>
     </template>
 
