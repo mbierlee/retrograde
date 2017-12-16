@@ -5,7 +5,8 @@ This software is licensed under the terms of the MIT license.
 The full terms of the license can be found in the LICENSE.txt file.
 -->
 
-<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+
 <link rel="import" href="rg-widgets.html">
 <link rel="import" href="rg-connectionstate.html">
 
@@ -37,9 +38,12 @@ The full terms of the license can be found in the LICENSE.txt file.
     </template>
 
     <script>
-    Polymer({
-      is: 'remote-debugger-app'
-    });
+        class RemoteDebuggerApp extends Polymer.Element {
+            static get is() {
+                return 'remote-debugger-app';
+            }
+        }
 
+        customElements.define(RemoteDebuggerApp.is, RemoteDebuggerApp);
     </script>
 </dom-module>

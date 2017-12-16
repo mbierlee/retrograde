@@ -5,7 +5,7 @@ This software is licensed under the terms of the MIT license.
 The full terms of the license can be found in the LICENSE.txt file.
 -->
 
-<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
 
 <link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html">
 
@@ -24,9 +24,8 @@ The full terms of the license can be found in the LICENSE.txt file.
             }
         </style>
 
-        <iron-ajax
-                handle-as="json"
-                on-response="_handleDataRequest"></iron-ajax>
+        <iron-ajax handle-as="json"
+                   on-response="_handleDataRequest"></iron-ajax>
 
         <rg-widget widget-title="[[widgetTitle]]">
             <p>[[content]]</p>
@@ -34,29 +33,36 @@ The full terms of the license can be found in the LICENSE.txt file.
     </template>
 
     <script>
-        Polymer({
-            is: 'rg-simplewidget',
+        class RgSimpleWidget extends Polymer.Element {
+            static get is() {
+                return "rg-simplewidget";
+            }
 
-            properties: {
-                widgetTitle: String,
-                parameters: Object
-            },
+            static get properties() {
+                return {
+                    widgetTitle: String,
+                    parameters: Object
+                }
+            }
 
-            ready: function() {
+            ready() {
+                super.ready();
                 this.widgetTitle = this.parameters.title;
                 this._fetchData();
-            },
+            }
 
-            _fetchData: function() {
-                var ajax = this.$$('iron-ajax');
+            _fetchData() {
+                let ajax = this.root.querySelector('iron-ajax');
                 ajax.url = "/data/" + this.parameters.resource;
                 ajax.generateRequest();
-            },
+            }
 
-            _handleDataRequest: function(event, detail) {
+            _handleDataRequest(event, detail) {
                 this.content = detail.xhr.response.content;
             }
-        });
+        }
+
+        customElements.define(RgSimpleWidget.is, RgSimpleWidget);
     </script>
 
 </dom-module>

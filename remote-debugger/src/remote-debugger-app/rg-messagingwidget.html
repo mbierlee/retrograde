@@ -5,7 +5,9 @@ This software is licensed under the terms of the MIT license.
 The full terms of the license can be found in the LICENSE.txt file.
 -->
 
-<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../bower_components/polymer/lib/elements/dom-repeat.html">
+
 <link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html">
 
 <link rel="import" href="rg-widget.html">
@@ -44,17 +46,19 @@ The full terms of the license can be found in the LICENSE.txt file.
     </template>
 
     <script>
-        Polymer({
-            is: 'rg-messagingwidget',
+        class RgMessagingWidget extends Polymer.mixinBehaviors([PollAjaxBehavior], Polymer.Element) {
+            static get is() {
+                return "rg-messagingwidget";
+            }
 
-            behaviors: [PollAjaxBehavior],
-
-            _handleDataRequest: function(event, detail) {
-                var data = detail.xhr.response;
+            _handleDataRequest(event, detail) {
+                let data = detail.xhr.response;
                 this.eventChannels = data.eventChannels;
                 this.commandChannels = data.commandChannels;
                 this.messageProcessors = data.messageProcessors;
             }
-        });
+        }
+
+        customElements.define(RgMessagingWidget.is, RgMessagingWidget);
     </script>
 </dom-module>

@@ -5,7 +5,7 @@ This software is licensed under the terms of the MIT license.
 The full terms of the license can be found in the LICENSE.txt file.
 -->
 
-<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
 
 <dom-module id="rg-symbol">
     <template>
@@ -23,26 +23,32 @@ The full terms of the license can be found in the LICENSE.txt file.
     </template>
 
     <script>
-        Polymer({
-            is: 'rg-symbol',
+        class RgSymbol extends Polymer.Element {
+            static get is() {
+                return "rg-symbol";
+            }
 
-            properties: {
-                fqn: String
-            },
+            static get properties() {
+                return {
+                    fqn: String
+                }
+            }
 
-            _abbreviateNamespace: function(fullyQualifiedName) {
-                var name = "";
-                var parts = fullyQualifiedName.split(".");
+            _abbreviateNamespace(fullyQualifiedName) {
+                let name = "";
+                let parts = fullyQualifiedName.split(".");
                 if (parts.length > 0) {
-                    for(i = 0; i < parts.length-1; i++) {
+                    for (let i = 0; i < parts.length - 1; i++) {
                         name += parts[i].charAt(0) + ".";
                     }
 
-                    name += parts[parts.length-1];
+                    name += parts[parts.length - 1];
                 }
 
                 return name;
             }
-        });
+        }
+
+        customElements.define(RgSymbol.is, RgSymbol);
     </script>
 </dom-module>

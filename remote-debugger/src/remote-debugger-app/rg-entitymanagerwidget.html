@@ -5,7 +5,9 @@ This software is licensed under the terms of the MIT license.
 The full terms of the license can be found in the LICENSE.txt file.
 -->
 
-<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../bower_components/polymer/lib/elements/dom-repeat.html">
+
 <link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html">
 
 <link rel="import" href="rg-widget.html">
@@ -98,24 +100,25 @@ The full terms of the license can be found in the LICENSE.txt file.
     </template>
 
     <script>
-        Polymer({
-            is: 'rg-entitymanagerwidget',
+        class RgEntityManagerWidget extends Polymer.mixinBehaviors([PollAjaxBehavior], Polymer.Element) {
+            static get is() {
+                return "rg-entitymanagerwidget"
+            }
 
-            behaviors: [PollAjaxBehavior],
-
-            _handleDataRequest: function(event, detail) {
-                var data = detail.xhr.response;
+            _handleDataRequest(event, detail) {
+                let data = detail.xhr.response;
                 this.entities = data.entities;
                 this.processors = data.processors;
-            },
+            }
 
-            _fromDataMap: function(data) {
-                return Object.keys(data).map(function(key) {
+            _fromDataMap(data) {
+                return Object.keys(data).map(function (key) {
                     return key + ": " + data[key];
                 });
             }
-        });
+        }
 
+        customElements.define(RgEntityManagerWidget.is, RgEntityManagerWidget);
     </script>
 
 </dom-module>
