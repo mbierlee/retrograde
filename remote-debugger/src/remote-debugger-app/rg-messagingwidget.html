@@ -46,7 +46,7 @@ The full terms of the license can be found in the LICENSE.txt file.
     </template>
 
     <script>
-        class RgMessagingWidget extends Polymer.mixinBehaviors([PollAjaxBehavior], Polymer.Element) {
+        class RgMessagingWidget extends PollAjaxBehavior(Polymer.Element) {
             static get is() {
                 return "rg-messagingwidget";
             }

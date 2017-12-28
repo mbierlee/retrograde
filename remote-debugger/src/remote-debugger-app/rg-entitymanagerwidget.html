@@ -100,7 +100,7 @@ The full terms of the license can be found in the LICENSE.txt file.
     </template>
 
     <script>
-        class RgEntityManagerWidget extends Polymer.mixinBehaviors([PollAjaxBehavior], Polymer.Element) {
+        class RgEntityManagerWidget extends PollAjaxBehavior(Polymer.Element) {
             static get is() {
                 return "rg-entitymanagerwidget"
             }
