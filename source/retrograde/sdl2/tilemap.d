@@ -14,7 +14,7 @@ module retrograde.sdl2.tilemap;
 version(Have_derelict_sdl2) {
 
 import retrograde.tiles;
-import retrograde.sdl2.renderer;
+import retrograde.rendering.twodee.sdl2.renderer;
 import retrograde.math;
 
 import poodinis;

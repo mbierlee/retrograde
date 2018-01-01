@@ -9,13 +9,13 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.sdl2.text;
+module retrograde.rendering.twodee.sdl2.text;
 
 version(Have_derelict_sdl2) {
 
 import retrograde.entity;
 import retrograde.font;
-import retrograde.sdl2.renderer;
+import retrograde.rendering.twodee.sdl2.renderer;
 import retrograde.file;
 import retrograde.graphics;
 import retrograde.stringid;
