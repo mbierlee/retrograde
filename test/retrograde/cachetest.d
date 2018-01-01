@@ -3,7 +3,7 @@
  *
  * Authors:
  *  Mike Bierlee, m.bierlee@lostmoment.com
- * Copyright: 2014-2017 Mike Bierlee
+ * Copyright: 2014-2018 Mike Bierlee
  * License:
  *  This software is licensed under the terms of the MIT license.
  *  The full terms of the license can be found in the LICENSE.txt file.
@@ -15,127 +15,127 @@ import dunit;
 import std.exception;
 
 class CacheTest {
-	mixin UnitTest;
+    mixin UnitTest;
 
-	class TestThing {}
+    class TestThing {}
 
-	@Test
-	public void testGet() {
-		auto cache = new Cache!(string, TestThing)();
-		auto thing = new TestThing();
+    @Test
+    public void testGet() {
+        auto cache = new Cache!(string, TestThing)();
+        auto thing = new TestThing();
 
-		cache.add("le thing", thing);
-		auto cachedThing = cache.get("le thing").getOrElse({
-			fail();
-			return new TestThing();
-		});
+        cache.add("le thing", thing);
+        auto cachedThing = cache.get("le thing").getOrElse({
+            fail();
+            return new TestThing();
+        });
 
-		assertSame(thing, cachedThing);
-	}
+        assertSame(thing, cachedThing);
+    }
 
-	@Test
-	public void testGetNotInCache() {
-		auto cache = new Cache!(string, TestThing)();
-		auto cachedThing = cache.get("lez materie");
-		assertTrue(cachedThing.isEmpty);
-	}
+    @Test
+    public void testGetNotInCache() {
+        auto cache = new Cache!(string, TestThing)();
+        auto cachedThing = cache.get("lez materie");
+        assertTrue(cachedThing.isEmpty);
+    }
 
-	@Test
-	public void testGetOrAddNotInCache() {
-		bool createdFromFetchFunction = false;
+    @Test
+    public void testGetOrAddNotInCache() {
+        bool createdFromFetchFunction = false;
 
-		auto cache = new Cache!(string, TestThing)();
-		auto thing = cache.getOrAdd("le thing", {
-			createdFromFetchFunction = true;
-			return new TestThing();
-		});
+        auto cache = new Cache!(string, TestThing)();
+        auto thing = cache.getOrAdd("le thing", {
+            createdFromFetchFunction = true;
+            return new TestThing();
+        });
 
-		assertTrue(createdFromFetchFunction);
-		assertNotNull(thing);
-	}
+        assertTrue(createdFromFetchFunction);
+        assertNotNull(thing);
+    }
 
-	@Test
-	public void testGetOrAddReturnNull() {
-		auto cache = new Cache!(string, TestThing)();
-		assertThrown!Exception(cache.getOrAdd("de textuur", {
-			return null;
-		}));
-	}
+    @Test
+    public void testGetOrAddReturnNull() {
+        auto cache = new Cache!(string, TestThing)();
+        assertThrown!Exception(cache.getOrAdd("de textuur", {
+            return null;
+        }));
+    }
 
-	@Test
-	public void testGetOrAddFromCache() {
-		auto cache = new Cache!(string, TestThing)();
-		auto thingOne = cache.getOrAdd("la picuture", {
-			return new TestThing();
-		});
+    @Test
+    public void testGetOrAddFromCache() {
+        auto cache = new Cache!(string, TestThing)();
+        auto thingOne = cache.getOrAdd("la picuture", {
+            return new TestThing();
+        });
 
-		auto thingTwo = cache.getOrAdd("la picuture", {
-			return new TestThing();
-		});
+        auto thingTwo = cache.getOrAdd("la picuture", {
+            return new TestThing();
+        });
 
-		assertSame(thingOne, thingTwo);
-	}
+        assertSame(thingOne, thingTwo);
+    }
 
-	@Test
-	public void testAdd() {
-		auto cache = new Cache!(string, TestThing)();
-		auto thing = new TestThing();
+    @Test
+    public void testAdd() {
+        auto cache = new Cache!(string, TestThing)();
+        auto thing = new TestThing();
 
-		cache.add("lez materie", thing);
+        cache.add("lez materie", thing);
 
-		auto cachedThing = cache.getOrAdd("lez materie", {
-			fail();
-			return new TestThing();
-		});
+        auto cachedThing = cache.getOrAdd("lez materie", {
+            fail();
+            return new TestThing();
+        });
 
-		assertSame(thing, cachedThing);
-	}
+        assertSame(thing, cachedThing);
+    }
 
-		@Test
-	public void testAddNull() {
-		auto cache = new Cache!(string, TestThing)();
-		assertThrown!Exception(cache.add("lu turture", null));
-	}
+        @Test
+    public void testAddNull() {
+        auto cache = new Cache!(string, TestThing)();
+        assertThrown!Exception(cache.add("lu turture", null));
+    }
 
-	@Test
-	public void testRemove() {
-		auto cache = new Cache!(string, TestThing)();
-		auto thing = new TestThing();
+    @Test
+    public void testRemove() {
+        auto cache = new Cache!(string, TestThing)();
+        auto thing = new TestThing();
 
-		cache.add("die farbepapieren", thing);
-		cache.remove("die farbepapieren");
+        cache.add("die farbepapieren", thing);
+        cache.remove("die farbepapieren");
 
-		auto cachedThing = cache.getOrAdd("die farbepapieren", {
-			return new TestThing();
-		});
+        auto cachedThing = cache.getOrAdd("die farbepapieren", {
+            return new TestThing();
+        });
 
-		assertNotSame(thing, cachedThing);
-	}
+        assertNotSame(thing, cachedThing);
+    }
 
-	@Test
-	public void testRemoveNonexistingTexture() {
-		auto cache = new Cache!(string, TestThing)();
-		cache.remove("il textia");
-	}
+    @Test
+    public void testRemoveNonexistingTexture() {
+        auto cache = new Cache!(string, TestThing)();
+        cache.remove("il textia");
+    }
 
-	@Test
-	public void testHas() {
-		auto cache = new Cache!(string, TestThing)();
-		auto thing = new TestThing();
-		cache.add("dun tubuiebu", thing);
+    @Test
+    public void testHas() {
+        auto cache = new Cache!(string, TestThing)();
+        auto thing = new TestThing();
+        cache.add("dun tubuiebu", thing);
 
-		assertTrue(cache.has("dun tubuiebu"));
-		assertFalse(cache.has("not a thing"));
-	}
+        assertTrue(cache.has("dun tubuiebu"));
+        assertFalse(cache.has("not a thing"));
+    }
 
-	@Test
-	public void testClear() {
-		auto cache = new Cache!(string, TestThing)();
-		auto thing = new TestThing();
-		cache.add("dun tubuiebu", thing);
+    @Test
+    public void testClear() {
+        auto cache = new Cache!(string, TestThing)();
+        auto thing = new TestThing();
+        cache.add("dun tubuiebu", thing);
 
-		cache.clear();
+        cache.clear();
 
-		assertFalse(cache.has("dun tubuiebu"));
-	}
+        assertFalse(cache.has("dun tubuiebu"));
+    }
 }

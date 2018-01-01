@@ -3,7 +3,7 @@
  *
  * Authors:
  *  Mike Bierlee, m.bierlee@lostmoment.com
- * Copyright: 2014-2017 Mike Bierlee
+ * Copyright: 2014-2018 Mike Bierlee
  * License:
  *  This software is licensed under the terms of the MIT license.
  *  The full terms of the license can be found in the LICENSE.txt file.
@@ -22,42 +22,42 @@ import retrograde.entity;
 import std.experimental.logger;
 
 enum WindowPosition {
-	centered,
-	custom
+    centered,
+    custom
 }
 
 struct WindowCreationContext {
-	uint x = 0;
-	uint y = 0;
-	uint width = 640;
-	uint height = 480;
-	WindowPosition xWindowPosition = WindowPosition.centered;
-	WindowPosition yWindowPosition = WindowPosition.centered;
+    uint x = 0;
+    uint y = 0;
+    uint width = 640;
+    uint height = 480;
+    WindowPosition xWindowPosition = WindowPosition.centered;
+    WindowPosition yWindowPosition = WindowPosition.centered;
 }
 
 class RetrogradeDefaultApplicationContext : ApplicationContext {
 
-	public override void registerDependencies(shared(DependencyContainer) container) {
-		container.register!(CommandChannel, CoreEngineCommandChannel);
-		container.register!(CommandChannel, MappedInputCommandChannel);
+    public override void registerDependencies(shared(DependencyContainer) container) {
+        container.register!(CommandChannel, CoreEngineCommandChannel);
+        container.register!(CommandChannel, MappedInputCommandChannel);
 
-		container.register!(EventChannel, RawInputEventChannel);
+        container.register!(EventChannel, RawInputEventChannel);
 
-		container.register!InputHandler;
-		container.register!EntityManager;
-	}
+        container.register!InputHandler;
+        container.register!EntityManager;
+    }
 
-	@Component
-	public Logger logger() {
-		auto logger = new MultiLogger();
+    @Component
+    public Logger logger() {
+        auto logger = new MultiLogger();
 
-		auto stdoutLogger = new StdoutLogger();
-		if (stdoutLogger.stdoutIsAvailable()) {
-			logger.insertLogger("stdoutLogger", stdoutLogger);
-		}
+        auto stdoutLogger = new StdoutLogger();
+        if (stdoutLogger.stdoutIsAvailable()) {
+            logger.insertLogger("stdoutLogger", stdoutLogger);
+        }
 
-		sharedLog = logger;
-		return logger;
-	}
+        sharedLog = logger;
+        return logger;
+    }
 
 }
