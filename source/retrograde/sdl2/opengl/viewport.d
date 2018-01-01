@@ -47,6 +47,10 @@ class SdlOpenglViewport : Viewport {
         if (glContext) {
             SDL_GL_DeleteContext(glContext);
         }
+
+        if (window) {
+            SDL_DestroyWindow(window);
+        }
     }
 }
 
