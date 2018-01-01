@@ -112,7 +112,7 @@ class RemoteDebugger : EntityProcessor {
 
 		thread = new VibeThread;
 		thread.start();
-	};
+	}
 
 	public override void cleanup() {
 		logger.info("Remote debugger disabled");

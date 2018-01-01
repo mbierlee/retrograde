@@ -9,14 +9,13 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.sdl2.opengl.uniform;
+module retrograde.rendering.threedee.opengl.uniform;
 
-version(Have_derelict_sdl2) {
 version(Have_derelict_gl3) {
 
 import retrograde.math;
-import retrograde.sdl2.opengl.shader;
-import retrograde.sdl2.opengl.error;
+import retrograde.rendering.threedee.opengl.shader;
+import retrograde.rendering.threedee.opengl.error;
 
 import std.string;
 import std.exception;
@@ -246,5 +245,4 @@ class UniformBlockBuildException : Exception {
 	mixin basicExceptionCtors;
 }
 
-}
 }

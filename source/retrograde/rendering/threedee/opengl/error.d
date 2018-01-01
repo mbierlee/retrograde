@@ -9,9 +9,8 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.sdl2.opengl.error;
+module retrograde.rendering.threedee.opengl.error;
 
-version(Have_derelict_sdl2) {
 version(Have_derelict_gl3) {
 
 import std.experimental.logger;
@@ -57,5 +56,4 @@ class ErrorService {
 	}
 }
 
-}
 }

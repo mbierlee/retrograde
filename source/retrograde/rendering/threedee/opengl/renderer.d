@@ -9,27 +9,25 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.sdl2.opengl.renderer;
+module retrograde.rendering.threedee.opengl.renderer;
 
-version(Have_derelict_sdl2) {
 version(Have_derelict_gl3) {
 
 import retrograde.entity;
-import retrograde.sdl2.window;
 import retrograde.graphics;
 import retrograde.file;
 import retrograde.model;
-import retrograde.sdl2.opengl.shader;
-import retrograde.sdl2.opengl.model;
-import retrograde.sdl2.opengl.uniform;
+import retrograde.rendering.threedee.opengl.shader;
+import retrograde.rendering.threedee.opengl.model;
+import retrograde.rendering.threedee.opengl.uniform;
 import retrograde.math;
 import retrograde.camera;
 import retrograde.geometry;
-import retrograde.sdl2.opengl.error;
+import retrograde.rendering.threedee.opengl.error;
+import retrograde.viewport;
 
 import poodinis;
 
-import derelict.sdl2.sdl;
 import derelict.opengl3.gl3;
 
 import std.string;
@@ -44,14 +42,11 @@ class OpenGl3RenderSystemInitException : Exception {
 }
 
 class OpenGlRenderSystem : EntityProcessor {
-
 	private const GLVersion minimumOpenGlVersion = GLVersion.GL45;
 	private const string uniformModelViewProjectionName = "modelViewProjection";
 	private const string uniformIsTexturedName = "isTextured";
 	private static const uint[TextureFilterMode] textureFilterModeMapping;
 
-	private SDL_Window* window;
-	private SDL_GLContext context;
 	private GLVersion loadedOpenGlVersion;
 	private UniformBlock _retrogradeFramestateBlock = new UniformBlock("RetrogradeFramestate");
 	private UniformBlock _retrogradeModelstateBlock = new UniformBlock("RetrogradeModelstate");
@@ -59,9 +54,7 @@ class OpenGlRenderSystem : EntityProcessor {
 	private Entity cameraEntity;
 	private GLuint globalSampler;
 	private TextureFilterMode _globalTextureFilteringMode = TextureFilterMode.trilinear;
-
-	@Autowire
-	private Sdl2WindowCreator windowCreator;
+	private Viewport viewport;
 
 	@Autowire
 	private ShaderProgramFactory[] shaderProgramFactories;
@@ -74,6 +67,9 @@ class OpenGlRenderSystem : EntityProcessor {
 
 	@Autowire
 	private ErrorService errorService;
+
+	@Autowire
+	private ViewportFactory viewportFactory;
 
 	public @property UniformBlock retrogradeFramestateBlock() {
 		return _retrogradeFramestateBlock;
@@ -104,15 +100,7 @@ class OpenGlRenderSystem : EntityProcessor {
 	}
 
 	public override void initialize() {
-		window = windowCreator.createWindow(SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
-		if (!window) {
-			throw new OpenGl3RenderSystemInitException("Could not create SDL2 window");
-		}
-
-		context = SDL_GL_CreateContext(window);
-		if (!context) {
-			throw new OpenGl3RenderSystemInitException("Could not create OpenGL context");
-		}
+		viewport = viewportFactory.create();
 
 		loadedOpenGlVersion = DerelictGL3.reload(minimumOpenGlVersion);
 
@@ -124,7 +112,7 @@ class OpenGlRenderSystem : EntityProcessor {
 
 		initializeShaderPrograms();
 		initializeSamplers();
-		updateProjectionMatrix(); // TODO: Update on resize of window/context
+		updateProjectionMatrix(); // TODO: Only update on resize of window/context
 
 		errorService.throwOnErrors!OpenGl3RenderSystemInitException;
 	}
@@ -159,10 +147,6 @@ class OpenGlRenderSystem : EntityProcessor {
 	}
 
 	public override void draw() {
-		if (!context) {
-			return;
-		}
-
 		GLfloat[] clearColor = [0.25, 0.25, 0.25, 1];
 		glClearBufferfv(GL_COLOR, 0, clearColor.ptr);
 		glClearBufferfi(GL_DEPTH_STENCIL, 0, 1, 0);
@@ -214,7 +198,7 @@ class OpenGlRenderSystem : EntityProcessor {
 			model.draw();
 		}
 
-		SDL_GL_SwapWindow(window);
+		viewport.swapBuffers();
 	}
 
 	private Matrix4D createViewMatrix() {
@@ -251,9 +235,7 @@ class OpenGlRenderSystem : EntityProcessor {
 	}
 
 	public override void cleanup() {
-		if (context) {
-			SDL_GL_DeleteContext(context);
-		}
+		viewport.cleanup();
 	}
 
 	public override bool acceptsEntity(Entity entity) {
@@ -266,13 +248,10 @@ class OpenGlRenderSystem : EntityProcessor {
 	}
 
 	private void updateProjectionMatrix() {
-		int windowWidth;
-		int windowHeight;
-		SDL_GetWindowSize(window, &windowWidth, &windowHeight);
-
-		double aspectRatio = cast(double) windowWidth / cast(double) windowHeight;
+		auto viewportDimensions = viewport.dimensions;
+		double aspectRatio = cast(double) viewportDimensions.width / cast(double) viewportDimensions.height;
 		//TODO: Make fov configurable
-		projectionMatrix = createPerspectiveMatrix(45, aspectRatio, 0.1, 1000);
+		projectionMatrix = createPerspectiveMatrix(45, aspectRatio, 0.1, 1_000);
 	}
 
 }
@@ -325,5 +304,3 @@ class OpenGlTexture : Texture {
 }
 
 }
-}
-

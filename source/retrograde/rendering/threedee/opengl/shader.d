@@ -9,15 +9,14 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.sdl2.opengl.shader;
+module retrograde.rendering.threedee.opengl.shader;
 
-version(Have_derelict_sdl2) {
 version(Have_derelict_gl3) {
 
 import retrograde.graphics;
 import retrograde.file;
 import retrograde.math;
-import retrograde.sdl2.opengl.uniform;
+import retrograde.rendering.threedee.opengl.uniform;
 import retrograde.cache;
 
 import std.string;
@@ -227,5 +226,4 @@ class DefaultShaderFactory {
 	}
 }
 
-}
 }
