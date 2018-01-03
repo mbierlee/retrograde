@@ -167,7 +167,7 @@ class OpenGlRenderSystem : EntityProcessor {
             auto model = cast(OpenGlModel) entity.getFromComponent!ModelComponent(c => c.model);
             if (!model.isLoadedIntoVram()) {
                 model.loadIntoVram();
-                errorService.logErrors();
+                errorService.logErrorsIfAny();
             }
 
             bool hasTexture = false;
@@ -176,7 +176,7 @@ class OpenGlRenderSystem : EntityProcessor {
                 if (texture) {
                     if (!texture.isLoadedIntoVram()) {
                         texture.loadIntoVram();
-                        errorService.logErrors();
+                        errorService.logErrorsIfAny();
                     }
 
                     hasTexture = true;

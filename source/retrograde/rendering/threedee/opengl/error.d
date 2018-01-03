@@ -47,7 +47,7 @@ class ErrorService {
         }
     }
 
-    public void logErrors() {
+    public void logErrorsIfAny() {
         auto errors = getAllErrors();
         if (errors.length > 0) {
             logger.error(format("OpenGL errors were flagged: %s", errors));
