@@ -116,7 +116,7 @@ class OpenGlShaderProgram : ShaderProgram {
         _isCompiled = true;
     }
 
-    public override void apply() {
+    public override void use() {
         glUseProgram(program);
         if (uniforms.uniformsAreUpdated) {
             applyDefaultBlockUniformData();

@@ -231,7 +231,7 @@ class OpenGlRenderSystem : EntityProcessor {
 
             program.bindUniformBlock(uniformBlock);
         }
-        program.apply();
+        program.use();
     }
 
     public override void cleanup() {

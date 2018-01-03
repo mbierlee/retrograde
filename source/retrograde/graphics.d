@@ -406,7 +406,7 @@ class ShaderProgram {
         _isCompiled = true;
     }
 
-    public abstract void apply();
+    public abstract void use();
 
     public void destroy() {}
 }
