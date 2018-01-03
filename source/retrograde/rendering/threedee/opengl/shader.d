@@ -103,17 +103,28 @@ class OpenGlShaderProgram : ShaderProgram {
     public override void compile() {
         _program = glCreateProgram();
 
-        foreach (shader; shaders) {
-            auto glShader = cast(OpenGlShader) shader;
-            if (glShader) {
-                shader.compile();
-                glAttachShader(_program, glShader.shader);
-            }
-        }
+        foreachGlShader((shader) {
+            shader.compile();
+            glAttachShader(_program, shader.shader);
+        });
 
         glLinkProgram(_program);
         verifyLinkSuccess();
+
+        foreachGlShader((shader) {
+            shader.destroy();
+        });
+
         _isCompiled = true;
+    }
+
+    private void foreachGlShader(void delegate(OpenGlShader) fn) {
+        foreach (shader; shaders) {
+            auto glShader = cast(OpenGlShader) shader;
+            if (glShader) {
+                fn(glShader);
+            }
+        }
     }
 
     public override void use() {

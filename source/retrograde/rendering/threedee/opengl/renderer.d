@@ -231,6 +231,7 @@ class OpenGlRenderSystem : EntityProcessor {
 
             program.bindUniformBlock(uniformBlock);
         }
+
         program.use();
     }
 
