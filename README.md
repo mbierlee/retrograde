@@ -19,9 +19,11 @@ Features:
 - Assimp-driven 3D model pipeline.
 - Tiled 2D map pipeline.
 
-Dependencies on projects written in C:
+Optional dependencies on projects written in C:
 - SDL2 2.0.5 (https://www.libsdl.org/)
-- SDL2_Image 2.0.0 (http://www.libsdl.org/projects/SDL_image/)
+- SDL2_image 2.0.0 (http://www.libsdl.org/projects/SDL_image/)
+- SDL2_ttf 2.0.12 (https://www.libsdl.org/projects/SDL_ttf/)
+- Assimp 3.3.1 (http://assimp.sourceforge.net/index.html)
 
 Guaranteed to be compatible with the latest version of D (DMD) only.
 Can be built with DUB.
