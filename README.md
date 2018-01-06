@@ -19,7 +19,7 @@ Features:
 - Assimp-driven 3D model pipeline.
 - Tiled 2D map pipeline.
 
-Optional dependencies on projects written in C:
+Optional dependencies on projects not written in D:
 - SDL2 2.0.5 (https://www.libsdl.org/)
 - SDL2_image 2.0.0 (http://www.libsdl.org/projects/SDL_image/)
 - SDL2_ttf 2.0.12 (https://www.libsdl.org/projects/SDL_ttf/)
