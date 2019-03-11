@@ -145,6 +145,7 @@ class RemoteDebugger : EntityProcessor {
 
     private void pong(HttpMessage message, ref ResponseBuilder response) {
         response
+            .setCorsHeaders()
             .header("Content-Type", "text/plain")
             .setBody(cast(ubyte[]) "pong");
     }
@@ -183,8 +184,15 @@ class RemoteDebugger : EntityProcessor {
     }
 }
 
-private void setJsonBody(ref ResponseBuilder response, ref JSONValue responseJson) {
-    response
+private ResponseBuilder setCorsHeaders(ref ResponseBuilder response) {
+    return response
+        .header("Access-Control-Allow-Origin", "*")
+        .header("Access-Control-Allow-Methods", "GET");
+}
+
+private ResponseBuilder setJsonBody(ref ResponseBuilder response, ref JSONValue responseJson) {
+    return response
+        .setCorsHeaders()
         .header("Content-Type", "application/json")
         .setBody(cast(ubyte[]) responseJson.toString);
 }
