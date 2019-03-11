@@ -79,7 +79,7 @@ class RemoteDebugger : EntityProcessor {
             routes["/widgets/"] = &createWidgetList;
 
             foreach(widget; debugWidgets) {
-                routes["/" ~ widget.resourceName] = &widget.createContentJson;
+                routes["/data/" ~ widget.resourceName] = &widget.createContentJson;
             }
 
             return new DebuggerRequestHandler(routes);
