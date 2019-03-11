@@ -19,17 +19,18 @@ import retrograde.input;
 import retrograde.stringid;
 import retrograde.player;
 
-import vibe.core.driver;
-import vibe.http.router;
-import vibe.http.fileserver;
-import vibe.http.server;
-import vibe.data.json;
-
 import poodinis;
+
+import collie.net;
+import collie.codec.http;
+import collie.codec.http.server;
 
 import std.string;
 import std.conv;
 import std.experimental.logger;
+//import std.typecons;
+import std.json;
+import std.exception;
 
 import core.thread;
 
@@ -45,63 +46,124 @@ class RemoteDebugger : EntityProcessor {
     @OptionalDependency
     private DebugWidget[] debugWidgets;
 
-    private VibeThread thread;
+    private ServerThread thread;
 
     public override bool acceptsEntity(Entity entity) {
         return false;
     }
 
-    private class VibeThread : Thread {
-        private EventDriver eventDriver;
-
+    private class ServerThread : Thread {
         this() {
             super(&run);
         }
 
-        private void run() {
-            auto router = new URLRouter;
+        private HttpServer server;
 
-            router.get("/ping", &pong);
-            router.get("/widgets/", &createWidgetList);
+        private void run() {
+            HTTPServerOptions options = new HTTPServerOptions();
+            options.handlerFactories ~= &createRequestHandler;
+            options.threads = 1;
+            HTTPServerOptions.IPConfig ipConfig;
+            ipConfig.address = new InternetAddress("0.0.0.0", 8080);
+
+            server = new HttpServer(options);
+            server.addBind(ipConfig);
+            logger.info("The remote debugger is listening on ", ipConfig.address.toString());
+            server.start();
+        }
+
+        private RequestHandler createRequestHandler(RequestHandler, HTTPMessage) {
+            DebuggerRequestHandler.RouteMap routes;
+
+            routes["/ping"] = &pong;
+            routes["/widgets/"] = &createWidgetList;
 
             foreach(widget; debugWidgets) {
-                router.get("/data/" ~ widget.resourceName, &widget.createContentJson);
+                routes["/" ~ widget.resourceName] = &widget.createContentJson;
             }
 
-            router.get("*", serveStaticFiles("remote-debugger/"));
-
-//			router.get("/debug-ws", handleWebSockets(&handleWebSocketConnection));
-
-            auto settings = new HTTPServerSettings;
-            settings.serverString = format("%s remote debugger - %s", getEngineName(), getEngineVersionText());
-            settings.port = 8080;
-            settings.bindAddresses = ["::1", "127.0.0.1"];
-            listenHTTP(settings, router);
-
-            eventDriver = getEventDriver();
-            eventDriver.runEventLoop();
+            return new DebuggerRequestHandler(routes);
         }
 
         private void terminate() {
-            eventDriver.exitEventLoop();
+            server.stop();
         }
     }
 
-    private void pong(HTTPServerRequest req, HTTPServerResponse res) {
-        res.writeBody("pong");
+    class DebuggerRequestHandler : RequestHandler {
+        alias RouteFunc = void delegate(HttpMessage message, ref ResponseBuilder response);
+        alias RouteMap = RouteFunc[string];
+
+        private HttpMessage message;
+        private RouteMap routes;
+        private RouteFunc* route;
+
+        this(RouteMap routes) {
+            this.routes = routes;
+        }
+
+        protected override void onRequest(HttpMessage message) nothrow
+        {
+            collectException({
+                this.message = message;
+                this.route = message.url in routes;
+            }());
+        }
+
+        protected override void onBody(const ubyte[] data) nothrow {}
+
+        protected override void onEOM() nothrow {
+            auto exception = collectException({
+                auto response = new ResponseBuilder(_downstream);
+                response.header("Server", format("%s remote debugger - %s", getEngineName(), getEngineVersionText()));
+
+                if (route !is null) {
+                    response.status(cast(ushort) 200, HTTPMessage.statusText(200));
+                    (*route)(this.message, response);
+                } else {
+                    response.status(cast(ushort) 404, HTTPMessage.statusText(404));
+                }
+
+                response.sendWithEOM();
+            }());
+
+            if (exception !is null) {
+                collectException({
+                    logger.error(exception.message ~ "\n" ~ exception.info.toString);
+
+                    auto response = new ResponseBuilder(_downstream);
+                    response.status(cast(ushort) 500, HTTPMessage.statusText(500));
+                    response.sendWithEOM();
+                }());
+            }
+        }
+
+        protected override void onError(HTTPErrorCode code) nothrow {}
+
+        protected override void requestComplete() nothrow {}
     }
 
-    private void createWidgetList(HTTPServerRequest req, HTTPServerResponse res) {
-        Json[] widgetList;
+    private void pong(HttpMessage message, ref ResponseBuilder response) {
+        response
+            .header("Content-Type", "text/plain")
+            .setBody(cast(ubyte[]) "pong");
+    }
+
+    private void createWidgetList(HttpMessage message, ref ResponseBuilder response) {
+        JSONValue[] widgetList;
 
         foreach(widget; debugWidgets) {
-            widgetList ~= Json([
-                "element": Json(widget.elementName),
-                "elementParameters": widget.createElementParameters()
-            ]);
+            JSONValue widgetJson = [
+                "element": widget.elementName
+            ];
+
+            widgetJson.object["elementParameters"] = widget.createElementParameters();
+            widgetList ~= widgetJson;
         }
 
-        res.writeJsonBody(Json(widgetList));
+        JSONValue widgetListJson;
+        widgetListJson.array = widgetList;
+        response.setJsonBody(widgetListJson);
     }
 
     public override void initialize() {
@@ -110,7 +172,7 @@ class RemoteDebugger : EntityProcessor {
             widget.initialize();
         }
 
-        thread = new VibeThread;
+        thread = new ServerThread;
         thread.start();
     }
 
@@ -119,6 +181,12 @@ class RemoteDebugger : EntityProcessor {
         thread.terminate();
         thread.join();
     }
+}
+
+private void setJsonBody(ref ResponseBuilder response, ref JSONValue responseJson) {
+    response
+        .header("Content-Type", "application/json")
+        .setBody(cast(ubyte[]) responseJson.toString);
 }
 
 class RemoteDebuggerContext : ApplicationContext {
@@ -133,8 +201,8 @@ interface DebugWidget {
     @property string resourceName();
     @property string elementName();
     void initialize();
-    Json createElementParameters();
-    void createContentJson(HTTPServerRequest req, HTTPServerResponse res);
+    JSONValue createElementParameters();
+    void createContentJson(HttpMessage message, ref ResponseBuilder response);
 }
 
 abstract class SimpleDebugWidget : DebugWidget {
@@ -153,17 +221,19 @@ class GameInfoDebugWidget : SimpleDebugWidget {
 
     public void initialize() {}
 
-    public Json createElementParameters() {
-        return Json([
-            "title": Json("Game Info"),
-            "resource": Json(resourceName)
+    public JSONValue createElementParameters() {
+        return JSONValue([
+            "title": "Game Info",
+            "resource": resourceName
         ]);
     }
 
-    public void createContentJson(HTTPServerRequest req, HTTPServerResponse res) {
-        res.writeJsonBody(Json([
-            "content": Json(format("%s - %s %s - frametime: %sms - lag limit: %s frames", game.name, getEngineName(), getEngineVersionText(), game.msecsPerFrame, game.lagFrameLimit))
-        ]));
+    public void createContentJson(HttpMessage message, ref ResponseBuilder response) {
+        JSONValue json = [
+            "content": format("%s - %s %s - frametime: %sms - lag limit: %s frames", game.name, getEngineName(), getEngineVersionText(), game.msecsPerFrame, game.lagFrameLimit)
+        ];
+
+        response.setJsonBody(json);
     }
 }
 
@@ -181,76 +251,96 @@ class EntityManagerDebugWidget : DebugWidget {
 
     public void initialize() {}
 
-    public Json createElementParameters() {
-        return Json();
+    public JSONValue createElementParameters() {
+        return JSONValue([
+            "title": "Entity Manager",
+            "resource": resourceName
+        ]);
     }
 
-    public void createContentJson(HTTPServerRequest req, HTTPServerResponse res) {
-        Json[string] info = [
+    public void createContentJson(HttpMessage message, ref ResponseBuilder response) {
+        JSONValue info = [
             "entities": createEntitiesJson(),
             "processors": createProcessorsJson()
         ];
 
-        res.writeJsonBody(info);
+        response.setJsonBody(info);
     }
 
-    private Json createEntitiesJson() {
-        Json[] entityJsons;
+    private JSONValue createEntitiesJson() {
+        JSONValue[] entityJsons;
         foreach(entity; entityManager.entities) {
-            entityJsons ~= Json([
-                "name": Json(entity.name),
-                "id": Json(entity.id),
-                "components": createComponentsJson(entity)
-            ]);
+            JSONValue entityJson = [
+                "name": entity.name
+            ];
+
+            entityJson.object["id"] = JSONValue(entity.id);
+            entityJson.object["components"] = createComponentsJson(entity);
+            entityJsons ~= entityJson;
         }
 
-        return Json(entityJsons);
+        JSONValue entityJsonsList;
+        entityJsonsList.array = entityJsons;
+        return entityJsonsList;
     }
 
-    private Json createComponentsJson(Entity entity) {
-        Json[] componentJsons;
+    private JSONValue createComponentsJson(Entity entity) {
+        JSONValue[] componentJsons;
         foreach(component; entity.components) {
-            componentJsons ~= Json([
-                "componentType": Json(component.getComponentTypeString()),
-                "componentTypeSid": Json(component.getComponentType()),
-                "data": Json(createSnapshotJson(component))
-            ]);
+            JSONValue componentJson = [
+                "componentType": component.getComponentTypeString()
+            ];
+
+            componentJson.object["componentTypeSid"] = JSONValue(component.getComponentType());
+            componentJson.object["data"] = createSnapshotJson(component);
+            componentJsons ~= componentJson;
         }
 
-        return Json(componentJsons);
+        JSONValue componentJsonsList;
+        componentJsonsList.array = componentJsons;
+        return componentJsonsList;
     }
 
-    private Json createProcessorsJson() {
-        Json[] processorJsons;
+    private JSONValue createProcessorsJson() {
+        JSONValue[] processorJsons;
         foreach(processor; entityManager.processors) {
-            processorJsons ~= Json([
-                "type": Json(typeid(processor).name),
-                "entities": createProcessorEntitiesJson(processor)
-            ]);
+            JSONValue processorJson = [
+                "type": typeid(processor).name
+            ];
+
+            processorJson.object["entities"] = createProcessorEntitiesJson(processor);
+            processorJsons ~= processorJson;
         }
 
-        return Json(processorJsons);
+        JSONValue processorJsonsList;
+        processorJsonsList.array = processorJsons;
+        return processorJsonsList;
     }
 
-    private Json createProcessorEntitiesJson(EntityProcessor processor) {
-        Json[] entityJsons;
+    private JSONValue createProcessorEntitiesJson(EntityProcessor processor) {
+        JSONValue[] entityJsons;
         foreach(entity; processor.entities) {
-            entityJsons ~= Json([
-                "name": Json(entity.name),
-                "id": Json(entity.id)
-            ]);
+            JSONValue entityJson = [
+                "name": entity.name
+            ];
+
+            entityJson.object["id"] = JSONValue(entity.id);
+
+            entityJsons ~= entityJson;
         }
 
-        return Json(entityJsons);
+        JSONValue entityJsonsList;
+        entityJsonsList.array = entityJsons;
+        return entityJsonsList;
     }
 
-    private Json[string] createSnapshotJson(EntityComponent component) {
-        Json[string] data;
+    private JSONValue createSnapshotJson(EntityComponent component) {
+        JSONValue data = parseJSON("{}");
         auto snapshot = cast(Snapshotable) component;
         if (snapshot !is null) {
             auto snapshotData = snapshot.getSnapshotData();
             foreach(snapshotTuple; snapshotData.byKeyValue()) {
-                data[snapshotTuple.key] = Json(snapshotTuple.value);
+                data.object[snapshotTuple.key] = JSONValue(snapshotTuple.value);
             }
         }
 
@@ -292,7 +382,7 @@ class MessagingDebugWidget : DebugWidget {
 
     @Autowire
     @OptionalDependency
-    private EventChannel[] eventChannels;
+    private retrograde.messaging.EventChannel[] eventChannels;
 
     @Autowire
     @OptionalDependency
@@ -332,44 +422,53 @@ class MessagingDebugWidget : DebugWidget {
         loggerDestination ~= logger;
     }
 
-    public Json createElementParameters() {
-        return Json();
+    public JSONValue createElementParameters() {
+        return JSONValue([
+            "title": "Messaging",
+            "resource": resourceName
+        ]);
     }
 
-    public void createContentJson(HTTPServerRequest req, HTTPServerResponse res) {
-        Json[] eventChannelsJsons;
-        Json[] commandChannelsJsons;
-        Json[] messageProcessorsJsons;
+    public void createContentJson(HttpMessage message, ref ResponseBuilder response) {
+        JSONValue[] eventChannelsJsons;
+        JSONValue[] commandChannelsJsons;
+        JSONValue[] messageProcessorsJsons;
 
         foreach(logger; eventLoggers) {
-            eventChannelsJsons ~= Json([
-                "name": Json(typeid(logger.channel).name),
-                "messageHistory": createMessageHistoryJson(logger)
-            ]);
+            JSONValue eventChannelJson = [
+                "name": typeid(logger.channel).name
+            ];
+
+            eventChannelJson.object["messageHistory"] = createMessageHistoryJson(logger);
+            eventChannelsJsons ~= eventChannelJson;
         }
 
         foreach(logger; commandLoggers) {
-            commandChannelsJsons ~= Json([
-                "name": Json(typeid(logger.channel).name),
-                "messageHistory": createMessageHistoryJson(logger)
-            ]);
+            JSONValue commandChannelJson = [
+                "name": typeid(logger.channel).name
+            ];
+
+            commandChannelJson.object["messageHistory"] = createMessageHistoryJson(logger);
+            commandChannelsJsons ~= commandChannelJson;
         }
 
         foreach(processor; messageProcessors) {
-            messageProcessorsJsons ~= Json([
-                "name": Json(typeid(processor).name)
+            messageProcessorsJsons ~= JSONValue([
+                "name": typeid(processor).name
             ]);
         }
 
-        res.writeJsonBody(Json([
-            "eventChannels": Json(eventChannelsJsons),
-            "commandChannels": Json(commandChannelsJsons),
-            "messageProcessors": Json(messageProcessorsJsons)
-        ]));
+        JSONValue info = [
+            "eventChannels": eventChannelsJsons,
+            "commandChannels": commandChannelsJsons,
+            "messageProcessors": messageProcessorsJsons
+        ];
+
+        response.setJsonBody(info);
     }
 
-    private Json createMessageHistoryJson(MessageLogger logger) {
-        Json[] messageJsons;
+    private JSONValue createMessageHistoryJson(MessageLogger logger) {
+        JSONValue[] messageJsons;
 
         foreach(message; logger.log) {
             debug(readableStringId) {
@@ -383,22 +482,26 @@ class MessagingDebugWidget : DebugWidget {
                 }
             }
 
-            messageJsons ~= Json([
-                "type": Json(type),
-                "magnitude": Json(message.magnitude),
-                "data": createDataJson(message.data)
-            ]);
+            JSONValue messageJson = [
+                "type": type,
+                "data": createDataString(message.data)
+            ];
+
+            messageJson.object["magnitude"] = JSONValue(message.magnitude);
+            messageJsons ~= messageJson;
         }
 
-        return Json(messageJsons);
+        JSONValue messsageJsonsList;
+        messsageJsonsList.array = messageJsons;
+        return messsageJsonsList;
     }
 
-    private Json createDataJson(const(MessageData) data) {
+    private string createDataString(const(MessageData) data) {
         if (data is null) {
-            return Json();
+            return "";
         }
 
-        return Json(to!string(data));
+        return to!string(data);
     }
 }
 
