@@ -15,6 +15,7 @@ The full terms of the license can be found in the LICENSE.txt file.
 <link rel="import" href="rg-channel-list.html">
 <link rel="import" href="rg-shared-style.html">
 <link rel="import" href="rg-symbol.html">
+<link rel="import" href="rg-api-behavior.html">
 
 <dom-module id="rg-messagingwidget">
     <template>
@@ -27,7 +28,7 @@ The full terms of the license can be found in the LICENSE.txt file.
 
         <iron-ajax
                 auto
-                url="/data/messaging-info"
+                url="[[apiBaseUrl]]/data/messaging-info"
                 handle-as="json"
                 on-response="_handleDataRequest"></iron-ajax>
 
@@ -46,7 +47,7 @@ The full terms of the license can be found in the LICENSE.txt file.
     </template>
 
     <script>
-        class RgMessagingWidget extends PollAjaxBehavior(Polymer.Element) {
+        class RgMessagingWidget extends ApiBehavior(PollAjaxBehavior(Polymer.Element)) {
             static get is() {
                 return "rg-messagingwidget";
             }

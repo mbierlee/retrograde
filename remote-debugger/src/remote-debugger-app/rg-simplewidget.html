@@ -10,6 +10,7 @@ The full terms of the license can be found in the LICENSE.txt file.
 <link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html">
 
 <link rel="import" href="rg-widget.html">
+<link rel="import" href="rg-api-behavior.html">
 
 <dom-module id="rg-simplewidget">
     <template>
@@ -33,7 +34,7 @@ The full terms of the license can be found in the LICENSE.txt file.
     </template>
 
     <script>
-        class RgSimpleWidget extends Polymer.Element {
+        class RgSimpleWidget extends ApiBehavior(Polymer.Element) {
             static get is() {
                 return "rg-simplewidget";
             }
@@ -53,7 +54,7 @@ The full terms of the license can be found in the LICENSE.txt file.
 
             _fetchData() {
                 let ajax = this.root.querySelector('iron-ajax');
-                ajax.url = "/data/" + this.parameters.resource;
+                ajax.url = this.apiBaseUrl + "/data/" + this.parameters.resource;
                 ajax.generateRequest();
             }
 

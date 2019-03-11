@@ -1,0 +1,19 @@
+<!--
+@license
+Copyright 2019 Mike Bierlee
+This software is licensed under the terms of the MIT license.
+The full terms of the license can be found in the LICENSE.txt file.
+-->
+
+<script>
+    let ApiBehavior = (superclass) => class extends superclass {
+        static get properties() {
+            return {
+                apiBaseUrl: {
+                    type: String,
+                    value: ""
+                }
+            }
+        }
+    };
+</script>

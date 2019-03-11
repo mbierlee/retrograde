@@ -9,6 +9,8 @@ The full terms of the license can be found in the LICENSE.txt file.
 
 <link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html">
 
+<link rel="import" href="rg-api-behavior.html">
+
 <dom-module id="rg-widgets">
     <template>
         <style>
@@ -20,14 +22,14 @@ The full terms of the license can be found in the LICENSE.txt file.
 
         <iron-ajax
                 auto
-                url="/widgets/"
+                url="[[apiBaseUrl]]/widgets/"
                 handle-as="json"
                 on-response="_handleWidgetRequest"></iron-ajax>
         <div id="widgetContainer"></div>
     </template>
 
     <script>
-        class RgWidgets extends Polymer.Element {
+        class RgWidgets extends ApiBehavior(Polymer.Element) {
             static get is() {
                 return 'rg-widgets';
             }
@@ -40,6 +42,7 @@ The full terms of the license can be found in the LICENSE.txt file.
                     Polymer.importHref([self.resolveUrl(elementName + ".html")]);
                     let elem = document.createElement(elementName);
                     elem.parameters = widget.elementParameters;
+                    elem.apiBaseUrl = self.apiBaseUrl;
                     Polymer.dom(self.$.widgetContainer).appendChild(elem);
                 });
             }

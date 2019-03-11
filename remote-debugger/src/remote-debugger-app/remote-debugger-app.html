@@ -9,6 +9,7 @@ The full terms of the license can be found in the LICENSE.txt file.
 
 <link rel="import" href="rg-widgets.html">
 <link rel="import" href="rg-connectionstate.html">
+<link rel="import" href="rg-api-behavior.html">
 
 <dom-module id="remote-debugger-app">
     <template>
@@ -32,15 +33,20 @@ The full terms of the license can be found in the LICENSE.txt file.
         </style>
         <header>
             <h1>Retrograde Remote Debugger</h1>
-            <rg-connectionstate></rg-connectionstate>
+            <rg-connectionstate api-base-url=[[apiBaseUrl]]></rg-connectionstate>
         </header>
-        <rg-widgets></rg-widgets>
+        <rg-widgets api-base-url=[[apiBaseUrl]]></rg-widgets>
     </template>
 
     <script>
-        class RemoteDebuggerApp extends Polymer.Element {
+        class RemoteDebuggerApp extends ApiBehavior(Polymer.Element) {
             static get is() {
                 return 'remote-debugger-app';
+            }
+
+            ready() {
+                super.ready();
+                this.set("apiBaseUrl", "http://localhost:8080");
             }
         }
 
