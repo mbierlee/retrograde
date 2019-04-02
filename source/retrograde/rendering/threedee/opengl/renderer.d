@@ -263,12 +263,14 @@ class OpenGlTexture : Texture {
     private ubyte[] texelData;
     private bool loadedIntoVram = false;
     private bool generateMipMaps;
+    private string textureName;
 
-    this(ubyte[] texelData, RectangleU dimensions, bool generateMipMaps = true) {
+    this(ubyte[] texelData, RectangleU dimensions, bool generateMipMaps = true, string textureName = "") {
         enforce!Exception(texelData.length % 4 == 0, "textelData should be aligned to 4-byte values (32bit). Does it contain the proper data format?");
         this.texelData = texelData;
         this.dimensions = dimensions;
         this.generateMipMaps = generateMipMaps;
+        this.textureName = textureName;
     }
 
     public void loadIntoVram() {
@@ -300,7 +302,7 @@ class OpenGlTexture : Texture {
     }
 
     public override string getName() {
-        throw new Exception("Not yet implemented");
+        return textureName;
     }
 }
 

@@ -43,7 +43,7 @@ class SdlOpenGlTextureLoader {
 
         auto dimensions = RectangleU(0, 0, convertedTextureSurface.w, convertedTextureSurface.h);
         auto dataLength = convertedTextureSurface.w * convertedTextureSurface.h * 4;
-        auto texture = new OpenGlTexture(array(cast(ubyte[]) convertedTextureSurface.pixels[0 .. dataLength]), dimensions);
+        auto texture = new OpenGlTexture(array(cast(ubyte[]) convertedTextureSurface.pixels[0 .. dataLength]), dimensions, true, textureFile.fileName);
         SDL_FreeSurface(convertedTextureSurface);
 
         return texture;
