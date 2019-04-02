@@ -82,7 +82,7 @@ class Entity {
     }
 
     public void removeComponent(EntityComponentType : EntityComponent)() {
-        mixin("StringId componentType = EntityComponentType.componentType;");
+        StringId componentType = EntityComponentType.componentType;
         removeComponent(componentType);
     }
 
@@ -92,7 +92,7 @@ class Entity {
     }
 
     public bool hasComponent(EntityComponentType : EntityComponent)() {
-        mixin("StringId componentType = EntityComponentType.componentType;");
+        StringId componentType = EntityComponentType.componentType;
         return hasComponent(componentType);
     }
 
@@ -119,7 +119,7 @@ class Entity {
     }
 
     public EntityComponentType getComponent(EntityComponentType : EntityComponent)() {
-        mixin("StringId componentType = EntityComponentType.componentType;");
+        StringId componentType = EntityComponentType.componentType;
         return cast(EntityComponentType) getComponent(componentType);
     }
 
