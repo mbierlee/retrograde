@@ -36,7 +36,7 @@ class OpenGlShader : Shader {
 
     private GLuint shader;
 
-    static this() {
+    shared static this() {
         shaderTypeMapping = [
             ShaderType.vertexShader: GL_VERTEX_SHADER,
             ShaderType.fragmentShader: GL_FRAGMENT_SHADER,
