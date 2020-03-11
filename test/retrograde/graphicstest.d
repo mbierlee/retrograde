@@ -26,7 +26,7 @@ class TestGame : BaseGame {
         super("Graphics Test Game", "No copyright");
     }
 
-    override @property long msecsPerFrame() {
+    override @property long targetFrameTime() {
         return 1L;
     }
 

@@ -238,7 +238,7 @@ class GameInfoDebugWidget : SimpleDebugWidget {
 
     public void createContentJson(HttpMessage message, ref ResponseBuilder response) {
         JSONValue json = [
-            "content": format("%s - %s %s - target frametime: %sms - lag limit: %s frames", game.name, getEngineName(), getEngineVersionText(), game.msecsPerFrame, game.lagFrameLimit)
+            "content": format("%s - %s %s - target frametime: %sms - lag limit: %s frames", game.name, getEngineName(), getEngineVersionText(), game.targetFrameTime, game.lagFrameLimit)
         ];
 
         response.setJsonBody(json);

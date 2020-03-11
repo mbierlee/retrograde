@@ -56,19 +56,19 @@ public void loopWithFixedTimeStepVariableDrawRate(Game game) {
         frameTimeStopWatch.reset();
         lag += elapsedFrameTime;
 
-        auto desiredFrameTime = dur!"msecs"(game.msecsPerFrame);
+        auto targetFrameTime = dur!"msecs"(game.targetFrameTime);
         auto lagCompensationFrames = 0L;
-        while (lag >= desiredFrameTime) {
+        while (lag >= targetFrameTime) {
             lagCompensationFrames++;
             if (lagCompensationFrames > game.lagFrameLimit || game.terminatable) {
                 break;
             }
 
             game.update();
-            lag -= desiredFrameTime;
+            lag -= targetFrameTime;
         }
 
-        game.render(lag / desiredFrameTime);
+        game.render(lag / targetFrameTime);
     }
 }
 

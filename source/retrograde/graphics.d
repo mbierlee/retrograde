@@ -226,14 +226,14 @@ class SpriteAnimationProcessor : EntityProcessor {
     }
 
     private void animateEntitySprite(Entity entity) {
-        enforce(game.msecsPerFrame > 0, "SpriteAnimationProcessor cannot operate with a framerate of 0. Remove the SpriteAnimationComponent from the entity or specify a non-zero framerate in your game.");
+        enforce(game.targetFrameTime > 0, "SpriteAnimationProcessor cannot operate with a framerate of 0. Remove the SpriteAnimationComponent from the entity or specify a non-zero framerate in your game.");
 
         entity.withComponent!SpriteAnimationComponent((c) {
             if (c.msecsPerFrame == 0) {
                 return;
             }
 
-            c.msecsInProgress += game.msecsPerFrame;
+            c.msecsInProgress += game.targetFrameTime;
             if (c.msecsInProgress >= c.msecsPerFrame) {
                 auto frames = floor(cast(double) c.msecsInProgress / c.msecsPerFrame);
                 c.msecsInProgress %= c.msecsPerFrame;

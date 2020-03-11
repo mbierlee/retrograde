@@ -19,7 +19,7 @@ interface Game {
     void render(double extraPolation);
     void cleanup();
 
-    @property long msecsPerFrame();
+    @property long targetFrameTime();
     @property long lagFrameLimit();
 
     @property bool terminatable();
@@ -41,7 +41,7 @@ abstract class BaseGame : Game {
         this._copyright = copyright;
     }
 
-    public override @property long msecsPerFrame() {
+    public override @property long targetFrameTime() {
         return 10L;
     }
 
