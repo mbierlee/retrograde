@@ -3,7 +3,7 @@
 	"description": "The Retrograde Game Engine",
 	"homepage": "http://lostmoment.com",
 	"authors": ["Lostmoment", "Mike Bierlee"],
-	"copyright": "Copyright Mike Bierlee 2014-2018",
+	"copyright": "Copyright Mike Bierlee 2014-2020",
 	"license": "MIT",
 	"dependencies": {
 		"poodinis": "~>8.0",

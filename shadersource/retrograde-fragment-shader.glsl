@@ -2,7 +2,7 @@
 //FRAGMENT SHADER
 
 /* Retrograde Engine
- * Copyright 2014-2018 Mike Bierlee
+ * Copyright 2014-2020 Mike Bierlee
  * This software is licensed under the terms of the MIT license.
  * The full terms of the license can be found in the LICENSE.txt file.
  */
