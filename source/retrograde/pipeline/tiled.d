@@ -182,7 +182,7 @@ class TiledTilemapReader {
     private void enforceLayerOptionSupport(ref const JSONValue layerJson) {
         auto name = layerJson["name"].str;
         enforce!TiledTilemapReadException(layerJson["type"].str == "tilelayer", "Only tilelayers layer types are supported in layer " ~ name);
-        enforce!TiledTilemapReadException(layerJson["visible"].type == JSON_TYPE.TRUE, "Only visible layers are supported in layer " ~ name);
+        enforce!TiledTilemapReadException(layerJson["visible"].type == JSONType.true_, "Only visible layers are supported in layer " ~ name);
         enforce!TiledTilemapReadException(layerJson["opacity"].integer == 1, "Only layers with opacity of 1 are supported in layer " ~ name);
     }
 
