@@ -73,7 +73,7 @@ enum CameraMoveCommand : StringId {
     moveSideways = sid("cmd_camera_move_sideways")
 }
 
-class FirstPersonCameraProcessor : EntityProcessor {
+class FirstPersonFlyCameraProcessor : EntityProcessor {
 
     private Entity activeCamera;
 
