@@ -109,4 +109,8 @@ class Sdl2FontComponentFactory : FontComponentFactory {
     }
 }
 
+} else {
+    debug(assertDependencies) {
+        static assert(0 , "This module requires Derelict SDL2. Please add it as dependency to your project.");    
+    }
 }
