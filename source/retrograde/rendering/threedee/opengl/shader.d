@@ -17,6 +17,7 @@ import retrograde.graphics;
 import retrograde.file;
 import retrograde.math;
 import retrograde.rendering.threedee.opengl.uniform;
+import retrograde.rendering.threedee.opengl.renderer;
 import retrograde.cache;
 
 import std.string;
@@ -26,6 +27,8 @@ import std.typecons;
 import std.exception;
 
 import derelict.opengl3.gl3;
+
+import poodinis;
 
 class ShaderValidationException : Exception {
     mixin basicExceptionCtors;
@@ -234,6 +237,25 @@ class DefaultShaderFactory {
             auto shaderSource = shaderSources[shader];
             return new OpenGlShader(new VirtualTextFile(shaderSource), shader.type);
         });
+    }
+}
+
+class DefaultShaderProgramFactory : CachedShaderProgramFactory
+{
+
+    @Autowire 
+    private OpenGlRenderSystem renderer;
+
+    @Autowire 
+    private DefaultShaderFactory defaultShaderFactory;
+
+    protected override ShaderProgram create()
+    {
+        auto vertexShader = defaultShaderFactory.createShader(DefaultShader.vertexShader);
+        auto fragmentShader = defaultShaderFactory.createShader(DefaultShader.fragmentShader);
+        auto shaderProgram = new OpenGlShaderProgram([vertexShader, fragmentShader]);
+        shaderProgram.uniformBlocks = [renderer.retrogradeModelstateBlock];
+        return shaderProgram;
     }
 }
 
