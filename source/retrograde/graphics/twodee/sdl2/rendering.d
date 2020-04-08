@@ -9,7 +9,7 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.graphics.twodee.sdl2.renderer;
+module retrograde.graphics.twodee.sdl2.rendering;
 
 version(Have_derelict_sdl2) {
 

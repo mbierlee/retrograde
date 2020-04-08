@@ -15,7 +15,7 @@ version(Have_derelict_sdl2) {
 
 import poodinis;
 
-import retrograde.graphics.twodee.sdl2.renderer;
+import retrograde.graphics.twodee.sdl2.rendering;
 import retrograde.sdl2.window;
 import retrograde.sdl2.event;
 import retrograde.sdl2.input;

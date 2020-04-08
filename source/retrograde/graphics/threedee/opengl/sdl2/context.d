@@ -17,7 +17,7 @@ version(Have_derelict_gl3) {
 import retrograde.graphics.threedee.opengl.sdl2.viewport;
 import retrograde.viewport;
 import retrograde.entity;
-import retrograde.graphics.threedee.opengl.renderer;
+import retrograde.graphics.threedee.opengl.rendering;
 
 import poodinis;
 

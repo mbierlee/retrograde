@@ -17,7 +17,7 @@ import retrograde.graphics.core;
 import retrograde.file;
 import retrograde.math;
 import retrograde.graphics.threedee.opengl.uniform;
-import retrograde.graphics.threedee.opengl.renderer;
+import retrograde.graphics.threedee.opengl.rendering;
 import retrograde.cache;
 
 import std.string;

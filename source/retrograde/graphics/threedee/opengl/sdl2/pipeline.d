@@ -14,7 +14,7 @@ module retrograde.graphics.threedee.opengl.sdl2.pipeline;
 version(Have_derelict_sdl2) {
 version(Have_derelict_gl3) {
 
-import retrograde.graphics.threedee.opengl.renderer;
+import retrograde.graphics.threedee.opengl.rendering;
 import retrograde.file;
 import retrograde.math;
 

@@ -14,7 +14,7 @@ module retrograde.graphics.threedee.opengl.model;
 version(Have_derelict_gl3) {
 
 import retrograde.model;
-import retrograde.graphics.threedee.opengl.renderer;
+import retrograde.graphics.threedee.opengl.rendering;
 import retrograde.geometry;
 
 import derelict.opengl3.gl3;
