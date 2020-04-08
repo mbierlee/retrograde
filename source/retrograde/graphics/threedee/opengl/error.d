@@ -9,7 +9,7 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.rendering.threedee.opengl.error;
+module retrograde.graphics.threedee.opengl.error;
 
 version(Have_derelict_gl3) {
 

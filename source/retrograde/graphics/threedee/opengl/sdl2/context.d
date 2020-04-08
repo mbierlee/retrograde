@@ -9,7 +9,7 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.sdl2.opengl.context;
+module retrograde.graphics.threedee.opengl.sdl2.context;
 
 version(Have_derelict_sdl2) {
 version(Have_derelict_gl3) {
@@ -17,7 +17,7 @@ version(Have_derelict_gl3) {
 import retrograde.sdl2.opengl.viewport;
 import retrograde.viewport;
 import retrograde.entity;
-import retrograde.rendering.threedee.opengl.renderer;
+import retrograde.graphics.threedee.opengl.renderer;
 
 import poodinis;
 

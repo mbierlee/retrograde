@@ -11,7 +11,7 @@
 
 module retrograde.pipeline.rsa;
 
-import retrograde.graphics;
+import retrograde.graphics.core;
 import retrograde.file;
 
 import std.json;

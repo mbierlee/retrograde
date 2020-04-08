@@ -9,21 +9,21 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.rendering.threedee.opengl.renderer;
+module retrograde.graphics.threedee.opengl.renderer;
 
 version(Have_derelict_gl3) {
 
 import retrograde.entity;
-import retrograde.graphics;
+import retrograde.graphics.core;
 import retrograde.file;
 import retrograde.model;
-import retrograde.rendering.threedee.opengl.shader;
-import retrograde.rendering.threedee.opengl.model;
-import retrograde.rendering.threedee.opengl.uniform;
+import retrograde.graphics.threedee.opengl.shader;
+import retrograde.graphics.threedee.opengl.model;
+import retrograde.graphics.threedee.opengl.uniform;
 import retrograde.math;
 import retrograde.camera;
 import retrograde.geometry;
-import retrograde.rendering.threedee.opengl.error;
+import retrograde.graphics.threedee.opengl.error;
 import retrograde.viewport;
 
 import poodinis;

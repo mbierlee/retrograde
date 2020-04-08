@@ -13,7 +13,7 @@ import retrograde.pipeline.rsa;
 
 import dunit;
 
-import retrograde.graphics;
+import retrograde.graphics.core;
 import retrograde.file;
 
 class TiledTilemapReaderTest {

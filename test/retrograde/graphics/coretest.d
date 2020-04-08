@@ -1,3 +1,5 @@
+module test.retrograde.graphics.coretest;
+
 /**
  * Retrograde Engine
  *
@@ -9,7 +11,7 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-import retrograde.graphics;
+import retrograde.graphics.core;
 import retrograde.math;
 import retrograde.entity;
 import retrograde.file;

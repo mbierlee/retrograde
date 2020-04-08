@@ -9,7 +9,7 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.graphics;
+module retrograde.graphics.core;
 
 import retrograde.entity;
 import retrograde.math;

@@ -47,7 +47,7 @@ class AssimpSceneImporter {
 
 version(Have_derelict_gl3) {
 
-import retrograde.rendering.threedee.opengl.model;
+import retrograde.graphics.threedee.opengl.model;
 
 class ModelCreationException : Exception {
     mixin basicExceptionCtors;
