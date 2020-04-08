@@ -14,7 +14,7 @@ module retrograde.graphics.threedee.opengl.sdl2.context;
 version(Have_derelict_sdl2) {
 version(Have_derelict_gl3) {
 
-import retrograde.sdl2.opengl.viewport;
+import retrograde.graphics.threedee.opengl.sdl2.viewport;
 import retrograde.viewport;
 import retrograde.entity;
 import retrograde.graphics.threedee.opengl.renderer;

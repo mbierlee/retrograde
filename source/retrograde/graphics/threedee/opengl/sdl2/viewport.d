@@ -9,7 +9,7 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.sdl2.opengl.viewport;
+module retrograde.graphics.threedee.opengl.sdl2.viewport;
 
 version(Have_derelict_sdl2) {
 version(Have_derelict_gl3) {
