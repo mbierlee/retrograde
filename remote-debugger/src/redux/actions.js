@@ -3,17 +3,28 @@ import fetch from "cross-fetch";
 import {
   CHECK_CONNECTION_DISCONNECTED,
   CHECK_CONNECTION_CONNECTED,
+  CHECK_CONNECTION,
 } from "./actionTypes";
 
-export const checkConnection = (apiBaseUrl) => (dispatch) => {
+export const checkConnection = (apiBaseUrl) => (dispatch, getState) => {
+  const dispatchChangeConnectionState = (isConnectedNow) => {
+    const wasConnected = getState().connection.isConnected;
+    if (wasConnected != isConnectedNow) {
+      isConnectedNow
+        ? dispatch(checkConnectionConnected())
+        : dispatch(checkConnectionDisconnected());
+    }
+  };
+
+  dispatch({ type: CHECK_CONNECTION });
   fetch(apiBaseUrl + "/ping")
     .then(
       (response) => response.text(),
-      () => dispatch(checkConnectionDisconnected())
+      () => dispatchChangeConnectionState(false)
     )
-    .then((response) =>
-      response === "pong" ? dispatch(checkConnectionConnected()) : response
-    );
+    .then((response) => {
+      if (response === "pong") dispatchChangeConnectionState(true);
+    });
 };
 
 export const checkConnectionConnected = () => ({
