@@ -1,8 +1,8 @@
 import React from "react";
-import "./ConnectionWarningHeader.module.css";
+import "./ConnectionStatusHeader.module.css";
 import Icon from "./Icon";
 
-class ConnectionWarningHeader extends React.Component {
+class ConnectionStatusHeader extends React.Component {
   constructor(props) {
     super(props);
 
@@ -27,7 +27,7 @@ class ConnectionWarningHeader extends React.Component {
 
   render() {
     return (
-      <div className="ConnectionWarningHeader">
+      <div className="ConnectionStatusHeader">
         <Icon name="error_outline" />
         <p>Disconnected from engine. Reconnecting{this.state.elipsis}</p>
       </div>
@@ -35,4 +35,4 @@ class ConnectionWarningHeader extends React.Component {
   }
 }
 
-export default ConnectionWarningHeader;
+export default ConnectionStatusHeader;

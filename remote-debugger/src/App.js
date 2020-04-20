@@ -1,6 +1,6 @@
 import React from "react";
 import "./App.module.css";
-import ConnectionWarningHeader from "./ConnectionWarningHeader";
+import ConnectionStatusHeader from "./ConnectionStatusHeader";
 import { checkConnection } from "./redux/actions";
 import { connect } from "react-redux";
 
@@ -10,7 +10,7 @@ class App extends React.Component {
       <div className="App">
         <header>
           <h1>Retrograde Remote Debugger</h1>
-          {!this.props.isConnected && <ConnectionWarningHeader />}
+          {!this.props.isConnected && <ConnectionStatusHeader />}
         </header>
       </div>
     );

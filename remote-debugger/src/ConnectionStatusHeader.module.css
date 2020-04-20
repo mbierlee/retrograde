@@ -1,4 +1,4 @@
-:global(.ConnectionWarningHeader) {
+:global(.ConnectionStatusHeader) {
   display: block;
   background-color: hsl(354, 24%, 23%);
   color: hsl(0, 0%, 99%);
@@ -7,13 +7,13 @@
   margin: 0;
 }
 
-:global(.ConnectionWarningHeader) p {
+:global(.ConnectionStatusHeader) p {
   display: inline-block;
   height: 24px;
   margin: 0;
 }
 
-:global(.ConnectionWarningHeader) :global(.Icon) {
+:global(.ConnectionStatusHeader) :global(.Icon) {
   margin-right: 12px;
   height: 26px;
   width: 24px;
