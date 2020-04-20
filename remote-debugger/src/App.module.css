@@ -1,0 +1,8 @@
+:global(.App) header h1 {
+  color: hsl(0, 0%, 99%);
+  margin: 0 0 1.5em 0;
+  background-color: hsl(204, 90%, 30%);
+  padding: 16px 32px;
+  margin: 0;
+  font-size: 16pt;
+}

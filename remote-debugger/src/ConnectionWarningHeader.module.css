@@ -1,0 +1,22 @@
+:global(.ConnectionWarningHeader) {
+  display: block;
+  background-color: hsl(354, 24%, 23%);
+  color: hsl(0, 0%, 99%);
+  padding: 8px 32px 6px 32px;
+  font-size: 14px;
+  margin: 0;
+}
+
+:global(.ConnectionWarningHeader) p {
+  display: inline-block;
+  height: 24px;
+  margin: 0;
+}
+
+:global(.ConnectionWarningHeader) :global(.Icon) {
+  margin-right: 12px;
+  height: 26px;
+  width: 24px;
+  font-size: 24px;
+  vertical-align: bottom;
+}
