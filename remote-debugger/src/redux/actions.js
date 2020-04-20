@@ -11,11 +11,9 @@ export const checkConnection = (apiBaseUrl) => (dispatch) => {
       (response) => response.text(),
       () => dispatch(checkConnectionDisconnected())
     )
-    .then((response) => {
-      if (response === "pong") {
-        dispatch(checkConnectionConnected());
-      }
-    });
+    .then((response) =>
+      response === "pong" ? dispatch(checkConnectionConnected()) : response
+    );
 };
 
 export const checkConnectionConnected = () => ({
