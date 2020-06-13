@@ -56,8 +56,4 @@ class ErrorService {
     }
 }
 
-} else {
-    debug(assertDependencies) {
-        static assert(0 , "This module requires Derelict OpenGL3. Please add it as dependency to your project.");    
-    }
 }
