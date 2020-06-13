@@ -47,9 +47,7 @@ class TextureComponent : EntityComponent, Snapshotable {
 
     public string[string] getSnapshotData() {
         auto textureName = texture !is null ? texture.getName : "";
-        return [
-            "textureName": textureName,
-        ];
+        return ["textureName": textureName];
     }
 }
 
@@ -59,6 +57,24 @@ class RenderableSpriteComponent : EntityComponent {
 
 class RenderableTextComponent : EntityComponent {
     mixin EntityComponentIdentity!"RenderableTextComponent";
+}
+
+class HideableComponent : EntityComponent, Snapshotable {
+    mixin EntityComponentIdentity!"HideableComponent";
+
+    public bool isHidden;
+
+    this() {
+        this(false);
+    }
+
+    this(bool isHidden) {
+        this.isHidden = isHidden;
+    }
+
+    public string[string] getSnapshotData() {
+        return ["isHidden": isHidden ? "true": "false"];
+    }
 }
 
 class SpriteAnimationComponent : EntityComponent, Snapshotable {
@@ -90,7 +106,9 @@ class SpriteAnimationComponent : EntityComponent, Snapshotable {
     }
 
     public @property void currentFrame(ulong currentFrame) {
-        enforce(currentFrame >= _currentAnimation.beginFrame && currentFrame <= _currentAnimation.endFrame, format("Set frame is not within the range of the start and end frame. Frame: %s, Start: %s, End: %s", currentFrame, _currentAnimation.beginFrame, _currentAnimation.endFrame));
+        enforce(currentFrame >= _currentAnimation.beginFrame && currentFrame <= _currentAnimation.endFrame,
+                format("Set frame is not within the range of the start and end frame. Frame: %s, Start: %s, End: %s",
+                    currentFrame, _currentAnimation.beginFrame, _currentAnimation.endFrame));
         this._currentFrame = currentFrame;
     }
 
@@ -134,8 +152,10 @@ class SpriteSheetComponent : EntityComponent, Snapshotable {
     }
 
     public RectangleUL getSprite(ulong row, ulong column) {
-        enforce(row <= spritesheet.rows, format("Row %s illegal, sprite has %s rows", row, spritesheet.rows));
-        enforce(column <= spritesheet.columns, format("Column %s illegal, sprite has %s columns", column, spritesheet.columns));
+        enforce(row <= spritesheet.rows,
+                format("Row %s illegal, sprite has %s rows", row, spritesheet.rows));
+        enforce(column <= spritesheet.columns,
+                format("Column %s illegal, sprite has %s columns", column, spritesheet.columns));
         enforce(row != 0, "Invalid row number 0, rows are 1-indexed");
         enforce(column != 0, "Invalid column number 0, columns are 1-indexed");
 
@@ -148,7 +168,9 @@ class SpriteSheetComponent : EntityComponent, Snapshotable {
     }
 
     public RectangleUL getNthSprite(ulong n) {
-        enforce(n <= spritesheet.spriteCount, format("Sprite number %s invalid, the spritesheet only has %s sprites", n, spritesheet.spriteCount));
+        enforce(n <= spritesheet.spriteCount,
+                format("Sprite number %s invalid, the spritesheet only has %s sprites",
+                    n, spritesheet.spriteCount));
         enforce(n != 0, "Invalid sprite number 0, sprite count is 1-indexed");
 
         ulong row = cast(uint) ceil(cast(double) n / spritesheet.columns);
@@ -158,9 +180,7 @@ class SpriteSheetComponent : EntityComponent, Snapshotable {
     }
 
     public string[string] getSnapshotData() {
-        return [
-            "filename": spritesheet.fileName
-        ];
+        return ["filename": spritesheet.fileName];
     }
 }
 
@@ -182,8 +202,7 @@ class RenderableSpriteEntityCreationParameters : CreationParameters {
 }
 
 class RenderableSpriteEntityFactory : EntityFactory {
-    @Autowire
-    private TextureComponentFactory textureComponentFactory;
+    @Autowire private TextureComponentFactory textureComponentFactory;
 
     this() {
         super("ent_sprite");
@@ -193,7 +212,8 @@ class RenderableSpriteEntityFactory : EntityFactory {
         auto textureCreationParameters = cast(RenderableSpriteEntityCreationParameters) parameters;
         auto entity = createBlankEntity();
 
-        auto textureComponent = textureComponentFactory.loadTexture(textureCreationParameters.textureFile);
+        auto textureComponent = textureComponentFactory.loadTexture(
+                textureCreationParameters.textureFile);
         entity.addComponent(textureComponent);
         entity.addComponent(new Position2DComponent(textureCreationParameters.position));
         entity.addComponent(new OrientationR2Component(textureCreationParameters.orientation));
@@ -202,8 +222,10 @@ class RenderableSpriteEntityFactory : EntityFactory {
         return entity;
     }
 
-    public Entity createEntity(File textureFile, Vector2D position = Vector2D(0), scalar orientation = 0) {
-        auto parameters = new RenderableSpriteEntityCreationParameters(textureFile, position, orientation);
+    public Entity createEntity(File textureFile, Vector2D position = Vector2D(0),
+            scalar orientation = 0) {
+        auto parameters = new RenderableSpriteEntityCreationParameters(textureFile,
+                position, orientation);
         return createEntity(parameters);
     }
 }
@@ -212,15 +234,14 @@ alias TextureCache = Cache!(string, Texture);
 
 class SpriteAnimationProcessor : EntityProcessor {
 
-    @Autowire
-    private Game game;
+    @Autowire private Game game;
 
     public override bool acceptsEntity(Entity entity) {
         return entity.hasComponent!SpriteAnimationComponent;
     }
 
     public override void update() {
-        foreach(entity; entities) {
+        foreach (entity; entities) {
             animateEntitySprite(entity);
         }
     }
@@ -249,7 +270,8 @@ class SpriteAnimationProcessor : EntityProcessor {
         });
     }
 
-    public override void draw() {}
+    public override void draw() {
+    }
 }
 
 class HorizontalSpriteFlipComponent : EntityComponent {
@@ -273,7 +295,7 @@ class Spritesheet {
     public ulong rows;
     public string fileName;
 
-    this(ulong rows = 1, ulong columns =1, string fileName = "", ulong id = 0) {
+    this(ulong rows = 1, ulong columns = 1, string fileName = "", ulong id = 0) {
         this.rows = rows;
         this.columns = columns;
         this.fileName = fileName;
@@ -291,7 +313,7 @@ class Animation {
     public ulong endFrame;
     public Spritesheet spritesheet;
 
-    this (ulong beginFrame = 1, ulong endFrame = 1, string name = "", Spritesheet spritesheet = null) {
+    this(ulong beginFrame = 1, ulong endFrame = 1, string name = "", Spritesheet spritesheet = null) {
         this.beginFrame = beginFrame;
         this.endFrame = endFrame;
         this.name = name;
@@ -313,9 +335,7 @@ class RenderOrderComponent : EntityComponent, Snapshotable {
     }
 
     public string[string] getSnapshotData() {
-        return [
-            "order": to!string(_order)
-        ];
+        return ["order": to!string(_order)];
     }
 }
 
@@ -337,9 +357,7 @@ class DrawingOffset2DComponent : EntityComponent, Snapshotable {
     }
 
     public string[string] getSnapshotData() {
-        return [
-            "offset": to!string(offset)
-        ];
+        return ["offset": to!string(offset)];
     }
 }
 
@@ -355,8 +373,9 @@ class TextureCenteredDrawingOffsetProcessor : EntityProcessor {
     }
 
     public override void update() {
-        foreach(entity; entities) {
-            auto textureSize = entity.getFromComponent!TextureComponent(c => c.texture.getTextureSize());
+        foreach (entity; entities) {
+            auto textureSize = entity.getFromComponent!TextureComponent(
+                    c => c.texture.getTextureSize());
             double xOffset = (cast(double) textureSize.width / 2) * -1;
             double yOffset = (cast(double) textureSize.height / 2) * -1;
             entity.withComponent!DrawingOffset2DComponent((c) {
@@ -408,7 +427,8 @@ class ShaderProgram {
 
     public abstract void use();
 
-    public void destroy() {}
+    public void destroy() {
+    }
 }
 
 enum ShaderType {

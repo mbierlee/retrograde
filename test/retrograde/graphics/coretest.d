@@ -32,18 +32,24 @@ class TestGame : BaseGame {
         return 1L;
     }
 
-    public void initialize() {};
-    public void update() {};
-    public void render(double extraPolation) {};
-    public void cleanup() {};
+    public void initialize() {
+    }
+
+    public void update() {
+    }
+
+    public void render(double extraPolation) {
+    }
+
+    public void cleanup() {
+    }
 
 }
 
 class SpriteSheetComponentTest {
     mixin UnitTest;
 
-    @Test
-    public void testCreateComponent() {
+    @Test public void testCreateComponent() {
         auto spritesheet = new Spritesheet(10, 5);
         auto component = new SpriteSheetComponent(spritesheet, RectangleUL(0, 0, 20, 20));
 
@@ -53,8 +59,7 @@ class SpriteSheetComponentTest {
         assertEquals(spritesheet.spriteCount, component.spritesheet.spriteCount);
     }
 
-    @Test
-    public void testGetSprite() {
+    @Test public void testGetSprite() {
         auto spritesheet = new Spritesheet(4, 5);
         auto component = new SpriteSheetComponent(spritesheet, RectangleUL(0, 0, 25, 20));
 
@@ -64,8 +69,7 @@ class SpriteSheetComponentTest {
         assertEquals(expectedSpriteSize, actualSpriteSize);
     }
 
-    @Test
-    public void testGetNthSprite() {
+    @Test public void testGetNthSprite() {
         auto spritesheet = new Spritesheet(3, 3);
         auto component = new SpriteSheetComponent(spritesheet, RectangleUL(0, 0, 30, 30));
 
@@ -80,8 +84,7 @@ class SpriteSheetComponentTest {
 class SpriteAnimationComponentTest {
     mixin UnitTest;
 
-    @Test
-    public void testGetAndSetCurrentFrameNumber() {
+    @Test public void testGetAndSetCurrentFrameNumber() {
         auto spritesheetAnimation = new SpritesheetAnimation();
         auto animation = new Animation(1, 5);
         spritesheetAnimation.animations[animation.name] = animation;
@@ -92,8 +95,7 @@ class SpriteAnimationComponentTest {
         assertEquals(5, component.currentFrame);
     }
 
-    @Test
-    public void testInitialFrameIsSetToBeginFrame() {
+    @Test public void testInitialFrameIsSetToBeginFrame() {
         auto spritesheetAnimation = new SpritesheetAnimation();
         auto animation = new Animation(5, 15);
         spritesheetAnimation.animations[animation.name] = animation;
@@ -102,8 +104,7 @@ class SpriteAnimationComponentTest {
         assertEquals(5, component.currentFrame);
     }
 
-    @Test
-    public void testCurrentFrameIsInitial() {
+    @Test public void testCurrentFrameIsInitial() {
         auto spritesheetAnimation = new SpritesheetAnimation();
         auto animation1 = new Animation(5, 15);
         auto animation2 = new Animation(1, 4);
@@ -114,8 +115,7 @@ class SpriteAnimationComponentTest {
         assertSame(animation2, component.currentAnimation);
     }
 
-    @Test
-    public void testResetMsecsInProgress() {
+    @Test public void testResetMsecsInProgress() {
         auto spritesheetAnimation = new SpritesheetAnimation();
         auto animation = new Animation(5, 15);
         spritesheetAnimation.animations[animation.name] = animation;
@@ -127,8 +127,7 @@ class SpriteAnimationComponentTest {
         assertEquals(0, component.msecsInProgress);
     }
 
-    @Test
-    public void testSetAnimation() {
+    @Test public void testSetAnimation() {
         auto spritesheetAnimation = new SpritesheetAnimation();
         auto animation1 = new Animation(5, 15);
         auto animation2 = new Animation(1, 5);
@@ -151,8 +150,7 @@ class SpriteAnimationProcessorTest {
 
     private shared(DependencyContainer) container;
 
-    @BeforeEach
-    public void setup() {
+    @BeforeEach public void setup() {
         spritesheetAnimation = new SpritesheetAnimation();
         spritesheetAnimation.framesPerSecond = 1000;
         auto animation = new Animation(1, 2, "durp");
@@ -164,8 +162,7 @@ class SpriteAnimationProcessorTest {
         container.register!SpriteAnimationProcessor;
     }
 
-    @Test
-    public void testAnimateSpriteComponent() {
+    @Test public void testAnimateSpriteComponent() {
         auto processor = container.resolve!SpriteAnimationProcessor;
         auto entity = new Entity();
         entity.id = 1;
@@ -181,8 +178,7 @@ class SpriteAnimationProcessorTest {
         assertEquals(2, component.currentFrame);
     }
 
-    @Test
-    public void testAnimateSpriteComponentWithZeroFrameRateDoesNotIncrement() {
+    @Test public void testAnimateSpriteComponentWithZeroFrameRateDoesNotIncrement() {
         spritesheetAnimation.framesPerSecond = 0;
         auto processor = container.resolve!SpriteAnimationProcessor;
         auto entity = new Entity();
@@ -199,8 +195,7 @@ class SpriteAnimationProcessorTest {
         assertEquals(1, component.currentFrame);
     }
 
-    @Test
-    public void testAnimateSpriteComponentClampsFrame() {
+    @Test public void testAnimateSpriteComponentClampsFrame() {
         auto processor = container.resolve!SpriteAnimationProcessor;
         auto entity = new Entity();
         entity.id = 1;
@@ -231,8 +226,7 @@ class TextureCacheTest {
         }
     }
 
-    @Test
-    public void testGet() {
+    @Test public void testGet() {
         auto cache = new TextureCache();
         auto texture = new TestTexture();
 
@@ -245,15 +239,13 @@ class TextureCacheTest {
         assertSame(texture, cachedTexure);
     }
 
-    @Test
-    public void testGetNotInCache() {
+    @Test public void testGetNotInCache() {
         auto cache = new TextureCache();
         auto cachedTexure = cache.get("lez materie");
         assertTrue(cachedTexure.isEmpty);
     }
 
-    @Test
-    public void testGetOrAddNotInCache() {
+    @Test public void testGetOrAddNotInCache() {
         bool createdFromFetchFunction = false;
 
         auto cache = new TextureCache();
@@ -266,16 +258,12 @@ class TextureCacheTest {
         assertNotNull(texture);
     }
 
-    @Test
-    public void testGetOrAddReturnNull() {
+    @Test public void testGetOrAddReturnNull() {
         auto cache = new TextureCache();
-        assertThrown!Exception(cache.getOrAdd("de textuur", {
-            return null;
-        }));
+        assertThrown!Exception(cache.getOrAdd("de textuur", { return null; }));
     }
 
-    @Test
-    public void testGetOrAddFromCache() {
+    @Test public void testGetOrAddFromCache() {
         auto cache = new TextureCache();
         auto textureOne = cache.getOrAdd("la picuture", {
             return new TestTexture();
@@ -288,8 +276,7 @@ class TextureCacheTest {
         assertSame(textureOne, textureTwo);
     }
 
-    @Test
-    public void testAdd() {
+    @Test public void testAdd() {
         auto cache = new TextureCache();
         auto texture = new TestTexture();
 
@@ -303,14 +290,12 @@ class TextureCacheTest {
         assertSame(texture, cachedTexure);
     }
 
-        @Test
-    public void testAddNull() {
+    @Test public void testAddNull() {
         auto cache = new TextureCache();
         assertThrown!Exception(cache.add("lu turture", null));
     }
 
-    @Test
-    public void testRemove() {
+    @Test public void testRemove() {
         auto cache = new TextureCache();
         auto texture = new TestTexture();
 
@@ -324,14 +309,12 @@ class TextureCacheTest {
         assertNotSame(texture, cachedTexure);
     }
 
-    @Test
-    public void testRemoveNonexistingTexture() {
+    @Test public void testRemoveNonexistingTexture() {
         auto cache = new TextureCache();
         cache.remove("il textia");
     }
 
-    @Test
-    public void testHas() {
+    @Test public void testHas() {
         auto cache = new TextureCache();
         auto texture = new TestTexture();
         cache.add("dun tubuiebu", texture);
@@ -340,8 +323,7 @@ class TextureCacheTest {
         assertFalse(cache.has("not a texture"));
     }
 
-    @Test
-    public void testClear() {
+    @Test public void testClear() {
         auto cache = new TextureCache();
         auto texture = new TestTexture();
         cache.add("dun tubuiebu", texture);
@@ -365,8 +347,7 @@ class TextureCenteredDrawingOffsetProcessorTest {
         }
     }
 
-    @Test
-    public void testSetDrawingOffsetBasedOnTexture() {
+    @Test public void testSetDrawingOffsetBasedOnTexture() {
         auto entity = new Entity();
         entity.id = 1;
         entity.addComponent(new TextureComponent(new TestTexture()));
@@ -379,6 +360,7 @@ class TextureCenteredDrawingOffsetProcessorTest {
 
         processor.update();
 
-        assertEquals(Vector2D(-15, -15), entity.getFromComponent!DrawingOffset2DComponent(c => c.offset));
+        assertEquals(Vector2D(-15, -15),
+                entity.getFromComponent!DrawingOffset2DComponent(c => c.offset));
     }
 }

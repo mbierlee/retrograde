@@ -191,6 +191,11 @@ public class SpriteSubRenderer : SubRenderer {
     public override void draw() {
         foreach(orderIndex; renderOrderKeys) {
             foreach(entity; orderedEntities[orderIndex]) {
+                auto isHidden = entity.getFromComponent!HideableComponent(component => component.isHidden, false);
+                if (isHidden) {
+                    continue;
+                }
+
                 drawEntitySprite(entity);
             }
         }
