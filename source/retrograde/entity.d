@@ -58,7 +58,7 @@ class Entity {
 
     public void addComponent(EntityComponent component) {
         enforce!Exception(component !is null, "Passed component reference is null.");
-        enforceNonFinalized("Cannot add new component, entity is finalized. Entities will become finalized when they are added to a processor.");
+        enforceNonFinalized("Cannot add new component, entity is finalized. Entities will become finalized when they are added to the entity manager or by calling Entity.finalize().");
         auto type = component.getComponentType();
         _components[type] = component;
     }
@@ -66,7 +66,9 @@ class Entity {
     public void addComponent(EntityComponentType : EntityComponent)() {
         TypeInfo_Class typeInfo = typeid(EntityComponentType);
         auto component = cast(EntityComponentType) typeInfo.create();
-        enforce!Exception(component !is null, format("Error creating component of type %s. Does the component have a default constructor?",  typeInfo));
+        enforce!Exception(component !is null,
+                format("Error creating component of type %s. Does the component have a default constructor?",
+                    typeInfo));
         addComponent(component);
     }
 
@@ -77,7 +79,7 @@ class Entity {
     }
 
     public void removeComponent(StringId componentType) {
-        enforceNonFinalized("Cannot remove components, entity is finalized. Entities will become finalized when they are added to a processor.");
+        enforceNonFinalized("Cannot remove components, entity is finalized. Entities will become finalized when they are added to the entity manager or by calling Entity.finalize().");
         _components.remove(componentType);
     }
 
@@ -100,21 +102,25 @@ class Entity {
         return (componentType in _components) !is null;
     }
 
-    public void maybeWithComponent(EntityComponentType : EntityComponent)(void delegate(EntityComponentType) fn) {
+    public void maybeWithComponent(EntityComponentType : EntityComponent)(
+            void delegate(EntityComponentType) fn) {
         if (hasComponent!EntityComponentType) {
             withComponent(fn);
         }
     }
 
-    public void withComponent(EntityComponentType : EntityComponent)(void delegate(EntityComponentType) fn) {
+    public void withComponent(EntityComponentType : EntityComponent)(
+            void delegate(EntityComponentType) fn) {
         fn(getComponent!EntityComponentType);
     }
 
-    public ReturnType getFromComponent(EntityComponentType : EntityComponent, ReturnType)(ReturnType delegate(EntityComponentType) fn) {
+    public ReturnType getFromComponent(EntityComponentType : EntityComponent, ReturnType)(
+            ReturnType delegate(EntityComponentType) fn) {
         return fn(getComponent!EntityComponentType);
     }
 
-    public ReturnType getFromComponent(EntityComponentType : EntityComponent, ReturnType)(ReturnType delegate(EntityComponentType) fn, lazy ReturnType defaultValue) {
+    public ReturnType getFromComponent(EntityComponentType : EntityComponent, ReturnType)(
+            ReturnType delegate(EntityComponentType) fn, lazy ReturnType defaultValue) {
         return hasComponent!EntityComponentType ? getFromComponent(fn) : defaultValue();
     }
 
@@ -144,13 +150,15 @@ class Entity {
 
 class ComponentNotFoundException : Exception {
     this(StringId componentType, Entity sourceEntity) {
-        super(format("Component of type %s not added to entity %s(%s)", componentType, sourceEntity.name, sourceEntity.id));
+        super(format("Component of type %s not added to entity %s(%s)",
+                componentType, sourceEntity.name, sourceEntity.id));
     }
 }
 
 class EntityIsFinalizedException : Exception {
     this(Entity entity, string additionalMessage) {
-        super(format("Entity %s with id %s is finalized. %s", entity.name, entity.id, additionalMessage));
+        super(format("Entity %s with id %s is finalized. %s", entity.name,
+                entity.id, additionalMessage));
     }
 }
 
@@ -235,7 +243,7 @@ class HierarchialEntityCollection : EntityCollection {
     }
 
     public void forEachChild(void delegate(Entity entity) fn) {
-        foreach(entity; _rootEntities.values) {
+        foreach (entity; _rootEntities.values) {
             forEachChild(entity, fn);
         }
     }
@@ -251,7 +259,7 @@ class HierarchialEntityCollection : EntityCollection {
     }
 
     public void forEachRootEntity(void delegate(Entity entity) fn) {
-        foreach(entity; _rootEntities.values) {
+        foreach (entity; _rootEntities.values) {
             fn(entity);
         }
     }
@@ -329,7 +337,7 @@ class EntityManager {
 
         entity.id = nextAvailableId++;
         _entities.addEntity(entity);
-        foreach(processor ; _processors) {
+        foreach (processor; _processors) {
             processor.addEntity(entity);
         }
     }
@@ -342,7 +350,7 @@ class EntityManager {
 
     public void addEntityProcessor(EntityProcessor processor) {
         _processors ~= processor;
-        foreach(entity ; _entities.getAll()) {
+        foreach (entity; _entities.getAll()) {
             processor.addEntity(entity);
         }
     }
@@ -381,13 +389,13 @@ class EntityManager {
     }
 
     public void update() {
-        foreach (processor ; _processors) {
+        foreach (processor; _processors) {
             processor.update();
         }
     }
 
     public void draw() {
-        foreach (processor ; _processors) {
+        foreach (processor; _processors) {
             processor.draw();
         }
     }
@@ -398,13 +406,17 @@ abstract class EntityProcessor {
 
     abstract public bool acceptsEntity(Entity entity);
 
-    public void initialize() {};
+    public void initialize() {
+    }
 
-    public void update() {};
+    public void update() {
+    }
 
-    public void draw() {};
+    public void draw() {
+    }
 
-    public void cleanup() {};
+    public void cleanup() {
+    }
 
     public @property entityCount() {
         return _entities.length();
@@ -419,14 +431,17 @@ abstract class EntityProcessor {
     }
 
     public void addEntity(Entity entity) {
-        enforce!Exception(entity.isFinalized, "An unfinalized entity was added to entity processor. Finalize entities first using Entity.finalize()");
-        if (!acceptsEntity(entity)) return;
+        enforce!Exception(entity.isFinalized,
+                "An unfinalized entity was added to entity processor. Finalize entities first using Entity.finalize()");
+        if (!acceptsEntity(entity))
+            return;
 
         _entities.addEntity(entity);
         processAcceptedEntity(entity);
     }
 
-    protected void processAcceptedEntity(Entity entity) {}
+    protected void processAcceptedEntity(Entity entity) {
+    }
 
     public bool hasEntity(uint entityId) {
         return _entities.hasEntity(entityId);
@@ -442,10 +457,12 @@ abstract class EntityProcessor {
         processRemovedEntity(entity);
     }
 
-    protected void processRemovedEntity(Entity entity) {}
+    protected void processRemovedEntity(Entity entity) {
+    }
 }
 
-interface CreationParameters {}
+interface CreationParameters {
+}
 
 abstract class EntityFactory {
     private string _entityName;
@@ -501,7 +518,8 @@ class EntityCreationMessageData : MessageData {
 
 class EntityLifecycleCommandChannel : CommandChannel {
     public void createEntity(string entityName, CreationParameters creationParameters = null) {
-        emit(Command(EntityLifecycleCommand.createEntity, 0, new EntityCreationMessageData(entityName, creationParameters)));
+        emit(Command(EntityLifecycleCommand.createEntity, 0,
+                new EntityCreationMessageData(entityName, creationParameters)));
     }
 
     public void addEntity(Entity entity) {
@@ -509,11 +527,13 @@ class EntityLifecycleCommandChannel : CommandChannel {
     }
 
     public void removeEntity(Entity entity) {
-        emit(Command(EntityLifecycleCommand.removeEntity, 0, new EntityLifecycleMessageData(entity)));
+        emit(Command(EntityLifecycleCommand.removeEntity, 0,
+                new EntityLifecycleMessageData(entity)));
     }
 }
 
-class EntityLifecycleEventChannel : EventChannel {}
+class EntityLifecycleEventChannel : EventChannel {
+}
 
 enum EntityLifecycleCommand : StringId {
     addEntity = sid("cmd_add_entity"),
@@ -535,15 +555,11 @@ public void registerLifecycleDebugSids(SidMap sidMap) {
 }
 
 class EntityChannelManager : MessageProcessor {
-    @Autowire
-    private EntityLifecycleEventChannel eventChannel;
+    @Autowire private EntityLifecycleEventChannel eventChannel;
 
-    @Autowire
-    private EntityManager entityManager;
+    @Autowire private EntityManager entityManager;
 
-    @Autowire
-    @OptionalDependency
-    private EntityFactory[] entitityFactories;
+    @Autowire @OptionalDependency private EntityFactory[] entitityFactories;
 
     private EntityFactory[string] entitityFactoriesByName;
 
@@ -553,52 +569,53 @@ class EntityChannelManager : MessageProcessor {
 
     public override void initialize() {
         super.initialize();
-        foreach(entityFactory; entitityFactories) {
+        foreach (entityFactory; entitityFactories) {
             entitityFactoriesByName[entityFactory.entityName] = entityFactory;
         }
         entitityFactories.destroy();
     }
 
     protected override void handleMessage(const Command command) {
-        switch(command.type) {
-            case EntityLifecycleCommand.addEntity:
-                auto data = cast(EntityLifecycleMessageData) command.data;
-                if (data is null || data.entity is null) {
-                    return;
-                }
+        switch (command.type) {
+        case EntityLifecycleCommand.addEntity:
+            auto data = cast(EntityLifecycleMessageData) command.data;
+            if (data is null || data.entity is null) {
+                return;
+            }
 
-                entityManager.addEntity(data.entity);
-                eventChannel.emit(Event(EntityLifecycleEvent.entityAdded, 1, data));
-                break;
+            entityManager.addEntity(data.entity);
+            eventChannel.emit(Event(EntityLifecycleEvent.entityAdded, 1, data));
+            break;
 
-            case EntityLifecycleCommand.removeEntity:
-                auto data = cast(EntityLifecycleMessageData) command.data;
-                if (data is null || data.entity is null) {
-                    return;
-                }
+        case EntityLifecycleCommand.removeEntity:
+            auto data = cast(EntityLifecycleMessageData) command.data;
+            if (data is null || data.entity is null) {
+                return;
+            }
 
-                entityManager.removeEntity(data.entity);
-                eventChannel.emit(Event(EntityLifecycleEvent.entityRemoved, 1, data));
-                break;
+            entityManager.removeEntity(data.entity);
+            eventChannel.emit(Event(EntityLifecycleEvent.entityRemoved, 1, data));
+            break;
 
-            case EntityLifecycleCommand.createEntity:
-                auto data = cast(EntityCreationMessageData) command.data;
-                if (data is null || data.entityName is null) {
-                    return;
-                }
+        case EntityLifecycleCommand.createEntity:
+            auto data = cast(EntityCreationMessageData) command.data;
+            if (data is null || data.entityName is null) {
+                return;
+            }
 
-                auto factory = data.entityName in entitityFactoriesByName;
-                if (!factory) {
-                    return;
-                }
+            auto factory = data.entityName in entitityFactoriesByName;
+            if (!factory) {
+                return;
+            }
 
-                auto entity = factory.createEntity(data.creationParameters);
-                entityManager.addEntity(entity);
-                eventChannel.emit(Event(EntityLifecycleEvent.entityAdded, 1, new EntityLifecycleMessageData(entity)));
-                break;
+            auto entity = factory.createEntity(data.creationParameters);
+            entityManager.addEntity(entity);
+            eventChannel.emit(Event(EntityLifecycleEvent.entityAdded, 1,
+                    new EntityLifecycleMessageData(entity)));
+            break;
 
-            default:
-                break;
+        default:
+            break;
         }
     }
 }
