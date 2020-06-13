@@ -50,7 +50,7 @@ class Entity {
         this._name = name;
     }
 
-    private void enforceFinalized(string message) {
+    private void enforceNonFinalized(string message) {
         if (isFinalized) {
             throw new EntityIsFinalizedException(this, message);
         }
@@ -58,7 +58,7 @@ class Entity {
 
     public void addComponent(EntityComponent component) {
         enforce!Exception(component !is null, "Passed component reference is null.");
-        enforceFinalized("Cannot add new component.");
+        enforceNonFinalized("Cannot add new component, entity is finalized. Entities will become finalized when they are added to a processor.");
         auto type = component.getComponentType();
         _components[type] = component;
     }
@@ -77,7 +77,7 @@ class Entity {
     }
 
     public void removeComponent(StringId componentType) {
-        enforceFinalized("Cannot remove components.");
+        enforceNonFinalized("Cannot remove components, entity is finalized. Entities will become finalized when they are added to a processor.");
         _components.remove(componentType);
     }
 
@@ -133,7 +133,7 @@ class Entity {
     }
 
     public void clearComponents() {
-        enforceFinalized("Cannot clear components.");
+        enforceNonFinalized("Cannot clear components.");
         _components.destroy();
     }
 
