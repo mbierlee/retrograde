@@ -1,0 +1,78 @@
+<!--
+@license
+Copyright 2017 Mike Bierlee
+This software is licensed under the terms of the MIT license.
+The full terms of the license can be found in the LICENSE.txt file.
+-->
+
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+
+<link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="../../bower_components/iron-icons/iron-icons.html">
+
+<link rel="import" href="rg-poll-ajax-behavior.html">
+<link rel="import" href="rg-api-behavior.html">
+
+<dom-module id="rg-connectionstate">
+
+    <template>
+        <style>
+            :host {
+                display: block;
+                background-color: #ffeb00;
+                color: #585858;
+                padding: 0.3em 2.8em;
+            }
+
+            :host([is-connected]:host) {
+                display: none;
+            }
+
+            p {
+                margin: 0;
+                font-size: 0.8em;
+                display: inline;
+            }
+
+            iron-icon {
+                --iron-icon-height: 20px;
+                --iron-icon-width: 20px;
+            }
+        </style>
+
+        <iron-ajax auto url="[[apiBaseUrl]]/ping" on-response="setIsConnected" on-error="setIsNotConnected"></iron-ajax>
+
+        <iron-icon icon="icons:warning"></iron-icon>
+        <p>Not connected to game</p>
+    </template>
+
+    <script>
+        class RgConnectionState extends ApiBehavior(PollAjaxBehavior(Polymer.Element)) {
+            static get is() {
+                return 'rg-connectionstate';
+            }
+
+            static get properties() {
+                return {
+                    isConnected: {
+                        type: Boolean,
+                        reflectToAttribute: true,
+                        notify: true,
+                        value: false
+                    }
+                }
+            }
+
+            setIsConnected() {
+                this.isConnected = true;
+            }
+
+            setIsNotConnected() {
+                this.isConnected = false;
+            }
+        }
+
+        customElements.define(RgConnectionState.is, RgConnectionState);
+    </script>
+
+</dom-module>

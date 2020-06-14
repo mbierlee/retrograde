@@ -1,0 +1,125 @@
+<!--
+@license
+Copyright 2017 Mike Bierlee
+This software is licensed under the terms of the MIT license.
+The full terms of the license can be found in the LICENSE.txt file.
+-->
+
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../bower_components/polymer/lib/elements/dom-repeat.html">
+
+<link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html">
+
+<link rel="import" href="rg-widget.html">
+<link rel="import" href="rg-poll-ajax-behavior.html">
+<link rel="import" href="rg-symbol.html">
+<link rel="import" href="rg-shared-style.html">
+<link rel="import" href="rg-api-behavior.html">
+
+<dom-module id="rg-entitymanagerwidget">
+    <template>
+        <style include="rg-shared-style"></style>
+        <style>
+            ul > li {
+                margin-top: 0.3em;
+            }
+
+            h6 {
+                margin: 0;
+                font-weight: normal;
+                font-size: 0.8rem;
+            }
+
+            p {
+                margin: 0;
+            }
+
+            .listcontainer {
+                margin: 0 0.7em 0.7em 0;
+                display: inline-block;
+                vertical-align: top;
+            }
+
+            .entity {
+                display: inline-block;
+                vertical-align: top;
+            }
+
+            .entity > p {
+                font-weight: bold;
+            }
+
+        </style>
+
+        <iron-ajax
+                auto
+                handle-as="json"
+                on-response="_handleDataRequest"
+                url="[[apiBaseUrl]]/data/entity-info"></iron-ajax>
+
+        <rg-widget widget-title="Entity Manager">
+            <div class="listcontainer">
+                <h5>Entities</h5>
+                <ul>
+                    <template is="dom-repeat" items="{{entities}}" as="entity">
+                        <li class="entity">
+                            <p>{{entity.name}} (id: {{entity.id}})</p>
+                            <ul>
+                                <template is="dom-repeat" items="{{entity.components}}" as="component">
+                                    <li>
+                                        <p title="Component SID: {{component.componentTypeSid}}">
+                                            {{component.componentType}}
+                                        </p>
+                                        <ul>
+                                            <template is="dom-repeat" items="{{_fromDataMap(component.data)}}">
+                                                <li>{{item}}</li>
+                                            </template>
+                                        </ul>
+                                    </li>
+                                </template>
+                            </ul>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+            <div class="listcontainer">
+                <h5>Processors</h5>
+                <ul>
+                    <template is="dom-repeat" items="{{processors}}" as="processor">
+                        <li>
+                            <rg-symbol fqn="{{processor.type}}"></rg-symbol>
+                            <ul>
+                                <template is="dom-repeat" items="{{processor.entities}}" as="entity">
+                                    <li><p>{{entity.name}} (id: {{entity.id}})</p></li>
+                                </template>
+                            </ul>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+        </rg-widget>
+    </template>
+
+    <script>
+        class RgEntityManagerWidget extends ApiBehavior(PollAjaxBehavior(Polymer.Element)) {
+            static get is() {
+                return "rg-entitymanagerwidget"
+            }
+
+            _handleDataRequest(event, detail) {
+                let data = detail.xhr.response;
+                this.entities = data.entities;
+                this.processors = data.processors;
+            }
+
+            _fromDataMap(data) {
+                return Object.keys(data).map(function (key) {
+                    return key + ": " + data[key];
+                });
+            }
+        }
+
+        customElements.define(RgEntityManagerWidget.is, RgEntityManagerWidget);
+    </script>
+
+</dom-module>

@@ -1,0 +1,65 @@
+<!--
+@license
+Copyright 2017 Mike Bierlee
+This software is licensed under the terms of the MIT license.
+The full terms of the license can be found in the LICENSE.txt file.
+-->
+
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../bower_components/polymer/lib/elements/dom-repeat.html">
+
+<link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html">
+
+<link rel="import" href="rg-widget.html">
+<link rel="import" href="rg-poll-ajax-behavior.html">
+<link rel="import" href="rg-channel-list.html">
+<link rel="import" href="rg-shared-style.html">
+<link rel="import" href="rg-symbol.html">
+<link rel="import" href="rg-api-behavior.html">
+
+<dom-module id="rg-messagingwidget">
+    <template>
+        <style include="rg-shared-style"></style>
+        <style>
+            rg-channel-list {
+                display: inline-block;
+            }
+        </style>
+
+        <iron-ajax
+                auto
+                url="[[apiBaseUrl]]/data/messaging-info"
+                handle-as="json"
+                on-response="_handleDataRequest"></iron-ajax>
+
+        <rg-widget widget-title="Messaging">
+            <rg-channel-list channel-type="Event" channels="[[eventChannels]]"></rg-channel-list>
+            <rg-channel-list channel-type="Command" channels="[[commandChannels]]"></rg-channel-list>
+            <h5>Message Processors</h5>
+            <ul>
+                <template is="dom-repeat" items="[[messageProcessors]]">
+                    <li>
+                        <rg-symbol fqn="[[item.name]]"></rg-symbol>
+                    </li>
+                </template>
+            </ul>
+        </rg-widget>
+    </template>
+
+    <script>
+        class RgMessagingWidget extends ApiBehavior(PollAjaxBehavior(Polymer.Element)) {
+            static get is() {
+                return "rg-messagingwidget";
+            }
+
+            _handleDataRequest(event, detail) {
+                let data = detail.xhr.response;
+                this.eventChannels = data.eventChannels;
+                this.commandChannels = data.commandChannels;
+                this.messageProcessors = data.messageProcessors;
+            }
+        }
+
+        customElements.define(RgMessagingWidget.is, RgMessagingWidget);
+    </script>
+</dom-module>

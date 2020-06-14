@@ -1,0 +1,31 @@
+<!--
+@license
+Copyright 2017 Mike Bierlee
+This software is licensed under the terms of the MIT license.
+The full terms of the license can be found in the LICENSE.txt file.
+-->
+
+<script>
+    let PollAjaxBehavior = (superclass) => class extends superclass {
+        static get properties() {
+            return {
+                ajaxPollIntervalMs: {
+                    type: Number,
+                    value: 1000
+                }
+            }
+        }
+
+        ready() {
+            super.ready();
+            this._pollAjax();
+        }
+
+        _pollAjax() {
+            setTimeout(() => {
+                this.root.querySelector('iron-ajax').generateRequest();
+                this._pollAjax();
+            }, this.ajaxPollIntervalMs);
+        }
+    };
+</script>

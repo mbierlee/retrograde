@@ -1,0 +1,67 @@
+<!--
+@license
+Copyright 2017 Mike Bierlee
+This software is licensed under the terms of the MIT license.
+The full terms of the license can be found in the LICENSE.txt file.
+-->
+
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../bower_components/polymer/lib/elements/dom-repeat.html">
+
+<link rel="import" href="rg-symbol.html">
+<link rel="import" href="rg-shared-style.html">
+
+<dom-module id="rg-channel-list">
+    <template>
+        <style include="rg-shared-style"></style>
+        <style>
+            :host {
+                display: block;
+            }
+
+            .channel {
+                display: inline-block;
+                vertical-align: top;
+            }
+
+            .channel-name {
+                font-weight: bold;
+                font-size: 0.8rem;
+            }
+        </style>
+
+        <h5>{{channelType}} Channels</h5>
+        <ul>
+            <template is="dom-repeat" items="{{channels}}" as="channel">
+                <li class="channel">
+                    <rg-symbol class="channel-name" fqn="{{channel.name}}"></rg-symbol>
+                    <ul>
+                        <template is="dom-repeat" items="{{channel.messageHistory}}" as="message">
+                            <li>{{message.type}} (mag: {{message.magnitude}}) (
+                                <rg-symbol fqn="{{message.data}}"></rg-symbol>
+                                )
+                            </li>
+                        </template>
+                    </ul>
+                </li>
+            </template>
+        </ul>
+    </template>
+
+    <script>
+        class RgChannelList extends Polymer.Element {
+            static get is() {
+                return 'rg-channel-list';
+            }
+
+            static get properties() {
+                return {
+                    channelType: String,
+                    channels: Array
+                }
+            }
+        }
+
+        customElements.define(RgChannelList.is, RgChannelList);
+    </script>
+</dom-module>

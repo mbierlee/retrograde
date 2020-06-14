@@ -1,0 +1,7 @@
+{
+  "name": "remote-debugger",
+  "short_name": "remote-debugger",
+  "description": "Retrograde Remote Debugger",
+  "start_url": "/",
+  "display": "standalone"
+}
