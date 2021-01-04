@@ -14,10 +14,11 @@
 			"targetType": "library"
 		},
 		{
+			"name": "unittest",
+			"targetType": "library",
 			"dependencies": {
 				"silly": "~>1.0"
 			},
-			"name": "unittest",
 			"sourcePaths": [
 				"source"
 			],
@@ -26,8 +27,7 @@
 			],
 			"stringImportPaths": [
 				"testfiles"
-			],
-			"targetType": "library"
+			]
 		}
 	],
 	"dependencies": {
