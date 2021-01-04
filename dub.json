@@ -1,0 +1,36 @@
+{
+	"name": "retrograde",
+	"description": "The Retrograde Game Engine",
+	"copyright": "Copyright Mike Bierlee 2014-2021",
+	"homepage": "https://github.com/mbierlee/retrograde/",
+	"license": "MIT",
+	"authors": [
+		"Mike Bierlee",
+		"Lostmoment"
+	],
+	"configurations": [
+		{
+			"name": "build",
+			"targetType": "library"
+		},
+		{
+			"dependencies": {
+				"silly": "~>1.0"
+			},
+			"name": "unittest",
+			"sourcePaths": [
+				"source"
+			],
+			"importPaths": [
+				"source"
+			],
+			"stringImportPaths": [
+				"testfiles"
+			],
+			"targetType": "library"
+		}
+	],
+	"dependencies": {
+		"poodinis": "~>8.0"
+	}
+}
