@@ -22,7 +22,7 @@ import std.math;
 class MathTest {
     mixin UnitTest;
 
-    private const auto relaxedTolerance = 2 * 1.11e-16;
+    private const auto relaxedTolerance = 3 * 1.11e-16;
 
     @Test
     public void testRadiansToDegrees() {

@@ -268,7 +268,7 @@ class HierarchialEntityCollection : EntityCollection {
 class EntityCollection {
     private Entity[uint] entities;
 
-    public @property uint length() {
+    public @property size_t length() {
         return entities.length;
     }
 
