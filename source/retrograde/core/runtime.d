@@ -59,7 +59,7 @@ interface EngineRuntime
 
 /**
  * Standard implementation of an EngineRuntime.
- * This implementation has a gameloop with a fixed update time step and variable render rate.
+ * This implementation has a gameloop with a fixed-step update time and variable render rate.
  */
 class StandardEngineRuntime : EngineRuntime
 {
