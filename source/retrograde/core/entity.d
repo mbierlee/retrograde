@@ -820,7 +820,7 @@ version (unittest)
         assert(expectedComponent is actualComponent);
     }
 
-    @("Attempt to get component that does not exsit from entity")
+    @("Attempt to get component that does not exist from entity")
     unittest
     {
         auto entity = new Entity();
