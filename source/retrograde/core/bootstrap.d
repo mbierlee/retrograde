@@ -14,6 +14,7 @@ module retrograde.core.bootstrap;
 import retrograde.core.runtime;
 import retrograde.core.game;
 import retrograde.core.entity;
+import retrograde.core.communication;
 
 import poodinis;
 
@@ -29,6 +30,7 @@ public void startGame(GameType : Game, EngineRuntimeType:
     dependencies.register!(EngineRuntime, EngineRuntimeType);
     dependencies.register!(Game, GameType);
     dependencies.register!EntityManager;
+    dependencies.register!MessageHandler;
 
     auto runtime = dependencies.resolve!EngineRuntime;
     runtime.startGame();
@@ -41,6 +43,8 @@ version (unittest)
         public bool isInitialized;
 
         @Autowire private EngineRuntime runtime;
+        @Autowire EntityManager entityManager;
+        @Autowire MessageHandler messageHandler;
 
         public override void initialize()
         {
