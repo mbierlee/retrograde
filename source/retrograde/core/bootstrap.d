@@ -13,6 +13,7 @@ module retrograde.core.bootstrap;
 
 import retrograde.core.runtime;
 import retrograde.core.game;
+import retrograde.core.entity;
 
 import poodinis;
 
@@ -27,6 +28,8 @@ public void startGame(GameType : Game, EngineRuntimeType:
 
     dependencies.register!(EngineRuntime, EngineRuntimeType);
     dependencies.register!(Game, GameType);
+    dependencies.register!EntityManager;
+
     auto runtime = dependencies.resolve!EngineRuntime;
     runtime.startGame();
 }
