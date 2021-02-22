@@ -17,7 +17,7 @@
 			"name": "unittest",
 			"targetType": "library",
 			"dependencies": {
-				"silly": "~>1.0"
+				"silly": "~>1.1"
 			},
 			"sourcePaths": [
 				"source"
