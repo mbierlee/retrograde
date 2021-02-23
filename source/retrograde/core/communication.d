@@ -92,6 +92,28 @@ class MessageHandler
     }
 
     /**
+     * Receives all messages sent to a specific channel.
+     * Messages are read from the active message queue and sent to the specifcied processor.
+     *
+     * Params:
+     *  channel = ID of the channel to receive messages from.
+     *  processor = Processor delegate that takes care of processing received messages.
+     *
+     * See_Also: sendMessage
+     */
+    public void receiveMessages(const StringId channel,
+            const(void delegate(immutable Message)) processor)
+    {
+        if (auto channelMessages = channel in activeMessageQueue)
+        {
+            foreach (message; *channelMessages)
+            {
+                processor(message);
+            }
+        }
+    }
+
+    /**
      * Copies all messages sent to the stand-by message queue to the active message queue and
      * clears the stand-by qeueu.
      * This method is typically called at the start of an update cycle.
@@ -187,6 +209,12 @@ version (unittest)
         receivedMessage = false;
         handler.shiftStandbyToActiveQueue();
         handler.receiveMessages(testChannel, processor);
+        assert(receivedMessage);
+
+        receivedMessage = false;
+        handler.receiveMessages(testChannel, (immutable Message message) {
+            processor(testChannel, message);
+        });
         assert(receivedMessage);
 
         receivedMessage = false;
