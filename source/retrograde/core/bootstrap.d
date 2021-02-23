@@ -15,20 +15,32 @@ import retrograde.core.runtime;
 import retrograde.core.game;
 import retrograde.core.entity;
 import retrograde.core.communication;
+import retrograde.platform.api;
 
 import poodinis;
+
+version (Windows)
+{
+    alias DefaultPlatform = NullPlatform; // TODO: Switch to Windows implementation
+}
+else
+{
+    alias DefaultPlatform = NullPlatform;
+}
 
 /**
  * Bootstrap function for quickly setting up the DI framework with all required and typically used components.
  * After set-up, the game is started.
  */
 public void startGame(GameType : Game, EngineRuntimeType:
-        EngineRuntime = StandardEngineRuntime)(
+        EngineRuntime = StandardEngineRuntime, PlatformType:
+        Platform = DefaultPlatform)(
         shared DependencyContainer dependencies = new shared DependencyContainer())
 {
 
     dependencies.register!(EngineRuntime, EngineRuntimeType);
     dependencies.register!(Game, GameType);
+    dependencies.register!(Platform, PlatformType);
     dependencies.register!EntityManager;
     dependencies.register!MessageHandler;
 
