@@ -19,11 +19,20 @@ alias MessageProcessor = void delegate(const StringId channel, immutable Message
 
 /**
  * Base class for message data.
- * Messages must at least define an ID.
  */
 class Message
 {
     @property StringId id;
+
+    this(const StringId id = sid(""))
+    {
+        this.id = id;
+    }
+
+    static immutable(Message) create(const StringId id)
+    {
+        return cast(immutable(Message)) new Message(id);
+    }
 }
 
 /**
@@ -163,14 +172,6 @@ version (unittest)
     private StringId testChannel = sid("test_channel");
     private StringId testMessageId = sid("test_message");
 
-    private class TestMessage : Message
-    {
-        this()
-        {
-            id = testMessageId;
-        }
-    }
-
     @("Send and receive a messages")
     unittest
     {
@@ -179,8 +180,7 @@ version (unittest)
         const auto processor = &process;
 
         auto handler = new MessageHandler();
-        auto message = cast(immutable(TestMessage)) new TestMessage();
-        handler.sendMessage(testChannel, message);
+        handler.sendMessage(testChannel, Message.create(testMessageId));
         handler.receiveMessages(testChannel, processor);
         assert(!receivedMessage);
 
@@ -204,8 +204,7 @@ version (unittest)
 
         auto handler = new MessageHandler();
         handler.registerImmediateReceiver(testChannel, processor);
-        auto message = cast(immutable(TestMessage)) new TestMessage();
-        handler.sendMessageImmediately(testChannel, message);
+        handler.sendMessageImmediately(testChannel, Message.create(testMessageId));
         assert(receivedMessage);
     }
 
@@ -219,8 +218,7 @@ version (unittest)
         auto handler = new MessageHandler();
         handler.registerImmediateReceiver(testChannel, processor);
         handler.removeImmedateReceiver(testChannel, processor);
-        auto message = cast(immutable(TestMessage)) new TestMessage();
-        handler.sendMessageImmediately(testChannel, message);
+        handler.sendMessageImmediately(testChannel, Message.create(testMessageId));
         assert(!receivedMessage);
     }
 }
