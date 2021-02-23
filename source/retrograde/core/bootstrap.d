@@ -16,12 +16,13 @@ import retrograde.core.game;
 import retrograde.core.entity;
 import retrograde.core.communication;
 import retrograde.platform.api;
+import retrograde.platform.glfw;
 
 import poodinis;
 
-version (Windows)
+version (Have_glfw_d)
 {
-    alias DefaultPlatform = NullPlatform; // TODO: Switch to Windows implementation
+    alias DefaultPlatform = GlfwPlatform;
 }
 else
 {

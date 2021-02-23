@@ -31,6 +31,10 @@
 		}
 	],
 	"dependencies": {
-		"poodinis": "~>8.0"
+		"poodinis": "~>8.0",
+		"glfw-d": {
+			"version": "~>1.0.1",
+			"optional": true
+		}
 	}
 }

@@ -18,6 +18,7 @@ module retrograde.platform.api;
 interface Platform
 {
     void initialize(const PlatformSettings platformSettings = new PlatformSettings());
+    void update();
     void terminate();
 }
 
@@ -27,6 +28,10 @@ interface Platform
 class NullPlatform : Platform
 {
     void initialize(const PlatformSettings platformSettings = new PlatformSettings())
+    {
+    }
+
+    void update()
     {
     }
 
