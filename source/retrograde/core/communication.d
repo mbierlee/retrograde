@@ -13,7 +13,6 @@ module retrograde.core.communication;
 
 import retrograde.core.stringid;
 
-// import std.algorithm.iteration : filter;
 import std.algorithm.mutation : remove;
 
 alias MessageProcessor = void delegate(StringId channel, Message message);
