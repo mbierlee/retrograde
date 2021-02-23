@@ -38,5 +38,5 @@ interface Game
     /**
      * Typically called while the EngineRuntime is terminating.
      */
-    void cleanup();
+    void terminate();
 }

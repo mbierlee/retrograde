@@ -88,7 +88,7 @@ class StandardEngineRuntime : EngineRuntime
 
         this.game.initialize();
         loopWithFixedTimeStepVariableRenderRate();
-        this.game.cleanup();
+        this.game.terminate();
     }
 
     private void loopWithFixedTimeStepVariableRenderRate()
@@ -154,7 +154,7 @@ version (unittest)
             isRendered = true;
         }
 
-        public override void cleanup()
+        public override void terminate()
         {
             isCleanedUp = true;
         }

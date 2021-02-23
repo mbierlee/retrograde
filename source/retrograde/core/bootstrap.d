@@ -72,7 +72,7 @@ version (unittest)
         {
         }
 
-        public override void cleanup()
+        public override void terminate()
         {
         }
     }
