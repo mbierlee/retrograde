@@ -15,7 +15,7 @@ import retrograde.core.stringid;
 
 import std.algorithm.mutation : remove;
 
-alias MessageProcessor = void delegate(StringId channel, Message message);
+alias MessageProcessor = void delegate(const StringId channel, immutable Message message);
 
 /**
  * Base class for message data.
@@ -35,8 +35,8 @@ class Message
  */
 class MessageHandler
 {
-    private Message[][StringId] activeMessageQueue;
-    private Message[][StringId] standbyMessageQueue;
+    private immutable(Message)[][StringId] activeMessageQueue;
+    private immutable(Message)[][StringId] standbyMessageQueue;
     private MessageProcessor[][StringId] immediateReceivers;
 
     /**
@@ -51,7 +51,7 @@ class MessageHandler
      *
      * See_Also: receiveMessages, shiftStandbyToActiveQueue
      */
-    public void sendMessage(StringId channel, Message message)
+    public void sendMessage(const StringId channel, immutable Message message)
     {
         if ((channel in standbyMessageQueue) is null)
         {
@@ -71,7 +71,7 @@ class MessageHandler
      *
      * See_Also: sendMessage
      */
-    public void receiveMessages(StringId channel, MessageProcessor processor)
+    public void receiveMessages(const StringId channel, const MessageProcessor processor)
     {
         if (auto channelMessages = channel in activeMessageQueue)
         {
@@ -102,7 +102,7 @@ class MessageHandler
      *
      * See_Also: sendMessageImmediately
      */
-    public void registerImmediateReceiver(StringId channel, MessageProcessor processor)
+    public void registerImmediateReceiver(const StringId channel, const MessageProcessor processor)
     {
         if ((channel in immediateReceivers) is null)
         {
@@ -119,7 +119,7 @@ class MessageHandler
      *  channel = ID of the channel where messages were sent to.
      *  processor = Processor delegate that has to be removed.
      */
-    public void removeImmedateReceiver(StringId channel, MessageProcessor processor)
+    public void removeImmedateReceiver(const StringId channel, const MessageProcessor processor)
     {
         if (auto receivers = channel in immediateReceivers)
         {
@@ -135,7 +135,7 @@ class MessageHandler
      *  channel = ID of the channel to send the message to.
      *  message = Message to send to the channel.
      */
-    public void sendMessageImmediately(StringId channel, Message message)
+    public void sendMessageImmediately(const StringId channel, immutable Message message)
     {
         if (auto receivers = channel in immediateReceivers)
         {
@@ -154,7 +154,7 @@ version (unittest)
     {
         auto receivedMessage = false;
 
-        void process(StringId channel, Message message)
+        void process(const StringId channel, immutable Message message)
         {
             receivedMessage = true;
         }
@@ -179,7 +179,8 @@ version (unittest)
         const auto processor = &process;
 
         auto handler = new MessageHandler();
-        handler.sendMessage(testChannel, new TestMessage());
+        auto message = cast(immutable(TestMessage)) new TestMessage();
+        handler.sendMessage(testChannel, message);
         handler.receiveMessages(testChannel, processor);
         assert(!receivedMessage);
 
@@ -203,7 +204,8 @@ version (unittest)
 
         auto handler = new MessageHandler();
         handler.registerImmediateReceiver(testChannel, processor);
-        handler.sendMessageImmediately(testChannel, new TestMessage());
+        auto message = cast(immutable(TestMessage)) new TestMessage();
+        handler.sendMessageImmediately(testChannel, message);
         assert(receivedMessage);
     }
 
@@ -217,7 +219,8 @@ version (unittest)
         auto handler = new MessageHandler();
         handler.registerImmediateReceiver(testChannel, processor);
         handler.removeImmedateReceiver(testChannel, processor);
-        handler.sendMessageImmediately(testChannel, new TestMessage());
+        auto message = cast(immutable(TestMessage)) new TestMessage();
+        handler.sendMessageImmediately(testChannel, message);
         assert(!receivedMessage);
     }
 }
