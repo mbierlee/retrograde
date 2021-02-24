@@ -95,7 +95,7 @@ version (Have_glfw_d)
 
             glfwSetWindowUserPointer(window, &windowData);
             glfwMakeContextCurrent(window);
-            glfwSwapInterval(ps.swapInterval); // V-sync stuff. TODO: Make configurable
+            glfwSwapInterval(ps.swapInterval);
         }
 
         void update()
