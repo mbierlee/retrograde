@@ -12,7 +12,7 @@
 module retrograde.core.runtime;
 
 import retrograde.core.game;
-import retrograde.platform.api;
+import retrograde.core.platform;
 
 import poodinis;
 

@@ -9,7 +9,7 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.platform.api;
+module retrograde.core.platform;
 
 /**
  * API for interfacing with the underlying platform.

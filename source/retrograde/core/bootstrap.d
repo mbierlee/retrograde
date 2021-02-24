@@ -15,7 +15,7 @@ import retrograde.core.runtime;
 import retrograde.core.game;
 import retrograde.core.entity;
 import retrograde.core.communication;
-import retrograde.platform.api;
+import retrograde.core.platform;
 import retrograde.platform.glfw;
 
 import poodinis;

@@ -13,7 +13,7 @@ module retrograde.platform.glfw;
 
 version (Have_glfw_d)
 {
-    import retrograde.platform.api;
+    import retrograde.core.platform;
     import retrograde.core.runtime;
 
     import std.string : toStringz;
