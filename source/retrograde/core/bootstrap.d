@@ -23,10 +23,12 @@ import poodinis;
 version (Have_glfw_d)
 {
     alias DefaultPlatform = GlfwPlatform;
+    alias DefaultPlatformSettings = GlfwPlatformSettings;
 }
 else
 {
     alias DefaultPlatform = NullPlatform;
+    alias DefaultPlatformSettings = PlatformSettings;
 }
 
 /**
@@ -35,7 +37,7 @@ else
  */
 public void startGame(GameType : Game, EngineRuntimeType:
         EngineRuntime = StandardEngineRuntime, PlatformType:
-        Platform = DefaultPlatform)(
+        Platform = DefaultPlatform)(const PlatformSettings platformSettings = new DefaultPlatformSettings(),
         shared DependencyContainer dependencies = new shared DependencyContainer())
 {
 
@@ -46,7 +48,7 @@ public void startGame(GameType : Game, EngineRuntimeType:
     dependencies.register!MessageHandler;
 
     auto runtime = dependencies.resolve!EngineRuntime;
-    runtime.startGame();
+    runtime.startGame(platformSettings);
 }
 
 version (unittest)
@@ -82,7 +84,7 @@ version (unittest)
     unittest
     {
         auto dependencies = new shared DependencyContainer();
-        startGame!TestGame(dependencies);
+        startGame!TestGame(new PlatformSettings(), dependencies);
         const game = dependencies.resolve!TestGame;
         assert(game.isInitialized);
     }

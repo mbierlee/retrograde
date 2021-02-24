@@ -12,6 +12,7 @@
 module retrograde.core.runtime;
 
 import retrograde.core.game;
+import retrograde.platform.api;
 
 import poodinis;
 
@@ -47,8 +48,11 @@ interface EngineRuntime
      * Starts the game.
      * The StandardEngineRuntime starts by initializing it, running its update and render cycles and cleaning it up
      * after termination.
+     *
+     * Params:
+     *  platformSettings = Settings used to initialize the platform
      */
-    void startGame();
+    void startGame(const PlatformSettings platformSettings);
 
     /**
      * Terminates the runtime.
@@ -66,6 +70,7 @@ class StandardEngineRuntime : EngineRuntime
     private bool _isTerminatable = false;
 
     @Autowire private Game game;
+    @Autowire private Platform platform;
 
     public override @property bool isTerminatable()
     {
@@ -82,13 +87,15 @@ class StandardEngineRuntime : EngineRuntime
         return 100L;
     }
 
-    public override void startGame()
+    public override void startGame(const PlatformSettings platformSettings)
     {
         assert(this.game !is null, "No Game instance is assigned to this runtime.");
 
+        this.platform.initialize(platformSettings);
         this.game.initialize();
         loopWithFixedTimeStepVariableRenderRate();
         this.game.terminate();
+        this.platform.terminate();
     }
 
     private void loopWithFixedTimeStepVariableRenderRate()
@@ -113,6 +120,7 @@ class StandardEngineRuntime : EngineRuntime
                     break;
                 }
 
+                this.platform.update();
                 this.game.update();
                 lagDuration -= targetFrameTimeDuration;
             }
@@ -166,8 +174,9 @@ version (unittest)
         auto dependencies = new shared DependencyContainer();
         dependencies.register!(Game, TestGame);
         dependencies.register!(EngineRuntime, StandardEngineRuntime);
+        dependencies.register!(Platform, NullPlatform);
         auto runtime = dependencies.resolve!StandardEngineRuntime;
-        runtime.startGame();
+        runtime.startGame(new PlatformSettings());
         const auto game = dependencies.resolve!TestGame;
 
         assert(game.isInitialized);
