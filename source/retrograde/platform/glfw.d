@@ -16,6 +16,8 @@ version (Have_glfw_d)
     import retrograde.platform.api;
     import retrograde.core.runtime;
 
+    import std.string : toStringz;
+
     import glfw3.api;
 
     import poodinis;
@@ -34,6 +36,14 @@ version (Have_glfw_d)
         }
     }
 
+    class GlfwPlatformSettings : PlatformSettings
+    {
+        int windowWidth = 1920;
+        int windowHeight = 1080;
+        string windowTitle = "Retrograde Engine";
+        int swapInterval = 1;
+    }
+
     /**
      * A GLFW-based platform for Desktop OSes.
      * To use, dependency glfw-d must be included in your project's dub project.
@@ -45,8 +55,15 @@ version (Have_glfw_d)
         private GLFWwindow* window;
         private WindowData windowData;
 
-        void initialize(const PlatformSettings platformSettings = new PlatformSettings())
+        void initialize(const PlatformSettings platformSettings)
         {
+            auto ps = cast(const(GlfwPlatformSettings)) platformSettings;
+            if (!ps)
+            {
+                //TODO: Log error
+                return;
+            }
+
             extern (C) @nogc nothrow void errorCallback(int error, const(char)* description)
             {
                 //TODO: Replace with engine logger
@@ -60,14 +77,14 @@ version (Have_glfw_d)
             if (!glfwInit())
             {
                 //TODO: log
+                return;
             }
 
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 
-            window = glfwCreateWindow(1920, 1080, //TODO: Make configurable
-                    "Retrograde Engine" // TODO: Configurable
-                    , null, null);
+            window = glfwCreateWindow(ps.windowWidth, ps.windowHeight,
+                    ps.windowTitle.toStringz(), null, null);
 
             if (!window)
             {
@@ -78,7 +95,7 @@ version (Have_glfw_d)
 
             glfwSetWindowUserPointer(window, &windowData);
             glfwMakeContextCurrent(window);
-            glfwSwapInterval(1); // V-sync stuff. TODO: Make configurable
+            glfwSwapInterval(ps.swapInterval); // V-sync stuff. TODO: Make configurable
         }
 
         void update()
