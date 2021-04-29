@@ -16,9 +16,12 @@ import retrograde.core.game;
 import retrograde.core.entity;
 import retrograde.core.communication;
 import retrograde.core.platform;
+import retrograde.core.logging;
 import retrograde.platform.glfw;
 
 import poodinis;
+
+import std.experimental.logger;
 
 version (Have_glfw_d)
 {
@@ -46,6 +49,19 @@ public void startGame(GameType : Game, EngineRuntimeType:
     dependencies.register!(Platform, PlatformType);
     dependencies.register!EntityManager;
     dependencies.register!MessageHandler;
+
+    dependencies.register!Logger.initializedBy({
+        auto logger = new MultiLogger();
+
+        auto stdoutLogger = new StdoutLogger();
+        if (stdoutLogger.stdoutIsAvailable())
+        {
+            logger.insertLogger("stdoutLogger", stdoutLogger);
+        }
+
+        sharedLog = logger;
+        return logger;
+    });
 
     auto runtime = dependencies.resolve!EngineRuntime;
     runtime.startGame(platformSettings);
