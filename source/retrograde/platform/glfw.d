@@ -11,6 +11,10 @@
 
 module retrograde.platform.glfw;
 
+import std.experimental.logger : Logger;
+import std.string : toStringz;
+import std.conv : to;
+
 version (Have_glfw_d)
 {
     import retrograde.core.platform;
@@ -51,6 +55,7 @@ version (Have_glfw_d)
     class GlfwPlatform : Platform
     {
         private @Autowire EngineRuntime runtime;
+        private @Autowire Logger logger;
 
         private GLFWwindow* window;
         private WindowData windowData;
@@ -60,23 +65,15 @@ version (Have_glfw_d)
             auto ps = cast(const(GlfwPlatformSettings)) platformSettings;
             if (!ps)
             {
-                //TODO: Log error
+                logger.error("GLFW Platform: Unable to use platformSettings. Did you supply settings of type GlfwPlatformSettings?");
                 return;
             }
 
-            extern (C) @nogc nothrow void errorCallback(int error, const(char)* description)
-            {
-                //TODO: Replace with engine logger
-                import core.stdc.stdio;
-
-                fprintf(stderr, "Error: %s\n", description);
-            }
-
-            glfwSetErrorCallback(&errorCallback);
+            glfwSetErrorCallback((&errorCallback).funcptr); //TODO: Move to update and use glfwGetError so we can use own logger
 
             if (!glfwInit())
             {
-                //TODO: log
+                logger.error("GLFW Platform: Failed to initialize.");
                 return;
             }
 
@@ -89,13 +86,25 @@ version (Have_glfw_d)
             if (!window)
             {
                 glfwTerminate();
-                //TODO: log
+                logger.error("GLFW Platform: Failed to create window.");
                 return;
             }
 
             glfwSetWindowUserPointer(window, &windowData);
             glfwMakeContextCurrent(window);
             glfwSwapInterval(ps.swapInterval);
+        }
+
+        extern (C) void errorCallback(int error, const(char)* description) nothrow @nogc
+        {
+            debug
+            {
+                // Due to @nogc we cannot make use of the engine's logger
+                import core.stdc.stdio;
+
+                auto errorCode = toStringz(to!string(error));
+                fprintf(stderr, "GLFW Platform Error %s: %s\n", errorCode, description);
+            }
         }
 
         void update()
