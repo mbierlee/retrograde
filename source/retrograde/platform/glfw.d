@@ -24,18 +24,8 @@ version (Have_glfw_d)
 
     import poodinis;
 
-    struct WindowData
+    struct StateData
     {
-        int xpos;
-        int ypos;
-        int width;
-        int height;
-
-        void update(GLFWwindow* window)
-        {
-            glfwGetWindowPos(window, &this.xpos, &this.ypos);
-            glfwGetWindowSize(window, &this.width, &this.height);
-        }
     }
 
     class GlfwPlatformSettings : PlatformSettings
@@ -56,7 +46,7 @@ version (Have_glfw_d)
         private @Autowire Logger logger;
 
         private GLFWwindow* window;
-        private WindowData windowData;
+        private StateData stateData;
 
         void initialize(const PlatformSettings platformSettings)
         {
@@ -88,7 +78,7 @@ version (Have_glfw_d)
                 return;
             }
 
-            glfwSetWindowUserPointer(window, &windowData);
+            glfwSetWindowUserPointer(window, &stateData);
             glfwMakeContextCurrent(window);
             glfwSwapInterval(ps.swapInterval);
         }
