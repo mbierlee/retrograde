@@ -57,7 +57,7 @@ version (Have_glfw_d)
                 return;
             }
 
-            glfwSetErrorCallback((&errorCallback).funcptr); //TODO: Move to update and use glfwGetError so we can use own logger
+            glfwSetErrorCallback(&errorCallback); //TODO: Move to update and use glfwGetError so we can use own logger
 
             if (!glfwInit())
             {
@@ -83,18 +83,6 @@ version (Have_glfw_d)
             glfwSwapInterval(ps.swapInterval);
         }
 
-        extern (C) void errorCallback(int error, const(char)* description) nothrow @nogc
-        {
-            debug
-            {
-                // Due to @nogc we cannot make use of the engine's logger
-                import core.stdc.stdio;
-
-                auto errorCode = toStringz(to!string(error));
-                fprintf(stderr, "GLFW Platform Error %s: %s\n", errorCode, description);
-            }
-        }
-
         void update()
         {
             if (glfwWindowShouldClose(window))
@@ -116,6 +104,18 @@ version (Have_glfw_d)
             }
 
             glfwTerminate();
+        }
+    }
+
+    extern (C) void errorCallback(int error, const(char)* description) nothrow @nogc
+    {
+        debug
+        {
+            // Due to @nogc we cannot make use of the engine's logger
+            import core.stdc.stdio;
+
+            auto errorCode = toStringz(to!string(error));
+            fprintf(stderr, "GLFW Platform Error %s: %s\n", errorCode, description);
         }
     }
 }
