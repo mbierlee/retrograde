@@ -11,16 +11,14 @@
 
 module retrograde.platform.glfw;
 
-import std.experimental.logger : Logger;
-import std.string : toStringz;
-import std.conv : to;
-
 version (Have_glfw_d)
 {
     import retrograde.core.platform;
     import retrograde.core.runtime;
 
+    import std.experimental.logger : Logger;
     import std.string : toStringz;
+    import std.conv : to;
 
     import glfw3.api;
 
