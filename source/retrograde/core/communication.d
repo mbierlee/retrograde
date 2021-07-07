@@ -11,7 +11,7 @@
 
 module retrograde.core.communication;
 
-import retrograde.core.stringid;
+import retrograde.core.stringid : StringId, sid;
 
 import std.algorithm.mutation : remove;
 
