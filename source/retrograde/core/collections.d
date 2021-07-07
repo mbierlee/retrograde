@@ -89,7 +89,7 @@ struct Queue(T, size_t chunkSize = 32)
         T[len] itemsCopy;
         foreach (i; 0 .. len)
         {
-            itemsCopy[i] = items[i];
+            itemsCopy[i] = (items) ? items[i] : T.init;
         }
 
         return itemsCopy;
@@ -452,4 +452,15 @@ version (unittest)
         // If you see something like "Program exited with code -1073740940" this test failed!
     }
 
+    @("Get array copy")
+    unittest
+    {
+        Queue!int queue;
+        queue.enQueue(1);
+        queue.enQueue(2);
+        assert(queue.getArrayCopy!2 == [1, 2]);
+
+        Queue!int queue2;
+        assert(queue2.getArrayCopy!2 == [int.init, int.init]);
+    }
 }
