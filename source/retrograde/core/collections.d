@@ -19,7 +19,7 @@ import std.math : ceil;
 enum defaultChunkSize = 8;
 
 /**
- * An implementation of a dynamically sized queue that does not use the
+ * An implementation of a dynamically sized first-in, first-out queue that does not use the
  * garbage collector.
  *
  * This queue is not thread-safe.
