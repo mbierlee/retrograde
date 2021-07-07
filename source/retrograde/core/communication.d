@@ -249,4 +249,24 @@ version (unittest)
         handler.sendMessageImmediately(testChannel, Message.create(testMessageId));
         assert(!receivedMessage);
     }
+
+    @("Sent messages are received in the same order they were sent")
+    unittest
+    {
+        StringId[] receivedMessages;
+        void process(const StringId channel, immutable Message message)
+        {
+            receivedMessages ~= message.id;
+        }
+
+        auto handler = new MessageHandler();
+        handler.sendMessage(testChannel, Message.create(sid("message1")));
+        handler.sendMessage(testChannel, Message.create(sid("message2")));
+        handler.shiftStandbyToActiveQueue();
+        handler.receiveMessages(testChannel, &process);
+
+        assert(receivedMessages.length == 2);
+        assert(receivedMessages[0] == sid("message1"));
+        assert(receivedMessages[1] == sid("message2"));
+    }
 }
