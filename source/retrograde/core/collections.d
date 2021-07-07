@@ -129,6 +129,17 @@ struct Queue(T, size_t chunkSize = 32)
         compact();
     }
 
+    this(ref return scope Queue!T rhs)
+    {
+        // Force a copy of the items array to be made to prevent the same items array from being shared with rhs.
+        // Without this, this instance's items may be freed up on destruction of rhs.
+        _length = rhs.length;
+        items = rhs.createShuffledResizedQueue(length);
+        front = 0;
+        rear = length;
+        _capacity = getCapacitySizeForItems(length);
+    }
+
     ~this() nothrow @nogc
     {
         if (items)
@@ -422,6 +433,23 @@ version (unittest)
         queue.enQueue(1);
         assert(queue.length == 1);
         assert(queue.capacity == 4);
+    }
+
+    @("Queue item array is copied when queue is copied")
+    unittest
+    {
+        {
+            Queue!int queue;
+            queue.enQueue(1);
+            {
+                auto newQueue = queue;
+            }
+            // Here newQueue will be destroyed because it goes out of stack-scope
+
+        }
+        // Here queue will be destroyed. This should go fine since newQueue should be a deep copy.
+        // If not the program will crash at this point since the same items array will be freed up again.
+        // If you see something like "Program exited with code -1073740940" this test failed!
     }
 
 }
