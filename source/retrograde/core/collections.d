@@ -49,7 +49,7 @@ struct Queue(T, size_t chunkSize = defaultChunkSize)
     /**
      * Removes and returns an item from the front of the queue.
      *
-     * Allocated space is not freed up.
+     * Allocated space is never freed up.
      */
     T deQueue() nothrow @nogc
     {
@@ -84,7 +84,7 @@ struct Queue(T, size_t chunkSize = defaultChunkSize)
      * Returns an exact copy of the internal queue array.
      *
      * Params:
-     *  len = Desired length of the returned queue. Make it equal to the queues capacity to return the complete queue.
+     *  len = Desired length of the returned queue. Make it equal to the queue's capacity to return the complete queue.
      */
     T[len] getArrayCopy(size_t len)() nothrow @nogc
     {
