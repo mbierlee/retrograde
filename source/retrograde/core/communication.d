@@ -72,7 +72,7 @@ class MessageHandler
 
     /**
      * Receives all messages sent to a specific channel.
-     * Messages are read from the active message queue and sent to the specifcied processor.
+     * Messages are read from the active message queue and sent to the specified processor.
      *
      * Params:
      *  channel = ID of the channel to receive messages from.
@@ -93,7 +93,7 @@ class MessageHandler
 
     /**
      * Receives all messages sent to a specific channel.
-     * Messages are read from the active message queue and sent to the specifcied processor.
+     * Messages are read from the active message queue and sent to the specified processor.
      *
      * Params:
      *  channel = ID of the channel to receive messages from.
