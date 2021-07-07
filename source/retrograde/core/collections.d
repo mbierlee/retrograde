@@ -16,13 +16,15 @@ module retrograde.core.collections;
 import core.stdc.stdlib : malloc, realloc, free;
 import std.math : ceil;
 
+enum defaultChunkSize = 8;
+
 /**
  * An implementation of a dynamically sized queue that does not use the
  * garbage collector.
  *
  * This queue is not thread-safe.
  */
-struct Queue(T, size_t chunkSize = 32)
+struct Queue(T, size_t chunkSize = defaultChunkSize)
 {
     private T* items = null;
     private size_t _length = 0, _capacity = 0, front = 0, rear = 0;
