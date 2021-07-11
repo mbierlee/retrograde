@@ -21,9 +21,12 @@ const StringId inputEventChannel = sid("input_event_channel");
  */
 abstract class InputEventMessage : Message
 {
-    this(const StringId id = sid(""))
+    const double magnitude;
+
+    this(const StringId id, const double magnitude)
     {
         this.id = id;
+        this.magnitude = magnitude;
     }
 }
 
@@ -44,10 +47,10 @@ class KeyInputEventMessage : InputEventMessage
      *  scanCode = Platform-specific keyboard scan code.
      *  keyCode = Literal keyboard key code.
      */
-    this(const int scanCode, const KeyboardKeyCode keyCode,
-            const InputEventAction action, const KeyboardKeyModifier modifiers)
+    this(const int scanCode, const KeyboardKeyCode keyCode, const InputEventAction action,
+            const KeyboardKeyModifier modifiers, const double magnitude)
     {
-        super(msgId);
+        super(msgId, magnitude);
         this.scanCode = scanCode;
         this.keyCode = keyCode;
         this.action = action;
@@ -62,10 +65,11 @@ class KeyInputEventMessage : InputEventMessage
      *  keyCode = Literal keyboard key code.
      */
     static immutable(KeyInputEventMessage) create(const int scanCode, const KeyboardKeyCode keyCode,
-            const InputEventAction action, const KeyboardKeyModifier modifiers)
+            const InputEventAction action, const KeyboardKeyModifier modifiers,
+            const double magnitude)
     {
         return cast(immutable(KeyInputEventMessage)) new KeyInputEventMessage(scanCode,
-                keyCode, action, modifiers);
+                keyCode, action, modifiers, magnitude);
     }
 }
 

@@ -372,11 +372,13 @@ version (Have_glfw_d)
                 {
                     auto keyEvent = stateData.keyEvents.deQueue();
 
-                    auto message = KeyInputEventMessage.create(keyEvent.scanCode, glfwKeyMap[keyEvent.key],
-                            glfwActionMap[keyEvent.action],
-                            getRetrogradeKeyboardModifiers(keyEvent.modifiers));
-                    messageHandler.sendMessage(inputEventChannel, message);
+                    const double magnitude = (keyEvent.action == GLFW_RELEASE) ? 0 : 1;
 
+                    auto message = KeyInputEventMessage.create(keyEvent.scanCode,
+                            glfwKeyMap[keyEvent.key], glfwActionMap[keyEvent.action],
+                            getRetrogradeKeyboardModifiers(keyEvent.modifiers), magnitude);
+
+                    messageHandler.sendMessage(inputEventChannel, message);
                 }
             }
         }
