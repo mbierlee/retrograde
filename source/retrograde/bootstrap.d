@@ -17,6 +17,7 @@ import retrograde.core.entity;
 import retrograde.core.communication;
 import retrograde.core.platform;
 import retrograde.core.logging;
+import retrograde.core.input;
 import retrograde.platform.glfw;
 
 import poodinis;
@@ -49,6 +50,7 @@ public void startGame(GameType : Game, EngineRuntimeType:
     dependencies.register!(Platform, PlatformType);
     dependencies.register!EntityManager;
     dependencies.register!MessageHandler;
+    dependencies.register!InputMapper;
 
     dependencies.register!Logger.initializedBy({
         auto logger = new MultiLogger();
