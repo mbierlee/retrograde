@@ -36,6 +36,30 @@ class Message
 }
 
 /**
+ * A message with a magnitude.
+ *
+ * Typically sent by an input mapper or anything that needs to sent messages
+ * in an analogue manner.
+ *
+ * See_Also: InputMapper
+ */
+class MagnitudeMessage : Message
+{
+    @property double magnitude;
+
+    this(const StringId id, const double magnitude)
+    {
+        super(id);
+        this.magnitude = magnitude;
+    }
+
+    static immutable(Message) create(const StringId id, const double magnitude)
+    {
+        return cast(immutable(MagnitudeMessage)) new MagnitudeMessage(id, magnitude);
+    }
+}
+
+/**
  * Message handler takes care of queueing and disclosing messages.
  * The handler keeps track of two message queues: an active and stand-by queue.
  * Messages that are sent are put into the stand-by queue and messages that are read come

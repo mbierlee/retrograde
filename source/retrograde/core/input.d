@@ -11,8 +11,10 @@
 
 module retrograde.core.input;
 
+import std.typecons : Nullable, nullable;
+
 import retrograde.core.stringid : StringId, sid;
-import retrograde.core.communication : Message;
+import retrograde.core.communication : Message, MessageHandler, MagnitudeMessage;
 
 const StringId inputEventChannel = sid("input_event_channel");
 
@@ -35,7 +37,7 @@ abstract class InputEventMessage : Message
  */
 class KeyInputEventMessage : InputEventMessage
 {
-    static const StringId msgId = sid("key_input_event_message");
+    static const StringId msgId = sid("ev_key_input");
 
     const int scanCode;
     const KeyboardKeyCode keyCode;
@@ -70,6 +72,142 @@ class KeyInputEventMessage : InputEventMessage
     {
         return cast(immutable(KeyInputEventMessage)) new KeyInputEventMessage(scanCode,
                 keyCode, action, modifiers, magnitude);
+    }
+}
+
+/**
+ * An abstract representation of a mapping key.
+ *
+ * The event name should be a generic name of an input event type.
+ * The components are typically buttons or other such control inputs.
+ */
+struct MappingKey
+{
+    const StringId eventName;
+    immutable Nullable!int componentOne;
+    immutable Nullable!int componentTwo;
+    immutable Nullable!int componentThree;
+}
+
+/**
+ * Target properties of an event mapping.
+ */
+struct MappingTarget
+{
+    StringId channel;
+    StringId messageId;
+}
+
+/**
+ * Maps input events into other events or actions.
+ *
+ * The input mapper is typically used to map key input into concrete actions, such as Key W -> Walk Forward.
+ * The input event's magnitude is preserved unless modified, making it perfect for mapping both digital and analog input.
+ */
+class InputMapper
+{
+    private MappingTarget[MappingKey] mappings;
+    private MessageHandler messageHandler;
+
+    this(MessageHandler messageHandler)
+    {
+        this.messageHandler = messageHandler;
+    }
+
+    /**
+     * Add a generic type of mapping.
+     *
+     * Params:
+     *  mappingKey = Mapping key describing the input event.
+     *  mappingTarget = Target properties of the mapping.
+     */
+    void addMapping(MappingKey mappingKey, MappingTarget mappingTarget)
+    {
+        mappings[mappingKey] = mappingTarget;
+    }
+
+    /**
+     * Add a keyboard key mapping.
+     * 
+     * Params:
+     *  keyCode = Key code to map from.
+     *  mappingTarget = Target properties of the mapping.
+     */
+    void addKeyMapping(KeyboardKeyCode keyCode, MappingTarget mappingTarget)
+    {
+        addMapping(MappingKey(KeyInputEventMessage.msgId, (cast(int) keyCode)
+                .nullable), mappingTarget);
+    }
+
+    /**
+     * Process all input events and map them to corresponding messages.
+     */
+    void update()
+    {
+        messageHandler.receiveMessages(inputEventChannel, (immutable Message message) {
+            if (message.id == KeyInputEventMessage.msgId)
+            {
+                auto keyInputMessage = cast(KeyInputEventMessage) message;
+                if (keyInputMessage)
+                {
+                    auto key = MappingKey(message.id, (cast(int) keyInputMessage.keyCode).nullable);
+                    auto mapping = key in mappings;
+                    if (mapping)
+                    {
+                        messageHandler.sendMessage(mapping.channel,
+                            MagnitudeMessage.create(mapping.messageId, keyInputMessage.magnitude));
+                    }
+                }
+            }
+        });
+    }
+}
+
+// InputMapper tests
+version (unittest)
+{
+    import std.math.operations : isClose;
+
+    @("Add mapping")
+    unittest
+    {
+        auto mapper = new InputMapper(null);
+        mapper.addMapping(MappingKey(KeyInputEventMessage.msgId, (cast(int) KeyboardKeyCode.e)
+                .nullable), MappingTarget(sid("test_channel"), sid("ac_rejoice")));
+
+        mapper.addKeyMapping(KeyboardKeyCode.b,
+                MappingTarget(sid("test_channel"), sid("ac_buckle_up")));
+    }
+
+    @("Process KeyInputEventMessage mapping")
+    unittest
+    {
+        auto expectedChannel = sid("test");
+        auto expectedMessageId = sid("b");
+
+        auto messageHandler = new MessageHandler();
+        auto mapper = new InputMapper(messageHandler);
+        mapper.addKeyMapping(KeyboardKeyCode.a, MappingTarget(expectedChannel, expectedMessageId));
+
+        messageHandler.sendMessage(inputEventChannel, KeyInputEventMessage.create(123,
+                KeyboardKeyCode.a, InputEventAction.press, KeyboardKeyModifier.none, 0.6));
+
+        messageHandler.shiftStandbyToActiveQueue();
+        mapper.update();
+        messageHandler.shiftStandbyToActiveQueue();
+
+        bool messageReceived = false;
+        messageHandler.receiveMessages(expectedChannel, (immutable Message message) {
+            auto magnitudeMessage = cast(MagnitudeMessage) message;
+            if (magnitudeMessage)
+            {
+                messageReceived = magnitudeMessage.id == expectedMessageId
+                    && isClose(magnitudeMessage.magnitude, 0.6);
+
+            }
+        });
+
+        assert(messageReceived);
     }
 }
 
