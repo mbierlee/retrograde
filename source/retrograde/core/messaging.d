@@ -138,6 +138,34 @@ class MessageHandler
     }
 
     /**
+     * Receives all magnitude messages sent to a specific channel.
+     *
+     * Messages are read from the active message queue and sent to the specified processor, but
+     * only if they are descendants from MagnitudeMessage
+     *
+     * Params:
+     *  channel = ID of the channel to receive messages from.
+     *  processor = Processor delegate that takes care of processing received messages.
+     *
+     * See_Also: sendMessage, MagnitudeMessage
+     */
+    public void receiveMessages(const StringId channel,
+            const(void delegate(immutable MagnitudeMessage)) processor)
+    {
+        if (auto channelMessages = channel in activeMessageQueue)
+        {
+            foreach (message; *channelMessages)
+            {
+                auto magnitudeMessage = cast(immutable MagnitudeMessage) message;
+                if (magnitudeMessage)
+                {
+                    processor(magnitudeMessage);
+                }
+            }
+        }
+    }
+
+    /**
      * Copies all messages sent to the stand-by message queue to the active message queue and
      * clears the stand-by qeueu.
      * This method is typically called at the start of an update cycle.
@@ -217,6 +245,7 @@ version (unittest)
 
     private StringId testChannel = sid("test_channel");
     private StringId testMessageId = sid("test_message");
+    private StringId testMessageId2 = sid("test_message_2");
 
     @("Send and receive a messages")
     unittest
@@ -292,5 +321,21 @@ version (unittest)
         assert(receivedMessages.length == 2);
         assert(receivedMessages[0] == sid("message1"));
         assert(receivedMessages[1] == sid("message2"));
+    }
+
+    @("Send and receive magnitude messages")
+    unittest
+    {
+        auto handler = new MessageHandler();
+        handler.sendMessage(testChannel, Message.create(testMessageId));
+        handler.sendMessage(testChannel, MagnitudeMessage.create(testMessageId2, 0.8));
+        handler.shiftStandbyToActiveQueue();
+
+        auto receivedMessages = 0;
+        handler.receiveMessages(testChannel, (immutable MagnitudeMessage message) {
+            receivedMessages += 1;
+        });
+
+        assert(receivedMessages == 1);
     }
 }
