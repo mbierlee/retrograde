@@ -14,6 +14,7 @@ module retrograde.core.messaging;
 import retrograde.core.stringid : StringId, sid;
 
 import std.algorithm.mutation : remove;
+import std.math.operations : isClose;
 
 alias MessageProcessor = void delegate(const StringId channel, immutable Message message);
 
@@ -53,9 +54,57 @@ class MagnitudeMessage : Message
         this.magnitude = magnitude;
     }
 
-    static immutable(Message) create(const StringId id, const double magnitude)
+    static immutable(MagnitudeMessage) create(const StringId id, const double magnitude)
     {
         return cast(immutable(MagnitudeMessage)) new MagnitudeMessage(id, magnitude);
+    }
+
+    /**
+     * Whether this magnitude is close to the given magnitude.
+     *
+     * Since maginitudes are doubles and not always precise, comparing them with exactly another double rarely gives you the desired outcome.
+     *
+     * See_Also: isCloseToZero, isCloseToOne, isCloseToMinusOne
+     */
+    bool isCloseTo(const double rhs) const
+    {
+        return isClose(magnitude, rhs);
+    }
+
+    /**
+     * Whether this magnitude is close to zero.
+     *
+     * Since maginitudes are doubles and not always precise, comparing them with exactly zero rarely gives you the desired outcome.
+     *
+     * See_Also: isCloseTo, isCloseToOne, isCloseToMinusOne
+     */
+    bool isCloseToZero() const
+    {
+        return isClose(magnitude, 0.0, 0.0, double.epsilon);
+    }
+
+    /**
+     * Whether this magnitude is close to one.
+     *
+     * Since maginitudes are doubles and not always precise, comparing them with exactly one rarely gives you the desired outcome.
+     *
+     * See_Also: isCloseTo, isCloseToZero, isCloseToMinusOne
+     */
+    bool isCloseToOne() const
+    {
+        return isClose(magnitude, 1.0);
+    }
+
+    /**
+     * Whether this magnitude is close to minus one.
+     *
+     * Since maginitudes are doubles and not always precise, comparing them with exactly minus one rarely gives you the desired outcome.
+     *
+     * See_Also: isCloseTo, isCloseToZero, isCloseToOne
+     */
+    bool isCloseToMinusOne() const
+    {
+        return isClose(magnitude, -1.0);
     }
 }
 
@@ -337,5 +386,24 @@ version (unittest)
         });
 
         assert(receivedMessages == 1);
+    }
+
+    @("Magnitude precisions")
+    unittest
+    {
+        auto message1 = MagnitudeMessage.create(testMessageId, double.epsilon / 2);
+        assert(message1.isCloseToZero());
+
+        const auto message2 = MagnitudeMessage.create(testMessageId, 1 - (double.epsilon / 2));
+        assert(message2.isCloseToOne);
+
+        auto message3 = MagnitudeMessage.create(testMessageId, -1 + (double.epsilon / 2));
+        assert(message3.isCloseToMinusOne());
+
+        auto message4 = MagnitudeMessage.create(testMessageId, 0.7 + double.epsilon);
+        assert(message4.isCloseTo(0.7));
+
+        auto message5 = MagnitudeMessage.create(testMessageId, 0.71 - double.epsilon);
+        assert(!message5.isCloseTo(0.7));
     }
 }
