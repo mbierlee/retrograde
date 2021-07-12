@@ -140,6 +140,14 @@ class InputMapper
     }
 
     /**
+     * Clears all currently bound mappings.
+     */
+    void clearMappings()
+    {
+        mappings.destroy();
+    }
+
+    /**
      * Process all input events and map them to corresponding messages.
      */
     void update()
@@ -208,6 +216,32 @@ version (unittest)
         });
 
         assert(messageReceived);
+    }
+
+    @("Clear mapping")
+    unittest
+    {
+        auto expectedChannel = sid("test");
+        auto expectedMessageId = sid("b");
+
+        auto messageHandler = new MessageHandler();
+        auto mapper = new InputMapper(messageHandler);
+        mapper.addKeyMapping(KeyboardKeyCode.a, MappingTarget(expectedChannel, expectedMessageId));
+
+        messageHandler.sendMessage(inputEventChannel, KeyInputEventMessage.create(123,
+                KeyboardKeyCode.a, InputEventAction.press, KeyboardKeyModifier.none, 0.6));
+
+        messageHandler.shiftStandbyToActiveQueue();
+        mapper.clearMappings();
+        mapper.update();
+        messageHandler.shiftStandbyToActiveQueue();
+
+        bool messageReceived = false;
+        messageHandler.receiveMessages(expectedChannel, (immutable Message message) {
+            messageReceived = message && message.id == expectedMessageId;
+        });
+
+        assert(!messageReceived);
     }
 }
 
