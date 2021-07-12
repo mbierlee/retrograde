@@ -181,10 +181,10 @@ version (unittest)
     {
         auto mapper = new InputMapper(null);
         mapper.addMapping(MappingKey(KeyInputEventMessage.msgId, (cast(int) KeyboardKeyCode.e)
-                .nullable), MappingTarget(sid("test_channel"), sid("ac_rejoice")));
+                .nullable), MappingTarget(sid("test_channel"), sid("cmd_rejoice")));
 
         mapper.addKeyMapping(KeyboardKeyCode.b,
-                MappingTarget(sid("test_channel"), sid("ac_buckle_up")));
+                MappingTarget(sid("test_channel"), sid("cmd_buckle_up")));
     }
 
     @("Process KeyInputEventMessage mapping")
