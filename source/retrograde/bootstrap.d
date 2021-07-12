@@ -14,7 +14,7 @@ module retrograde.bootstrap;
 import retrograde.core.runtime : EngineRuntime, StandardEngineRuntime;
 import retrograde.core.game : Game;
 import retrograde.core.entity : EntityManager;
-import retrograde.core.communication : MessageHandler;
+import retrograde.core.messaging : MessageHandler;
 import retrograde.core.platform : Platform, PlatformSettings, NullPlatform;
 import retrograde.core.logging : StdoutLogger;
 import retrograde.core.input : InputMapper;

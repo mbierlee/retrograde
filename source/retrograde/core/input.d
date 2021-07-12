@@ -14,7 +14,7 @@ module retrograde.core.input;
 import std.typecons : Nullable, nullable;
 
 import retrograde.core.stringid : StringId, sid;
-import retrograde.core.communication : Message, MessageHandler, MagnitudeMessage;
+import retrograde.core.messaging : Message, MessageHandler, MagnitudeMessage;
 
 const StringId inputEventChannel = sid("input_event_channel");
 

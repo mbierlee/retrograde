@@ -9,7 +9,7 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.core.communication;
+module retrograde.core.messaging;
 
 import retrograde.core.stringid : StringId, sid;
 

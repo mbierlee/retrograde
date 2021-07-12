@@ -26,7 +26,7 @@ version (Have_glfw_d)
     import retrograde.core.collections : Queue;
     import retrograde.core.input : KeyboardKeyCode, InputEventAction,
         KeyboardKeyModifier, KeyInputEventMessage, inputEventChannel;
-    import retrograde.core.communication : MessageHandler;
+    import retrograde.core.messaging : MessageHandler;
 
     private struct GlfwKeyEvent
     {

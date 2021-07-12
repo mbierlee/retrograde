@@ -1,6 +1,6 @@
 module retrograde.core;
 
-public import retrograde.core.communication;
+public import retrograde.core.messaging;
 public import retrograde.core.entity;
 public import retrograde.core.game;
 public import retrograde.core.logging;
