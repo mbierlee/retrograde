@@ -11,21 +11,22 @@
 
 module retrograde.bootstrap;
 
-import retrograde.core.runtime;
-import retrograde.core.game;
-import retrograde.core.entity;
-import retrograde.core.communication;
-import retrograde.core.platform;
-import retrograde.core.logging;
-import retrograde.core.input;
-import retrograde.platform.glfw;
+import retrograde.core.runtime : EngineRuntime, StandardEngineRuntime;
+import retrograde.core.game : Game;
+import retrograde.core.entity : EntityManager;
+import retrograde.core.communication : MessageHandler;
+import retrograde.core.platform : Platform, PlatformSettings, NullPlatform;
+import retrograde.core.logging : StdoutLogger;
+import retrograde.core.input : InputMapper;
 
 import poodinis;
 
-import std.experimental.logger;
+import std.experimental.logger : Logger, MultiLogger, sharedLog;
 
 version (Have_glfw_d)
 {
+    import retrograde.platform.glfw : GlfwPlatform, GlfwPlatformSettings;
+
     alias DefaultPlatform = GlfwPlatform;
     alias DefaultPlatformSettings = GlfwPlatformSettings;
 }
