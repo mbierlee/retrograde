@@ -36,10 +36,10 @@ class KeyInputEventMessage : InputEventMessage
 {
     static const StringId msgId = sid("ev_key_input");
 
-    const int scanCode;
-    const KeyboardKeyCode keyCode;
-    const InputEventAction action;
-    const KeyboardKeyModifier modifiers;
+    int scanCode;
+    KeyboardKeyCode keyCode;
+    InputEventAction action;
+    KeyboardKeyModifier modifiers;
 
     /**
      * Params:
@@ -69,6 +69,37 @@ class KeyInputEventMessage : InputEventMessage
     {
         return cast(immutable(KeyInputEventMessage)) new KeyInputEventMessage(scanCode,
                 keyCode, action, modifiers, magnitude);
+    }
+}
+
+/**
+ * A character input event coming from (virtual) keyboard input.
+ */
+class CharacterInputEventMessage : InputEventMessage
+{
+    static const StringId msgId = sid("ev_char_input");
+
+    dchar character;
+
+    /**
+     * Params:
+     *  character = Unicode character
+     */
+    this(const dchar character)
+    {
+        super(msgId, 1.0);
+        this.character = character;
+    }
+
+    /**
+     * Creates a new immutable CharacterInputEventMessage.
+     *
+     * Params:
+     *  character = Unicode character
+     */
+    static immutable(CharacterInputEventMessage) create(const dchar character)
+    {
+        return cast(immutable(CharacterInputEventMessage)) new CharacterInputEventMessage(character);
     }
 }
 

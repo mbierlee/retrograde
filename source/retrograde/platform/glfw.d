@@ -24,8 +24,8 @@ version (Have_glfw_d)
     import retrograde.core.platform : Platform, PlatformSettings;
     import retrograde.core.runtime : EngineRuntime;
     import retrograde.core.collections : Queue;
-    import retrograde.core.input : KeyboardKeyCode, InputEventAction,
-        KeyboardKeyModifier, KeyInputEventMessage, inputEventChannel;
+    import retrograde.core.input : KeyboardKeyCode, InputEventAction, KeyboardKeyModifier,
+        KeyInputEventMessage, CharacterInputEventMessage, inputEventChannel;
     import retrograde.core.messaging : MessageHandler;
 
     private struct GlfwKeyEvent
@@ -39,6 +39,7 @@ version (Have_glfw_d)
     private struct StateData
     {
         Queue!GlfwKeyEvent keyEvents;
+        Queue!dchar charEvents;
     }
 
     class GlfwPlatformSettings : PlatformSettings
@@ -352,6 +353,7 @@ version (Have_glfw_d)
             glfwSetWindowUserPointer(window, &stateData);
 
             glfwSetKeyCallback(window, &keyCallback);
+            glfwSetCharCallback(window, &characterCallback);
 
             glfwMakeContextCurrent(window);
             glfwSwapInterval(ps.swapInterval);
@@ -378,6 +380,13 @@ version (Have_glfw_d)
                             glfwKeyMap[keyEvent.key], glfwActionMap[keyEvent.action],
                             getRetrogradeKeyboardModifiers(keyEvent.modifiers), magnitude);
 
+                    messageHandler.sendMessage(inputEventChannel, message);
+                }
+
+                while (stateData.charEvents.length > 0)
+                {
+                    auto character = stateData.charEvents.deQueue();
+                    auto message = CharacterInputEventMessage.create(character);
                     messageHandler.sendMessage(inputEventChannel, message);
                 }
             }
@@ -453,5 +462,13 @@ version (Have_glfw_d)
         assert(state);
 
         state.keyEvents.enQueue(GlfwKeyEvent(key, scanCode, action, modifiers));
+    }
+
+    private extern (C) void characterCallback(GLFWwindow* window, uint codepoint) @nogc nothrow
+    {
+        StateData* state = cast(StateData*) glfwGetWindowUserPointer(window);
+        assert(state);
+
+        state.charEvents.enQueue(codepoint);
     }
 }
