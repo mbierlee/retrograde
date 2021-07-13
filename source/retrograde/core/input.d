@@ -21,14 +21,11 @@ const StringId inputEventChannel = sid("input_event_channel");
 /**
  * An input event of any kind.
  */
-abstract class InputEventMessage : Message
+abstract class InputEventMessage : MagnitudeMessage
 {
-    const double magnitude;
-
     this(const StringId id, const double magnitude)
     {
-        this.id = id;
-        this.magnitude = magnitude;
+        super(id, magnitude);
     }
 }
 
