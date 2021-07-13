@@ -48,6 +48,9 @@ version (Have_glfw_d)
         int windowHeight = 1080;
         string windowTitle = "Retrograde Engine";
         int swapInterval = 1;
+
+        bool enableKeyInputEvents = true;
+        bool enableCharacterInputEvents = true;
     }
 
     /**
@@ -352,8 +355,15 @@ version (Have_glfw_d)
 
             glfwSetWindowUserPointer(window, &stateData);
 
-            glfwSetKeyCallback(window, &keyCallback);
-            glfwSetCharCallback(window, &characterCallback);
+            if (ps.enableKeyInputEvents)
+            {
+                glfwSetKeyCallback(window, &keyCallback);
+            }
+
+            if (ps.enableCharacterInputEvents)
+            {
+                glfwSetCharCallback(window, &characterCallback);
+            }
 
             glfwMakeContextCurrent(window);
             glfwSwapInterval(ps.swapInterval);
