@@ -414,7 +414,10 @@ version (Have_glfw_d)
                 glfwSetCursorPosCallback(window, &mouseCursorPositionCallback);
                 glfwSetCursorEnterCallback(window, &mouseCursorEnterCallback);
                 glfwSetMouseButtonCallback(window, &mouseButtonCallback);
+                // TODO Scroll events
             }
+
+            // TODO: Joystick events
 
             glfwMakeContextCurrent(window);
             glfwSwapInterval(ps.swapInterval);
