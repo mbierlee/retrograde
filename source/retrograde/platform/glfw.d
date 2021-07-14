@@ -25,8 +25,7 @@ version (Have_glfw_d)
     import retrograde.core.runtime : EngineRuntime;
     import retrograde.core.collections : Queue;
     import retrograde.core.input : KeyboardKeyCode, InputEventAction, KeyboardKeyModifier, KeyInputEventMessage,
-        CharacterInputEventMessage, MouseMovementEventMessage,
-        inputEventChannel, MouseMode;
+        CharacterInputEventMessage, MouseMovementEventMessage, inputEventChannel, MouseMode;
     import retrograde.core.messaging : MessageHandler;
 
     private struct GlfwKeyEvent
@@ -62,6 +61,7 @@ version (Have_glfw_d)
         bool enableMouseInputEvents = true;
 
         MouseMode initialMouseMode = MouseMode.normal;
+        bool enableRawMouseMotion = true;
     }
 
     /**
@@ -367,6 +367,7 @@ version (Have_glfw_d)
             glfwSetWindowUserPointer(window, &stateData);
 
             setMouseMode(ps.initialMouseMode);
+            setRawMouseMotion(ps.enableRawMouseMotion);
 
             if (ps.enableKeyInputEvents)
             {
@@ -449,8 +450,7 @@ version (Have_glfw_d)
             while (stateData.mouseMovementEvents.length > 0)
             {
                 auto event = stateData.mouseMovementEvents.deQueue();
-                auto message = MouseMovementEventMessage.create(event.xPosition,
-                        event.yPosition);
+                auto message = MouseMovementEventMessage.create(event.xPosition, event.yPosition);
                 messageHandler.sendMessage(inputEventChannel, message);
             }
         }
@@ -510,6 +510,15 @@ version (Have_glfw_d)
             case MouseMode.disabled:
                 glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
                 break;
+            }
+        }
+
+        private void setRawMouseMotion(bool enableRawMotion)
+        {
+            if (glfwRawMouseMotionSupported())
+            {
+                glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION,
+                        enableRawMotion ? GLFW_TRUE : GLFW_FALSE);
             }
         }
     }
