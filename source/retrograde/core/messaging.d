@@ -187,28 +187,28 @@ class MessageHandler
     }
 
     /**
-     * Receives all magnitude messages sent to a specific channel.
+     * Receives all messages of a specific type sent to a specific channel.
      *
      * Messages are read from the active message queue and sent to the specified processor, but
-     * only if they are descendants from MagnitudeMessage
+     * only if they can be cast the the given message type.
      *
      * Params:
      *  channel = ID of the channel to receive messages from.
      *  processor = Processor delegate that takes care of processing received messages.
      *
-     * See_Also: sendMessage, MagnitudeMessage
+     * See_Also: sendMessage
      */
-    public void receiveMessages(const StringId channel,
-            const(void delegate(immutable MagnitudeMessage)) processor)
+    public void receiveMessages(MessageType : Message)(const StringId channel,
+            const(void delegate(immutable MessageType)) processor)
     {
         if (auto channelMessages = channel in activeMessageQueue)
         {
             foreach (message; *channelMessages)
             {
-                auto magnitudeMessage = cast(immutable MagnitudeMessage) message;
-                if (magnitudeMessage)
+                auto castMessage = cast(immutable MessageType) message;
+                if (castMessage)
                 {
-                    processor(magnitudeMessage);
+                    processor(castMessage);
                 }
             }
         }
@@ -372,7 +372,7 @@ version (unittest)
         assert(receivedMessages[1] == sid("message2"));
     }
 
-    @("Send and receive magnitude messages")
+    @("Send and receive typed messages")
     unittest
     {
         auto handler = new MessageHandler();
