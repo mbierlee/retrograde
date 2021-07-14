@@ -97,13 +97,40 @@ class MouseMovementEventMessage : InputEventMessage
      * Creates a new immutable MouseMovementEventMessage.
      *
      * Params:
-     *  xPosition = X position of the mouse in the platform's drawing space (window on desktops).
-     *  yPosition = Y position of the mouse in the platform's drawing space (window on desktops).
+     *  xPosition = X position of the mouse in the platform's drawing space (window).
+     *  yPosition = Y position of the mouse in the platform's drawing space (window).
      */
     static immutable(MouseMovementEventMessage) create(const double xPosition, const double yPosition)
     {
         return cast(immutable(MouseMovementEventMessage)) new MouseMovementEventMessage(xPosition,
                 yPosition);
+    }
+}
+
+/**
+ * An event emitted when the mouse enters or leaves a platform's drawing space (window).
+ */
+class MouseEnteredEventMessage : InputEventMessage
+{
+    static const StringId msgId = sid("ev_mouse_entered");
+
+    bool entered;
+
+    this(const bool entered)
+    {
+        super(msgId, 1.0);
+        this.entered = entered;
+    }
+
+    /**
+     * Creates a new immutable MouseEnteredEventMessage.
+     *
+     * Params:
+     *  entered = true if the mouse entered the drawing space (window), false if it left.
+     */
+    static immutable(MouseEnteredEventMessage) create(const bool entered)
+    {
+        return cast(immutable(MouseEnteredEventMessage)) new MouseEnteredEventMessage(entered);
     }
 }
 

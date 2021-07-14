@@ -24,8 +24,9 @@ version (Have_glfw_d)
     import retrograde.core.platform : Platform, PlatformSettings;
     import retrograde.core.runtime : EngineRuntime;
     import retrograde.core.collections : Queue;
-    import retrograde.core.input : KeyboardKeyCode, InputEventAction, KeyboardKeyModifier, KeyInputEventMessage,
-        CharacterInputEventMessage, MouseMovementEventMessage, inputEventChannel, MouseMode;
+    import retrograde.core.input : KeyboardKeyCode, InputEventAction,
+        KeyboardKeyModifier, KeyInputEventMessage, CharacterInputEventMessage,
+        MouseMovementEventMessage, MouseEnteredEventMessage, inputEventChannel, MouseMode;
     import retrograde.core.messaging : MessageHandler;
 
     private struct GlfwKeyEvent
@@ -47,6 +48,7 @@ version (Have_glfw_d)
         Queue!GlfwKeyEvent keyEvents;
         Queue!dchar charEvents;
         Queue!GlfwMouseMovementEvent mouseMovementEvents;
+        Queue!bool mouseEnteredEvents;
     }
 
     class GlfwPlatformSettings : PlatformSettings
@@ -382,6 +384,7 @@ version (Have_glfw_d)
             if (ps.enableMouseInputEvents)
             {
                 glfwSetCursorPosCallback(window, &mouseCursorPositionCallback);
+                glfwSetCursorEnterCallback(window, &mouseCursorEnterCallback);
             }
 
             glfwMakeContextCurrent(window);
@@ -417,6 +420,7 @@ version (Have_glfw_d)
             processKeyEvents();
             processCharacterEvents();
             processMouseMovementEvents();
+            processMouseEnteredEvents();
         }
 
         private void processKeyEvents()
@@ -451,6 +455,16 @@ version (Have_glfw_d)
             {
                 auto event = stateData.mouseMovementEvents.deQueue();
                 auto message = MouseMovementEventMessage.create(event.xPosition, event.yPosition);
+                messageHandler.sendMessage(inputEventChannel, message);
+            }
+        }
+
+        private void processMouseEnteredEvents()
+        {
+            while (stateData.mouseEnteredEvents.length > 0)
+            {
+                auto entered = stateData.mouseEnteredEvents.deQueue();
+                auto message = MouseEnteredEventMessage.create(entered);
                 messageHandler.sendMessage(inputEventChannel, message);
             }
         }
@@ -559,5 +573,12 @@ version (Have_glfw_d)
         assert(state);
 
         state.mouseMovementEvents.enQueue(GlfwMouseMovementEvent(xPosition, yPosition));
+    }
+
+    private extern (C) void mouseCursorEnterCallback(GLFWwindow* window, int entered) @nogc nothrow
+    {
+        StateData* state = cast(StateData*) glfwGetWindowUserPointer(window);
+        assert(state);
+        state.mouseEnteredEvents.enQueue(cast(bool) entered);
     }
 }
