@@ -133,6 +133,21 @@ class CharacterInputEventMessage : InputEventMessage
 }
 
 /**
+ * Mouse mode for desktop platforms.
+ */
+enum MouseMode
+{
+    // Shows the mouse on-screen.
+    normal,
+
+    // Hides the mouse, but does not lock it to the window.
+    hidden,
+
+    // Hides the mouse and locks it to the window.
+    disabled
+}
+
+/**
  * An abstract representation of a mapping key.
  *
  * The event name should be a generic name of an input event type.

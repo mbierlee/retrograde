@@ -25,7 +25,8 @@ version (Have_glfw_d)
     import retrograde.core.runtime : EngineRuntime;
     import retrograde.core.collections : Queue;
     import retrograde.core.input : KeyboardKeyCode, InputEventAction, KeyboardKeyModifier, KeyInputEventMessage,
-        CharacterInputEventMessage, AbsoluteMouseMovementEventMessage, inputEventChannel;
+        CharacterInputEventMessage, AbsoluteMouseMovementEventMessage,
+        inputEventChannel, MouseMode;
     import retrograde.core.messaging : MessageHandler;
 
     private struct GlfwKeyEvent
@@ -59,6 +60,8 @@ version (Have_glfw_d)
         bool enableKeyInputEvents = true;
         bool enableCharacterInputEvents = true;
         bool enableMouseInputEvents = true;
+
+        MouseMode initialMouseMode = MouseMode.normal;
     }
 
     /**
@@ -333,7 +336,7 @@ version (Have_glfw_d)
 
         void initialize(const PlatformSettings platformSettings)
         {
-            auto ps = cast(const(GlfwPlatformSettings)) platformSettings;
+            const GlfwPlatformSettings ps = cast(const(GlfwPlatformSettings)) platformSettings;
             if (!ps)
             {
                 logger.error("GLFW Platform: Unable to use platformSettings. Did you supply settings of type GlfwPlatformSettings?");
@@ -362,6 +365,8 @@ version (Have_glfw_d)
             }
 
             glfwSetWindowUserPointer(window, &stateData);
+
+            setMouseMode(ps.initialMouseMode);
 
             if (ps.enableKeyInputEvents)
             {
@@ -488,6 +493,24 @@ version (Have_glfw_d)
             }
 
             return modifiers;
+        }
+
+        private void setMouseMode(const MouseMode mouseMode)
+        {
+            final switch (mouseMode)
+            {
+            case MouseMode.normal:
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+                break;
+
+            case MouseMode.hidden:
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+                break;
+
+            case MouseMode.disabled:
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+                break;
+            }
         }
     }
 
