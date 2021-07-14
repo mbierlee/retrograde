@@ -26,7 +26,8 @@ version (Have_glfw_d)
     import retrograde.core.collections : Queue;
     import retrograde.core.input : KeyboardKeyCode, InputEventAction,
         KeyboardKeyModifier, KeyInputEventMessage, CharacterInputEventMessage,
-        MouseMovementEventMessage, MouseEnteredEventMessage, inputEventChannel, MouseMode;
+        MouseMovementEventMessage, MouseEnteredEventMessage,
+        inputEventChannel, MouseMode, MouseButton, MouseButtonInputEventMessage;
     import retrograde.core.messaging : MessageHandler;
 
     private struct GlfwKeyEvent
@@ -43,12 +44,20 @@ version (Have_glfw_d)
         double yPosition;
     }
 
+    private struct GlfwMouseButtonEvent
+    {
+        int button;
+        int action;
+        int modifiers;
+    }
+
     private struct StateData
     {
         Queue!GlfwKeyEvent keyEvents;
         Queue!dchar charEvents;
         Queue!GlfwMouseMovementEvent mouseMovementEvents;
         Queue!bool mouseEnteredEvents;
+        Queue!GlfwMouseButtonEvent mouseButtonEvents;
     }
 
     class GlfwPlatformSettings : PlatformSettings
@@ -80,6 +89,7 @@ version (Have_glfw_d)
         private StateData stateData;
         private const KeyboardKeyCode[int] glfwKeyMap;
         private const InputEventAction[int] glfwActionMap;
+        private const MouseButton[int] glfwMouseButtonMap;
 
         this()
         {
@@ -334,6 +344,24 @@ version (Have_glfw_d)
         GLFW_REPEAT:
                 InputEventAction.repeat
             ];
+
+            glfwMouseButtonMap = [
+        GLFW_MOUSE_BUTTON_1: MouseButton.one,
+        GLFW_MOUSE_BUTTON_2:
+                MouseButton.two,
+        GLFW_MOUSE_BUTTON_3:
+                MouseButton.three,
+        GLFW_MOUSE_BUTTON_4:
+                MouseButton.four,
+        GLFW_MOUSE_BUTTON_5:
+                MouseButton.five,
+        GLFW_MOUSE_BUTTON_6:
+                MouseButton.six,
+        GLFW_MOUSE_BUTTON_7:
+                MouseButton.seven,
+        GLFW_MOUSE_BUTTON_8:
+                MouseButton.eight
+            ];
         }
 
         void initialize(const PlatformSettings platformSettings)
@@ -385,6 +413,7 @@ version (Have_glfw_d)
             {
                 glfwSetCursorPosCallback(window, &mouseCursorPositionCallback);
                 glfwSetCursorEnterCallback(window, &mouseCursorEnterCallback);
+                glfwSetMouseButtonCallback(window, &mouseButtonCallback);
             }
 
             glfwMakeContextCurrent(window);
@@ -421,19 +450,20 @@ version (Have_glfw_d)
             processCharacterEvents();
             processMouseMovementEvents();
             processMouseEnteredEvents();
+            processMouseButtonEvents();
         }
 
         private void processKeyEvents()
         {
             while (stateData.keyEvents.length > 0)
             {
-                auto keyEvent = stateData.keyEvents.deQueue();
+                auto event = stateData.keyEvents.deQueue();
 
-                const double magnitude = (keyEvent.action == GLFW_RELEASE) ? 0 : 1;
+                const double magnitude = (event.action == GLFW_RELEASE) ? 0 : 1;
 
-                auto message = KeyInputEventMessage.create(keyEvent.scanCode,
-                        glfwKeyMap[keyEvent.key], glfwActionMap[keyEvent.action],
-                        getRetrogradeKeyboardModifiers(keyEvent.modifiers), magnitude);
+                auto message = KeyInputEventMessage.create(event.scanCode, glfwKeyMap[event.key],
+                        glfwActionMap[event.action],
+                        getRetrogradeKeyboardModifiers(event.modifiers), magnitude);
 
                 messageHandler.sendMessage(inputEventChannel, message);
             }
@@ -465,6 +495,19 @@ version (Have_glfw_d)
             {
                 auto entered = stateData.mouseEnteredEvents.deQueue();
                 auto message = MouseEnteredEventMessage.create(entered);
+                messageHandler.sendMessage(inputEventChannel, message);
+            }
+        }
+
+        private void processMouseButtonEvents()
+        {
+            while (stateData.mouseButtonEvents.length > 0)
+            {
+                auto event = stateData.mouseButtonEvents.deQueue();
+                const double magnitude = (event.action == GLFW_RELEASE) ? 0 : 1;
+                auto message = MouseButtonInputEventMessage.create(glfwMouseButtonMap[event.button],
+                        glfwActionMap[event.action],
+                        getRetrogradeKeyboardModifiers(event.modifiers), magnitude);
                 messageHandler.sendMessage(inputEventChannel, message);
             }
         }
@@ -580,5 +623,14 @@ version (Have_glfw_d)
         StateData* state = cast(StateData*) glfwGetWindowUserPointer(window);
         assert(state);
         state.mouseEnteredEvents.enQueue(cast(bool) entered);
+    }
+
+    private extern (C) void mouseButtonCallback(GLFWwindow* window, int button,
+            int action, int modifiers) @nogc nothrow
+    {
+        StateData* state = cast(StateData*) glfwGetWindowUserPointer(window);
+        assert(state);
+
+        state.mouseButtonEvents.enQueue(GlfwMouseButtonEvent(button, action, modifiers));
     }
 }

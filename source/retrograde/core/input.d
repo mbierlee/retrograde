@@ -45,6 +45,9 @@ class KeyInputEventMessage : InputEventMessage
      * Params:
      *  scanCode = Platform-specific keyboard scan code.
      *  keyCode = Literal keyboard key code.
+     *  action = Button press action.
+     *  modifiers = Modifier keys (shift, ctrl, etc.) held while the primary key was pressed.
+     *  magnitude = Amount of pressure applied. Since keyboards are digital, this is either 0.0 or 1.0.
      */
     this(const int scanCode, const KeyboardKeyCode keyCode, const InputEventAction action,
             const KeyboardKeyModifier modifiers, const double magnitude)
@@ -62,6 +65,9 @@ class KeyInputEventMessage : InputEventMessage
      * Params:
      *  scanCode = Platform-specific keyboard scan code.
      *  keyCode = Literal keyboard key code.
+     *  action = Button press action.
+     *  modifiers = Modifier keys (shift, ctrl, etc.) held while the primary key was pressed.
+     *  magnitude = Amount of pressure applied. Since keyboards are digital, this is either 0.0 or 1.0.
      */
     static immutable(KeyInputEventMessage) create(const int scanCode, const KeyboardKeyCode keyCode,
             const InputEventAction action, const KeyboardKeyModifier modifiers,
@@ -131,6 +137,51 @@ class MouseEnteredEventMessage : InputEventMessage
     static immutable(MouseEnteredEventMessage) create(const bool entered)
     {
         return cast(immutable(MouseEnteredEventMessage)) new MouseEnteredEventMessage(entered);
+    }
+}
+
+/**
+ * An input event generated after pressing or releasing a mouse button.
+ */
+class MouseButtonInputEventMessage : InputEventMessage
+{
+    static const StringId msgId = sid("ev_mouse_button_input");
+
+    MouseButton mouseButton;
+    InputEventAction action;
+    KeyboardKeyModifier modifiers;
+
+    /**
+     * Params:
+     *  mouseButton = Mouse button pressed.
+     *  action = Button press action.
+     *  modifiers = Modifier keys (shift, ctrl, etc.) held while the primary key was pressed.
+     *  magnitude = Amount of pressure applied. Since keyboards are digital, this is either 0.0 or 1.0.
+     */
+    this(const MouseButton mouseButton, const InputEventAction action,
+            const KeyboardKeyModifier modifiers, const double magnitude)
+    {
+        super(msgId, magnitude);
+        this.mouseButton = mouseButton;
+        this.action = action;
+        this.modifiers = modifiers;
+    }
+
+    /**
+     * Creates a new immutable MouseButtonInputEventMessage.
+     *
+     * Params:
+     *  mouseButton = Mouse button pressed.
+     *  action = Button press action.
+     *  modifiers = Modifier keys (shift, ctrl, etc.) held while the primary key was pressed.
+     *  magnitude = Amount of pressure applied. Since keyboards are digital, this is either 0.0 or 1.0.
+     */
+    static immutable(MouseButtonInputEventMessage) create(const MouseButton mouseButton,
+            const InputEventAction action, const KeyboardKeyModifier modifiers,
+            const double magnitude)
+    {
+        return cast(immutable(MouseButtonInputEventMessage)) new MouseButtonInputEventMessage(mouseButton,
+                action, modifiers, magnitude);
     }
 }
 
@@ -599,6 +650,27 @@ enum KeyboardKeyCode
     y,
     z,
     zero
+}
+
+/**
+ * Available mouse buttons.
+ *
+ * These weird-ass gamer mice with a million buttons are probably not fully supported by the platform API.
+ */
+enum MouseButton
+{
+    one,
+    two,
+    three,
+    four,
+    five,
+    six,
+    seven,
+    eight,
+    left = MouseButton.one,
+    right = MouseButton.two,
+    middle = MouseButton.three,
+    unknown
 }
 
 /**
