@@ -25,7 +25,7 @@ version (Have_glfw_d)
     import retrograde.core.runtime : EngineRuntime;
     import retrograde.core.collections : Queue;
     import retrograde.core.input : KeyboardKeyCode, InputEventAction, KeyboardKeyModifier, KeyInputEventMessage,
-        CharacterInputEventMessage, AbsoluteMouseMovementEventMessage,
+        CharacterInputEventMessage, MouseMovementEventMessage,
         inputEventChannel, MouseMode;
     import retrograde.core.messaging : MessageHandler;
 
@@ -449,7 +449,7 @@ version (Have_glfw_d)
             while (stateData.mouseMovementEvents.length > 0)
             {
                 auto event = stateData.mouseMovementEvents.deQueue();
-                auto message = AbsoluteMouseMovementEventMessage.create(event.xPosition,
+                auto message = MouseMovementEventMessage.create(event.xPosition,
                         event.yPosition);
                 messageHandler.sendMessage(inputEventChannel, message);
             }

@@ -72,9 +72,16 @@ class KeyInputEventMessage : InputEventMessage
     }
 }
 
-class AbsoluteMouseMovementEventMessage : InputEventMessage
+/**
+ * An event emitted when the mouse is moved.
+ *
+ * Depending on the platform and its configuration, this position may be absolute or relative. 
+ * It may be that of the mouse over the window or the whole desktop.
+ * Refer to the platform in use for specifics.
+ */
+class MouseMovementEventMessage : InputEventMessage
 {
-    static const StringId msgId = sid("ev_abs_mouse_movement");
+    static const StringId msgId = sid("ev_mouse_movement");
 
     double xPosition;
     double yPosition;
@@ -87,16 +94,15 @@ class AbsoluteMouseMovementEventMessage : InputEventMessage
     }
 
     /**
-     * Creates a new immutable AbsoluteMouseMovementEventMessage.
+     * Creates a new immutable MouseMovementEventMessage.
      *
      * Params:
-     *  xPosition = Absolute X position of the mouse in the platform's drawing space (window on desktops).
-     *  yPosition = Absolute Y position of the mouse in the platform's drawing space (window on desktops).
+     *  xPosition = X position of the mouse in the platform's drawing space (window on desktops).
+     *  yPosition = Y position of the mouse in the platform's drawing space (window on desktops).
      */
-    static immutable(AbsoluteMouseMovementEventMessage) create(const double xPosition,
-            const double yPosition)
+    static immutable(MouseMovementEventMessage) create(const double xPosition, const double yPosition)
     {
-        return cast(immutable(AbsoluteMouseMovementEventMessage)) new AbsoluteMouseMovementEventMessage(xPosition,
+        return cast(immutable(MouseMovementEventMessage)) new MouseMovementEventMessage(xPosition,
                 yPosition);
     }
 }
