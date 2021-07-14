@@ -72,6 +72,35 @@ class KeyInputEventMessage : InputEventMessage
     }
 }
 
+class AbsoluteMouseMovementEventMessage : InputEventMessage
+{
+    static const StringId msgId = sid("ev_abs_mouse_movement");
+
+    double xPosition;
+    double yPosition;
+
+    this(const double xPosition, const double yPosition)
+    {
+        super(msgId, 1.0);
+        this.xPosition = xPosition;
+        this.yPosition = yPosition;
+    }
+
+    /**
+     * Creates a new immutable AbsoluteMouseMovementEventMessage.
+     *
+     * Params:
+     *  xPosition = Absolute X position of the mouse in the platform's drawing space (window on desktops).
+     *  yPosition = Absolute Y position of the mouse in the platform's drawing space (window on desktops).
+     */
+    static immutable(AbsoluteMouseMovementEventMessage) create(const double xPosition,
+            const double yPosition)
+    {
+        return cast(immutable(AbsoluteMouseMovementEventMessage)) new AbsoluteMouseMovementEventMessage(xPosition,
+                yPosition);
+    }
+}
+
 /**
  * A character input event coming from (virtual) keyboard input.
  */
