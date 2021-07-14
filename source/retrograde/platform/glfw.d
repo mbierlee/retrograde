@@ -392,34 +392,7 @@ version (Have_glfw_d)
             {
                 glfwSwapBuffers(window);
                 glfwPollEvents();
-
-                while (stateData.keyEvents.length > 0)
-                {
-                    auto keyEvent = stateData.keyEvents.deQueue();
-
-                    const double magnitude = (keyEvent.action == GLFW_RELEASE) ? 0 : 1;
-
-                    auto message = KeyInputEventMessage.create(keyEvent.scanCode,
-                            glfwKeyMap[keyEvent.key], glfwActionMap[keyEvent.action],
-                            getRetrogradeKeyboardModifiers(keyEvent.modifiers), magnitude);
-
-                    messageHandler.sendMessage(inputEventChannel, message);
-                }
-
-                while (stateData.charEvents.length > 0)
-                {
-                    auto character = stateData.charEvents.deQueue();
-                    auto message = CharacterInputEventMessage.create(character);
-                    messageHandler.sendMessage(inputEventChannel, message);
-                }
-
-                while (stateData.mouseMovementEvents.length > 0)
-                {
-                    auto event = stateData.mouseMovementEvents.deQueue();
-                    auto message = AbsoluteMouseMovementEventMessage.create(event.xPosition,
-                            event.yPosition);
-                    messageHandler.sendMessage(inputEventChannel, message);
-                }
+                processPolledEvents();
             }
         }
 
@@ -431,6 +404,50 @@ version (Have_glfw_d)
             }
 
             glfwTerminate();
+        }
+
+        private void processPolledEvents()
+        {
+            processKeyEvents();
+            processCharacterEvents();
+            processMouseMovementEvents();
+        }
+
+        private void processKeyEvents()
+        {
+            while (stateData.keyEvents.length > 0)
+            {
+                auto keyEvent = stateData.keyEvents.deQueue();
+
+                const double magnitude = (keyEvent.action == GLFW_RELEASE) ? 0 : 1;
+
+                auto message = KeyInputEventMessage.create(keyEvent.scanCode,
+                        glfwKeyMap[keyEvent.key], glfwActionMap[keyEvent.action],
+                        getRetrogradeKeyboardModifiers(keyEvent.modifiers), magnitude);
+
+                messageHandler.sendMessage(inputEventChannel, message);
+            }
+        }
+
+        private void processCharacterEvents()
+        {
+            while (stateData.charEvents.length > 0)
+            {
+                auto character = stateData.charEvents.deQueue();
+                auto message = CharacterInputEventMessage.create(character);
+                messageHandler.sendMessage(inputEventChannel, message);
+            }
+        }
+
+        private void processMouseMovementEvents()
+        {
+            while (stateData.mouseMovementEvents.length > 0)
+            {
+                auto event = stateData.mouseMovementEvents.deQueue();
+                auto message = AbsoluteMouseMovementEventMessage.create(event.xPosition,
+                        event.yPosition);
+                messageHandler.sendMessage(inputEventChannel, message);
+            }
         }
 
         private KeyboardKeyModifier getRetrogradeKeyboardModifiers(int glfwModifiers)
