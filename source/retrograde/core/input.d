@@ -92,9 +92,15 @@ class MouseMovementEventMessage : InputEventMessage
     double xPosition;
     double yPosition;
 
-    this(const double xPosition, const double yPosition)
+    /**
+     * Params:
+     *  xPosition = X position of the mouse in the platform's drawing space (window).
+     *  yPosition = Y position of the mouse in the platform's drawing space (window).
+     *  magnitude = Quantized amount of movement in two-dimensions.   
+     */
+    this(const double xPosition, const double yPosition, const double magnitude)
     {
-        super(msgId, 1.0);
+        super(msgId, magnitude);
         this.xPosition = xPosition;
         this.yPosition = yPosition;
     }
@@ -105,11 +111,13 @@ class MouseMovementEventMessage : InputEventMessage
      * Params:
      *  xPosition = X position of the mouse in the platform's drawing space (window).
      *  yPosition = Y position of the mouse in the platform's drawing space (window).
+     *  magnitude = Quantized amount of movement in two-dimensions.   
      */
-    static immutable(MouseMovementEventMessage) create(const double xPosition, const double yPosition)
+    static immutable(MouseMovementEventMessage) create(const double xPosition,
+            const double yPosition, const double magnitude)
     {
         return cast(immutable(MouseMovementEventMessage)) new MouseMovementEventMessage(xPosition,
-                yPosition);
+                yPosition, magnitude);
     }
 }
 

@@ -101,6 +101,7 @@ version (Have_glfw_d)
         private const InputEventAction[int] glfwActionMap;
         private const MouseButton[int] glfwMouseButtonMap;
 
+        private uint mouseMovementMagnitudeSensitivity = 4;
         private uint mouseScrollMagnitudeSensitivity = 4;
 
         this()
@@ -500,7 +501,10 @@ version (Have_glfw_d)
             while (stateData.mouseMovementEvents.length > 0)
             {
                 auto event = stateData.mouseMovementEvents.deQueue();
-                auto message = MouseMovementEventMessage.create(event.xPosition, event.yPosition);
+                auto magnitude = sqrt((event.xPosition * event.xPosition) + (
+                        event.yPosition * event.yPosition)) / mouseMovementMagnitudeSensitivity;
+                auto message = MouseMovementEventMessage.create(event.xPosition,
+                        event.yPosition, magnitude);
                 messageHandler.sendMessage(inputEventChannel, message);
             }
         }
