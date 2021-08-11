@@ -16,6 +16,7 @@ version (Have_glfw_d)
     import std.experimental.logger : Logger;
     import std.string : toStringz;
     import std.conv : to;
+    import std.math : sqrt;
 
     import glfw3.api;
 
@@ -24,10 +25,12 @@ version (Have_glfw_d)
     import retrograde.core.platform : Platform, PlatformSettings;
     import retrograde.core.runtime : EngineRuntime;
     import retrograde.core.collections : Queue;
-    import retrograde.core.input : KeyboardKeyCode, InputEventAction,
-        KeyboardKeyModifier, KeyInputEventMessage, CharacterInputEventMessage,
-        MouseMovementEventMessage, MouseEnteredEventMessage,
-        inputEventChannel, MouseMode, MouseButton, MouseButtonInputEventMessage;
+    import retrograde.core.input : KeyboardKeyCode,
+        InputEventAction, KeyboardKeyModifier, KeyInputEventMessage,
+        CharacterInputEventMessage, MouseMovementEventMessage,
+        MouseEnteredEventMessage,
+        inputEventChannel, MouseMode, MouseButton,
+        MouseButtonInputEventMessage, MouseScrollInputEventMessage;
     import retrograde.core.messaging : MessageHandler;
 
     private struct GlfwKeyEvent
@@ -51,6 +54,12 @@ version (Have_glfw_d)
         int modifiers;
     }
 
+    private struct GlfwMouseScrollEvent
+    {
+        double xOffset;
+        double yOffset;
+    }
+
     private struct StateData
     {
         Queue!GlfwKeyEvent keyEvents;
@@ -58,6 +67,7 @@ version (Have_glfw_d)
         Queue!GlfwMouseMovementEvent mouseMovementEvents;
         Queue!bool mouseEnteredEvents;
         Queue!GlfwMouseButtonEvent mouseButtonEvents;
+        Queue!GlfwMouseScrollEvent mouseScrollEvents;
     }
 
     class GlfwPlatformSettings : PlatformSettings
@@ -90,6 +100,8 @@ version (Have_glfw_d)
         private const KeyboardKeyCode[int] glfwKeyMap;
         private const InputEventAction[int] glfwActionMap;
         private const MouseButton[int] glfwMouseButtonMap;
+
+        private uint mouseScrollMagnitudeSensitivity = 4;
 
         this()
         {
@@ -414,7 +426,7 @@ version (Have_glfw_d)
                 glfwSetCursorPosCallback(window, &mouseCursorPositionCallback);
                 glfwSetCursorEnterCallback(window, &mouseCursorEnterCallback);
                 glfwSetMouseButtonCallback(window, &mouseButtonCallback);
-                // TODO Scroll events
+                glfwSetScrollCallback(window, &mouseScrollCallback);
             }
 
             // TODO: Joystick events
@@ -454,6 +466,7 @@ version (Have_glfw_d)
             processMouseMovementEvents();
             processMouseEnteredEvents();
             processMouseButtonEvents();
+            processMouseScrollEvents();
         }
 
         private void processKeyEvents()
@@ -511,6 +524,19 @@ version (Have_glfw_d)
                 auto message = MouseButtonInputEventMessage.create(glfwMouseButtonMap[event.button],
                         glfwActionMap[event.action],
                         getRetrogradeKeyboardModifiers(event.modifiers), magnitude);
+                messageHandler.sendMessage(inputEventChannel, message);
+            }
+        }
+
+        private void processMouseScrollEvents()
+        {
+            while (stateData.mouseScrollEvents.length > 0)
+            {
+                auto event = stateData.mouseScrollEvents.deQueue();
+                auto magnitude = sqrt(
+                        (event.xOffset * event.xOffset) + (event.yOffset * event.yOffset)) / mouseScrollMagnitudeSensitivity;
+                auto message = MouseScrollInputEventMessage.create(event.xOffset,
+                        event.yOffset, magnitude);
                 messageHandler.sendMessage(inputEventChannel, message);
             }
         }
@@ -635,5 +661,13 @@ version (Have_glfw_d)
         assert(state);
 
         state.mouseButtonEvents.enQueue(GlfwMouseButtonEvent(button, action, modifiers));
+    }
+
+    private extern (C) void mouseScrollCallback(GLFWwindow* window, double xOffset, double yOffset) @nogc nothrow
+    {
+        StateData* state = cast(StateData*) glfwGetWindowUserPointer(window);
+        assert(state);
+
+        state.mouseScrollEvents.enQueue(GlfwMouseScrollEvent(xOffset, yOffset));
     }
 }

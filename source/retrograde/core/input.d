@@ -186,6 +186,45 @@ class MouseButtonInputEventMessage : InputEventMessage
 }
 
 /**
+ * An input event generated scrolling a one or two-dimensional mousewheel.
+ */
+class MouseScrollInputEventMessage : InputEventMessage
+{
+    static const StringId msgId = sid("ev_mouse_scroll");
+
+    double xOffset;
+    double yOffset;
+
+    /**
+     * Params:
+     *  xOffset = Amount of scrollage on the X-axis.
+     *  yOffset = Amount of scrollage on the Y-axis.
+     *  magnitude = Quantized amount of scroll in two-dimensions.
+     */
+    this(const double xOffset, double yOffset, const double magnitude)
+    {
+        super(msgId, magnitude);
+        this.xOffset = xOffset;
+        this.yOffset = yOffset;
+    }
+
+    /**
+     * Creates a new immutable MouseScrollInputEventMessage.
+     * 
+     * Params:
+     *  xOffset = Amount of scrollage on the X-axis.
+     *  yOffset = Amount of scrollage on the Y-axis.
+     *  magnitude = Quantized amount of scroll in two-dimensions.
+     */
+    static immutable(MouseScrollInputEventMessage) create(const double xOffset,
+            double yOffset, const double magnitude)
+    {
+        return cast(immutable(MouseScrollInputEventMessage)) new MouseScrollInputEventMessage(xOffset,
+                yOffset, magnitude);
+    }
+}
+
+/**
  * A character input event coming from (virtual) keyboard input.
  */
 class CharacterInputEventMessage : InputEventMessage
