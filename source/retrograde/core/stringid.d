@@ -11,7 +11,7 @@
 
 module retrograde.core.stringid;
 
-debug(readableStringId) {
+debug (readableStringId) {
     alias StringId = string;
 } else {
     alias StringId = uint;
@@ -23,11 +23,11 @@ debug(readableStringId) {
  * but in release mode they are actually integer hashes.
  */
 public pure StringId sid(string idString) {
-    debug(readableStringId) {
+    debug (readableStringId) {
         return idString;
     } else {
         StringId stringId = 7;
-        foreach(char strChar; idString) {
+        foreach (char strChar; idString) {
             stringId = (stringId * 31) + cast(StringId) strChar;
         }
 

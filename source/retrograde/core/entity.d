@@ -22,8 +22,7 @@ alias EntityIdType = ulong;
  * An entity, together with its components, encapsulates data and behavior for a
  * part of the engine's dynamics.
  */
-class Entity
-{
+class Entity {
     private string _name;
     private bool _isFinalized;
     public EntityIdType id = 0;
@@ -39,16 +38,14 @@ class Entity
      * Human-readble name of this entity.
      * Mainly used for debugging purposes.
      */
-    public @property name()
-    {
+    public @property name() {
         return _name;
     }
 
     /**
      * A collection of this entity's components.
      */
-    public @property components()
-    {
+    public @property components() {
         return _components.values;
     }
 
@@ -57,13 +54,11 @@ class Entity
      * See_Also:
      *  finalize
      */
-    public @property isFinalized()
-    {
+    public @property isFinalized() {
         return _isFinalized;
     }
 
-    this()
-    {
+    this() {
         this("Undefined");
     }
 
@@ -71,15 +66,12 @@ class Entity
      * Params:
      *  name = Human-readable name assigned to this entity.
      */
-    this(string name)
-    {
+    this(string name) {
         this._name = name;
     }
 
-    private void enforceNonFinalized(string message)
-    {
-        if (isFinalized)
-        {
+    private void enforceNonFinalized(string message) {
+        if (isFinalized) {
             throw new EntityIsFinalizedException(this, message);
         }
     }
@@ -92,8 +84,7 @@ class Entity
      * See_Also:
      *  removeComponent, finalize
      */
-    public void addComponent(EntityComponent component)
-    {
+    public void addComponent(EntityComponent component) {
         enforce!Exception(component !is null, "Passed component reference is null.");
         enforceNonFinalized("Cannot add new component, entity is finalized. Entities will become finalized when they are added to the entity manager or by calling Entity.finalize().");
         auto typeId = component.getComponentTypeId();
@@ -109,8 +100,7 @@ class Entity
      * See_Also:
      *  removeComponent, finalize
      */
-    public void addComponent(EntityComponentType : EntityComponent)()
-    {
+    public void addComponent(EntityComponentType : EntityComponent)() {
         TypeInfo_Class typeInfo = typeid(EntityComponentType);
         auto component = cast(EntityComponentType) typeInfo.create();
         enforce!Exception(component !is null,
@@ -127,8 +117,7 @@ class Entity
      * See_Also:
      *  addComponent, finalize
      */
-    public void removeComponent(EntityComponent component)
-    {
+    public void removeComponent(EntityComponent component) {
         enforce!Exception(component !is null, "Passed component reference is null.");
         auto typeId = component.getComponentTypeId();
         removeComponent(typeId);
@@ -142,8 +131,7 @@ class Entity
      * See_Also:
      *  addComponent, finalize
      */
-    public void removeComponent(StringId componentType)
-    {
+    public void removeComponent(StringId componentType) {
         enforceNonFinalized("Cannot remove components, entity is finalized. Entities will become finalized when they are added to the entity manager or by calling Entity.finalize().");
         _components.remove(componentType);
     }
@@ -156,8 +144,7 @@ class Entity
      * See_Also:
      *  removeComponent, finalize
      */
-    public void removeComponent(EntityComponentType : EntityComponent)()
-    {
+    public void removeComponent(EntityComponentType : EntityComponent)() {
         StringId componentType = EntityComponentType.componentTypeId;
         removeComponent(componentType);
     }
@@ -167,8 +154,7 @@ class Entity
      * Params:
      *  component = Instance of an entity component to be checked.
      */
-    public bool hasComponent(EntityComponent component)
-    {
+    public bool hasComponent(EntityComponent component) {
         enforce!Exception(component !is null, "Passed component reference is null.");
         return hasComponent(component.getComponentTypeId());
     }
@@ -178,8 +164,7 @@ class Entity
      * Params:
      *  EntityComponentType = Type of the entity component to be checked.
      */
-    public bool hasComponent(EntityComponentType : EntityComponent)()
-    {
+    public bool hasComponent(EntityComponentType : EntityComponent)() {
         StringId componentType = EntityComponentType.componentTypeId;
         return hasComponent(componentType);
     }
@@ -189,8 +174,7 @@ class Entity
      * Params:
      *  componentType = Componenty type of the component to be checked.
      */
-    public bool hasComponent(StringId componentType)
-    {
+    public bool hasComponent(StringId componentType) {
         return (componentType in _components) !is null;
     }
 
@@ -201,10 +185,8 @@ class Entity
      *  EntityComponentType = Type of the entity component that has to be present.
      */
     public void maybeWithComponent(EntityComponentType : EntityComponent)(
-            void delegate(EntityComponentType) fn)
-    {
-        if (hasComponent!EntityComponentType)
-        {
+            void delegate(EntityComponentType) fn) {
+        if (hasComponent!EntityComponentType) {
             withComponent(fn);
         }
     }
@@ -218,8 +200,7 @@ class Entity
      *  ComponentNotFoundException when the entity does not have a component of the given type.
      */
     public void withComponent(EntityComponentType : EntityComponent)(
-            void delegate(EntityComponentType) fn)
-    {
+            void delegate(EntityComponentType) fn) {
         fn(getComponent!EntityComponentType);
     }
 
@@ -233,8 +214,7 @@ class Entity
      *  ComponentNotFoundException when the entity does not have a component of the given type.
      */
     public ReturnType getFromComponent(EntityComponentType : EntityComponent, ReturnType)(
-            ReturnType delegate(EntityComponentType) fn)
-    {
+            ReturnType delegate(EntityComponentType) fn) {
         return fn(getComponent!EntityComponentType);
     }
 
@@ -247,8 +227,7 @@ class Entity
      *  ReturnType = Type of the data expected to be returned.
      */
     public ReturnType getFromComponent(EntityComponentType : EntityComponent, ReturnType)(
-            ReturnType delegate(EntityComponentType) fn, lazy ReturnType defaultValue)
-    {
+            ReturnType delegate(EntityComponentType) fn, lazy ReturnType defaultValue) {
         return hasComponent!EntityComponentType ? getFromComponent(fn) : defaultValue();
     }
 
@@ -259,8 +238,7 @@ class Entity
      * Throws:
      *  ComponentNotFoundException when the entity does not have a component of the given type.
      */
-    public EntityComponentType getComponent(EntityComponentType : EntityComponent)()
-    {
+    public EntityComponentType getComponent(EntityComponentType : EntityComponent)() {
         return cast(EntityComponentType) getComponent(EntityComponentType.componentTypeId);
     }
 
@@ -271,11 +249,9 @@ class Entity
      * Throws:
      *  ComponentNotFoundException when the entity does not have a component of the given type.
      */
-    public EntityComponent getComponent(StringId componentType)
-    {
+    public EntityComponent getComponent(StringId componentType) {
         auto component = componentType in _components;
-        if (component is null)
-        {
+        if (component is null) {
             throw new ComponentNotFoundException(componentType, this);
         }
 
@@ -288,8 +264,7 @@ class Entity
      * See_Also:
      *  finalize
      */
-    public void clearComponents()
-    {
+    public void clearComponents() {
         enforceNonFinalized("Cannot clear components.");
         _components.destroy();
     }
@@ -299,25 +274,20 @@ class Entity
      * A finalized component cannot be modified anymore; entity components
      * cannot be added or removed.
      */
-    public void finalize()
-    {
+    public void finalize() {
         _isFinalized = true;
     }
 }
 
-class ComponentNotFoundException : Exception
-{
-    this(StringId componentType, Entity sourceEntity)
-    {
+class ComponentNotFoundException : Exception {
+    this(StringId componentType, Entity sourceEntity) {
         super(format("Component of type %s not added to entity %s(%s)",
                 componentType, sourceEntity.name, sourceEntity.id));
     }
 }
 
-class EntityIsFinalizedException : Exception
-{
-    this(Entity entity, string additionalMessage)
-    {
+class EntityIsFinalizedException : Exception {
+    this(Entity entity, string additionalMessage) {
         super(format("Entity %s with id %s is finalized. %s", entity.name,
                 entity.id, additionalMessage));
     }
@@ -327,8 +297,7 @@ class EntityIsFinalizedException : Exception
  * An entity component contains an entity's data or describes
  * specific behavior the entity should have.
  */
-interface EntityComponent
-{
+interface EntityComponent {
     StringId getComponentTypeId();
 }
 
@@ -337,14 +306,12 @@ interface EntityComponent
  * Params:
  *  ComponentType = Type of the component
  */
-mixin template EntityComponentIdentity(string ComponentType)
-{
+mixin template EntityComponentIdentity(string ComponentType) {
     import retrograde.core.stringid;
 
     public static const StringId componentTypeId = sid(ComponentType);
 
-    public StringId getComponentTypeId()
-    {
+    public StringId getComponentTypeId() {
         return componentTypeId;
     }
 }
@@ -352,50 +319,40 @@ mixin template EntityComponentIdentity(string ComponentType)
 /**
  * Conveniently implements getters, setters and checkers for a collection of entities.
  */
-class EntityCollection
-{
+class EntityCollection {
     private Entity[EntityIdType] entities;
 
-    public @property size_t length()
-    {
+    public @property size_t length() {
         return entities.length;
     }
 
-    public void add(Entity entity)
-    {
+    public void add(Entity entity) {
         entities[entity.id] = entity;
     }
 
-    public void remove(Entity entity)
-    {
+    public void remove(Entity entity) {
         remove(entity.id);
     }
 
-    public void remove(EntityIdType entityId)
-    {
+    public void remove(EntityIdType entityId) {
         entities.remove(entityId);
     }
 
-    public Entity get(EntityIdType entityId)
-    {
+    public Entity get(EntityIdType entityId) {
         return this[entityId];
     }
 
-    Entity opIndex(EntityIdType entityId)
-    {
+    Entity opIndex(EntityIdType entityId) {
         return entities[entityId];
     }
 
-    public void clearAll()
-    {
+    public void clearAll() {
         entities.destroy();
     }
 
-    public bool hasEntity(Entity entity)
-    {
+    public bool hasEntity(Entity entity) {
         assert(entity !is null);
-        if (hasEntity(entity.id))
-        {
+        if (hasEntity(entity.id)) {
             auto myEntity = this[entity.id];
             return myEntity is entity;
         }
@@ -403,14 +360,12 @@ class EntityCollection
         return false;
     }
 
-    public bool hasEntity(EntityIdType entityId)
-    {
+    public bool hasEntity(EntityIdType entityId) {
         Entity* entity = entityId in entities;
         return entity !is null;
     }
 
-    public Entity[] getAll()
-    {
+    public Entity[] getAll() {
         return entities.values;
     }
 }
@@ -418,19 +373,16 @@ class EntityCollection
 /**
  * Manages the lifecycle of entity processors and their entities.
  */
-class EntityManager
-{
+class EntityManager {
     private EntityCollection _entities = new EntityCollection();
     private EntityProcessor[] _processors;
     private EntityIdType nextAvailableId = 1;
 
-    public @property entities()
-    {
+    public @property entities() {
         return _entities.getAll();
     }
 
-    public @property processors()
-    {
+    public @property processors() {
         return _processors;
     }
 
@@ -441,17 +393,14 @@ class EntityManager
      * Params:
      *  entity = Entity to be added.
      */
-    public void addEntity(Entity entity)
-    {
-        if (!entity.isFinalized)
-        {
+    public void addEntity(Entity entity) {
+        if (!entity.isFinalized) {
             entity.finalize();
         }
 
         entity.id = nextAvailableId++;
         _entities.add(entity);
-        foreach (processor; _processors)
-        {
+        foreach (processor; _processors) {
             processor.addEntity(entity);
         }
     }
@@ -461,10 +410,8 @@ class EntityManager
      * Params:
      *  processors: Entity processors to be added.
      */
-    public void addEntityProcessors(EntityProcessor[] processors)
-    {
-        foreach (processor; processors)
-        {
+    public void addEntityProcessors(EntityProcessor[] processors) {
+        foreach (processor; processors) {
             addEntityProcessor(processor);
         }
     }
@@ -474,11 +421,9 @@ class EntityManager
      * Params:
      *  processor: Entity processor to be added.
      */
-    public void addEntityProcessor(EntityProcessor processor)
-    {
+    public void addEntityProcessor(EntityProcessor processor) {
         _processors ~= processor;
-        foreach (entity; _entities.getAll())
-        {
+        foreach (entity; _entities.getAll()) {
             processor.addEntity(entity);
         }
     }
@@ -487,10 +432,8 @@ class EntityManager
      * Calls the initialize method of each entity processor currently managed
      * by this manager.
      */
-    public void initializeEntityProcessors()
-    {
-        foreach (processor; _processors)
-        {
+    public void initializeEntityProcessors() {
+        foreach (processor; _processors) {
             processor.initialize();
         }
     }
@@ -499,10 +442,8 @@ class EntityManager
      * Calls the cleanup method of each entity processor currently managed
      * by this manager.
      */
-    public void cleanupEntityProcessors()
-    {
-        foreach (processor; _processors)
-        {
+    public void cleanupEntityProcessors() {
+        foreach (processor; _processors) {
             processor.cleanup();
         }
     }
@@ -512,8 +453,7 @@ class EntityManager
      * Params:
      *  entityId = ID of the entity to check.
      */
-    public bool hasEntity(EntityIdType entityId)
-    {
+    public bool hasEntity(EntityIdType entityId) {
         return _entities.hasEntity(entityId);
     }
 
@@ -522,8 +462,7 @@ class EntityManager
      * Params:
      *  entity: Entity to check.
      */
-    public bool hasEntity(Entity entity)
-    {
+    public bool hasEntity(Entity entity) {
         return hasEntity(entity.id);
     }
 
@@ -532,13 +471,10 @@ class EntityManager
      * Params:
      *  entityId = ID of the entity to be removed.
      */
-    public void removeEntity(EntityIdType entityId)
-    {
+    public void removeEntity(EntityIdType entityId) {
         _entities.remove(entityId);
-        foreach (processor; _processors)
-        {
-            if (processor.hasEntity(entityId))
-            {
+        foreach (processor; _processors) {
+            if (processor.hasEntity(entityId)) {
                 processor.removeEntity(entityId);
             }
         }
@@ -549,18 +485,15 @@ class EntityManager
      * Params:
      *  entity = Entity to be removed.
      */
-    public void removeEntity(Entity entity)
-    {
+    public void removeEntity(Entity entity) {
         removeEntity(entity.id);
     }
 
     /**
      * Calls the update method of all processors managed by this manager.
      */
-    public void update()
-    {
-        foreach (processor; _processors)
-        {
+    public void update() {
+        foreach (processor; _processors) {
             processor.update();
         }
     }
@@ -568,10 +501,8 @@ class EntityManager
     /**
      * Calls the draw method of all processors managed by this manager.
      */
-    public void draw()
-    {
-        foreach (processor; _processors)
-        {
+    public void draw() {
+        foreach (processor; _processors) {
             processor.draw();
         }
     }
@@ -581,8 +512,7 @@ class EntityManager
  * An entity processor performs game logic with the given entities it has
  * been assigned by an entity manager.
  */
-abstract class EntityProcessor
-{
+abstract class EntityProcessor {
     protected EntityCollection _entities;
 
     /**
@@ -595,49 +525,42 @@ abstract class EntityProcessor
     /**
      * Typically called when the game is starting up.
      */
-    public void initialize()
-    {
+    public void initialize() {
     }
 
     /**
      * Called on each game logic update cycle.
      */
-    public void update()
-    {
+    public void update() {
     }
 
     /**
      * Called on each render cycle.
      */
-    public void draw()
-    {
+    public void draw() {
     }
 
     /**
      * Typically called when the game is cleaning up and shuttting down.
      */
-    public void cleanup()
-    {
+    public void cleanup() {
     }
 
     /**
      * Amount of entities assigned to this processor.
      */
-    public @property entityCount()
-    {
+    public @property entityCount() {
         return _entities.length();
     }
 
     /**
      * Entities assigned to this processor.
      */
-    public @property entities()
-    {
+    public @property entities() {
         return _entities.getAll();
     }
 
-    public this()
-    {
+    public this() {
         _entities = new EntityCollection();
     }
 
@@ -646,8 +569,7 @@ abstract class EntityProcessor
      * Throws:
      *  Exception when an unfinalized entity was added to entity processor
      */
-    public void addEntity(Entity entity)
-    {
+    public void addEntity(Entity entity) {
         enforce!Exception(entity.isFinalized,
                 "An unfinalized entity was added to entity processor. Finalize entities first using Entity.finalize()");
 
@@ -663,8 +585,7 @@ abstract class EntityProcessor
      * Params:
      *  entity = Entity that was accepted
      */
-    protected void processAcceptedEntity(Entity entity)
-    {
+    protected void processAcceptedEntity(Entity entity) {
     }
 
     /**
@@ -672,8 +593,7 @@ abstract class EntityProcessor
      * Params:
      *  entityId = ID of the entity to be checked.
      */
-    public bool hasEntity(EntityIdType entityId)
-    {
+    public bool hasEntity(EntityIdType entityId) {
         return _entities.hasEntity(entityId);
     }
 
@@ -682,8 +602,7 @@ abstract class EntityProcessor
      * Params:
      *  entity = Entity to be checked.
      */
-    public bool hasEntity(Entity entity)
-    {
+    public bool hasEntity(Entity entity) {
         return hasEntity(entity.id);
     }
 
@@ -692,10 +611,8 @@ abstract class EntityProcessor
      * Params:
      *  entityId = ID of the entity to be checked.
      */
-    public void removeEntity(EntityIdType entityId)
-    {
-        if (hasEntity(entityId))
-        {
+    public void removeEntity(EntityIdType entityId) {
+        if (hasEntity(entityId)) {
             auto entity = _entities[entityId];
             _entities.remove(entityId);
             processRemovedEntity(entity);
@@ -705,43 +622,35 @@ abstract class EntityProcessor
     /**
      * Called when the given entity is removed.
      */
-    protected void processRemovedEntity(Entity entity)
-    {
+    protected void processRemovedEntity(Entity entity) {
     }
 }
 
 // Entity tests
-version (unittest)
-{
-    class TestEntityComponent : EntityComponent
-    {
+version (unittest) {
+    class TestEntityComponent : EntityComponent {
         mixin EntityComponentIdentity!"TestEntityComponent";
         public int theAnswer = 42;
     }
 
-    class LazySloth : NonlazySloth
-    {
-        this()
-        {
+    class LazySloth : NonlazySloth {
+        this() {
             throw new Exception("The lazy default value was instantiated while it shouldn't be");
         }
     }
 
-    class NonlazySloth
-    {
+    class NonlazySloth {
     }
 
     @("Set entity ID")
-    unittest
-    {
+    unittest {
         auto idOne = "Spaceship";
         auto entity = new Entity(idOne);
         assert(idOne == entity.name);
     }
 
     @("Add entity component to entity")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         auto component = new TestEntityComponent();
         entity.addComponent(component);
@@ -749,16 +658,14 @@ version (unittest)
     }
 
     @("Add entity component of type to entity")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         entity.addComponent!TestEntityComponent;
         assert(entity.hasComponent!TestEntityComponent);
     }
 
     @("Remove entity component from entity")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         auto component = new TestEntityComponent();
         entity.addComponent(component);
@@ -767,8 +674,7 @@ version (unittest)
     }
 
     @("Remove entity component of type from entity")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         auto component = new TestEntityComponent();
         entity.addComponent(component);
@@ -777,8 +683,7 @@ version (unittest)
     }
 
     @("Remove entity component by type id from entity")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         auto component = new TestEntityComponent();
         entity.addComponent(component);
@@ -787,8 +692,7 @@ version (unittest)
     }
 
     @("Clear all components from entity")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         auto component = new TestEntityComponent();
         entity.addComponent(component);
@@ -797,8 +701,7 @@ version (unittest)
     }
 
     @("Get component from entity")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         auto expectedComponent = new TestEntityComponent();
         entity.addComponent(expectedComponent);
@@ -809,8 +712,7 @@ version (unittest)
     }
 
     @("Get component of type from entity")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         auto expectedComponent = new TestEntityComponent();
         entity.addComponent(expectedComponent);
@@ -821,15 +723,13 @@ version (unittest)
     }
 
     @("Attempt to get component that does not exist from entity")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         assertThrown!ComponentNotFoundException(entity.getComponent(sid("dinkydoo")));
     }
 
     @("Check whether entity has component of type ID")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         auto component = new TestEntityComponent();
         entity.addComponent(component);
@@ -837,8 +737,7 @@ version (unittest)
     }
 
     @("Check whether entity has component of type")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         auto component = new TestEntityComponent();
         entity.addComponent(component);
@@ -846,8 +745,7 @@ version (unittest)
     }
 
     @("Execute delegate on entity for specific component")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         auto component = new TestEntityComponent();
         entity.addComponent(component);
@@ -861,8 +759,7 @@ version (unittest)
     }
 
     @("Maybe execute delegate on entity for specific component")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         auto component = new TestEntityComponent();
         entity.addComponent(component);
@@ -877,8 +774,7 @@ version (unittest)
 
     @(
             "Maybe execute delegate on entity for specific component when component is not added to entity")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         auto executedTestFunction = false;
 
@@ -890,8 +786,7 @@ version (unittest)
     }
 
     @("Get from component of type without giving default value")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         auto component = new TestEntityComponent();
         entity.addComponent(component);
@@ -902,16 +797,14 @@ version (unittest)
     }
 
     @("Get from component without giving default value when entity doesn't have component of type")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         assertThrown!ComponentNotFoundException(
                 entity.getFromComponent!TestEntityComponent(component => component.theAnswer));
     }
 
     @("Get from component of type with giving default value")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         auto component = new TestEntityComponent();
         entity.addComponent(component);
@@ -924,8 +817,7 @@ version (unittest)
 
     @(
             "Get from component of type with giving default value when entity doesn't have component of type")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         auto const expectedCodeword = "I am a fish";
         auto const actualCodeword = entity.getFromComponent!TestEntityComponent(
@@ -934,8 +826,7 @@ version (unittest)
     }
 
     @("Default value of get from component is lazy")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         auto component = new TestEntityComponent();
         entity.addComponent(component);
@@ -945,16 +836,14 @@ version (unittest)
     }
 
     @("Finalization of entities")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         entity.finalize();
         assert(entity.isFinalized);
     }
 
     @("Cannot add components to finalized entities")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         entity.finalize();
         assertThrown!EntityIsFinalizedException(entity.addComponent(new TestEntityComponent()));
@@ -962,8 +851,7 @@ version (unittest)
     }
 
     @("Cannot remove components from finalized entities")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         auto component = new TestEntityComponent();
         entity.addComponent(component);
@@ -975,8 +863,7 @@ version (unittest)
     }
 
     @("Cannot clear components from finalized entities")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         entity.finalize();
         assertThrown!EntityIsFinalizedException(entity.clearComponents());
@@ -985,54 +872,45 @@ version (unittest)
 }
 
 // Entity processor tests
-version (unittest)
-{
-    Entity createTestEntity()
-    {
+version (unittest) {
+    Entity createTestEntity() {
         auto entity = new Entity();
         entity.finalize();
         entity.id = 1234;
         return entity;
     }
 
-    class TestEntityProcessor : EntityProcessor
-    {
+    class TestEntityProcessor : EntityProcessor {
         public int acceptsEntityCalls = 0;
         public int updateCalls = 0;
         public int drawCalls = 0;
         public int processAddCalls = 0;
         public int processRemoveCalls = 0;
 
-        public override bool acceptsEntity(Entity entity)
-        {
+        public override bool acceptsEntity(Entity entity) {
             acceptsEntityCalls++;
             return true;
         }
 
-        protected override void processAcceptedEntity(Entity entity)
-        {
+        protected override void processAcceptedEntity(Entity entity) {
             processAddCalls++;
         }
 
-        protected override void processRemovedEntity(Entity entity)
-        {
+        protected override void processRemovedEntity(Entity entity) {
             processRemoveCalls++;
         }
 
-        public override void update()
-        {
+        public override void update() {
             updateCalls++;
         }
 
-        public override void draw()
-        {
+        public override void draw() {
             drawCalls++;
         }
     }
 
     @("Add entity to entity processor")
-    unittest
-    {
+    unittest {
         auto entity = createTestEntity();
         auto processor = new TestEntityProcessor();
 
@@ -1043,8 +921,7 @@ version (unittest)
     }
 
     @("Add non-finalized entity to entity processor")
-    unittest
-    {
+    unittest {
         auto entity = new Entity();
         auto processor = new TestEntityProcessor();
         assertThrown!Exception(processor.addEntity(entity));
@@ -1052,8 +929,7 @@ version (unittest)
     }
 
     @("Remove entity from entity processor")
-    unittest
-    {
+    unittest {
         auto entity = createTestEntity();
         auto processor = new TestEntityProcessor();
 
@@ -1064,8 +940,7 @@ version (unittest)
     }
 
     @("Entity processor processes accepted entity")
-    unittest
-    {
+    unittest {
         auto entity = createTestEntity();
         auto processor = new TestEntityProcessor();
 
@@ -1074,8 +949,7 @@ version (unittest)
     }
 
     @("Entity processor processes removed entity")
-    unittest
-    {
+    unittest {
         auto entity = createTestEntity();
         auto processor = new TestEntityProcessor();
 
@@ -1087,23 +961,19 @@ version (unittest)
 }
 
 // Entity Manager tests
-version (unittest)
-{
-    class TestEntity : Entity
-    {
+version (unittest) {
+    class TestEntity : Entity {
     }
 
     @("Add entity to entity manager")
-    unittest
-    {
+    unittest {
         auto manager = new EntityManager();
         auto entity = new Entity();
         manager.addEntity(entity);
     }
 
     @("Adding an entity to entity manager finalizes entity")
-    unittest
-    {
+    unittest {
         auto manager = new EntityManager();
         auto entity = new Entity();
         assert(!entity.isFinalized);
@@ -1112,8 +982,7 @@ version (unittest)
     }
 
     @("Adding an entity to entity manager sets entity's ID")
-    unittest
-    {
+    unittest {
         auto manager = new EntityManager();
         auto entity = new Entity();
 
@@ -1123,8 +992,7 @@ version (unittest)
     }
 
     @("Add entity processor to entity manager")
-    unittest
-    {
+    unittest {
         auto manager = new EntityManager();
         auto processor = new TestEntityProcessor();
 
@@ -1132,8 +1000,7 @@ version (unittest)
     }
 
     @("Add entity processor with pre-existing entities to entity manager")
-    unittest
-    {
+    unittest {
         auto manager = new EntityManager();
         auto processor = new TestEntityProcessor();
         auto entity = new Entity();
@@ -1145,8 +1012,7 @@ version (unittest)
     }
 
     @("Add entity processor and entities to entity manager")
-    unittest
-    {
+    unittest {
         auto manager = new EntityManager();
         auto processor = new TestEntityProcessor();
         auto entity = new Entity();
@@ -1158,8 +1024,7 @@ version (unittest)
     }
 
     @("Update entity processor by entity manager")
-    unittest
-    {
+    unittest {
         auto manager = new EntityManager();
         auto processor = new TestEntityProcessor();
         auto entity = new TestEntity();
@@ -1172,8 +1037,7 @@ version (unittest)
     }
 
     @("Draw entity processor by entity manager")
-    unittest
-    {
+    unittest {
         auto manager = new EntityManager();
         auto processor = new TestEntityProcessor();
         manager.addEntityProcessor(processor);
@@ -1184,8 +1048,7 @@ version (unittest)
     }
 
     @("Remove entity processor from entity manager")
-    unittest
-    {
+    unittest {
         auto manager = new EntityManager();
         auto processor = new TestEntityProcessor();
         auto entity = new Entity();
@@ -1199,8 +1062,7 @@ version (unittest)
     }
 
     @("Entity manager has entity with id")
-    unittest
-    {
+    unittest {
         auto manager = new EntityManager();
         auto entity = new Entity();
         manager.addEntity(entity);
@@ -1208,8 +1070,7 @@ version (unittest)
     }
 
     @("Entity manager has entity")
-    unittest
-    {
+    unittest {
         auto manager = new EntityManager();
         auto entity = new Entity();
         manager.addEntity(entity);

@@ -24,8 +24,7 @@ enum defaultChunkSize = 8;
  *
  * This queue is not thread-safe.
  */
-struct Queue(T, size_t chunkSize = defaultChunkSize)
-{
+struct Queue(T, size_t chunkSize = defaultChunkSize) {
     private T* items = null;
     private size_t _length = 0, _capacity = 0, front = 0, rear = 0;
 
@@ -34,12 +33,10 @@ struct Queue(T, size_t chunkSize = defaultChunkSize)
      *
      * If the allocated space for the queue is insufficient, more memory will be allocated.
      */
-    void enqueue(T item) nothrow @nogc
-    {
+    void enqueue(T item) nothrow @nogc {
         considerResize();
 
-        if (items)
-        {
+        if (items) {
             items[rear] = item;
             moveRear();
             _length++;
@@ -51,10 +48,8 @@ struct Queue(T, size_t chunkSize = defaultChunkSize)
      *
      * Allocated space is never freed up.
      */
-    T dequeue() nothrow @nogc
-    {
-        if (!items || length == 0)
-        {
+    T dequeue() nothrow @nogc {
+        if (!items || length == 0) {
             return T.init;
         }
 
@@ -67,16 +62,14 @@ struct Queue(T, size_t chunkSize = defaultChunkSize)
     /**
      * Returns the amount of items currently in the queue.
      */
-    size_t length() nothrow @nogc
-    {
+    size_t length() nothrow @nogc {
         return _length;
     }
 
     /**
      * Returns the allocated capacity of the queue in number of queue items.
      */
-    size_t capacity() nothrow @nogc
-    {
+    size_t capacity() nothrow @nogc {
         return _capacity;
     }
 
@@ -86,11 +79,9 @@ struct Queue(T, size_t chunkSize = defaultChunkSize)
      * Params:
      *  len = Desired length of the returned queue. Make it equal to the queue's capacity to return the complete queue.
      */
-    T[len] getArrayCopy(size_t len)() nothrow @nogc
-    {
+    T[len] getArrayCopy(size_t len)() nothrow @nogc {
         T[len] itemsCopy;
-        foreach (i; 0 .. len)
-        {
+        foreach (i; 0 .. len) {
             itemsCopy[i] = (items) ? items[i] : T.init;
         }
 
@@ -102,8 +93,7 @@ struct Queue(T, size_t chunkSize = defaultChunkSize)
      *
      * Items are not deallocated or nullified but stay in the queue as-is. However the queue will be virtually empty.
      */
-    void clear() nothrow @nogc
-    {
+    void clear() nothrow @nogc {
         front = rear = 0;
         _length = 0;
     }
@@ -113,8 +103,7 @@ struct Queue(T, size_t chunkSize = defaultChunkSize)
      *
      * The queue's capacity will determined by how many chunks are needed for the current items in the queue.
      */
-    void compact() nothrow @nogc
-    {
+    void compact() nothrow @nogc {
         T* newQueue = createShuffledResizedQueue(length);
         replaceQueue(newQueue);
         front = 0;
@@ -125,14 +114,12 @@ struct Queue(T, size_t chunkSize = defaultChunkSize)
     /**
      * Deallocates all claimed memory, effectively clearing the queue in the process.
      */
-    void deallocate() nothrow @nogc
-    {
+    void deallocate() nothrow @nogc {
         _length = 0;
         compact();
     }
 
-    this(ref return scope Queue!T rhs)
-    {
+    this(ref return scope Queue!T rhs) {
         // Force a copy of the items array to be made to prevent the same items array from being shared with rhs.
         // Without this, this instance's items may be freed up on destruction of rhs.
         _length = rhs.length;
@@ -142,58 +129,40 @@ struct Queue(T, size_t chunkSize = defaultChunkSize)
         _capacity = getCapacitySizeForItems(length);
     }
 
-    ~this() nothrow @nogc
-    {
-        if (items)
-        {
+    ~this() nothrow @nogc {
+        if (items) {
             free(items);
             items = null;
         }
     }
 
-    private void moveRear() nothrow @nogc
-    {
-        if (length != capacity && rear == capacity - 1)
-        {
+    private void moveRear() nothrow @nogc {
+        if (length != capacity && rear == capacity - 1) {
             rear = 0;
-        }
-        else
-        {
+        } else {
             rear++;
         }
     }
 
-    private void moveFront() nothrow @nogc
-    {
-        if (length != capacity && front == capacity - 1)
-        {
+    private void moveFront() nothrow @nogc {
+        if (length != capacity && front == capacity - 1) {
             front = 0;
-        }
-        else
-        {
+        } else {
             front++;
         }
     }
 
-    private void considerResize() nothrow @nogc
-    {
-        if (!items)
-        {
+    private void considerResize() nothrow @nogc {
+        if (!items) {
             items = cast(T*) malloc(T.sizeof * chunkSize);
-            if (items)
-            {
+            if (items) {
                 _capacity = chunkSize;
             }
-        }
-        else if (capacity == length)
-        {
-            if (rear > front)
-            {
+        } else if (capacity == length) {
+            if (rear > front) {
                 items = cast(T*) realloc(items, T.sizeof * (capacity + chunkSize));
                 _capacity += chunkSize;
-            }
-            else
-            {
+            } else {
                 T* newBlock = createShuffledResizedQueue(capacity + chunkSize);
                 replaceQueue(newBlock);
                 _capacity += chunkSize;
@@ -203,29 +172,24 @@ struct Queue(T, size_t chunkSize = defaultChunkSize)
         }
     }
 
-    private void replaceQueue(T* newQueue) nothrow @nogc
-    {
-        if (items)
-        {
+    private void replaceQueue(T* newQueue) nothrow @nogc {
+        if (items) {
             free(items);
         }
 
         items = newQueue;
     }
 
-    private T* createShuffledResizedQueue(size_t newItemSize) nothrow @nogc
-    {
+    private T* createShuffledResizedQueue(size_t newItemSize) nothrow @nogc {
         size_t newMemorySize = getCapacitySizeForItems(newItemSize) * T.sizeof;
 
         T* newQueue = cast(T*) malloc(newMemorySize);
         size_t readHead = front;
         size_t writeHead = 0;
-        while (writeHead != length)
-        {
+        while (writeHead != length) {
             newQueue[writeHead] = items[readHead];
             readHead++;
-            if (readHead == capacity)
-            {
+            if (readHead == capacity) {
                 readHead = 0;
             }
 
@@ -235,32 +199,27 @@ struct Queue(T, size_t chunkSize = defaultChunkSize)
         return newQueue;
     }
 
-    private size_t getCapacitySizeForItems(size_t itemSize) nothrow @nogc
-    {
+    private size_t getCapacitySizeForItems(size_t itemSize) nothrow @nogc {
         return cast(size_t) ceil(cast(double) itemSize / chunkSize) * chunkSize;
     }
 }
 
 // Queue tests
-version (unittest)
-{
+version (unittest) {
     @("Queue initialization")
-    unittest
-    {
+    unittest {
         Queue!int queue;
     }
 
     @("Enqueue item")
-    unittest
-    {
+    unittest {
         Queue!int queue;
         queue.enqueue(1);
         assert(queue.length == 1);
     }
 
     @("Dequeue item")
-    unittest
-    {
+    unittest {
         Queue!int queue;
         queue.enqueue(44);
         assert(queue.length == 1);
@@ -271,16 +230,14 @@ version (unittest)
     }
 
     @("Dequeue item from empty queue")
-    unittest
-    {
+    unittest {
         Queue!int queue;
         auto item = queue.dequeue();
         assert(item == int.init);
     }
 
     @("Dequeue items beyond what was filled")
-    unittest
-    {
+    unittest {
         Queue!int queue;
         queue.enqueue(1);
         queue.enqueue(2);
@@ -291,11 +248,9 @@ version (unittest)
     }
 
     @("Filling queue beyond initial capacity")
-    unittest
-    {
+    unittest {
         Queue!(int, 16) queue;
-        foreach (i; 0 .. 128)
-        {
+        foreach (i; 0 .. 128) {
             queue.enqueue(i);
         }
 
@@ -304,8 +259,7 @@ version (unittest)
     }
 
     @("Looping queue front/rear")
-    unittest
-    {
+    unittest {
         Queue!(int, 4) queue;
 
         // Memory marked as X is dirty and can contain anything, since the claimed memory is not cleaned beforehand.
@@ -384,8 +338,7 @@ version (unittest)
     }
 
     @("Clear the queue")
-    unittest
-    {
+    unittest {
         Queue!(int, 2) queue;
         queue.enqueue(1);
         queue.enqueue(2);
@@ -397,8 +350,7 @@ version (unittest)
     }
 
     @("Compact the queue")
-    unittest
-    {
+    unittest {
         Queue!(int, 2) queue;
         queue.enqueue(1);
         queue.enqueue(2);
@@ -421,8 +373,7 @@ version (unittest)
     }
 
     @("Deallocate the queue")
-    unittest
-    {
+    unittest {
         Queue!(int, 4) queue;
         queue.enqueue(1);
         queue.enqueue(2);
@@ -438,8 +389,7 @@ version (unittest)
     }
 
     @("Queue item array is copied when queue is copied")
-    unittest
-    {
+    unittest {
         {
             Queue!int queue;
             queue.enqueue(1);
@@ -455,8 +405,7 @@ version (unittest)
     }
 
     @("Get array copy")
-    unittest
-    {
+    unittest {
         Queue!int queue;
         queue.enqueue(1);
         queue.enqueue(2);

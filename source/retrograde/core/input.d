@@ -21,10 +21,8 @@ const StringId inputEventChannel = sid("input_event_channel");
 /**
  * An input event of any kind.
  */
-abstract class InputEventMessage : MagnitudeMessage
-{
-    this(const StringId id, const double magnitude)
-    {
+abstract class InputEventMessage : MagnitudeMessage {
+    this(const StringId id, const double magnitude) {
         super(id, magnitude);
     }
 }
@@ -32,8 +30,7 @@ abstract class InputEventMessage : MagnitudeMessage
 /**
  * An input event generated after pressing, holding or releasing a keyboard key.
  */
-class KeyInputEventMessage : InputEventMessage
-{
+class KeyInputEventMessage : InputEventMessage {
     static const StringId msgId = sid("ev_key_input");
 
     int scanCode;
@@ -50,8 +47,7 @@ class KeyInputEventMessage : InputEventMessage
      *  magnitude = Amount of pressure applied. Since keyboards are digital, this is either 0.0 or 1.0.
      */
     this(const int scanCode, const KeyboardKeyCode keyCode, const InputEventAction action,
-            const KeyboardKeyModifier modifiers, const double magnitude)
-    {
+            const KeyboardKeyModifier modifiers, const double magnitude) {
         super(msgId, magnitude);
         this.scanCode = scanCode;
         this.keyCode = keyCode;
@@ -71,8 +67,7 @@ class KeyInputEventMessage : InputEventMessage
      */
     static immutable(KeyInputEventMessage) create(const int scanCode, const KeyboardKeyCode keyCode,
             const InputEventAction action, const KeyboardKeyModifier modifiers,
-            const double magnitude)
-    {
+            const double magnitude) {
         return cast(immutable(KeyInputEventMessage)) new KeyInputEventMessage(scanCode,
                 keyCode, action, modifiers, magnitude);
     }
@@ -85,8 +80,7 @@ class KeyInputEventMessage : InputEventMessage
  * It may be that of the mouse over the window or the whole desktop.
  * Refer to the platform in use for specifics.
  */
-class MouseMovementEventMessage : InputEventMessage
-{
+class MouseMovementEventMessage : InputEventMessage {
     static const StringId msgId = sid("ev_mouse_movement");
 
     double xPosition;
@@ -98,8 +92,7 @@ class MouseMovementEventMessage : InputEventMessage
      *  yPosition = Y position of the mouse in the platform's drawing space (window).
      *  magnitude = Amount of movement in two-dimensions.
      */
-    this(const double xPosition, const double yPosition, const double magnitude)
-    {
+    this(const double xPosition, const double yPosition, const double magnitude) {
         super(msgId, magnitude);
         this.xPosition = xPosition;
         this.yPosition = yPosition;
@@ -114,8 +107,7 @@ class MouseMovementEventMessage : InputEventMessage
      *  magnitude = Amount of movement in two-dimensions.
      */
     static immutable(MouseMovementEventMessage) create(const double xPosition,
-            const double yPosition, const double magnitude)
-    {
+            const double yPosition, const double magnitude) {
         return cast(immutable(MouseMovementEventMessage)) new MouseMovementEventMessage(xPosition,
                 yPosition, magnitude);
     }
@@ -124,14 +116,12 @@ class MouseMovementEventMessage : InputEventMessage
 /**
  * An event emitted when the mouse enters or leaves a platform's drawing space (window).
  */
-class MouseEnteredEventMessage : InputEventMessage
-{
+class MouseEnteredEventMessage : InputEventMessage {
     static const StringId msgId = sid("ev_mouse_entered");
 
     bool entered;
 
-    this(const bool entered)
-    {
+    this(const bool entered) {
         super(msgId, 1.0);
         this.entered = entered;
     }
@@ -142,8 +132,7 @@ class MouseEnteredEventMessage : InputEventMessage
      * Params:
      *  entered = true if the mouse entered the drawing space (window), false if it left.
      */
-    static immutable(MouseEnteredEventMessage) create(const bool entered)
-    {
+    static immutable(MouseEnteredEventMessage) create(const bool entered) {
         return cast(immutable(MouseEnteredEventMessage)) new MouseEnteredEventMessage(entered);
     }
 }
@@ -151,8 +140,7 @@ class MouseEnteredEventMessage : InputEventMessage
 /**
  * An input event generated after pressing or releasing a mouse button.
  */
-class MouseButtonInputEventMessage : InputEventMessage
-{
+class MouseButtonInputEventMessage : InputEventMessage {
     static const StringId msgId = sid("ev_mouse_button_input");
 
     MouseButton mouseButton;
@@ -167,8 +155,7 @@ class MouseButtonInputEventMessage : InputEventMessage
      *  magnitude = Amount of pressure applied. Since keyboards are digital, this is either 0.0 or 1.0.
      */
     this(const MouseButton mouseButton, const InputEventAction action,
-            const KeyboardKeyModifier modifiers, const double magnitude)
-    {
+            const KeyboardKeyModifier modifiers, const double magnitude) {
         super(msgId, magnitude);
         this.mouseButton = mouseButton;
         this.action = action;
@@ -186,8 +173,7 @@ class MouseButtonInputEventMessage : InputEventMessage
      */
     static immutable(MouseButtonInputEventMessage) create(const MouseButton mouseButton,
             const InputEventAction action, const KeyboardKeyModifier modifiers,
-            const double magnitude)
-    {
+            const double magnitude) {
         return cast(immutable(MouseButtonInputEventMessage)) new MouseButtonInputEventMessage(mouseButton,
                 action, modifiers, magnitude);
     }
@@ -196,8 +182,7 @@ class MouseButtonInputEventMessage : InputEventMessage
 /**
  * An input event generated scrolling a one or two-dimensional mousewheel.
  */
-class MouseScrollInputEventMessage : InputEventMessage
-{
+class MouseScrollInputEventMessage : InputEventMessage {
     static const StringId msgId = sid("ev_mouse_scroll");
 
     double xOffset;
@@ -209,8 +194,7 @@ class MouseScrollInputEventMessage : InputEventMessage
      *  yOffset = Amount of scrollage on the Y-axis.
      *  magnitude = Amount of scroll in two-dimensions.
      */
-    this(const double xOffset, double yOffset, const double magnitude)
-    {
+    this(const double xOffset, double yOffset, const double magnitude) {
         super(msgId, magnitude);
         this.xOffset = xOffset;
         this.yOffset = yOffset;
@@ -225,8 +209,7 @@ class MouseScrollInputEventMessage : InputEventMessage
      *  magnitude = Amount of scroll in two-dimensions.
      */
     static immutable(MouseScrollInputEventMessage) create(const double xOffset,
-            double yOffset, const double magnitude)
-    {
+            double yOffset, const double magnitude) {
         return cast(immutable(MouseScrollInputEventMessage)) new MouseScrollInputEventMessage(xOffset,
                 yOffset, magnitude);
     }
@@ -235,8 +218,7 @@ class MouseScrollInputEventMessage : InputEventMessage
 /**
  * A character input event coming from (virtual) keyboard input.
  */
-class CharacterInputEventMessage : InputEventMessage
-{
+class CharacterInputEventMessage : InputEventMessage {
     static const StringId msgId = sid("ev_char_input");
 
     dchar character;
@@ -245,8 +227,7 @@ class CharacterInputEventMessage : InputEventMessage
      * Params:
      *  character = Unicode character
      */
-    this(const dchar character)
-    {
+    this(const dchar character) {
         super(msgId, 1.0);
         this.character = character;
     }
@@ -257,8 +238,7 @@ class CharacterInputEventMessage : InputEventMessage
      * Params:
      *  character = Unicode character
      */
-    static immutable(CharacterInputEventMessage) create(const dchar character)
-    {
+    static immutable(CharacterInputEventMessage) create(const dchar character) {
         return cast(immutable(CharacterInputEventMessage)) new CharacterInputEventMessage(character);
     }
 }
@@ -266,8 +246,7 @@ class CharacterInputEventMessage : InputEventMessage
 /**
  * Mouse mode for desktop platforms.
  */
-enum MouseMode
-{
+enum MouseMode {
     // Shows the mouse on-screen.
     normal,
 
@@ -284,8 +263,7 @@ enum MouseMode
  * The event name should be a generic name of an input event type.
  * The components are typically buttons or other such control inputs.
  */
-struct MappingKey
-{
+struct MappingKey {
     const StringId eventName;
     immutable Nullable!int componentOne;
     immutable Nullable!int componentTwo;
@@ -295,8 +273,7 @@ struct MappingKey
 /**
  * Target properties of an event mapping.
  */
-struct MappingTarget
-{
+struct MappingTarget {
     StringId channel;
     StringId messageId;
 }
@@ -307,13 +284,11 @@ struct MappingTarget
  * The input mapper is typically used to map key input into concrete actions, such as Key W -> Walk Forward.
  * The input event's magnitude is preserved unless modified, making it perfect for mapping both digital and analog input.
  */
-class InputMapper
-{
+class InputMapper {
     private MappingTarget[MappingKey] mappings;
     private MessageHandler messageHandler;
 
-    this(MessageHandler messageHandler)
-    {
+    this(MessageHandler messageHandler) {
         this.messageHandler = messageHandler;
     }
 
@@ -324,8 +299,7 @@ class InputMapper
      *  mappingKey = Mapping key describing the input event.
      *  mappingTarget = Target properties of the mapping.
      */
-    void addMapping(MappingKey mappingKey, MappingTarget mappingTarget)
-    {
+    void addMapping(MappingKey mappingKey, MappingTarget mappingTarget) {
         mappings[mappingKey] = mappingTarget;
     }
 
@@ -336,8 +310,7 @@ class InputMapper
      *  keyCode = Key code to map from.
      *  mappingTarget = Target properties of the mapping.
      */
-    void addKeyMapping(KeyboardKeyCode keyCode, MappingTarget mappingTarget)
-    {
+    void addKeyMapping(KeyboardKeyCode keyCode, MappingTarget mappingTarget) {
         addMapping(MappingKey(KeyInputEventMessage.msgId, (cast(int) keyCode)
                 .nullable), mappingTarget);
     }
@@ -345,26 +318,21 @@ class InputMapper
     /**
      * Clears all currently bound mappings.
      */
-    void clearMappings()
-    {
+    void clearMappings() {
         mappings.destroy();
     }
 
     /**
      * Process all input events and map them to corresponding messages.
      */
-    void update()
-    {
+    void update() {
         messageHandler.receiveMessages(inputEventChannel, (immutable Message message) {
-            if (message.id == KeyInputEventMessage.msgId)
-            {
+            if (message.id == KeyInputEventMessage.msgId) {
                 auto keyInputMessage = cast(KeyInputEventMessage) message;
-                if (keyInputMessage)
-                {
+                if (keyInputMessage) {
                     auto key = MappingKey(message.id, (cast(int) keyInputMessage.keyCode).nullable);
                     auto mapping = key in mappings;
-                    if (mapping)
-                    {
+                    if (mapping) {
                         messageHandler.sendMessage(mapping.channel,
                             MagnitudeMessage.create(mapping.messageId, keyInputMessage.magnitude));
                     }
@@ -375,13 +343,11 @@ class InputMapper
 }
 
 // InputMapper tests
-version (unittest)
-{
+version (unittest) {
     import std.math.operations : isClose;
 
     @("Add mapping")
-    unittest
-    {
+    unittest {
         auto mapper = new InputMapper(null);
         mapper.addMapping(MappingKey(KeyInputEventMessage.msgId, (cast(int) KeyboardKeyCode.e)
                 .nullable), MappingTarget(sid("test_channel"), sid("cmd_rejoice")));
@@ -391,8 +357,7 @@ version (unittest)
     }
 
     @("Process KeyInputEventMessage mapping")
-    unittest
-    {
+    unittest {
         auto expectedChannel = sid("test");
         auto expectedMessageId = sid("b");
 
@@ -410,8 +375,7 @@ version (unittest)
         bool messageReceived = false;
         messageHandler.receiveMessages(expectedChannel, (immutable Message message) {
             auto magnitudeMessage = cast(MagnitudeMessage) message;
-            if (magnitudeMessage)
-            {
+            if (magnitudeMessage) {
                 messageReceived = magnitudeMessage.id == expectedMessageId
                     && isClose(magnitudeMessage.magnitude, 0.6);
 
@@ -422,8 +386,7 @@ version (unittest)
     }
 
     @("Clear mapping")
-    unittest
-    {
+    unittest {
         auto expectedChannel = sid("test");
         auto expectedMessageId = sid("b");
 
@@ -453,8 +416,7 @@ version (unittest)
  * This list is based off of SDL2's key code list.
  * Not all platforms may map all of them.
  */
-enum KeyboardKeyCode
-{
+enum KeyboardKeyCode {
     a,
     acBack,
     acBookmarks,
@@ -704,8 +666,7 @@ enum KeyboardKeyCode
  *
  * These weird-ass gamer mice with a million buttons are probably not fully supported by the platform API.
  */
-enum MouseButton
-{
+enum MouseButton {
     one,
     two,
     three,
@@ -724,8 +685,7 @@ enum MouseButton
  * Types of action that can be performed on an input event,
  * such as pressing a keyboard button or releasing a gamepad button.
  */
-enum InputEventAction
-{
+enum InputEventAction {
     press,
     release,
     repeat
@@ -734,8 +694,7 @@ enum InputEventAction
 /**
  * Modifiers that are typically key buttons pressed while pressing another key.
  */
-enum KeyboardKeyModifier : uint
-{
+enum KeyboardKeyModifier : uint {
     none = 0,
     leftShift = 1 << 1,
     rightShift = 1 << 2,

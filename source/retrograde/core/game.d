@@ -14,8 +14,7 @@ module retrograde.core.game;
 /**
  * Entry point for the actual game.
  */
-interface Game
-{
+interface Game {
     /**
      * Called once upon initialization of the EngineRuntime.
      */

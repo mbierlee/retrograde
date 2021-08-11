@@ -11,15 +11,15 @@
 
 module source.retrograde.test.sanity;
 
-version(unittest) {
+version (unittest) {
 
-// Basic truthy tests to make sure the test set-up is ok.
-@("Truthy")
-unittest {
-    assert(true == true);
-    assert(1 == 1);
-    assert(2 > 1);
-    // assert(true == false); // Enable to test whether the testrunner trips
-}
+    // Basic truthy tests to make sure the test set-up is ok.
+    @("Truthy")
+    unittest {
+        assert(true == true);
+        assert(1 == 1);
+        assert(2 > 1);
+        // assert(true == false); // Enable to test whether the testrunner trips
+    }
 
 }

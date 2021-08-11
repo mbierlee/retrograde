@@ -21,8 +21,7 @@ import std.datetime.stopwatch;
 /**
  * The Engine Runtime kick-starts the game and runs the game's core loop.
  */
-interface EngineRuntime
-{
+interface EngineRuntime {
     /**
      * Whether the engine is currently terminatable.
      * In the StandardEngineRuntime it is set when terminate() is called.
@@ -65,30 +64,25 @@ interface EngineRuntime
  * Standard implementation of an EngineRuntime.
  * This implementation has a gameloop with a fixed-step update time and variable render rate.
  */
-class StandardEngineRuntime : EngineRuntime
-{
+class StandardEngineRuntime : EngineRuntime {
     private bool _isTerminatable = false;
 
     @Autowire private Game game;
     @Autowire private Platform platform;
 
-    public override @property bool isTerminatable()
-    {
+    public override @property bool isTerminatable() {
         return _isTerminatable;
     }
 
-    public override @property long targetFrameTime()
-    {
+    public override @property long targetFrameTime() {
         return 10L;
     }
 
-    public override @property long lagFrameLimit()
-    {
+    public override @property long lagFrameLimit() {
         return 100L;
     }
 
-    public override void startGame(const PlatformSettings platformSettings)
-    {
+    public override void startGame(const PlatformSettings platformSettings) {
         assert(this.game !is null, "No Game instance is assigned to this runtime.");
 
         this.platform.initialize(platformSettings);
@@ -98,25 +92,21 @@ class StandardEngineRuntime : EngineRuntime
         this.platform.terminate();
     }
 
-    private void loopWithFixedTimeStepVariableRenderRate()
-    {
+    private void loopWithFixedTimeStepVariableRenderRate() {
         auto frameTimeStopWatch = new StopWatch();
         auto lagDuration = Duration.zero;
         frameTimeStopWatch.start();
 
-        while (!this.isTerminatable)
-        {
+        while (!this.isTerminatable) {
             const auto elapsedFrameTime = frameTimeStopWatch.peek();
             frameTimeStopWatch.reset();
             lagDuration += elapsedFrameTime;
 
             auto targetFrameTimeDuration = dur!"msecs"(this.targetFrameTime);
             auto lagCompensationFrames = 0L;
-            while (lagDuration >= targetFrameTimeDuration)
-            {
+            while (lagDuration >= targetFrameTimeDuration) {
                 lagCompensationFrames++;
-                if (lagCompensationFrames > this.lagFrameLimit || this.isTerminatable)
-                {
+                if (lagCompensationFrames > this.lagFrameLimit || this.isTerminatable) {
                     break;
                 }
 
@@ -129,16 +119,13 @@ class StandardEngineRuntime : EngineRuntime
         }
     }
 
-    public override void terminate()
-    {
+    public override void terminate() {
         _isTerminatable = true;
     }
 }
 
-version (unittest)
-{
-    class TestGame : Game
-    {
+version (unittest) {
+    class TestGame : Game {
         public bool isInitialized;
         public bool isUpdated;
         public bool isRendered;
@@ -146,31 +133,26 @@ version (unittest)
 
         @Autowire private EngineRuntime runtime;
 
-        public override void initialize()
-        {
+        public override void initialize() {
             isInitialized = true;
         }
 
-        public override void update()
-        {
+        public override void update() {
             isUpdated = true;
             runtime.terminate();
         }
 
-        public override void render(double extraPolation)
-        {
+        public override void render(double extraPolation) {
             isRendered = true;
         }
 
-        public override void terminate()
-        {
+        public override void terminate() {
             isCleanedUp = true;
         }
     }
 
     @("StandardEngineRuntime lifecycle")
-    unittest
-    {
+    unittest {
         auto dependencies = new shared DependencyContainer();
         dependencies.register!(Game, TestGame);
         dependencies.register!(EngineRuntime, StandardEngineRuntime);

@@ -11,8 +11,7 @@
 
 module retrograde.platform.glfw;
 
-version (Have_glfw_d)
-{
+version (Have_glfw_d) {
     import std.experimental.logger : Logger;
     import std.string : toStringz;
     import std.conv : to;
@@ -33,35 +32,30 @@ version (Have_glfw_d)
         MouseButtonInputEventMessage, MouseScrollInputEventMessage;
     import retrograde.core.messaging : MessageHandler;
 
-    private struct GlfwKeyEvent
-    {
+    private struct GlfwKeyEvent {
         int key;
         int scanCode;
         int action;
         int modifiers;
     }
 
-    private struct GlfwMouseMovementEvent
-    {
+    private struct GlfwMouseMovementEvent {
         double xPosition;
         double yPosition;
     }
 
-    private struct GlfwMouseButtonEvent
-    {
+    private struct GlfwMouseButtonEvent {
         int button;
         int action;
         int modifiers;
     }
 
-    private struct GlfwMouseScrollEvent
-    {
+    private struct GlfwMouseScrollEvent {
         double xOffset;
         double yOffset;
     }
 
-    private struct StateData
-    {
+    private struct StateData {
         Queue!GlfwKeyEvent keyEvents;
         Queue!dchar charEvents;
         Queue!GlfwMouseMovementEvent mouseMovementEvents;
@@ -70,8 +64,7 @@ version (Have_glfw_d)
         Queue!GlfwMouseScrollEvent mouseScrollEvents;
     }
 
-    class GlfwPlatformSettings : PlatformSettings
-    {
+    class GlfwPlatformSettings : PlatformSettings {
         int windowWidth = 1920;
         int windowHeight = 1080;
         string windowTitle = "Retrograde Engine";
@@ -89,8 +82,7 @@ version (Have_glfw_d)
     * A GLFW-based platform for Desktop OSes.
     * To use, dependency glfw-d must be included in your project's dub project.
     */
-    class GlfwPlatform : Platform
-    {
+    class GlfwPlatform : Platform {
         private @Autowire EngineRuntime runtime;
         private @Autowire Logger logger;
         private @Autowire MessageHandler messageHandler;
@@ -101,8 +93,7 @@ version (Have_glfw_d)
         private const InputEventAction[int] glfwActionMap;
         private const MouseButton[int] glfwMouseButtonMap;
 
-        this()
-        {
+        this() {
             // dfmt off
             glfwKeyMap = [
                 GLFW_KEY_UNKNOWN: KeyboardKeyCode.unknown,
@@ -257,19 +248,16 @@ version (Have_glfw_d)
             // dfmt on
         }
 
-        void initialize(const PlatformSettings platformSettings)
-        {
+        void initialize(const PlatformSettings platformSettings) {
             const GlfwPlatformSettings ps = cast(const(GlfwPlatformSettings)) platformSettings;
-            if (!ps)
-            {
+            if (!ps) {
                 logger.error("GLFW Platform: Unable to use platformSettings. Did you supply settings of type GlfwPlatformSettings?");
                 return;
             }
 
             glfwSetErrorCallback(&errorCallback); //TODO: Move to update and use glfwGetError so we can use own logger
 
-            if (!glfwInit())
-            {
+            if (!glfwInit()) {
                 logger.error("GLFW Platform: Failed to initialize.");
                 return;
             }
@@ -280,8 +268,7 @@ version (Have_glfw_d)
             window = glfwCreateWindow(ps.windowWidth, ps.windowHeight,
                     ps.windowTitle.toStringz(), null, null);
 
-            if (!window)
-            {
+            if (!window) {
                 glfwTerminate();
                 logger.error("GLFW Platform: Failed to create window.");
                 return;
@@ -292,18 +279,15 @@ version (Have_glfw_d)
             setMouseMode(ps.initialMouseMode);
             setRawMouseMotion(ps.enableRawMouseMotion);
 
-            if (ps.enableKeyInputEvents)
-            {
+            if (ps.enableKeyInputEvents) {
                 glfwSetKeyCallback(window, &keyCallback);
             }
 
-            if (ps.enableCharacterInputEvents)
-            {
+            if (ps.enableCharacterInputEvents) {
                 glfwSetCharCallback(window, &characterCallback);
             }
 
-            if (ps.enableMouseInputEvents)
-            {
+            if (ps.enableMouseInputEvents) {
                 glfwSetCursorPosCallback(window, &mouseCursorPositionCallback);
                 glfwSetCursorEnterCallback(window, &mouseCursorEnterCallback);
                 glfwSetMouseButtonCallback(window, &mouseButtonCallback);
@@ -316,32 +300,25 @@ version (Have_glfw_d)
             glfwSwapInterval(ps.swapInterval);
         }
 
-        void update()
-        {
-            if (glfwWindowShouldClose(window))
-            {
+        void update() {
+            if (glfwWindowShouldClose(window)) {
                 runtime.terminate();
-            }
-            else if (window)
-            {
+            } else if (window) {
                 glfwSwapBuffers(window);
                 glfwPollEvents();
                 processPolledEvents();
             }
         }
 
-        void terminate()
-        {
-            if (window)
-            {
+        void terminate() {
+            if (window) {
                 glfwDestroyWindow(window);
             }
 
             glfwTerminate();
         }
 
-        private void processPolledEvents()
-        {
+        private void processPolledEvents() {
             processKeyEvents();
             processCharacterEvents();
             processMouseMovementEvents();
@@ -350,10 +327,8 @@ version (Have_glfw_d)
             processMouseScrollEvents();
         }
 
-        private void processKeyEvents()
-        {
-            while (stateData.keyEvents.length > 0)
-            {
+        private void processKeyEvents() {
+            while (stateData.keyEvents.length > 0) {
                 auto event = stateData.keyEvents.dequeue();
 
                 const double magnitude = (event.action == GLFW_RELEASE) ? 0 : 1;
@@ -366,20 +341,16 @@ version (Have_glfw_d)
             }
         }
 
-        private void processCharacterEvents()
-        {
-            while (stateData.charEvents.length > 0)
-            {
+        private void processCharacterEvents() {
+            while (stateData.charEvents.length > 0) {
                 auto character = stateData.charEvents.dequeue();
                 auto message = CharacterInputEventMessage.create(character);
                 messageHandler.sendMessage(inputEventChannel, message);
             }
         }
 
-        private void processMouseMovementEvents()
-        {
-            while (stateData.mouseMovementEvents.length > 0)
-            {
+        private void processMouseMovementEvents() {
+            while (stateData.mouseMovementEvents.length > 0) {
                 auto event = stateData.mouseMovementEvents.dequeue();
                 auto magnitude = sqrt((event.xPosition * event.xPosition) + (
                         event.yPosition * event.yPosition));
@@ -389,20 +360,16 @@ version (Have_glfw_d)
             }
         }
 
-        private void processMouseEnteredEvents()
-        {
-            while (stateData.mouseEnteredEvents.length > 0)
-            {
+        private void processMouseEnteredEvents() {
+            while (stateData.mouseEnteredEvents.length > 0) {
                 auto entered = stateData.mouseEnteredEvents.dequeue();
                 auto message = MouseEnteredEventMessage.create(entered);
                 messageHandler.sendMessage(inputEventChannel, message);
             }
         }
 
-        private void processMouseButtonEvents()
-        {
-            while (stateData.mouseButtonEvents.length > 0)
-            {
+        private void processMouseButtonEvents() {
+            while (stateData.mouseButtonEvents.length > 0) {
                 auto event = stateData.mouseButtonEvents.dequeue();
                 const double magnitude = (event.action == GLFW_RELEASE) ? 0 : 1;
                 auto message = MouseButtonInputEventMessage.create(glfwMouseButtonMap[event.button],
@@ -412,10 +379,8 @@ version (Have_glfw_d)
             }
         }
 
-        private void processMouseScrollEvents()
-        {
-            while (stateData.mouseScrollEvents.length > 0)
-            {
+        private void processMouseScrollEvents() {
+            while (stateData.mouseScrollEvents.length > 0) {
                 auto event = stateData.mouseScrollEvents.dequeue();
                 auto magnitude = sqrt(
                         (event.xOffset * event.xOffset) + (event.yOffset * event.yOffset));
@@ -425,50 +390,41 @@ version (Have_glfw_d)
             }
         }
 
-        private KeyboardKeyModifier getRetrogradeKeyboardModifiers(int glfwModifiers)
-        {
+        private KeyboardKeyModifier getRetrogradeKeyboardModifiers(int glfwModifiers) {
             auto modifiers = KeyboardKeyModifier.none;
 
-            if (glfwModifiers & GLFW_MOD_SHIFT)
-            {
+            if (glfwModifiers & GLFW_MOD_SHIFT) {
                 modifiers |= KeyboardKeyModifier.shift;
             }
 
-            if (glfwModifiers & GLFW_MOD_CONTROL)
-            {
+            if (glfwModifiers & GLFW_MOD_CONTROL) {
                 modifiers |= KeyboardKeyModifier.leftCtrl;
                 modifiers |= KeyboardKeyModifier.rightCtrl;
             }
 
-            if (glfwModifiers & GLFW_MOD_ALT)
-            {
+            if (glfwModifiers & GLFW_MOD_ALT) {
                 modifiers |= KeyboardKeyModifier.leftAlt;
                 modifiers |= KeyboardKeyModifier.rightAlt;
             }
 
-            if (glfwModifiers & GLFW_MOD_SUPER)
-            {
+            if (glfwModifiers & GLFW_MOD_SUPER) {
                 modifiers |= KeyboardKeyModifier.leftGui;
                 modifiers |= KeyboardKeyModifier.rightGui;
             }
 
-            if (glfwModifiers & GLFW_MOD_CAPS_LOCK)
-            {
+            if (glfwModifiers & GLFW_MOD_CAPS_LOCK) {
                 modifiers |= KeyboardKeyModifier.capslock;
             }
 
-            if (glfwModifiers & GLFW_MOD_NUM_LOCK)
-            {
+            if (glfwModifiers & GLFW_MOD_NUM_LOCK) {
                 modifiers |= KeyboardKeyModifier.numlock;
             }
 
             return modifiers;
         }
 
-        private void setMouseMode(const MouseMode mouseMode)
-        {
-            final switch (mouseMode)
-            {
+        private void setMouseMode(const MouseMode mouseMode) {
+            final switch (mouseMode) {
             case MouseMode.normal:
                 glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
                 break;
@@ -483,20 +439,16 @@ version (Have_glfw_d)
             }
         }
 
-        private void setRawMouseMotion(bool enableRawMotion)
-        {
-            if (glfwRawMouseMotionSupported())
-            {
+        private void setRawMouseMotion(bool enableRawMotion) {
+            if (glfwRawMouseMotionSupported()) {
                 glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION,
                         enableRawMotion ? GLFW_TRUE : GLFW_FALSE);
             }
         }
     }
 
-    private extern (C) void errorCallback(int error, const(char)* description) nothrow @nogc
-    {
-        debug
-        {
+    private extern (C) void errorCallback(int error, const(char)* description) nothrow @nogc {
+        debug {
             // Due to @nogc we cannot make use of the engine's logger
             import core.stdc.stdio;
 
@@ -506,16 +458,14 @@ version (Have_glfw_d)
     }
 
     private extern (C) void keyCallback(GLFWwindow* window, int key,
-            int scanCode, int action, int modifiers) @nogc nothrow
-    {
+            int scanCode, int action, int modifiers) @nogc nothrow {
         StateData* state = cast(StateData*) glfwGetWindowUserPointer(window);
         assert(state);
 
         state.keyEvents.enqueue(GlfwKeyEvent(key, scanCode, action, modifiers));
     }
 
-    private extern (C) void characterCallback(GLFWwindow* window, uint codepoint) @nogc nothrow
-    {
+    private extern (C) void characterCallback(GLFWwindow* window, uint codepoint) @nogc nothrow {
         StateData* state = cast(StateData*) glfwGetWindowUserPointer(window);
         assert(state);
 
@@ -523,32 +473,28 @@ version (Have_glfw_d)
     }
 
     private extern (C) void mouseCursorPositionCallback(GLFWwindow* window,
-            double xPosition, double yPosition) @nogc nothrow
-    {
+            double xPosition, double yPosition) @nogc nothrow {
         StateData* state = cast(StateData*) glfwGetWindowUserPointer(window);
         assert(state);
 
         state.mouseMovementEvents.enqueue(GlfwMouseMovementEvent(xPosition, yPosition));
     }
 
-    private extern (C) void mouseCursorEnterCallback(GLFWwindow* window, int entered) @nogc nothrow
-    {
+    private extern (C) void mouseCursorEnterCallback(GLFWwindow* window, int entered) @nogc nothrow {
         StateData* state = cast(StateData*) glfwGetWindowUserPointer(window);
         assert(state);
         state.mouseEnteredEvents.enqueue(cast(bool) entered);
     }
 
     private extern (C) void mouseButtonCallback(GLFWwindow* window, int button,
-            int action, int modifiers) @nogc nothrow
-    {
+            int action, int modifiers) @nogc nothrow {
         StateData* state = cast(StateData*) glfwGetWindowUserPointer(window);
         assert(state);
 
         state.mouseButtonEvents.enqueue(GlfwMouseButtonEvent(button, action, modifiers));
     }
 
-    private extern (C) void mouseScrollCallback(GLFWwindow* window, double xOffset, double yOffset) @nogc nothrow
-    {
+    private extern (C) void mouseScrollCallback(GLFWwindow* window, double xOffset, double yOffset) @nogc nothrow {
         StateData* state = cast(StateData*) glfwGetWindowUserPointer(window);
         assert(state);
 

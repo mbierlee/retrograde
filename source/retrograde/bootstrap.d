@@ -23,15 +23,12 @@ import poodinis;
 
 import std.experimental.logger : Logger, MultiLogger, sharedLog;
 
-version (Have_glfw_d)
-{
+version (Have_glfw_d) {
     import retrograde.platform.glfw : GlfwPlatform, GlfwPlatformSettings;
 
     alias DefaultPlatform = GlfwPlatform;
     alias DefaultPlatformSettings = GlfwPlatformSettings;
-}
-else
-{
+} else {
     alias DefaultPlatform = NullPlatform;
     alias DefaultPlatformSettings = PlatformSettings;
 }
@@ -43,8 +40,7 @@ else
 public void startGame(GameType : Game, EngineRuntimeType:
         EngineRuntime = StandardEngineRuntime, PlatformType:
         Platform = DefaultPlatform)(const PlatformSettings platformSettings = new DefaultPlatformSettings(),
-        shared DependencyContainer dependencies = new shared DependencyContainer())
-{
+        shared DependencyContainer dependencies = new shared DependencyContainer()) {
 
     dependencies.register!(EngineRuntime, EngineRuntimeType);
     dependencies.register!(Game, GameType);
@@ -57,8 +53,7 @@ public void startGame(GameType : Game, EngineRuntimeType:
         auto logger = new MultiLogger();
 
         auto stdoutLogger = new StdoutLogger();
-        if (stdoutLogger.stdoutIsAvailable())
-        {
+        if (stdoutLogger.stdoutIsAvailable()) {
             logger.insertLogger("stdoutLogger", stdoutLogger);
         }
 
@@ -70,38 +65,31 @@ public void startGame(GameType : Game, EngineRuntimeType:
     runtime.startGame(platformSettings);
 }
 
-version (unittest)
-{
-    class TestGame : Game
-    {
+version (unittest) {
+    class TestGame : Game {
         public bool isInitialized;
 
         @Autowire private EngineRuntime runtime;
         @Autowire EntityManager entityManager;
         @Autowire MessageHandler messageHandler;
 
-        public override void initialize()
-        {
+        public override void initialize() {
             isInitialized = true;
         }
 
-        public override void update()
-        {
+        public override void update() {
             runtime.terminate();
         }
 
-        public override void render(double extraPolation)
-        {
+        public override void render(double extraPolation) {
         }
 
-        public override void terminate()
-        {
+        public override void terminate() {
         }
     }
 
     @("Bootstrap of testgame")
-    unittest
-    {
+    unittest {
         auto dependencies = new shared DependencyContainer();
         startGame!TestGame(new PlatformSettings(), dependencies);
         const game = dependencies.resolve!TestGame;

@@ -15,8 +15,7 @@ module retrograde.core.platform;
  * API for interfacing with the underlying platform.
  * E.g. a PC desktop OS or a game console platform.
  */
-interface Platform
-{
+interface Platform {
     void initialize(const PlatformSettings platformSettings);
     void update();
     void terminate();
@@ -25,24 +24,19 @@ interface Platform
 /**
  * Platform for interacting with the API when there is no underlying platform.
  */
-class NullPlatform : Platform
-{
-    void initialize(const PlatformSettings platformSettings)
-    {
+class NullPlatform : Platform {
+    void initialize(const PlatformSettings platformSettings) {
     }
 
-    void update()
-    {
+    void update() {
     }
 
-    void terminate()
-    {
+    void terminate() {
     }
 }
 
 /**
  * Base for platform-dependent initialization settings.
  */
-class PlatformSettings
-{
+class PlatformSettings {
 }

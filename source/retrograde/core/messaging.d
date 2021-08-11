@@ -21,17 +21,14 @@ alias MessageProcessor = void delegate(const StringId channel, immutable Message
 /**
  * Base class for message data.
  */
-class Message
-{
+class Message {
     @property StringId id;
 
-    this(const StringId id = sid(""))
-    {
+    this(const StringId id = sid("")) {
         this.id = id;
     }
 
-    static immutable(Message) create(const StringId id)
-    {
+    static immutable(Message) create(const StringId id) {
         return cast(immutable(Message)) new Message(id);
     }
 }
@@ -44,18 +41,15 @@ class Message
  *
  * See_Also: InputMapper
  */
-class MagnitudeMessage : Message
-{
+class MagnitudeMessage : Message {
     @property double magnitude;
 
-    this(const StringId id, const double magnitude)
-    {
+    this(const StringId id, const double magnitude) {
         super(id);
         this.magnitude = magnitude;
     }
 
-    static immutable(MagnitudeMessage) create(const StringId id, const double magnitude)
-    {
+    static immutable(MagnitudeMessage) create(const StringId id, const double magnitude) {
         return cast(immutable(MagnitudeMessage)) new MagnitudeMessage(id, magnitude);
     }
 
@@ -66,8 +60,7 @@ class MagnitudeMessage : Message
      *
      * See_Also: isCloseToZero, isCloseToOne, isCloseToMinusOne
      */
-    bool isCloseTo(const double rhs) const
-    {
+    bool isCloseTo(const double rhs) const {
         return isClose(magnitude, rhs);
     }
 
@@ -78,8 +71,7 @@ class MagnitudeMessage : Message
      *
      * See_Also: isCloseTo, isCloseToOne, isCloseToMinusOne
      */
-    bool isCloseToZero() const
-    {
+    bool isCloseToZero() const {
         return isClose(magnitude, 0.0, 0.0, double.epsilon);
     }
 
@@ -90,8 +82,7 @@ class MagnitudeMessage : Message
      *
      * See_Also: isCloseTo, isCloseToZero, isCloseToMinusOne
      */
-    bool isCloseToOne() const
-    {
+    bool isCloseToOne() const {
         return isClose(magnitude, 1.0);
     }
 
@@ -102,8 +93,7 @@ class MagnitudeMessage : Message
      *
      * See_Also: isCloseTo, isCloseToZero, isCloseToOne
      */
-    bool isCloseToMinusOne() const
-    {
+    bool isCloseToMinusOne() const {
         return isClose(magnitude, -1.0);
     }
 }
@@ -115,8 +105,7 @@ class MagnitudeMessage : Message
  * from the active queue. This system makes the message queue immutable for the current update cycle.
  * Using immediate delivery, one can immediately send messages to those who are able to handle immediate messages.
  */
-class MessageHandler
-{
+class MessageHandler {
     private immutable(Message)[][StringId] activeMessageQueue;
     private immutable(Message)[][StringId] standbyMessageQueue;
     private MessageProcessor[][StringId] immediateReceivers;
@@ -133,10 +122,8 @@ class MessageHandler
      *
      * See_Also: receiveMessages, shiftStandbyToActiveQueue
      */
-    public void sendMessage(const StringId channel, immutable Message message)
-    {
-        if ((channel in standbyMessageQueue) is null)
-        {
+    public void sendMessage(const StringId channel, immutable Message message) {
+        if ((channel in standbyMessageQueue) is null) {
             standbyMessageQueue[channel] = [];
         }
 
@@ -153,12 +140,9 @@ class MessageHandler
      *
      * See_Also: sendMessage
      */
-    public void receiveMessages(const StringId channel, const MessageProcessor processor)
-    {
-        if (auto channelMessages = channel in activeMessageQueue)
-        {
-            foreach (message; *channelMessages)
-            {
+    public void receiveMessages(const StringId channel, const MessageProcessor processor) {
+        if (auto channelMessages = channel in activeMessageQueue) {
+            foreach (message; *channelMessages) {
                 processor(channel, message);
             }
         }
@@ -175,12 +159,9 @@ class MessageHandler
      * See_Also: sendMessage
      */
     public void receiveMessages(const StringId channel,
-            const(void delegate(immutable Message)) processor)
-    {
-        if (auto channelMessages = channel in activeMessageQueue)
-        {
-            foreach (message; *channelMessages)
-            {
+            const(void delegate(immutable Message)) processor) {
+        if (auto channelMessages = channel in activeMessageQueue) {
+            foreach (message; *channelMessages) {
                 processor(message);
             }
         }
@@ -199,15 +180,11 @@ class MessageHandler
      * See_Also: sendMessage
      */
     public void receiveMessages(MessageType : Message)(const StringId channel,
-            const(void delegate(immutable MessageType)) processor)
-    {
-        if (auto channelMessages = channel in activeMessageQueue)
-        {
-            foreach (message; *channelMessages)
-            {
+            const(void delegate(immutable MessageType)) processor) {
+        if (auto channelMessages = channel in activeMessageQueue) {
+            foreach (message; *channelMessages) {
                 auto castMessage = cast(immutable MessageType) message;
-                if (castMessage)
-                {
+                if (castMessage) {
                     processor(castMessage);
                 }
             }
@@ -219,8 +196,7 @@ class MessageHandler
      * clears the stand-by qeueu.
      * This method is typically called at the start of an update cycle.
      */
-    public void shiftStandbyToActiveQueue()
-    {
+    public void shiftStandbyToActiveQueue() {
         activeMessageQueue = standbyMessageQueue;
         standbyMessageQueue.destroy();
     }
@@ -234,10 +210,8 @@ class MessageHandler
      *
      * See_Also: sendMessageImmediately
      */
-    public void registerImmediateReceiver(const StringId channel, const MessageProcessor processor)
-    {
-        if ((channel in immediateReceivers) is null)
-        {
+    public void registerImmediateReceiver(const StringId channel, const MessageProcessor processor) {
+        if ((channel in immediateReceivers) is null) {
             immediateReceivers[channel] = [];
         }
 
@@ -251,10 +225,8 @@ class MessageHandler
      *  channel = ID of the channel where messages were sent to.
      *  processor = Processor delegate that has to be removed.
      */
-    public void removeImmedateReceiver(const StringId channel, const MessageProcessor processor)
-    {
-        if (auto receivers = channel in immediateReceivers)
-        {
+    public void removeImmedateReceiver(const StringId channel, const MessageProcessor processor) {
+        if (auto receivers = channel in immediateReceivers) {
             *receivers = remove!(r => r is processor)(*receivers);
         }
     }
@@ -267,12 +239,9 @@ class MessageHandler
      *  channel = ID of the channel to send the message to.
      *  message = Message to send to the channel.
      */
-    public void sendMessageImmediately(const StringId channel, immutable Message message)
-    {
-        if (auto receivers = channel in immediateReceivers)
-        {
-            foreach (receiver; *receivers)
-            {
+    public void sendMessageImmediately(const StringId channel, immutable Message message) {
+        if (auto receivers = channel in immediateReceivers) {
+            foreach (receiver; *receivers) {
                 receiver(channel, message);
             }
         }
@@ -280,14 +249,11 @@ class MessageHandler
 
 }
 
-version (unittest)
-{
-    mixin template ProcessorMixin()
-    {
+version (unittest) {
+    mixin template ProcessorMixin() {
         auto receivedMessage = false;
 
-        void process(const StringId channel, immutable Message message)
-        {
+        void process(const StringId channel, immutable Message message) {
             receivedMessage = true;
         }
     }
@@ -297,8 +263,7 @@ version (unittest)
     private StringId testMessageId2 = sid("test_message_2");
 
     @("Send and receive a messages")
-    unittest
-    {
+    unittest {
         mixin ProcessorMixin;
 
         const auto processor = &process;
@@ -326,8 +291,7 @@ version (unittest)
     }
 
     @("Send message immediately")
-    unittest
-    {
+    unittest {
         mixin ProcessorMixin;
 
         const auto processor = &process;
@@ -339,8 +303,7 @@ version (unittest)
     }
 
     @("Remove immediate message receiver")
-    unittest
-    {
+    unittest {
         mixin ProcessorMixin;
 
         const auto processor = &process;
@@ -353,11 +316,9 @@ version (unittest)
     }
 
     @("Sent messages are received in the same order they were sent")
-    unittest
-    {
+    unittest {
         StringId[] receivedMessages;
-        void process(const StringId channel, immutable Message message)
-        {
+        void process(const StringId channel, immutable Message message) {
             receivedMessages ~= message.id;
         }
 
@@ -373,8 +334,7 @@ version (unittest)
     }
 
     @("Send and receive typed messages")
-    unittest
-    {
+    unittest {
         auto handler = new MessageHandler();
         handler.sendMessage(testChannel, Message.create(testMessageId));
         handler.sendMessage(testChannel, MagnitudeMessage.create(testMessageId2, 0.8));
@@ -389,8 +349,7 @@ version (unittest)
     }
 
     @("Magnitude precisions")
-    unittest
-    {
+    unittest {
         auto message1 = MagnitudeMessage.create(testMessageId, double.epsilon / 2);
         assert(message1.isCloseToZero());
 

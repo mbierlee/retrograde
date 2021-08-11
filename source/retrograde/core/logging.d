@@ -32,24 +32,24 @@ class StdoutLogger : Logger {
 
         auto logLevelLabel = "";
         switch (payload.logLevel) {
-            case LogLevel.warning:
-                logLevelLabel = "WARNING: ";
-                break;
+        case LogLevel.warning:
+            logLevelLabel = "WARNING: ";
+            break;
 
-            case LogLevel.error:
-                logLevelLabel = "ERROR: ";
-                break;
+        case LogLevel.error:
+            logLevelLabel = "ERROR: ";
+            break;
 
-            case LogLevel.critical:
-                logLevelLabel = "CRITICAL: ";
-                break;
+        case LogLevel.critical:
+            logLevelLabel = "CRITICAL: ";
+            break;
 
-            case LogLevel.fatal:
-                logLevelLabel = "FATAL: ";
-                break;
+        case LogLevel.fatal:
+            logLevelLabel = "FATAL: ";
+            break;
 
-            default:
-                break;
+        default:
+            break;
         }
 
         outFile.writeln(logLevelLabel ~ payload.msg);
