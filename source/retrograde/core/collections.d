@@ -34,7 +34,7 @@ struct Queue(T, size_t chunkSize = defaultChunkSize)
      *
      * If the allocated space for the queue is insufficient, more memory will be allocated.
      */
-    void enQueue(T item) nothrow @nogc
+    void enqueue(T item) nothrow @nogc
     {
         considerResize();
 
@@ -51,7 +51,7 @@ struct Queue(T, size_t chunkSize = defaultChunkSize)
      *
      * Allocated space is never freed up.
      */
-    T deQueue() nothrow @nogc
+    T dequeue() nothrow @nogc
     {
         if (!items || length == 0)
         {
@@ -254,7 +254,7 @@ version (unittest)
     unittest
     {
         Queue!int queue;
-        queue.enQueue(1);
+        queue.enqueue(1);
         assert(queue.length == 1);
     }
 
@@ -262,10 +262,10 @@ version (unittest)
     unittest
     {
         Queue!int queue;
-        queue.enQueue(44);
+        queue.enqueue(44);
         assert(queue.length == 1);
 
-        auto item = queue.deQueue();
+        auto item = queue.dequeue();
         assert(queue.length == 0);
         assert(item == 44);
     }
@@ -274,7 +274,7 @@ version (unittest)
     unittest
     {
         Queue!int queue;
-        auto item = queue.deQueue();
+        auto item = queue.dequeue();
         assert(item == int.init);
     }
 
@@ -282,11 +282,11 @@ version (unittest)
     unittest
     {
         Queue!int queue;
-        queue.enQueue(1);
-        queue.enQueue(2);
-        queue.deQueue();
-        queue.deQueue();
-        auto item = queue.deQueue();
+        queue.enqueue(1);
+        queue.enqueue(2);
+        queue.dequeue();
+        queue.dequeue();
+        auto item = queue.dequeue();
         assert(item == int.init);
     }
 
@@ -296,7 +296,7 @@ version (unittest)
         Queue!(int, 16) queue;
         foreach (i; 0 .. 128)
         {
-            queue.enQueue(i);
+            queue.enqueue(i);
         }
 
         assert(queue.length == 128);
@@ -309,76 +309,76 @@ version (unittest)
         Queue!(int, 4) queue;
 
         // Memory marked as X is dirty and can contain anything, since the claimed memory is not cleaned beforehand.
-        // Memory marked as _ used to be enQueued but is not anymore.
+        // Memory marked as _ used to be enqueued but is not anymore.
 
-        queue.enQueue(1); // [1, X, X ,X]
+        queue.enqueue(1); // [1, X, X ,X]
         assert(queue.getArrayCopy!1 == [1]);
-        queue.enQueue(2); // [1, 2, X, X]
+        queue.enqueue(2); // [1, 2, X, X]
         assert(queue.getArrayCopy!2 == [1, 2]);
-        queue.enQueue(3); // [1, 2, 3, X]
+        queue.enqueue(3); // [1, 2, 3, X]
         assert(queue.getArrayCopy!3 == [1, 2, 3]);
-        queue.enQueue(4); // [1, 2, 3, 4]
+        queue.enqueue(4); // [1, 2, 3, 4]
         assert(queue.getArrayCopy!4 == [1, 2, 3, 4]);
         assert(queue.capacity == 4);
         assert(queue.length == 4);
-        assert(queue.deQueue() == 1); // [_, 2, 3, 4]
+        assert(queue.dequeue() == 1); // [_, 2, 3, 4]
         assert(queue.getArrayCopy!4 == [1, 2, 3, 4]);
         assert(queue.capacity == 4);
         assert(queue.length == 3);
 
-        queue.enQueue(5); // [5, 2, 3, 4]
+        queue.enqueue(5); // [5, 2, 3, 4]
         assert(queue.getArrayCopy!4 == [5, 2, 3, 4]);
         assert(queue.capacity == 4);
         assert(queue.length == 4);
-        assert(queue.deQueue() == 2); // [5, _, 3, 4]
+        assert(queue.dequeue() == 2); // [5, _, 3, 4]
         assert(queue.getArrayCopy!4 == [5, 2, 3, 4]);
-        assert(queue.deQueue() == 3); // [5, _, _, 4]
+        assert(queue.dequeue() == 3); // [5, _, _, 4]
         assert(queue.getArrayCopy!4 == [5, 2, 3, 4]);
-        assert(queue.deQueue() == 4); // [5, _, _, _]
+        assert(queue.dequeue() == 4); // [5, _, _, _]
         assert(queue.getArrayCopy!4 == [5, 2, 3, 4]);
-        assert(queue.deQueue() == 5); // [_, _, _, _]
+        assert(queue.dequeue() == 5); // [_, _, _, _]
         assert(queue.getArrayCopy!4 == [5, 2, 3, 4]);
 
-        queue.enQueue(6); // [_, 6, _, _]
+        queue.enqueue(6); // [_, 6, _, _]
         assert(queue.getArrayCopy!4 == [5, 6, 3, 4]);
         assert(queue.capacity == 4);
         assert(queue.length == 1);
 
-        assert(queue.deQueue() == 6); // [_, _, _, _]
+        assert(queue.dequeue() == 6); // [_, _, _, _]
         assert(queue.getArrayCopy!4 == [5, 6, 3, 4]);
         assert(queue.capacity == 4);
         assert(queue.length == 0);
 
-        queue.enQueue(7); // [_, _, 7, _]
+        queue.enqueue(7); // [_, _, 7, _]
         assert(queue.getArrayCopy!4 == [5, 6, 7, 4]);
         assert(queue.capacity == 4);
         assert(queue.length == 1);
 
-        queue.enQueue(8); // [_, _, 7, 8]
+        queue.enqueue(8); // [_, _, 7, 8]
         assert(queue.getArrayCopy!4 == [5, 6, 7, 8]);
-        queue.enQueue(9); // [9, _, 7, 8]
+        queue.enqueue(9); // [9, _, 7, 8]
         assert(queue.getArrayCopy!4 == [9, 6, 7, 8]);
-        queue.enQueue(10); // [9, 10, 7, 8]
+        queue.enqueue(10); // [9, 10, 7, 8]
         assert(queue.getArrayCopy!4 == [9, 10, 7, 8]);
         assert(queue.capacity == 4);
         assert(queue.length == 4);
 
         // Resize queue that has looped around
-        queue.enQueue(11); // [7, 8, 9, 10, 11, X, X, X]
+        queue.enqueue(11); // [7, 8, 9, 10, 11, X, X, X]
         assert(queue.getArrayCopy!5 == [7, 8, 9, 10, 11]);
 
         assert(queue.capacity == 8);
         assert(queue.length == 5);
 
-        assert(queue.deQueue() == 7); // [_, 8, 9, 10, 11, X, X, X]
+        assert(queue.dequeue() == 7); // [_, 8, 9, 10, 11, X, X, X]
         assert(queue.getArrayCopy!5 == [7, 8, 9, 10, 11]);
-        assert(queue.deQueue() == 8); // [_ ,_, 9, 10, 11, X, X, X]
+        assert(queue.dequeue() == 8); // [_ ,_, 9, 10, 11, X, X, X]
         assert(queue.getArrayCopy!5 == [7, 8, 9, 10, 11]);
-        assert(queue.deQueue() == 9); // [_, _, _, 10, 11, X, X, X]
+        assert(queue.dequeue() == 9); // [_, _, _, 10, 11, X, X, X]
         assert(queue.getArrayCopy!5 == [7, 8, 9, 10, 11]);
-        assert(queue.deQueue() == 10); // [_, _, _, _, 11, X, X, X]
+        assert(queue.dequeue() == 10); // [_, _, _, _, 11, X, X, X]
         assert(queue.getArrayCopy!5 == [7, 8, 9, 10, 11]);
-        assert(queue.deQueue() == 11); // [_, _, _, _, _, X, X, X]
+        assert(queue.dequeue() == 11); // [_, _, _, _, _, X, X, X]
         assert(queue.capacity == 8);
         assert(queue.length == 0);
     }
@@ -387,26 +387,26 @@ version (unittest)
     unittest
     {
         Queue!(int, 2) queue;
-        queue.enQueue(1);
-        queue.enQueue(2);
-        queue.enQueue(3);
+        queue.enqueue(1);
+        queue.enqueue(2);
+        queue.enqueue(3);
         queue.clear();
         assert(queue.length == 0);
         assert(queue.capacity == 4);
-        assert(queue.deQueue() == int.init);
+        assert(queue.dequeue() == int.init);
     }
 
     @("Compact the queue")
     unittest
     {
         Queue!(int, 2) queue;
-        queue.enQueue(1);
-        queue.enQueue(2);
-        queue.enQueue(3);
-        queue.enQueue(4);
-        queue.deQueue();
-        queue.deQueue();
-        queue.deQueue();
+        queue.enqueue(1);
+        queue.enqueue(2);
+        queue.enqueue(3);
+        queue.enqueue(4);
+        queue.dequeue();
+        queue.dequeue();
+        queue.dequeue();
         assert(queue.length == 1);
         assert(queue.capacity == 4);
 
@@ -414,7 +414,7 @@ version (unittest)
         assert(queue.length == 1);
         assert(queue.capacity == 2);
 
-        queue.deQueue();
+        queue.dequeue();
         queue.compact();
         assert(queue.length == 0);
         assert(queue.capacity == 0);
@@ -424,15 +424,15 @@ version (unittest)
     unittest
     {
         Queue!(int, 4) queue;
-        queue.enQueue(1);
-        queue.enQueue(2);
-        queue.enQueue(3);
-        queue.enQueue(4);
+        queue.enqueue(1);
+        queue.enqueue(2);
+        queue.enqueue(3);
+        queue.enqueue(4);
         queue.deallocate();
         assert(queue.length == 0);
         assert(queue.capacity == 0);
 
-        queue.enQueue(1);
+        queue.enqueue(1);
         assert(queue.length == 1);
         assert(queue.capacity == 4);
     }
@@ -442,7 +442,7 @@ version (unittest)
     {
         {
             Queue!int queue;
-            queue.enQueue(1);
+            queue.enqueue(1);
             {
                 auto newQueue = queue;
             }
@@ -458,8 +458,8 @@ version (unittest)
     unittest
     {
         Queue!int queue;
-        queue.enQueue(1);
-        queue.enQueue(2);
+        queue.enqueue(1);
+        queue.enqueue(2);
         assert(queue.getArrayCopy!2 == [1, 2]);
 
         Queue!int queue2;

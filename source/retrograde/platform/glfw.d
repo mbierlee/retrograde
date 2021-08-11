@@ -471,7 +471,7 @@ version (Have_glfw_d)
         {
             while (stateData.keyEvents.length > 0)
             {
-                auto event = stateData.keyEvents.deQueue();
+                auto event = stateData.keyEvents.dequeue();
 
                 const double magnitude = (event.action == GLFW_RELEASE) ? 0 : 1;
 
@@ -487,7 +487,7 @@ version (Have_glfw_d)
         {
             while (stateData.charEvents.length > 0)
             {
-                auto character = stateData.charEvents.deQueue();
+                auto character = stateData.charEvents.dequeue();
                 auto message = CharacterInputEventMessage.create(character);
                 messageHandler.sendMessage(inputEventChannel, message);
             }
@@ -497,7 +497,7 @@ version (Have_glfw_d)
         {
             while (stateData.mouseMovementEvents.length > 0)
             {
-                auto event = stateData.mouseMovementEvents.deQueue();
+                auto event = stateData.mouseMovementEvents.dequeue();
                 auto magnitude = sqrt((event.xPosition * event.xPosition) + (
                         event.yPosition * event.yPosition));
                 auto message = MouseMovementEventMessage.create(event.xPosition,
@@ -510,7 +510,7 @@ version (Have_glfw_d)
         {
             while (stateData.mouseEnteredEvents.length > 0)
             {
-                auto entered = stateData.mouseEnteredEvents.deQueue();
+                auto entered = stateData.mouseEnteredEvents.dequeue();
                 auto message = MouseEnteredEventMessage.create(entered);
                 messageHandler.sendMessage(inputEventChannel, message);
             }
@@ -520,7 +520,7 @@ version (Have_glfw_d)
         {
             while (stateData.mouseButtonEvents.length > 0)
             {
-                auto event = stateData.mouseButtonEvents.deQueue();
+                auto event = stateData.mouseButtonEvents.dequeue();
                 const double magnitude = (event.action == GLFW_RELEASE) ? 0 : 1;
                 auto message = MouseButtonInputEventMessage.create(glfwMouseButtonMap[event.button],
                         glfwActionMap[event.action],
@@ -533,7 +533,7 @@ version (Have_glfw_d)
         {
             while (stateData.mouseScrollEvents.length > 0)
             {
-                auto event = stateData.mouseScrollEvents.deQueue();
+                auto event = stateData.mouseScrollEvents.dequeue();
                 auto magnitude = sqrt(
                         (event.xOffset * event.xOffset) + (event.yOffset * event.yOffset));
                 auto message = MouseScrollInputEventMessage.create(event.xOffset,
@@ -628,7 +628,7 @@ version (Have_glfw_d)
         StateData* state = cast(StateData*) glfwGetWindowUserPointer(window);
         assert(state);
 
-        state.keyEvents.enQueue(GlfwKeyEvent(key, scanCode, action, modifiers));
+        state.keyEvents.enqueue(GlfwKeyEvent(key, scanCode, action, modifiers));
     }
 
     private extern (C) void characterCallback(GLFWwindow* window, uint codepoint) @nogc nothrow
@@ -636,7 +636,7 @@ version (Have_glfw_d)
         StateData* state = cast(StateData*) glfwGetWindowUserPointer(window);
         assert(state);
 
-        state.charEvents.enQueue(codepoint);
+        state.charEvents.enqueue(codepoint);
     }
 
     private extern (C) void mouseCursorPositionCallback(GLFWwindow* window,
@@ -645,14 +645,14 @@ version (Have_glfw_d)
         StateData* state = cast(StateData*) glfwGetWindowUserPointer(window);
         assert(state);
 
-        state.mouseMovementEvents.enQueue(GlfwMouseMovementEvent(xPosition, yPosition));
+        state.mouseMovementEvents.enqueue(GlfwMouseMovementEvent(xPosition, yPosition));
     }
 
     private extern (C) void mouseCursorEnterCallback(GLFWwindow* window, int entered) @nogc nothrow
     {
         StateData* state = cast(StateData*) glfwGetWindowUserPointer(window);
         assert(state);
-        state.mouseEnteredEvents.enQueue(cast(bool) entered);
+        state.mouseEnteredEvents.enqueue(cast(bool) entered);
     }
 
     private extern (C) void mouseButtonCallback(GLFWwindow* window, int button,
@@ -661,7 +661,7 @@ version (Have_glfw_d)
         StateData* state = cast(StateData*) glfwGetWindowUserPointer(window);
         assert(state);
 
-        state.mouseButtonEvents.enQueue(GlfwMouseButtonEvent(button, action, modifiers));
+        state.mouseButtonEvents.enqueue(GlfwMouseButtonEvent(button, action, modifiers));
     }
 
     private extern (C) void mouseScrollCallback(GLFWwindow* window, double xOffset, double yOffset) @nogc nothrow
@@ -669,6 +669,6 @@ version (Have_glfw_d)
         StateData* state = cast(StateData*) glfwGetWindowUserPointer(window);
         assert(state);
 
-        state.mouseScrollEvents.enQueue(GlfwMouseScrollEvent(xOffset, yOffset));
+        state.mouseScrollEvents.enqueue(GlfwMouseScrollEvent(xOffset, yOffset));
     }
 }
