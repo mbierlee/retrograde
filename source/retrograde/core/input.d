@@ -96,7 +96,7 @@ class MouseMovementEventMessage : InputEventMessage
      * Params:
      *  xPosition = X position of the mouse in the platform's drawing space (window).
      *  yPosition = Y position of the mouse in the platform's drawing space (window).
-     *  magnitude = Quantized amount of movement in two-dimensions.   
+     *  magnitude = Amount of movement in two-dimensions.
      */
     this(const double xPosition, const double yPosition, const double magnitude)
     {
@@ -111,7 +111,7 @@ class MouseMovementEventMessage : InputEventMessage
      * Params:
      *  xPosition = X position of the mouse in the platform's drawing space (window).
      *  yPosition = Y position of the mouse in the platform's drawing space (window).
-     *  magnitude = Quantized amount of movement in two-dimensions.   
+     *  magnitude = Amount of movement in two-dimensions.
      */
     static immutable(MouseMovementEventMessage) create(const double xPosition,
             const double yPosition, const double magnitude)
@@ -207,7 +207,7 @@ class MouseScrollInputEventMessage : InputEventMessage
      * Params:
      *  xOffset = Amount of scrollage on the X-axis.
      *  yOffset = Amount of scrollage on the Y-axis.
-     *  magnitude = Quantized amount of scroll in two-dimensions.
+     *  magnitude = Amount of scroll in two-dimensions.
      */
     this(const double xOffset, double yOffset, const double magnitude)
     {
@@ -222,7 +222,7 @@ class MouseScrollInputEventMessage : InputEventMessage
      * Params:
      *  xOffset = Amount of scrollage on the X-axis.
      *  yOffset = Amount of scrollage on the Y-axis.
-     *  magnitude = Quantized amount of scroll in two-dimensions.
+     *  magnitude = Amount of scroll in two-dimensions.
      */
     static immutable(MouseScrollInputEventMessage) create(const double xOffset,
             double yOffset, const double magnitude)
