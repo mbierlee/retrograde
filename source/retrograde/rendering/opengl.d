@@ -12,7 +12,7 @@
 module retrograde.rendering.opengl;
 
 version (Have_bindbc_opengl) {
-    import retrograde.core.rendering;
+    import retrograde.core.rendering : Renderer, Shader, ShaderProgram;
     import retrograde.core.entity : Entity;
 
     import std.experimental.logger : Logger;
@@ -25,6 +25,8 @@ version (Have_bindbc_opengl) {
         private @Autowire Logger logger;
 
         private @Value("logging.logComponentInitialization") bool logInit;
+
+        private OpenGlShaderProgram testShaderProgram;
 
         override public int getContextHintMayor() {
             return 4;
@@ -53,10 +55,89 @@ version (Have_bindbc_opengl) {
             if (logInit && support.gl46) {
                 logger.info("OpenGL 4.6 renderer initialized.");
             }
+
+            // Temp static creation of shaders
+            auto vertexShader = new OpenGlShader(import("standard/vertex.glsl"), GL_VERTEX_SHADER);
+            auto fragmentShader = new OpenGlShader(import("standard/fragment.glsl"),
+                    GL_FRAGMENT_SHADER);
+            testShaderProgram = new OpenGlShaderProgram(vertexShader, fragmentShader);
+            testShaderProgram.compileShaders();
+            testShaderProgram.linkProgram();
+            // ----
         }
 
         override public void draw() {
         }
+    }
 
+    class OpenGlShader : Shader {
+        private immutable string shaderSource;
+        private const GLenum shaderType;
+        private GLuint shader;
+
+        this(immutable string shaderSource, const GLenum shaderType) {
+            this.shaderSource = shaderSource;
+            this.shaderType = shaderType;
+        }
+
+        ~this() {
+            if (shader) {
+                glDeleteShader(shader);
+            }
+        }
+
+        override public void compile() {
+            if (!shader) {
+                shader = glCreateShader(shaderType);
+
+                const GLint[1] lengths = [cast(int) shaderSource.length];
+                const(char)*[1] sources = [shaderSource.ptr];
+
+                glShaderSource(shader, 1, sources.ptr, lengths.ptr);
+                glCompileShader(shader);
+            }
+        }
+
+        override public bool isCompiled() {
+            return shader != 0;
+        }
+
+        public GLuint getShader() {
+            return shader;
+        }
+    }
+
+    class OpenGlShaderProgram : ShaderProgram {
+        private GLuint program;
+
+        this() {
+        }
+
+        this(Shader[] shaders...) {
+            super(shaders);
+        }
+
+        ~this() {
+            if (program) {
+                glDeleteProgram(program);
+            }
+        }
+
+        override public void linkProgram() {
+            if (program) {
+                glDeleteProgram(program);
+            }
+
+            program = glCreateProgram();
+
+            foreach (shader; shaders) {
+                auto glShader = cast(OpenGlShader) shader;
+                if (glShader) {
+                    glAttachShader(program, glShader.getShader());
+                }
+            }
+
+            glLinkProgram(program);
+        }
     }
 }

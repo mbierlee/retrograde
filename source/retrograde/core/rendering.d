@@ -59,7 +59,7 @@ abstract class Shader {
  * TODO: Make entity component so that entities can be rendered with different shaders
  */
 class ShaderProgram {
-    private Shader[] shaders;
+    protected Shader[] shaders;
 
     this() {
     }

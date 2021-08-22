@@ -39,6 +39,7 @@
 		}
 	},
 	"stringImportPaths": [
-		"source/retrograde/config/"
+		"source/retrograde/config/",
+		"source/retrograde/shader/"
 	]
 }
