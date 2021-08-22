@@ -15,7 +15,15 @@ version (Have_bindbc_opengl) {
     import retrograde.core.rendering;
     import retrograde.core.entity : Entity;
 
+    import std.experimental.logger : Logger;
+
+    import poodinis;
+
+    import bindbc.opengl;
+
     class OpenGlRenderer : Renderer {
+        private @Autowire Logger logger;
+
         override public int getContextHintMayor() {
             return 4;
         }
@@ -27,5 +35,26 @@ version (Have_bindbc_opengl) {
         override public bool acceptsEntity(Entity entity) {
             return false;
         }
+
+        override public void initialize() {
+            GLSupport support = loadOpenGL();
+            if (support == GLSupport.badLibrary || support == GLSupport.noLibrary) {
+                logger.error("Failed to load OpenGL Library.");
+                return;
+            }
+
+            if (support == GLSupport.noContext) {
+                logger.error("No window context was created by the platform. Create it first.");
+                return;
+            }
+
+            if (support.gl46) {
+                logger.info("OpenGL 4.6 renderer initialized.");
+            }
+        }
+
+        override public void draw() {
+        }
+
     }
 }
