@@ -12,7 +12,7 @@
 module retrograde.rendering.opengl;
 
 version (Have_bindbc_opengl) {
-    import retrograde.core.rendering : Renderer, Shader, ShaderProgram;
+    import retrograde.core.rendering : Renderer, Shader, ShaderProgram, ShaderType;
     import retrograde.core.entity : Entity;
 
     import std.experimental.logger : Logger;
@@ -57,9 +57,9 @@ version (Have_bindbc_opengl) {
             }
 
             // Temp static creation of shaders
-            auto vertexShader = new OpenGlShader(import("standard/vertex.glsl"), GL_VERTEX_SHADER);
+            auto vertexShader = new OpenGlShader(import("standard/vertex.glsl"), ShaderType.vertex);
             auto fragmentShader = new OpenGlShader(import("standard/fragment.glsl"),
-                    GL_FRAGMENT_SHADER);
+                    ShaderType.fragment);
             testShaderProgram = new OpenGlShaderProgram(vertexShader, fragmentShader);
             testShaderProgram.compileShaders();
             testShaderProgram.linkProgram();
@@ -71,11 +71,13 @@ version (Have_bindbc_opengl) {
     }
 
     class OpenGlShader : Shader {
+        private static const GLenum[ShaderType] shaderTypeMapping;
+
         private immutable string shaderSource;
-        private const GLenum shaderType;
+        private const ShaderType shaderType;
         private GLuint shader;
 
-        this(immutable string shaderSource, const GLenum shaderType) {
+        this(immutable string shaderSource, const ShaderType shaderType) {
             this.shaderSource = shaderSource;
             this.shaderType = shaderType;
         }
@@ -86,9 +88,33 @@ version (Have_bindbc_opengl) {
             }
         }
 
+        static this() {
+            // dfmt off
+            auto shaderTypeMapping = [
+                ShaderType.vertex: GL_VERTEX_SHADER,
+                ShaderType.fragment: GL_FRAGMENT_SHADER
+            ];
+
+            static if(useARBComputeShader) {
+                shaderTypeMapping[ShaderType.compute] = GL_COMPUTE_SHADER;
+            }
+
+            static if(useARBTesselationShader) {
+                shaderTypeMapping[ShaderType.tesselationControl] = GL_TESS_CONTROL_SHADER;
+                shaderTypeMapping[ShaderType.tesselationEvaluation] = GL_TESS_EVALUATION_SHADER;
+            }
+
+            static if(glSupport >= GLSupport.gl32) {
+                shaderTypeMapping[ShaderType.geometry] = GL_GEOMETRY_SHADER;
+            }
+
+            this.shaderTypeMapping = shaderTypeMapping;
+            // dfmt on
+        }
+
         override public void compile() {
             if (!shader) {
-                shader = glCreateShader(shaderType);
+                shader = glCreateShader(getOpenGlShaderType());
 
                 const GLint[1] lengths = [cast(int) shaderSource.length];
                 const(char)*[1] sources = [shaderSource.ptr];
@@ -102,8 +128,12 @@ version (Have_bindbc_opengl) {
             return shader != 0;
         }
 
-        public GLuint getShader() {
+        public GLuint getOpenGlShader() {
             return shader;
+        }
+
+        public GLenum getOpenGlShaderType() {
+            return shaderTypeMapping[shaderType];
         }
     }
 
@@ -133,7 +163,7 @@ version (Have_bindbc_opengl) {
             foreach (shader; shaders) {
                 auto glShader = cast(OpenGlShader) shader;
                 if (glShader) {
-                    glAttachShader(program, glShader.getShader());
+                    glAttachShader(program, glShader.getOpenGlShader());
                 }
             }
 

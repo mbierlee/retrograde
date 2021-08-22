@@ -49,8 +49,18 @@ class NullRenderer : Renderer {
  * A generic single stage of a shader program.
  */
 abstract class Shader {
+    protected ShaderType shaderType;
+
+    this(ShaderType shaderType = ShaderType.unknown) {
+        this.shaderType = shaderType;
+    }
+
     abstract public void compile();
     abstract public bool isCompiled();
+
+    public ShaderType getShaderType() {
+        return shaderType;
+    }
 }
 
 /**
@@ -108,9 +118,28 @@ class ShaderProgram {
     }
 }
 
+/**
+ * Enum used to indicate which type of shader a certain shader is.
+ *
+ * Availability of types may vary across rendering APIs and versions.
+ */
+enum ShaderType {
+    unknown,
+    compute,
+    vertex,
+    tesselationControl,
+    tesselationEvaluation,
+    geometry,
+    fragment
+}
+
 version (unittest) {
     class TestShader : Shader {
         public bool _isCompiled = false;
+
+        this() {
+            super(ShaderType.unknown);
+        }
 
         override public void compile() {
             _isCompiled = true;
