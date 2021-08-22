@@ -65,6 +65,17 @@ public void startGame(GameType : Game, EngineRuntimeType:
     dependencies.register!MessageHandler;
     dependencies.register!InputMapper;
 
+    const propertyFile = "./engine.cfg";
+    string[string] engineProperties;
+    if (exists(propertyFile)) {
+        engineProperties = readProperties(propertyFile);
+    } else {
+        string defaultConfig = import(propertyFile);
+        engineProperties = parseProperties(defaultConfig);
+    }
+
+    dependencies.registerProperdProperties(engineProperties);
+
     dependencies.register!Logger.initializedBy({
         auto logger = new MultiLogger();
 
@@ -82,17 +93,6 @@ public void startGame(GameType : Game, EngineRuntimeType:
         auto entityManager = dependencies.resolve!EntityManager;
         entityManager.addEntityProcessor(renderer);
     }
-
-    const propertyFile = "./engine.cfg";
-    string[string] engineProperties;
-    if (exists(propertyFile)) {
-        engineProperties = readProperties(propertyFile);
-    } else {
-        string defaultConfig = import(propertyFile);
-        engineProperties = parseProperties(defaultConfig);
-    }
-
-    dependencies.registerProperdProperties(engineProperties);
 
     auto runtime = dependencies.resolve!EngineRuntime;
     runtime.startGame(platformSettings);
