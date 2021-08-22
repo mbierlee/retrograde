@@ -18,6 +18,7 @@ import retrograde.core.messaging : MessageHandler;
 import retrograde.core.platform : Platform, PlatformSettings, NullPlatform;
 import retrograde.core.logging : StdoutLogger;
 import retrograde.core.input : InputMapper;
+import retrograde.core.rendering : Renderer, NullRenderer;
 
 import poodinis;
 
@@ -33,17 +34,28 @@ version (Have_glfw_d) {
     alias DefaultPlatformSettings = PlatformSettings;
 }
 
+version (Have_bindbc_opengl) {
+    import retrograde.rendering.opengl : OpenGlRenderer;
+
+    alias DefaultRenderer = OpenGlRenderer;
+} else {
+    alias DefaultRenderer = NullRenderer;
+}
+
 /**
  * Bootstrap function for quickly setting up the DI framework with all required and typically used components.
  * After set-up, the game is started.
  */
 public void startGame(GameType : Game, EngineRuntimeType:
-        EngineRuntime = StandardEngineRuntime, PlatformType:
-        Platform = DefaultPlatform)(const PlatformSettings platformSettings = new DefaultPlatformSettings(),
+        EngineRuntime = StandardEngineRuntime,
+    PlatformType:
+        Platform = DefaultPlatform, RendererType:
+        Renderer = DefaultRenderer)(const PlatformSettings platformSettings = new DefaultPlatformSettings(),
         shared DependencyContainer dependencies = new shared DependencyContainer()) {
 
     dependencies.register!(EngineRuntime, EngineRuntimeType);
     dependencies.register!(Game, GameType);
+    dependencies.register!(Renderer, RendererType);
     dependencies.register!(Platform, PlatformType);
     dependencies.register!EntityManager;
     dependencies.register!MessageHandler;
@@ -60,6 +72,12 @@ public void startGame(GameType : Game, EngineRuntimeType:
         sharedLog = logger;
         return logger;
     });
+
+    static if (!is(RendererType == NullRenderer)) {
+        auto renderer = dependencies.resolve!Renderer;
+        auto entityManager = dependencies.resolve!EntityManager;
+        entityManager.addEntityProcessor(renderer);
+    }
 
     auto runtime = dependencies.resolve!EngineRuntime;
     runtime.startGame(platformSettings);

@@ -30,6 +30,7 @@ version (Have_glfw_d) {
         inputEventChannel, MouseMode, MouseButton, MouseButtonInputEventMessage,
         MouseScrollInputEventMessage, Axis, MouseMovementType;
     import retrograde.core.messaging : MessageHandler;
+    import retrograde.core.rendering;
 
     private struct GlfwKeyEvent {
         int key;
@@ -117,6 +118,7 @@ version (Have_glfw_d) {
         private @Autowire EngineRuntime runtime;
         private @Autowire Logger logger;
         private @Autowire MessageHandler messageHandler;
+        private @Autowire Renderer renderer;
 
         private GLFWwindow* window;
         private StateData stateData;
@@ -336,6 +338,10 @@ version (Have_glfw_d) {
 
             glfwMakeContextCurrent(window);
             glfwSwapInterval(ps.swapInterval);
+
+            if (renderer) {
+                renderer.initialize();
+            }
         }
 
         void update() {
