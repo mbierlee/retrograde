@@ -74,7 +74,10 @@ version (Have_glfw_d) {
         bool enableCharacterInputEvents = true;
         bool enableMouseInputEvents = true;
 
-        MouseMode initialMouseMode = MouseMode.normal;
+        // See https://www.glfw.org/docs/3.3/input_guide.html#cursor_mode
+        MouseMode mouseMode = MouseMode.normal;
+
+        // See https://www.glfw.org/docs/3.3/input_guide.html#raw_mouse_motion
         bool enableRawMouseMotion = true;
     }
 
@@ -276,7 +279,7 @@ version (Have_glfw_d) {
 
             glfwSetWindowUserPointer(window, &stateData);
 
-            setMouseMode(ps.initialMouseMode);
+            setMouseMode(ps.mouseMode);
             setRawMouseMotion(ps.enableRawMouseMotion);
 
             if (ps.enableKeyInputEvents) {
