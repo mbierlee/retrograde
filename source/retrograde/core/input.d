@@ -85,17 +85,20 @@ class MouseMovementEventMessage : InputEventMessage {
 
     double xPosition;
     double yPosition;
+    Axis axis;
 
     /**
      * Params:
      *  xPosition = X position of the mouse in the platform's drawing space (window).
      *  yPosition = Y position of the mouse in the platform's drawing space (window).
+     *  axis = Which axis is being reported. The other axis may stay 0 depending on this setting.
      *  magnitude = Amount of movement in two-dimensions.
      */
-    this(const double xPosition, const double yPosition, const double magnitude) {
+    this(const double xPosition, const double yPosition, const Axis axis, const double magnitude) {
         super(msgId, magnitude);
         this.xPosition = xPosition;
         this.yPosition = yPosition;
+        this.axis = axis;
     }
 
     /**
@@ -104,12 +107,13 @@ class MouseMovementEventMessage : InputEventMessage {
      * Params:
      *  xPosition = X position of the mouse in the platform's drawing space (window).
      *  yPosition = Y position of the mouse in the platform's drawing space (window).
+     *  axis = Which axis is being reported. The other axis may stay 0 depending on this setting.
      *  magnitude = Amount of movement in two-dimensions.
      */
     static immutable(MouseMovementEventMessage) create(const double xPosition,
-            const double yPosition, const double magnitude) {
+            const double yPosition, const Axis axis, const double magnitude) {
         return cast(immutable(MouseMovementEventMessage)) new MouseMovementEventMessage(xPosition,
-                yPosition, magnitude);
+                yPosition, axis, magnitude);
     }
 }
 
@@ -255,6 +259,29 @@ enum MouseMode {
 
     // Hides the mouse and locks it to the window.
     disabled
+}
+
+/**
+ * Type of mouse movement.
+ *
+ * It depends on the platform whether one or the other is available.
+ */
+enum MouseMovementType {
+    // Absolute X/Y movement over the screen/desktop
+    absolute,
+
+    // Relative movement to the previous mouse movement event (delta movement.)
+    relative
+}
+
+/**
+ * Input axis definition for multi-axis control input, such as joysticks or mouse-movement.
+ */
+enum Axis {
+    x,
+    y,
+    z,
+    both
 }
 
 /**

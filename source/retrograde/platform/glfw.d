@@ -29,7 +29,7 @@ version (Have_glfw_d) {
         CharacterInputEventMessage, MouseMovementEventMessage,
         MouseEnteredEventMessage,
         inputEventChannel, MouseMode, MouseButton,
-        MouseButtonInputEventMessage, MouseScrollInputEventMessage;
+        MouseButtonInputEventMessage, MouseScrollInputEventMessage, Axis;
     import retrograde.core.messaging : MessageHandler;
 
     private struct GlfwKeyEvent {
@@ -68,6 +68,8 @@ version (Have_glfw_d) {
         int windowWidth = 1920;
         int windowHeight = 1080;
         string windowTitle = "Retrograde Engine";
+
+        // TODO: document
         int swapInterval = 1;
 
         bool enableKeyInputEvents = true;
@@ -79,6 +81,33 @@ version (Have_glfw_d) {
 
         // See https://www.glfw.org/docs/3.3/input_guide.html#raw_mouse_motion
         bool enableRawMouseMotion = true;
+
+        /** 
+         * The platform will report on the absolute X/Y position.
+         *
+         * The range of coordinates depend on the mouseMode setting.
+         * Suitable for e.g. strategy games or menus.
+         */
+        bool emitAbsoluteMouseMoveEvents = true;
+
+        /** 
+         * The platform will report on delta-mouse movements.
+         *
+         * The difference from the last will be reported and the magnitude
+         * will also be limited to it.
+         * Suitable for e.g. first-person cameras.
+         */
+        bool emitRelativeMouseMoveEvents = true;
+
+        /**
+         * Whether to split up input controls that have multiple axes into multiple events.
+         *
+         * Will generate more events but allows for possibly easier mapping since the magnitude
+         * is available per-axis now. Separating axes also allows for uniform handling of events from
+         * different kinds of input devices, e.g. looking around in first-person with both a thumbstick
+         * and a mouse.
+         */
+        bool splitAxisEvents = true;
     }
 
     /**
@@ -92,6 +121,8 @@ version (Have_glfw_d) {
 
         private GLFWwindow* window;
         private StateData stateData;
+        private GlfwPlatformSettings platformSettings;
+
         private const KeyboardKeyCode[int] glfwKeyMap;
         private const InputEventAction[int] glfwActionMap;
         private const MouseButton[int] glfwMouseButtonMap;
@@ -252,11 +283,13 @@ version (Have_glfw_d) {
         }
 
         void initialize(const PlatformSettings platformSettings) {
-            const GlfwPlatformSettings ps = cast(const(GlfwPlatformSettings)) platformSettings;
+            const GlfwPlatformSettings ps = cast(immutable(GlfwPlatformSettings)) platformSettings;
             if (!ps) {
                 logger.error("GLFW Platform: Unable to use platformSettings. Did you supply settings of type GlfwPlatformSettings?");
                 return;
             }
+
+            this.platformSettings = cast(GlfwPlatformSettings) ps;
 
             glfwSetErrorCallback(&errorCallback); //TODO: Move to update and use glfwGetError so we can use own logger
 
@@ -355,11 +388,24 @@ version (Have_glfw_d) {
         private void processMouseMovementEvents() {
             while (stateData.mouseMovementEvents.length > 0) {
                 auto event = stateData.mouseMovementEvents.dequeue();
-                auto magnitude = sqrt((event.xPosition * event.xPosition) + (
-                        event.yPosition * event.yPosition));
-                auto message = MouseMovementEventMessage.create(event.xPosition,
-                        event.yPosition, magnitude);
-                messageHandler.sendMessage(inputEventChannel, message);
+
+                if (platformSettings.splitAxisEvents) {
+                    auto xMagnitude = event.xPosition;
+                    auto xMessage = MouseMovementEventMessage.create(event.xPosition,
+                            0, Axis.x, xMagnitude);
+                    messageHandler.sendMessage(inputEventChannel, xMessage);
+
+                    auto yMagnitude = event.yPosition;
+                    auto yMessage = MouseMovementEventMessage.create(0,
+                            event.yPosition, Axis.y, yMagnitude);
+                    messageHandler.sendMessage(inputEventChannel, yMessage);
+                } else {
+                    auto magnitude = sqrt((event.xPosition * event.xPosition) + (
+                            event.yPosition * event.yPosition));
+                    auto message = MouseMovementEventMessage.create(event.xPosition,
+                            event.yPosition, Axis.both, magnitude);
+                    messageHandler.sendMessage(inputEventChannel, message);
+                }
             }
         }
 
@@ -385,11 +431,24 @@ version (Have_glfw_d) {
         private void processMouseScrollEvents() {
             while (stateData.mouseScrollEvents.length > 0) {
                 auto event = stateData.mouseScrollEvents.dequeue();
-                auto magnitude = sqrt(
-                        (event.xOffset * event.xOffset) + (event.yOffset * event.yOffset));
-                auto message = MouseScrollInputEventMessage.create(event.xOffset,
-                        event.yOffset, magnitude);
-                messageHandler.sendMessage(inputEventChannel, message);
+
+                if (platformSettings.splitAxisEvents) {
+                    auto xMagnitude = event.xOffset;
+                    auto xMessage = MouseScrollInputEventMessage.create(event.xOffset,
+                            0, xMagnitude);
+                    messageHandler.sendMessage(inputEventChannel, xMessage);
+
+                    auto yMagnitude = event.yOffset;
+                    auto yMessage = MouseScrollInputEventMessage.create(0,
+                            event.yOffset, yMagnitude);
+                    messageHandler.sendMessage(inputEventChannel, yMessage);
+                } else {
+                    auto magnitude = sqrt((event.xOffset * event.xOffset) + (
+                            event.yOffset * event.yOffset));
+                    auto message = MouseScrollInputEventMessage.create(event.xOffset,
+                            event.yOffset, magnitude);
+                    messageHandler.sendMessage(inputEventChannel, message);
+                }
             }
         }
 
