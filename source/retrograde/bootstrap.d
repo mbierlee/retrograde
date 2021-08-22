@@ -21,8 +21,12 @@ import retrograde.core.input : InputMapper;
 import retrograde.core.rendering : Renderer, NullRenderer;
 
 import poodinis;
+import poodinis.valueinjector.properd;
+
+import properd;
 
 import std.experimental.logger : Logger, MultiLogger, sharedLog;
+import std.file : exists;
 
 version (Have_glfw_d) {
     import retrograde.platform.glfw : GlfwPlatform, GlfwPlatformSettings;
@@ -78,6 +82,17 @@ public void startGame(GameType : Game, EngineRuntimeType:
         auto entityManager = dependencies.resolve!EntityManager;
         entityManager.addEntityProcessor(renderer);
     }
+
+    const propertyFile = "./engine.cfg";
+    string[string] engineProperties;
+    if (exists(propertyFile)) {
+        engineProperties = readProperties(propertyFile);
+    } else {
+        string defaultConfig = import(propertyFile);
+        engineProperties = parseProperties(defaultConfig);
+    }
+
+    dependencies.registerProperdProperties(engineProperties);
 
     auto runtime = dependencies.resolve!EngineRuntime;
     runtime.startGame(platformSettings);
