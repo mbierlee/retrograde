@@ -24,12 +24,11 @@ version (Have_glfw_d) {
     import retrograde.core.platform : Platform, PlatformSettings;
     import retrograde.core.runtime : EngineRuntime;
     import retrograde.core.collections : Queue;
-    import retrograde.core.input : KeyboardKeyCode,
-        InputEventAction, KeyboardKeyModifier, KeyInputEventMessage,
-        CharacterInputEventMessage, MouseMovementEventMessage,
+    import retrograde.core.input : KeyboardKeyCode, InputEventAction, KeyboardKeyModifier,
+        KeyInputEventMessage, CharacterInputEventMessage, MouseMovementEventMessage,
         MouseEnteredEventMessage,
-        inputEventChannel, MouseMode, MouseButton,
-        MouseButtonInputEventMessage, MouseScrollInputEventMessage, Axis;
+        inputEventChannel, MouseMode, MouseButton, MouseButtonInputEventMessage,
+        MouseScrollInputEventMessage, Axis, MouseMovementType;
     import retrograde.core.messaging : MessageHandler;
 
     private struct GlfwKeyEvent {
@@ -126,6 +125,9 @@ version (Have_glfw_d) {
         private const KeyboardKeyCode[int] glfwKeyMap;
         private const InputEventAction[int] glfwActionMap;
         private const MouseButton[int] glfwMouseButtonMap;
+
+        private double previousMouseXPosition = 0;
+        private double previousMouseYPosition = 0;
 
         this() {
             // dfmt off
@@ -389,23 +391,38 @@ version (Have_glfw_d) {
             while (stateData.mouseMovementEvents.length > 0) {
                 auto event = stateData.mouseMovementEvents.dequeue();
 
-                if (platformSettings.splitAxisEvents) {
-                    auto xMagnitude = event.xPosition;
-                    auto xMessage = MouseMovementEventMessage.create(event.xPosition,
-                            0, Axis.x, xMagnitude);
-                    messageHandler.sendMessage(inputEventChannel, xMessage);
-
-                    auto yMagnitude = event.yPosition;
-                    auto yMessage = MouseMovementEventMessage.create(0,
-                            event.yPosition, Axis.y, yMagnitude);
-                    messageHandler.sendMessage(inputEventChannel, yMessage);
-                } else {
-                    auto magnitude = sqrt((event.xPosition * event.xPosition) + (
-                            event.yPosition * event.yPosition));
-                    auto message = MouseMovementEventMessage.create(event.xPosition,
-                            event.yPosition, Axis.both, magnitude);
-                    messageHandler.sendMessage(inputEventChannel, message);
+                if (platformSettings.emitAbsoluteMouseMoveEvents) {
+                    sendMouseMovementEvents(MouseMovementType.absolute, event.xPosition,
+                            event.yPosition, event.xPosition, event.yPosition);
                 }
+
+                if (platformSettings.emitRelativeMouseMoveEvents) {
+                    auto deltaXPosition = event.xPosition - previousMouseXPosition;
+                    auto deltaYPosition = event.yPosition - previousMouseYPosition;
+                    previousMouseXPosition = event.xPosition;
+                    previousMouseYPosition = event.yPosition;
+
+                    sendMouseMovementEvents(MouseMovementType.relative,
+                            deltaXPosition, deltaYPosition, deltaXPosition, deltaYPosition);
+                }
+            }
+        }
+
+        private void sendMouseMovementEvents(MouseMovementType movementType,
+                double xPosition, double yPosition, double xMagnitude, double yMagnitude) {
+            if (platformSettings.splitAxisEvents) {
+                auto xMessage = MouseMovementEventMessage.create(xPosition, 0,
+                        Axis.x, movementType, xMagnitude);
+                messageHandler.sendMessage(inputEventChannel, xMessage);
+
+                auto yMessage = MouseMovementEventMessage.create(0, yPosition,
+                        Axis.y, movementType, yMagnitude);
+                messageHandler.sendMessage(inputEventChannel, yMessage);
+            } else {
+                auto magnitude = sqrt((xMagnitude * xMagnitude) + (yMagnitude * yMagnitude));
+                auto message = MouseMovementEventMessage.create(xPosition,
+                        yPosition, Axis.both, movementType, magnitude);
+                messageHandler.sendMessage(inputEventChannel, message);
             }
         }
 

@@ -86,19 +86,23 @@ class MouseMovementEventMessage : InputEventMessage {
     double xPosition;
     double yPosition;
     Axis axis;
+    MouseMovementType movementType;
 
     /**
      * Params:
      *  xPosition = X position of the mouse in the platform's drawing space (window).
      *  yPosition = Y position of the mouse in the platform's drawing space (window).
      *  axis = Which axis is being reported. The other axis may stay 0 depending on this setting.
+     *  movementType = Type of mouse movement (absolute/relative.)
      *  magnitude = Amount of movement in two-dimensions.
      */
-    this(const double xPosition, const double yPosition, const Axis axis, const double magnitude) {
+    this(const double xPosition, const double yPosition, const Axis axis,
+            const MouseMovementType movementType, const double magnitude) {
         super(msgId, magnitude);
         this.xPosition = xPosition;
         this.yPosition = yPosition;
         this.axis = axis;
+        this.movementType = movementType;
     }
 
     /**
@@ -108,12 +112,13 @@ class MouseMovementEventMessage : InputEventMessage {
      *  xPosition = X position of the mouse in the platform's drawing space (window).
      *  yPosition = Y position of the mouse in the platform's drawing space (window).
      *  axis = Which axis is being reported. The other axis may stay 0 depending on this setting.
+     *  movementType = Type of mouse movement (absolute/relative.)
      *  magnitude = Amount of movement in two-dimensions.
      */
-    static immutable(MouseMovementEventMessage) create(const double xPosition,
-            const double yPosition, const Axis axis, const double magnitude) {
+    static immutable(MouseMovementEventMessage) create(const double xPosition, const double yPosition,
+            const Axis axis, const MouseMovementType movementType, const double magnitude) {
         return cast(immutable(MouseMovementEventMessage)) new MouseMovementEventMessage(xPosition,
-                yPosition, axis, magnitude);
+                yPosition, axis, movementType, magnitude);
     }
 }
 
