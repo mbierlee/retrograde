@@ -14,10 +14,33 @@ module retrograde.core.rendering;
 import retrograde.core.entity : EntityProcessor, Entity;
 
 abstract class Renderer : EntityProcessor {
+    /**
+     * Desired mayor version of the rendering API to be used.
+     *
+     * Typically used by the platform to initialize the renderer.
+     * E.g. "4" for OpenGL 4.6
+     */
+    public int getContextHintMayor();
+
+    /**
+     * Desired minor version of the rendering API to be used.
+     *
+     * Typically used by the platform to initialize the renderer.
+     * E.g. "6" for OpenGL 4.6
+     */
+    public int getContextHintMinor();
 }
 
 class NullRenderer : Renderer {
     override public bool acceptsEntity(Entity entity) {
         return false;
+    }
+
+    override public int getContextHintMayor() {
+        return 0;
+    }
+
+    override public int getContextHintMinor() {
+        return 0;
     }
 }

@@ -16,6 +16,14 @@ version (Have_bindbc_opengl) {
     import retrograde.core.entity : Entity;
 
     class OpenGlRenderer : Renderer {
+        override public int getContextHintMayor() {
+            return 4;
+        }
+
+        override public int getContextHintMinor() {
+            return 6;
+        }
+
         override public bool acceptsEntity(Entity entity) {
             return false;
         }

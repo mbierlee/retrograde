@@ -302,8 +302,12 @@ version (Have_glfw_d) {
                 return;
             }
 
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+            if (renderer) {
+                glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, renderer.getContextHintMayor);
+                glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, renderer.getContextHintMinor);
+            } else {
+                glfwDefaultWindowHints();
+            }
 
             window = glfwCreateWindow(ps.windowWidth, ps.windowHeight,
                     ps.windowTitle.toStringz(), null, null);
