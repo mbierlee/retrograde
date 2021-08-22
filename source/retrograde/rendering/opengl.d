@@ -94,22 +94,22 @@ version (Have_bindbc_opengl) {
                 ShaderType.vertex: GL_VERTEX_SHADER,
                 ShaderType.fragment: GL_FRAGMENT_SHADER
             ];
+            // dfmt on
 
-            static if(useARBComputeShader) {
+            static if (useARBComputeShader) {
                 shaderTypeMapping[ShaderType.compute] = GL_COMPUTE_SHADER;
             }
 
-            static if(useARBTesselationShader) {
+            static if (useARBTesselationShader) {
                 shaderTypeMapping[ShaderType.tesselationControl] = GL_TESS_CONTROL_SHADER;
                 shaderTypeMapping[ShaderType.tesselationEvaluation] = GL_TESS_EVALUATION_SHADER;
             }
 
-            static if(glSupport >= GLSupport.gl32) {
+            static if (glSupport >= GLSupport.gl32) {
                 shaderTypeMapping[ShaderType.geometry] = GL_GEOMETRY_SHADER;
             }
 
             this.shaderTypeMapping = shaderTypeMapping;
-            // dfmt on
         }
 
         override public void compile() {
