@@ -1,6 +1,8 @@
 {
 	"fileVersion": 1,
 	"versions": {
-		"poodinis": "8.1.0"
+		"poodinis": "8.1.0",
+		"poodinis-proper-d-injector": "1.0.0",
+		"proper-d": "0.0.2"
 	}
 }

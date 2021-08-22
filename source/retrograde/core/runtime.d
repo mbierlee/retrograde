@@ -16,8 +16,8 @@ import retrograde.core.platform;
 
 import poodinis;
 
-import std.datetime.stopwatch;
-import std.experimental.logger;
+import std.datetime.stopwatch : StopWatch, Duration, dur;
+import std.experimental.logger : Logger, NullLogger;
 
 enum EngineVersionMajor = 0;
 enum EngineVersionMinor = 0;
@@ -167,10 +167,20 @@ version (unittest) {
 
     @("StandardEngineRuntime lifecycle")
     unittest {
+        import poodinis.valueinjector.properd;
+        import properd;
+
         auto dependencies = new shared DependencyContainer();
+
+        dependencies.registerProperdProperties(parseProperties(""));
+
         dependencies.register!(Game, TestGame);
         dependencies.register!(EngineRuntime, StandardEngineRuntime);
         dependencies.register!(Platform, NullPlatform);
+        dependencies.register!(Logger, NullLogger).initializedBy({
+            return new NullLogger();
+        });
+
         auto runtime = dependencies.resolve!StandardEngineRuntime;
         runtime.startGame(new PlatformSettings());
         const auto game = dependencies.resolve!TestGame;
