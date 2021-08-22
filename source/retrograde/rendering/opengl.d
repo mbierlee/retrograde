@@ -116,7 +116,7 @@ version (Have_bindbc_opengl) {
             if (!shader) {
                 shader = glCreateShader(getOpenGlShaderType());
 
-                const GLint[1] lengths = [cast(int) shaderSource.length];
+                const GLint[1] lengths = [cast(GLint) shaderSource.length];
                 const(char)*[1] sources = [shaderSource.ptr];
 
                 glShaderSource(shader, 1, sources.ptr, lengths.ptr);
