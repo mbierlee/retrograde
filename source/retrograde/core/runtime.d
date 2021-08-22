@@ -17,6 +17,12 @@ import retrograde.core.platform;
 import poodinis;
 
 import std.datetime.stopwatch;
+import std.experimental.logger;
+
+enum EngineVersionMajor = 0;
+enum EngineVersionMinor = 0;
+enum EngineVersionPatch = 0;
+enum EngineVersionDescriptor = "-alpha";
 
 /**
  * The Engine Runtime kick-starts the game and runs the game's core loop.
@@ -65,10 +71,13 @@ interface EngineRuntime {
  * This implementation has a gameloop with a fixed-step update time and variable render rate.
  */
 class StandardEngineRuntime : EngineRuntime {
-    private bool _isTerminatable = false;
-
     @Autowire private Game game;
     @Autowire private Platform platform;
+    @Autowire private Logger logger;
+
+    private @Value("logging.logEngineInfo") bool logEngineInfo;
+
+    private bool _isTerminatable = false;
 
     public override @property bool isTerminatable() {
         return _isTerminatable;
@@ -84,6 +93,11 @@ class StandardEngineRuntime : EngineRuntime {
 
     public override void startGame(const PlatformSettings platformSettings) {
         assert(this.game !is null, "No Game instance is assigned to this runtime.");
+
+        if (logEngineInfo) {
+            logger.infof("Retrograde Engine v%s.%s.%s%s", EngineVersionMajor,
+                    EngineVersionMinor, EngineVersionPatch, EngineVersionDescriptor);
+        }
 
         this.platform.initialize(platformSettings);
         this.game.initialize();

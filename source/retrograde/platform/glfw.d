@@ -120,6 +120,8 @@ version (Have_glfw_d) {
         private @Autowire MessageHandler messageHandler;
         private @Autowire Renderer renderer;
 
+        private @Value("logging.logComponentInitialization") bool logInit;
+
         private GLFWwindow* window;
         private StateData stateData;
         private GlfwPlatformSettings platformSettings;
@@ -345,6 +347,10 @@ version (Have_glfw_d) {
 
             if (renderer) {
                 renderer.initialize();
+            }
+
+            if (logInit) {
+                logger.info("GLFW platform initialized.");
             }
         }
 

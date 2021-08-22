@@ -24,6 +24,8 @@ version (Have_bindbc_opengl) {
     class OpenGlRenderer : Renderer {
         private @Autowire Logger logger;
 
+        private @Value("logging.logComponentInitialization") bool logInit;
+
         override public int getContextHintMayor() {
             return 4;
         }
@@ -48,7 +50,7 @@ version (Have_bindbc_opengl) {
                 return;
             }
 
-            if (support.gl46) {
+            if (logInit && support.gl46) {
                 logger.info("OpenGL 4.6 renderer initialized.");
             }
         }
