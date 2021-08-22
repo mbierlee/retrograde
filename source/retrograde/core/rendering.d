@@ -20,7 +20,7 @@ abstract class Renderer : EntityProcessor {
      * Typically used by the platform to initialize the renderer.
      * E.g. "4" for OpenGL 4.6
      */
-    public int getContextHintMayor();
+    abstract public int getContextHintMayor();
 
     /**
      * Desired minor version of the rendering API to be used.
@@ -28,7 +28,7 @@ abstract class Renderer : EntityProcessor {
      * Typically used by the platform to initialize the renderer.
      * E.g. "6" for OpenGL 4.6
      */
-    public int getContextHintMinor();
+    abstract public int getContextHintMinor();
 }
 
 class NullRenderer : Renderer {
@@ -42,5 +42,92 @@ class NullRenderer : Renderer {
 
     override public int getContextHintMinor() {
         return 0;
+    }
+}
+
+/**
+ * A generic single stage of a shader program.
+ */
+abstract class Shader {
+    abstract public void compile();
+    abstract public bool isCompiled();
+}
+
+/**
+ * A complete multi-stage shader program.
+ *
+ * TODO: Make entity component so that entities can be rendered with different shaders
+ */
+class ShaderProgram {
+    private Shader[] shaders;
+
+    this() {
+    }
+
+    this(Shader[] shaders...) {
+        addShaders(shaders);
+    }
+
+    /**
+     * Adds a single shader to this shader program.
+     */
+    public void addShader(Shader shader) {
+        this.shaders ~= shader;
+    }
+
+    /**
+     * Adds multiple shaders to this shader program.
+     */
+    public void addShaders(Shader[] shaders) {
+        this.shaders ~= shaders;
+    }
+
+    /**
+     * Adds multiple shaders to this shader program.
+     */
+    public void addShaders(Shader[] shaders...) {
+        this.shaders ~= shaders;
+    }
+
+    /**
+     * Compiles all shaders contained in this shader program.
+     */
+    public void compileShaders() {
+        foreach (Shader shader; shaders) {
+            shader.compile();
+        }
+    }
+
+    /**
+     * Links all compiled shaders into a single program.
+     *
+     * The generic shader program implementation does nothing, but specific
+     * implementations might actually link.
+     */
+    public void linkProgram() {
+    }
+}
+
+version (unittest) {
+    class TestShader : Shader {
+        public bool _isCompiled = false;
+
+        override public void compile() {
+            _isCompiled = true;
+        }
+
+        override public bool isCompiled() {
+            return _isCompiled;
+        }
+    }
+
+    @("ShaderProgram compiles shaders")
+    unittest {
+        auto shader = new TestShader();
+        auto program = new ShaderProgram(shader);
+        program.compileShaders();
+
+        assert(program.shaders.length == 1);
+        assert(shader.isCompiled());
     }
 }
