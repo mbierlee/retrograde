@@ -64,10 +64,60 @@ version (Have_bindbc_opengl) {
             testShaderProgram.compileShaders();
             testShaderProgram.linkProgram();
             // ----
+
+            //TEMP other stuff
+            vaoTriangle = getTriangleVao();
+            //////////////////////
         }
 
         override public void draw() {
+            //MORE TEMP STUFF
+            glViewport(0, 0, 1920, 1080); //TODO: get from platform
+
+            glUseProgram(testShaderProgram.getOpenGlShaderProgram());
+            glBindVertexArray(vaoTriangle);
+            glDrawArrays(GL_TRIANGLES, /*first*/ 0, /*count*/ 3);
+            /////////////////////////////////
         }
+
+        ///// TEMP EXAMPLE MODEL
+        GLuint vaoTriangle;
+
+        struct Vertex {
+            float[2] position;
+            float[3] color;
+        }
+
+        immutable Vertex[3] vertices = [
+            Vertex([-0.6f, -0.4f], [1.0f, 0.0f, 0.0f]),
+            Vertex([0.6f, -0.4f], [0.0f, 1.0f, 0.0f]),
+            Vertex([0.0f, 0.6f], [0.0f, 0.0f, 1.0f]),
+        ];
+
+        GLuint getTriangleVao() {
+            // Upload data to GPU
+            GLuint vbo;
+            glGenBuffers(1, &vbo);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo);
+            glBufferData(GL_ARRAY_BUFFER, vertices.sizeof, vertices.ptr, /*usage hint*/ GL_STATIC_DRAW);
+
+            // Describe layout of data for the shader program
+            GLuint vao;
+            glGenVertexArrays(1, &vao);
+            glBindVertexArray(vao);
+
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer( /*location*/
+                    0, /*num elements*/ 2, /*base type*/ GL_FLOAT, /*normalized*/ GL_FALSE, Vertex.sizeof,
+                    cast(void*) Vertex.position.offsetof);
+            glEnableVertexAttribArray(1);
+            glVertexAttribPointer( /*location*/
+                    1, /*num elements*/ 3, /*base type*/ GL_FLOAT, /*normalized*/ GL_FALSE, Vertex.sizeof,
+                    cast(void*) Vertex.color.offsetof);
+
+            return vao;
+        }
+        /////////////////////////////////////////
     }
 
     class OpenGlShader : Shader {
@@ -168,6 +218,10 @@ version (Have_bindbc_opengl) {
             }
 
             glLinkProgram(program);
+        }
+
+        public GLuint getOpenGlShaderProgram() {
+            return program;
         }
     }
 }
