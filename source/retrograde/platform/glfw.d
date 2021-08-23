@@ -69,7 +69,7 @@ version (Have_glfw_d) {
         int windowHeight = 1080;
         string windowTitle = "Retrograde Engine";
 
-        // TODO: document
+        // See https://www.glfw.org/docs/3.3/group__context.html#ga6d4e0cdf151b5e579bd67f13202994ed
         int swapInterval = 1;
 
         bool enableKeyInputEvents = true;
