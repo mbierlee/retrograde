@@ -73,6 +73,8 @@ version (Have_bindbc_opengl) {
         override public void draw() {
             //MORE TEMP STUFF
             glViewport(0, 0, 1920, 1080); //TODO: get from platform
+            glClearColor(0.576, 0.439, 0.859, 1.0);
+            glClear(GL_COLOR_BUFFER_BIT);
 
             glUseProgram(testShaderProgram.getOpenGlShaderProgram());
             glBindVertexArray(vaoTriangle);
