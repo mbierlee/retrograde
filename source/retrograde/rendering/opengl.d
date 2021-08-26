@@ -180,6 +180,12 @@ version (Have_bindbc_opengl) {
             return shader != 0;
         }
 
+        override public void clean() {
+            if (shader) {
+                glDeleteShader(shader);
+            }
+        }
+
         public GLuint getOpenGlShader() {
             return shader;
         }
@@ -220,6 +226,19 @@ version (Have_bindbc_opengl) {
             }
 
             glLinkProgram(program);
+        }
+
+        override public void clean() {
+            if (program) {
+                foreach (shader; shaders) {
+                    auto glShader = cast(OpenGlShader) shader;
+                    if (glShader) {
+                        glDetachShader(program, glShader.getOpenGlShader());
+                    }
+                }
+
+                glDeleteProgram(program);
+            }
         }
 
         public GLuint getOpenGlShaderProgram() {

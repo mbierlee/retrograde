@@ -55,8 +55,22 @@ abstract class Shader {
         this.shaderType = shaderType;
     }
 
+    /**
+     * Compiles the shader if the API allows for such a thing.
+     * When a shader is already compiled it might not be recompiled again.
+     */
     abstract public void compile();
+
+    /**
+     * Whether the shader was previously compiled.
+     */
     abstract public bool isCompiled();
+
+    /**
+     * Clean up the shader, such as dealocating it from memory.
+     * A shader typically needs to be compiled again after cleaning it.
+     */
+    abstract public void clean();
 
     public ShaderType getShaderType() {
         return shaderType;
@@ -116,6 +130,15 @@ class ShaderProgram {
      */
     public void linkProgram() {
     }
+
+    /**
+     * Clean up the program.
+     * As a result attached shaders might be cleaned up as well.
+     *
+     * This does nothing in the generic shader program implementation.
+     */
+    public void clean() {
+    }
 }
 
 /**
@@ -147,6 +170,9 @@ version (unittest) {
 
         override public bool isCompiled() {
             return _isCompiled;
+        }
+
+        override public void clean() {
         }
     }
 
