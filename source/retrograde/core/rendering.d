@@ -56,9 +56,11 @@ class NullRenderer : Renderer {
  * A generic single stage of a shader program.
  */
 abstract class Shader {
-    protected ShaderType shaderType;
+    protected const string name;
+    protected const ShaderType shaderType;
 
-    this(ShaderType shaderType = ShaderType.unknown) {
+    this(const string name, const ShaderType shaderType = ShaderType.unknown) {
+        this.name = name;
         this.shaderType = shaderType;
     }
 
@@ -67,6 +69,13 @@ abstract class Shader {
      * When a shader is already compiled it might not be recompiled again.
      */
     abstract public void compile();
+
+    /**
+     * Returns compilation info, such as errors, when the API implementation supports such a thing.
+     */
+    public string getCompilationInfo() {
+        return "";
+    }
 
     /**
      * Whether the shader was previously compiled.
@@ -139,6 +148,13 @@ class ShaderProgram {
     }
 
     /**
+     * Returns link info, such as errors, when the API implementation supports such a thing.
+     */
+    public string getLinkInfo() {
+        return "";
+    }
+
+    /**
      * Clean up the program.
      * As a result attached shaders might be cleaned up as well.
      *
@@ -168,7 +184,7 @@ version (unittest) {
         public bool _isCompiled = false;
 
         this() {
-            super(ShaderType.unknown);
+            super("testshader", ShaderType.unknown);
         }
 
         override public void compile() {

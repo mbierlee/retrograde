@@ -16,6 +16,8 @@ version (Have_bindbc_opengl) {
     import retrograde.core.entity : Entity;
 
     import std.experimental.logger : Logger;
+    import std.string : fromStringz;
+    import std.conv : to;
 
     import poodinis;
 
@@ -57,11 +59,23 @@ version (Have_bindbc_opengl) {
             }
 
             // Temp static creation of shaders
-            auto vertexShader = new OpenGlShader(import("standard/vertex.glsl"), ShaderType.vertex);
-            auto fragmentShader = new OpenGlShader(import("standard/fragment.glsl"),
-                    ShaderType.fragment);
+            auto vertexShader = new OpenGlShader("vertex",
+                    import("standard/vertex.glsl"), ShaderType.vertex);
+            auto fragmentShader = new OpenGlShader("fragment",
+                    import("standard/fragment.glsl"), ShaderType.fragment);
             testShaderProgram = new OpenGlShaderProgram(vertexShader, fragmentShader);
             testShaderProgram.compileShaders();
+
+            if (!vertexShader.isCompiled()) {
+                logger.errorf("Compilation errors for vertext shader: \n%s",
+                        vertexShader.getCompilationInfo());
+            }
+
+            if (!fragmentShader.isCompiled()) {
+                logger.errorf("Compilation errors for fragment shader: \n%s",
+                        fragmentShader.getCompilationInfo());
+            }
+
             testShaderProgram.linkProgram();
             // ----
 
@@ -125,13 +139,13 @@ version (Have_bindbc_opengl) {
     class OpenGlShader : Shader {
         private static const GLenum[ShaderType] shaderTypeMapping;
 
-        private immutable string shaderSource;
-        private const ShaderType shaderType;
+        private const string shaderSource;
         private GLuint shader;
+        private bool _isCompiled;
 
-        this(immutable string shaderSource, const ShaderType shaderType) {
+        this(immutable string name, immutable string shaderSource, const ShaderType shaderType) {
+            super(name, shaderType);
             this.shaderSource = shaderSource;
-            this.shaderType = shaderType;
         }
 
         ~this() {
@@ -166,6 +180,7 @@ version (Have_bindbc_opengl) {
 
         override public void compile() {
             if (!shader) {
+                _isCompiled = false;
                 shader = glCreateShader(getOpenGlShaderType());
 
                 const GLint[1] lengths = [cast(GLint) shaderSource.length];
@@ -173,11 +188,42 @@ version (Have_bindbc_opengl) {
 
                 glShaderSource(shader, 1, sources.ptr, lengths.ptr);
                 glCompileShader(shader);
+
+                GLint compilationStatus;
+                glGetShaderiv(shader, GL_COMPILE_STATUS, &compilationStatus);
+                _isCompiled = compilationStatus == 1;
             }
         }
 
+        override public string getCompilationInfo() {
+            if (!shader) {
+                return "";
+            }
+
+            GLint logLength = getShaderLogLength();
+            if (logLength == 0) {
+                return "";
+            }
+
+            GLchar[] infoLog;
+            infoLog.length = logLength;
+            glGetShaderInfoLog(shader, logLength, null, &infoLog[0]);
+
+            return to!string(fromStringz(&infoLog[0]));
+        }
+
+        private GLint getShaderLogLength() {
+            if (!shader) {
+                return 0;
+            }
+
+            GLint logLength;
+            glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLength);
+            return logLength;
+        }
+
         override public bool isCompiled() {
-            return shader != 0;
+            return _isCompiled;
         }
 
         override public void clean() {
@@ -226,6 +272,10 @@ version (Have_bindbc_opengl) {
             }
 
             glLinkProgram(program);
+        }
+
+        override public string getLinkInfo() {
+            return "";
         }
 
         override public void clean() {
