@@ -13,6 +13,10 @@ module retrograde.core.rendering;
 
 import retrograde.core.entity : EntityProcessor, Entity;
 
+/**
+ * An abstraction of a render API that processes entities and
+ * draws them on the screen.
+ */
 abstract class Renderer : EntityProcessor {
     /**
      * Desired mayor version of the rendering API to be used.
@@ -31,6 +35,9 @@ abstract class Renderer : EntityProcessor {
     abstract public int getContextHintMinor();
 }
 
+/**
+ * A fall-back renderer that doesn't actually render anything.
+ */
 class NullRenderer : Renderer {
     override public bool acceptsEntity(Entity entity) {
         return false;
