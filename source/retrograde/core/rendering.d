@@ -148,6 +148,13 @@ class ShaderProgram {
     }
 
     /**
+     * Whether the program was successfully linked.
+     */
+    public bool isLinked() {
+        return false;
+    }
+
+    /**
      * Returns link info, such as errors, when the API implementation supports such a thing.
      */
     public string getLinkInfo() {

@@ -77,6 +77,9 @@ version (Have_bindbc_opengl) {
             }
 
             testShaderProgram.linkProgram();
+            if (!testShaderProgram.isLinked()) {
+                logger.errorf("Link errors for program: \n%s", testShaderProgram.getLinkInfo());
+            }
             // ----
 
             //TEMP other stuff
@@ -200,7 +203,8 @@ version (Have_bindbc_opengl) {
                 return "";
             }
 
-            GLint logLength = getShaderLogLength();
+            GLint logLength;
+            glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLength);
             if (logLength == 0) {
                 return "";
             }
@@ -210,16 +214,6 @@ version (Have_bindbc_opengl) {
             glGetShaderInfoLog(shader, logLength, null, &infoLog[0]);
 
             return to!string(fromStringz(&infoLog[0]));
-        }
-
-        private GLint getShaderLogLength() {
-            if (!shader) {
-                return 0;
-            }
-
-            GLint logLength;
-            glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLength);
-            return logLength;
         }
 
         override public bool isCompiled() {
@@ -243,6 +237,7 @@ version (Have_bindbc_opengl) {
 
     class OpenGlShaderProgram : ShaderProgram {
         private GLuint program;
+        private bool _isLinked;
 
         this() {
         }
@@ -272,10 +267,32 @@ version (Have_bindbc_opengl) {
             }
 
             glLinkProgram(program);
+
+            GLint linkStatus;
+            glGetProgramiv(program, GL_LINK_STATUS, &linkStatus);
+            _isLinked = linkStatus == 1;
         }
 
         override public string getLinkInfo() {
-            return "";
+            if (!program) {
+                return "";
+            }
+
+            GLint logLength;
+            glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logLength);
+            if (logLength == 0) {
+                return "";
+            }
+
+            GLchar[] infoLog;
+            infoLog.length = logLength;
+            glGetProgramInfoLog(program, logLength, null, &infoLog[0]);
+
+            return to!string(fromStringz(&infoLog[0]));
+        }
+
+        override public bool isLinked() {
+            return _isLinked;
         }
 
         override public void clean() {
