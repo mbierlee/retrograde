@@ -14,6 +14,7 @@ module retrograde.rendering.opengl;
 version (Have_bindbc_opengl) {
     import retrograde.core.rendering : Renderer, Shader, ShaderProgram, ShaderType;
     import retrograde.core.entity : Entity;
+    import retrograde.core.platform : Platform;
 
     import std.experimental.logger : Logger;
     import std.string : fromStringz;
@@ -25,6 +26,7 @@ version (Have_bindbc_opengl) {
 
     class OpenGlRenderer : Renderer {
         private @Autowire Logger logger;
+        private @Autowire Platform platform;
 
         private @Value("logging.logComponentInitialization") bool logInit;
 
@@ -60,7 +62,8 @@ version (Have_bindbc_opengl) {
                 logger.info("OpenGL 4.6 renderer initialized.");
             }
 
-            glViewport(0, 0, 1920, 1080); //TODO: get from platform
+            auto viewport = platform.getViewport();
+            glViewport(viewport.x, viewport.y, viewport.width, viewport.height);
 
             // Temp stuff
             auto vertexShader = new OpenGlShader("vertex",

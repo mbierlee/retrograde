@@ -21,7 +21,7 @@ version (Have_glfw_d) {
 
     import poodinis;
 
-    import retrograde.core.platform : Platform, PlatformSettings;
+    import retrograde.core.platform : Platform, PlatformSettings, Viewport;
     import retrograde.core.runtime : EngineRuntime;
     import retrograde.core.collections : Queue;
     import retrograde.core.input : KeyboardKeyCode, InputEventAction, KeyboardKeyModifier,
@@ -375,6 +375,14 @@ version (Have_glfw_d) {
             }
 
             glfwTerminate();
+        }
+
+        Viewport getViewport() {
+            if (platformSettings) {
+                return Viewport(0, 0, platformSettings.windowWidth, platformSettings.windowHeight);
+            } else {
+                return Viewport();
+            }
         }
 
         private void processPolledEvents() {

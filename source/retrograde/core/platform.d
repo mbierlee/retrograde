@@ -20,6 +20,7 @@ interface Platform {
     void update();
     void render(double extraPolation);
     void terminate();
+    Viewport getViewport();
 }
 
 /**
@@ -37,10 +38,25 @@ class NullPlatform : Platform {
 
     void terminate() {
     }
+
+    Viewport getViewport() {
+        return Viewport();
+    }
 }
 
 /**
  * Base for platform-dependent initialization settings.
  */
 class PlatformSettings {
+}
+
+/**
+ * Viewport dimensions, typically used by a renderer to determine
+ * render buffer size.
+ */
+struct Viewport {
+    int x;
+    int y;
+    int width;
+    int height;
 }
