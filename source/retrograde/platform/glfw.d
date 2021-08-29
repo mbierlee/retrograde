@@ -358,9 +358,14 @@ version (Have_glfw_d) {
             if (glfwWindowShouldClose(window)) {
                 runtime.terminate();
             } else if (window) {
-                glfwSwapBuffers(window);
                 glfwPollEvents();
                 processPolledEvents();
+            }
+        }
+
+        void render(double extraPolation) {
+            if (window) {
+                glfwSwapBuffers(window);
             }
         }
 

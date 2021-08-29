@@ -18,6 +18,7 @@ module retrograde.core.platform;
 interface Platform {
     void initialize(const PlatformSettings platformSettings);
     void update();
+    void render(double extraPolation);
     void terminate();
 }
 
@@ -29,6 +30,9 @@ class NullPlatform : Platform {
     }
 
     void update() {
+    }
+
+    void render(double extraPolation) {
     }
 
     void terminate() {

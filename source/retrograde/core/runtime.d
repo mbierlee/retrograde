@@ -129,7 +129,9 @@ class StandardEngineRuntime : EngineRuntime {
                 lagDuration -= targetFrameTimeDuration;
             }
 
-            this.game.render(lagDuration / targetFrameTimeDuration);
+            auto extraPolation = lagDuration / targetFrameTimeDuration;
+            this.platform.render(extraPolation);
+            this.game.render(extraPolation);
         }
     }
 
