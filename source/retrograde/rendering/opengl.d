@@ -64,6 +64,8 @@ version (Have_bindbc_opengl) {
 
             auto viewport = platform.getViewport();
             glViewport(viewport.x, viewport.y, viewport.width, viewport.height);
+            glCullFace(GL_BACK);
+            glEnable(GL_CULL_FACE);
 
             // Temp stuff
             auto vertexShader = new OpenGlShader("vertex",
