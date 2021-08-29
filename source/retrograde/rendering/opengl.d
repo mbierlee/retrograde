@@ -101,6 +101,7 @@ version (Have_bindbc_opengl) {
 
             glUseProgram(testShaderProgram.getOpenGlShaderProgram());
             glVertexAttrib4f(0, xoffset, yoffset, 0.0f, 0.0f);
+            glVertexAttrib4f(1, 0.0f, 1.0f, 0.0f, 1.0f);
             glDrawArrays(GL_TRIANGLES, 0, 3);
             /////////////////////////////////
         }

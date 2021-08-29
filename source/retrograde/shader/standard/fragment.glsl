@@ -1,6 +1,11 @@
 #version 460
+
+in VS_OUT {
+    vec4 color;
+} fsIn;
+
 out vec4 color;
 
 void main() {
-    color = vec4(1.0, 0.0, 0.0, 1.0);
+    color = fsIn.color;
 }
