@@ -30,6 +30,8 @@ version (Have_bindbc_opengl) {
 
         private OpenGlShaderProgram testShaderProgram;
 
+        private GLfloat[] clearColor = [0.576f, 0.439f, 0.859f, 1.0f];
+
         override public int getContextHintMayor() {
             return 4;
         }
@@ -43,7 +45,7 @@ version (Have_bindbc_opengl) {
         }
 
         override public void initialize() {
-            GLSupport support = loadOpenGL();
+            const GLSupport support = loadOpenGL();
             if (support == GLSupport.badLibrary || support == GLSupport.noLibrary) {
                 logger.error("Failed to load OpenGL Library.");
                 return;
@@ -58,7 +60,9 @@ version (Have_bindbc_opengl) {
                 logger.info("OpenGL 4.6 renderer initialized.");
             }
 
-            // Temp static creation of shaders
+            glViewport(0, 0, 1920, 1080); //TODO: get from platform
+
+            // Temp stuff
             auto vertexShader = new OpenGlShader("vertex",
                     import("standard/vertex.glsl"), ShaderType.vertex);
             auto fragmentShader = new OpenGlShader("fragment",
@@ -80,63 +84,33 @@ version (Have_bindbc_opengl) {
             if (!testShaderProgram.isLinked()) {
                 logger.errorf("Link errors for program: \n%s", testShaderProgram.getLinkInfo());
             }
-            // ----
 
-            //TEMP other stuff
-            vaoTriangle = getTriangleVao();
-            //////////////////////
+            glCreateVertexArrays(1, &voa);
+            glBindVertexArray(voa);
+            // ----
+        }
+
+        override public void update() {
+            xoffset += 0.001;
+            yoffset += 0.001;
         }
 
         override public void draw() {
             //MORE TEMP STUFF
-            glViewport(0, 0, 1920, 1080); //TODO: get from platform
-            glClearColor(0.576, 0.439, 0.859, 1.0);
-            glClear(GL_COLOR_BUFFER_BIT);
+            glClearBufferfv(GL_COLOR, 0, &clearColor[0]);
 
             glUseProgram(testShaderProgram.getOpenGlShaderProgram());
-            glBindVertexArray(vaoTriangle);
-            glDrawArrays(GL_TRIANGLES, /*first*/ 0, /*count*/ 3);
+            glVertexAttrib4f(0, xoffset, yoffset, 0.0f, 0.0f);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
             /////////////////////////////////
         }
 
-        ///// TEMP EXAMPLE MODEL
-        GLuint vaoTriangle;
+        ///// TEMP
+        GLuint voa;
+        GLfloat xoffset = 0;
+        GLfloat yoffset = 0;
+        ////
 
-        struct Vertex {
-            float[2] position;
-            float[3] color;
-        }
-
-        immutable Vertex[3] vertices = [
-            Vertex([-0.6f, -0.4f], [1.0f, 0.0f, 0.0f]),
-            Vertex([0.6f, -0.4f], [0.0f, 1.0f, 0.0f]),
-            Vertex([0.0f, 0.6f], [0.0f, 0.0f, 1.0f]),
-        ];
-
-        GLuint getTriangleVao() {
-            // Upload data to GPU
-            GLuint vbo;
-            glGenBuffers(1, &vbo);
-            glBindBuffer(GL_ARRAY_BUFFER, vbo);
-            glBufferData(GL_ARRAY_BUFFER, vertices.sizeof, vertices.ptr, /*usage hint*/ GL_STATIC_DRAW);
-
-            // Describe layout of data for the shader program
-            GLuint vao;
-            glGenVertexArrays(1, &vao);
-            glBindVertexArray(vao);
-
-            glEnableVertexAttribArray(0);
-            glVertexAttribPointer( /*location*/
-                    0, /*num elements*/ 2, /*base type*/ GL_FLOAT, /*normalized*/ GL_FALSE, Vertex.sizeof,
-                    cast(void*) Vertex.position.offsetof);
-            glEnableVertexAttribArray(1);
-            glVertexAttribPointer( /*location*/
-                    1, /*num elements*/ 3, /*base type*/ GL_FLOAT, /*normalized*/ GL_FALSE, Vertex.sizeof,
-                    cast(void*) Vertex.color.offsetof);
-
-            return vao;
-        }
-        /////////////////////////////////////////
     }
 
     class OpenGlShader : Shader {
