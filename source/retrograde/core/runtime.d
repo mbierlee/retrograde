@@ -109,14 +109,14 @@ class StandardEngineRuntime : EngineRuntime {
     private void loopWithFixedTimeStepVariableRenderRate() {
         auto frameTimeStopWatch = new StopWatch();
         auto lagDuration = Duration.zero;
+        const auto targetFrameTimeDuration = dur!"msecs"(this.targetFrameTime);
         frameTimeStopWatch.start();
 
         while (!this.isTerminatable) {
             const auto elapsedFrameTime = frameTimeStopWatch.peek();
             frameTimeStopWatch.reset();
             lagDuration += elapsedFrameTime;
-
-            auto targetFrameTimeDuration = dur!"msecs"(this.targetFrameTime);
+            
             auto lagCompensationFrames = 0L;
             while (lagDuration >= targetFrameTimeDuration) {
                 lagCompensationFrames++;
