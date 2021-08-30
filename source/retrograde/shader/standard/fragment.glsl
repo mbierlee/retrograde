@@ -1,4 +1,4 @@
-#version 460
+#version 460 core
 
 in VS_OUT {
     vec4 color;
