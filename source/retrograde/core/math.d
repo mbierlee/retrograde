@@ -11,7 +11,7 @@
 
 module retrograde.core.math;
 
-import std.math : sqrt, atan2, PI, cos, sin, tan, stdround = round;
+import std.math : sqrt, atan2, PI, cos, sin, tan;
 import std.conv : to;
 import std.string : join;
 
@@ -156,7 +156,7 @@ struct Vector(T, uint N) if (N > 0) {
             }
 
             Vector normalizedVector;
-            foreach (i; 0 .. N) {
+            static foreach (i; 0 .. N) {
                 normalizedVector[i] = cast(T)(this[i] / currentMagnitude);
             }
 
@@ -172,20 +172,11 @@ struct Vector(T, uint N) if (N > 0) {
          */
         public @property scalar magnitude() const {
             scalar powSum = 0;
-            foreach (component; components) {
-                powSum += component * component;
+            static foreach (i; 0 .. N) {
+                powSum += components[i] * components[i];
             }
 
             return sqrt(powSum);
-        }
-    }
-
-    /**
-     * Rounds off all components of this vector to the nearest integer value.
-     */
-    public void round() {
-        foreach (i, component; components) {
-            components[i] = cast(T) stdround(component);
         }
     }
 
@@ -215,7 +206,7 @@ struct Vector(T, uint N) if (N > 0) {
     Vector opBinary(string op)(const Vector rhs) const 
             if (rhs._N == N && (op == "+" || op == "-")) {
         Vector vec;
-        foreach (i; 0 .. N) {
+        static foreach (i; 0 .. N) {
             mixin("vec[i] = cast(T) (components[i] " ~ op ~ " rhs[i]);");
         }
 
@@ -227,7 +218,7 @@ struct Vector(T, uint N) if (N > 0) {
      */
     Vector opBinary(string op)(const scalar rhs) const if (op == "*" || op == "/") {
         Vector vec;
-        foreach (i; 0 .. N) {
+        static foreach (i; 0 .. N) {
             mixin("vec[i] = cast(T) (components[i] " ~ op ~ " rhs);");
         }
 
@@ -247,6 +238,7 @@ struct Vector(T, uint N) if (N > 0) {
                 return false;
             }
         }
+
         return true;
     }
 
@@ -258,7 +250,7 @@ struct Vector(T, uint N) if (N > 0) {
         }
 
         scalar hash = currentMagnitude + 1;
-        for (uint i = 0; i < components.length; i++) {
+        static foreach (i; 0 .. N) {
             hash *= components[i] * i + 1;
         }
 
@@ -270,9 +262,10 @@ struct Vector(T, uint N) if (N > 0) {
      */
     T dot()(const Vector other) const if (other._N == N) {
         T dotProduct = 0;
-        foreach (i; 0 .. N) {
+        static foreach (i; 0 .. N) {
             dotProduct += this[i] * other[i];
         }
+
         return dotProduct;
     }
 
@@ -330,9 +323,10 @@ struct Vector(T, uint N) if (N > 0) {
      */
     TargetVectorType opCast(TargetVectorType)() const if (TargetVectorType._N == N) {
         auto resultVector = TargetVectorType();
-        foreach (i; 0 .. N) {
+        static foreach (i; 0 .. N) {
             resultVector[i] = cast(TargetVectorType._T) this[i];
         }
+
         return resultVector;
     }
 
@@ -353,7 +347,7 @@ struct Vector(T, uint N) if (N > 0) {
     string toString() const {
         string[] componentStrings;
 
-        foreach (i; 0 .. N) {
+        static foreach (i; 0 .. N) {
             componentStrings ~= to!string(this[i]);
         }
 
@@ -481,8 +475,8 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
         }
 
         static this() {
-            foreach (row; 0 .. Rows) {
-                foreach (column; 0 .. Columns) {
+            static foreach (row; 0 .. Rows) {
+                static foreach (column; 0 .. Columns) {
                     identityMatrix[row, column] = column == row ? 1 : 0;
                 }
             }
@@ -529,8 +523,8 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
      */
     _VectorType opBinary(string op)(const _VectorType rhs) const if (op == "*") {
         _VectorType vector = _VectorType(0);
-        foreach (row; 0 .. Rows) {
-            foreach (column; 0 .. Columns) {
+        static foreach (row; 0 .. Rows) {
+            static foreach (column; 0 .. Columns) {
                 vector[row] = vector[row] + this[row, column] * rhs[column];
             }
         }
@@ -543,9 +537,10 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
      */
     Matrix opBinary(string op)(const scalar rhs) const if (op == "*") {
         Matrix matrix;
-        foreach (index; 0 .. data.length) {
+        static foreach (index; 0 .. Rows * Columns) {
             matrix[index] = this[index] * rhs;
         }
+
         return matrix;
     }
 
@@ -562,17 +557,22 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
     Matrix!(T, Rows, OtherColumns) opBinary(string op, uint OtherRows, uint OtherColumns)(
             const Matrix!(T, OtherRows, OtherColumns) rhs) const 
             if (op == "*" && Columns == OtherRows) {
+
+        //TODO: This looks like it could use some improvement. Certainly less allocation!
         Matrix!(T, Rows, OtherColumns) resultMatrix;
         auto transposedRhs = rhs.transpose();
         Vector!(T, Columns)[OtherColumns] columnCache;
-        foreach (thisRow; 0 .. Rows) {
-            auto rowVector = getRowVector(thisRow);
-            foreach (otherColumn; 0 .. OtherColumns) {
-                if (thisRow == 0) {
-                    columnCache[otherColumn] = transposedRhs.getRowVector(otherColumn);
-                }
 
-                resultMatrix[thisRow, otherColumn] = rowVector.dot(columnCache[otherColumn]);
+        static foreach (thisRow; 0 .. Rows) {
+            {
+                auto rowVector = getRowVector(thisRow);
+                static foreach (otherColumn; 0 .. OtherColumns) {
+                    if (thisRow == 0) {
+                        columnCache[otherColumn] = transposedRhs.getRowVector(otherColumn);
+                    }
+
+                    resultMatrix[thisRow, otherColumn] = rowVector.dot(columnCache[otherColumn]);
+                }
             }
         }
 
@@ -585,9 +585,10 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
     Matrix opBinary(string op)(const Matrix rhs) const 
             if ((op == "+" || op == "-") && Columns == rhs._Columns && Rows == rhs._Rows) {
         Matrix resultMatrix;
-        foreach (index; 0 .. data.length) {
-            mixin("resultMatrix[index] = this[index] " ~ op ~ " rhs[index];");
+        static foreach (i; 0 .. Rows * Columns) {
+            mixin("resultMatrix[i] = this[i] " ~ op ~ " rhs[i];");
         }
+
         return resultMatrix;
     }
 
@@ -596,8 +597,8 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
      */
     Matrix!(T, Columns, Rows) transpose() const {
         Matrix!(T, Columns, Rows) resultMatrix;
-        foreach (row; 0 .. Rows) {
-            foreach (column; 0 .. Columns) {
+        static foreach (row; 0 .. Rows) {
+            static foreach (column; 0 .. Columns) {
                 resultMatrix[column, row] = this[row, column];
             }
         }
@@ -605,6 +606,9 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
         return resultMatrix;
     }
 
+    /**
+     * Returns a certain row of this matix as vector.
+     */
     Vector!(T, Columns) getRowVector(const size_t row) const {
         return Vector!(T, Columns)(data[row * Columns .. (row * Columns) + Columns]);
     }
