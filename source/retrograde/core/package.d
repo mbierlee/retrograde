@@ -5,6 +5,7 @@ public import retrograde.core.entity;
 public import retrograde.core.game;
 public import retrograde.core.input;
 public import retrograde.core.logging;
+public import retrograde.core.math;
 public import retrograde.core.messaging;
 public import retrograde.core.platform;
 public import retrograde.core.rendering;
