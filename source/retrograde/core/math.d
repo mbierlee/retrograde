@@ -286,7 +286,7 @@ struct Vector(T, uint N) if (N > 0) {
             (this.z * other.x) - (this.x * other.z),
             (this.x * other.y) - (this.y * other.x)
         );
-        // dftm on
+        // dfmt on
     }
 
     /**
@@ -308,7 +308,8 @@ struct Vector(T, uint N) if (N > 0) {
      *  refractionIndex = Intensity of the refraction.
      *  normal = A normal used to determine the direction of the reflection.
      */
-    Vector refract()(const T refractionIndex, const Vector normal) const if (N >= 2 && normal._N == N) {
+    Vector refract()(const T refractionIndex, const Vector normal) const 
+            if (N >= 2 && normal._N == N) {
         auto const normalizedThis = this.normalize();
         auto const normalizedNormal = normal.normalize();
         auto const dotProduct = normalizedNormal.dot(normalizedThis);
@@ -317,8 +318,8 @@ struct Vector(T, uint N) if (N > 0) {
             return Vector(0);
         }
 
-        return refractionIndex * normalizedThis - (
-                refractionIndex * normalizedNormal.dot(normalizedThis) + sqrt(k)) * normalizedNormal;
+        return refractionIndex * normalizedThis - (refractionIndex * normalizedNormal.dot(
+                normalizedThis) + sqrt(k)) * normalizedNormal;
     }
 
     /**
@@ -327,7 +328,7 @@ struct Vector(T, uint N) if (N > 0) {
      * When the target type is bigger, extra components are set to their default init.
      * When the target type is smaller, components are lost.
      */
-    TargetVectorType opCast(TargetVectorType)() const if (TargetVectorType._N == N)  {
+    TargetVectorType opCast(TargetVectorType)() const if (TargetVectorType._N == N) {
         auto resultVector = TargetVectorType();
         foreach (i; 0 .. N) {
             resultVector[i] = cast(TargetVectorType._T) this[i];
@@ -387,6 +388,188 @@ alias Vector3R = Vector!(real, 3);
 
 alias Vector4D = Vector!(double, 4);
 
+/**
+ * It's a matrix!
+ */
+struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
+    private T[Columns * Rows] data;
+
+    public alias _T = T;
+    public alias _Rows = Rows;
+    public alias _Columns = Columns;
+    public alias _VectorType = Vector!(T, Rows);
+
+    /**
+     * Creates a matrix where all its values are set to the initial value.
+     *
+     * Params:
+     *  initialValue = Initial value to set all values to.
+     */
+    this(const T initialValue) const {
+        data[0 .. data.length] = initialValue;
+    }
+
+    /**
+     * Creates a matrix initializing each values to the given ones.
+     *
+     * The amount of supplied values needs to be the same as the amount of
+     * values that fit in this matrix.
+     *
+     * Params:
+     *  initialValues = Initial values to use for the matrix.
+     *
+     * Throws: AssertionError when amount of supplied values is not the same as that of the matrix.
+     */
+    this(const T[] initialValues...) {
+        assert(initialValues.length == data.length,
+                "Cannot initialize a matrix with a different size of data than available.");
+        data = initialValues;
+    }
+
+    static if (Rows == Columns) {
+        private static Matrix identityMatrix;
+
+        /**
+         * Returns an identity matrix.
+         */
+        public static @property Matrix identity() {
+            return identityMatrix;
+        }
+
+        static this() {
+            foreach (row; 0 .. Rows) {
+                foreach (column; 0 .. Columns) {
+                    identityMatrix[row, column] = column == row ? 1 : 0;
+                }
+            }
+        }
+    }
+
+    /**
+     * Return a value by row and column.
+     */
+    T opIndex(const size_t row, const size_t column) const {
+        return data[row * Columns + column];
+    }
+
+    /**
+     * Return a value from the matrix by index, where the notion of rows and columns is ignored.
+     */
+    T opIndex(const size_t index) const {
+        return data[index];
+    }
+
+    /**
+     * Assign a value by row and column.
+     */
+    T opIndexAssign(const T value, const size_t row, const size_t column) {
+        return data[row * Columns + column] = value;
+    }
+
+    /**
+     * Assign a value to the matrix by index, where the notion of rows and columns is ignored.
+     */
+    T opIndexAssign(const T value, const size_t index) {
+        return data[index] = value;
+    }
+
+    /**
+     * Returns a copy of this matrix where all values are the inverse.
+     */
+    Matrix opUnary(string s)() const if (s == "-") {
+        return this * -1;
+    }
+
+    /**
+     * Returns a vector where this matrix is multiplied by a vector.
+     */
+    _VectorType opBinary(string op)(const _VectorType rhs) const if (op == "*") {
+        _VectorType vector = _VectorType(0);
+        foreach (row; 0 .. Rows) {
+            foreach (column; 0 .. Columns) {
+                vector[row] = vector[row] + this[row, column] * rhs[column];
+            }
+        }
+
+        return vector;
+    }
+
+    /**
+     * Returns a copy of this matrix where all values are multiplied by a scalar.
+     */
+    Matrix opBinary(string op)(const scalar rhs) const if (op == "*") {
+        Matrix matrix;
+        foreach (index; 0 .. data.length) {
+            matrix[index] = this[index] * rhs;
+        }
+        return matrix;
+    }
+
+    /**
+     * Returns a copy of this matrix where all values are multiplied by a scalar.
+     */
+    Matrix opBinaryRight(string op)(const scalar lhs) const if (op == "*") {
+        return this * lhs;
+    }
+
+    /**
+     * Returns a copy of this matrix that is multiplied by another matrix.
+     */
+    Matrix!(T, Rows, OtherColumns) opBinary(string op, uint OtherRows, uint OtherColumns)(
+            const Matrix!(T, OtherRows, OtherColumns) rhs) const 
+            if (op == "*" && Columns == OtherRows) {
+        Matrix!(T, Rows, OtherColumns) resultMatrix;
+        auto transposedRhs = rhs.transpose();
+        Vector!(T, Columns)[OtherColumns] columnCache;
+        foreach (thisRow; 0 .. Rows) {
+            auto rowVector = getRowVector(thisRow);
+            foreach (otherColumn; 0 .. OtherColumns) {
+                if (thisRow == 0) {
+                    columnCache[otherColumn] = transposedRhs.getRowVector(otherColumn);
+                }
+
+                resultMatrix[thisRow, otherColumn] = rowVector.dot(columnCache[otherColumn]);
+            }
+        }
+
+        return resultMatrix;
+    }
+
+    /**
+     * Returns a copy of this matrix that adds or subtracts another matrix.
+     */
+    Matrix opBinary(string op)(const Matrix rhs) const 
+            if ((op == "+" || op == "-") && Columns == rhs._Columns && Rows == rhs._Rows) {
+        Matrix resultMatrix;
+        foreach (index; 0 .. data.length) {
+            mixin("resultMatrix[index] = this[index] " ~ op ~ " rhs[index];");
+        }
+        return resultMatrix;
+    }
+
+    /**
+     * Returns a copy of this matrix whjere all rows and columns are flipped.
+     */
+    Matrix!(T, Columns, Rows) transpose() const {
+        Matrix!(T, Columns, Rows) resultMatrix;
+        foreach (row; 0 .. Rows) {
+            foreach (column; 0 .. Columns) {
+                resultMatrix[column, row] = this[row, column];
+            }
+        }
+
+        return resultMatrix;
+    }
+
+    Vector!(T, Columns) getRowVector(const size_t row) const {
+        return Vector!(T, Columns)(data[row * Columns .. (row * Columns) + Columns]);
+    }
+}
+
+alias Matrix4D = Matrix!(double, 4, 4);
+alias Matrix3D = Matrix!(double, 3, 3);
+alias Matrix2D = Matrix!(double, 2, 2);
+
 // Vector tests
 version (unittest) {
     import std.math.operations : isClose;
@@ -431,7 +614,7 @@ version (unittest) {
     @("Multiply vectors with two components by scalar")
     unittest {
         auto const vector = Vector2U(2, 8);
-        auto const  multipliedVector = vector * 2;
+        auto const multipliedVector = vector * 2;
 
         assert(4 == multipliedVector.x);
         assert(16 == multipliedVector.y);
@@ -713,5 +896,274 @@ version (unittest) {
         assert(vector2Hash != vector3Hash);
         assert(vector3Hash != vector4Hash);
         assert(vector3Hash != vector5Hash);
+    }
+}
+
+// Matrix tests
+version (unittest) {
+    @("Create and use matrix")
+    unittest {
+        auto matrix1 = Matrix!(double, 4, 3)(0);
+        assert(0 == matrix1[0, 0]);
+
+        matrix1[0, 2] = 2;
+        assert(2 == matrix1[0, 2]);
+
+        auto matrix2 = Matrix4D(0);
+        assert(0 == matrix2[0, 0]);
+
+        matrix2[3, 3] = 6;
+        assert(6 == matrix2[3, 3]);
+
+        auto matrix3 = Matrix2D(3);
+        assert(3 == matrix3[0, 0]);
+        assert(3 == matrix3[0, 1]);
+        assert(3 == matrix3[1, 0]);
+        assert(3 == matrix3[1, 1]);
+    }
+
+    @("Create matix by row/column values")
+    unittest {
+        // dfmt off
+        auto const matrix = Matrix2D(
+            1, 2,
+            3, 4
+        );
+        // dfmt on
+
+        assert(1 == matrix[0, 0]);
+        assert(2 == matrix[0, 1]);
+        assert(3 == matrix[1, 0]);
+        assert(4 == matrix[1, 1]);
+    }
+
+    @("Create 4x1 matrix")
+    unittest {
+        auto const matrix = Matrix!(double, 4, 1)(1, 2, 3, 4);
+        assert(1 == matrix[0, 0]);
+        assert(2 == matrix[1, 0]);
+        assert(3 == matrix[2, 0]);
+        assert(4 == matrix[3, 0]);
+    }
+
+    @("Identity matrix")
+    unittest {
+        // dfmt off
+        auto const expectedMatrix = Matrix4D(
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1
+        );
+        // dfmt on
+
+        auto const identityMatrix = Matrix4D.identity;
+        assert(expectedMatrix == identityMatrix);
+    }
+
+    @("Multiply matrix by vector")
+    unittest {
+        // dfmt off
+        auto const matrix = Matrix4D(
+            1, 0, 1, 0,
+            2, 1, 0, 0,
+            0, 0, 1, 3,
+            0, 4, 0, 1
+        );
+        // dfmt on
+
+        auto const vector = Vector4D(1, 2, 3, 4);
+        auto const expectedVector = Vector4D(4, 4, 15, 12);
+        auto const actualVector = matrix * vector;
+
+        assert(expectedVector == actualVector);
+    }
+
+    @("Multiply identity matrix by vector")
+    unittest {
+        auto const matrix = Matrix4D.identity;
+        auto const vector = Vector4D(1, 4, 6, 7);
+        auto const actualVector = matrix * vector;
+
+        assert(vector == actualVector);
+    }
+
+    @("Multiply matrices")
+    unittest {
+        // dfmt off
+        auto const matrix1 = Matrix2D(
+            1, 2,
+            3, 4
+        );
+
+        auto const matrix2 = Matrix2D(
+            5, 6,
+            7, 8
+        );
+
+        auto const expectedMatrix = Matrix2D(
+            19, 22,
+            43, 50
+        );
+        // dfmt on
+
+        auto const actualMatrix = matrix1 * matrix2;
+        assert(actualMatrix == expectedMatrix);
+    }
+
+    @("Multiply matrices of different dimensions")
+    unittest {
+        // dfmt off
+        auto const matrix1 = Matrix!(double, 2, 3)(
+            1, 2, 3,
+            4, 5, 6
+        );
+
+        auto const matrix2 = Matrix!(double, 3, 2)(
+            7 , 8,
+            9 , 10,
+            11, 12
+        );
+
+        auto const expectedMatrix = Matrix2D(
+            58 , 64,
+            139, 154
+        );
+
+        auto const actualMatrix = matrix1 * matrix2;
+        assert(expectedMatrix == actualMatrix);
+    }
+
+    @("Multiply matrix by scalar")
+    unittest {
+        // dfmt off
+        auto const matrix = Matrix2D(
+            1,  4,
+            0, -9
+        );
+
+        auto const expectedMatrix = Matrix2D(
+            2,  8,
+            0, -18
+        );
+        // dfmt on
+
+        auto actualMatrix = matrix * 2;
+        assert(expectedMatrix == actualMatrix);
+
+        actualMatrix = 2 * matrix;
+        assert(expectedMatrix == actualMatrix);
+    }
+
+    @("Transpose matrix")
+    unittest {
+        // dfmt off
+        auto const matrix = Matrix!(double, 2, 3)(
+            1, 2, 3,
+            4, 5, 6
+        );
+
+        auto const expectedMatrix = Matrix!(double, 3, 2)(
+            1, 4,
+            2, 5,
+            3, 6
+        );
+        // dfmt on
+
+        auto const actualMatrix = matrix.transpose();
+        assert(expectedMatrix == actualMatrix);
+    }
+
+    @("Get row vector matrix")
+    unittest {
+        // dfmt off
+        auto const matrix = Matrix2D(
+            3, 5,
+            8, 7
+        );
+        // dfmt on
+
+        auto const expectedVector = Vector2D(3, 5);
+        auto const actualVector = matrix.getRowVector(0);
+
+        assert(expectedVector == actualVector);
+    }
+
+    @("Matrix addition")
+    unittest {
+        // dfmt off
+        auto const matrix1 = Matrix2D(
+            1, 2,
+            3, 4
+        );
+
+        auto const matrix2 = Matrix2D(
+            5, 6,
+            7, 8
+        );
+
+        auto const expectedMatrix = Matrix2D(
+            6 , 8,
+            10, 12
+        );
+        // dfmt on
+
+        auto const actualMatrix = matrix1 + matrix2;
+        assert(expectedMatrix == actualMatrix);
+    }
+
+    @("Matrix subtraction")
+    unittest {
+        // dfmt off
+        auto const matrix1 = Matrix2D(
+            8, 7,
+            6, 5
+        );
+
+        auto const matrix2 = Matrix2D(
+            1, 2,
+            3, 4
+        );
+
+        auto const expectedMatrix = Matrix2D(
+            7, 5,
+            3, 1
+        );
+        // dfmt on
+
+        auto const actualMatrix = matrix1 - matrix2;
+        assert(expectedMatrix == actualMatrix);
+    }
+
+    @("Matrix negation")
+    unittest {
+        // dfmt off
+        auto const matrix = Matrix2D(
+             1, -3,
+            -6,  8
+        );
+
+        auto const expectedMatrix = Matrix2D(
+            -1,  3,
+             6, -8
+        );
+        // dfmt on
+
+        auto const actualMatrix = -matrix;
+        assert(expectedMatrix == actualMatrix);
+    }
+
+    @("Assign value via index")
+    unittest {
+        auto actualMatrix = Matrix2D(0);
+        // dfmt off
+        auto const expectedMatrix = Matrix2D(
+            0, 0,
+            6, 0
+        );
+        // dfmt on
+
+        actualMatrix[2] = 6;
+        assert(expectedMatrix == actualMatrix);
     }
 }
