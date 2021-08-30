@@ -24,6 +24,11 @@ version (Have_bindbc_opengl) {
 
     import bindbc.opengl;
 
+    /**
+     * An OpenGL implementation of the renderer.
+     *
+     * This implementation is compatible up to OpenGL 4.6
+     */
     class OpenGlRenderer : Renderer {
         private @Autowire Logger logger;
         private @Autowire Platform platform;
@@ -119,6 +124,11 @@ version (Have_bindbc_opengl) {
 
     }
 
+    /**
+     * OpenGL shader.
+     *
+     * The shader source should be GLSL code.
+     */
     class OpenGlShader : Shader {
         private static const GLenum[ShaderType] shaderTypeMapping;
 
@@ -215,6 +225,9 @@ version (Have_bindbc_opengl) {
         }
     }
 
+    /**
+     * OpenGL shader program.
+     */
     class OpenGlShaderProgram : ShaderProgram {
         private GLuint program;
         private bool _isLinked;
