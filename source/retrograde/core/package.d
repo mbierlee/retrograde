@@ -2,6 +2,7 @@ module retrograde.core;
 
 public import retrograde.core.collections;
 public import retrograde.core.entity;
+public import retrograde.core.functional;
 public import retrograde.core.game;
 public import retrograde.core.input;
 public import retrograde.core.logging;

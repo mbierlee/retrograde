@@ -15,6 +15,8 @@ import std.math : sqrt, atan2, PI, cos, sin, tan;
 import std.conv : to;
 import std.string : join;
 
+import retrograde.core.functional : map;
+
 alias scalar = double;
 
 /**
@@ -284,14 +286,14 @@ struct Vector(T, uint N) if (N > 0) {
 
     /**
      * Returns a vector perpendicular to this one and a normal, essentially
-     * the reflection off the normal.
+     * the reflection off the surface of the normal.
      *
      * Params:
      *  normal = A normal used to determine the direction of the reflection.
      */
     Vector reflect()(const Vector normal) const if (N >= 2 && normal._N == N) {
         auto const normalizedNormal = normal.normalize();
-        return this - ((2 * normalizedNormal).dot(this) * normalizedNormal);
+        return this - (((2 * normalizedNormal).dot(this)) * normalizedNormal);
     }
 
     /**
@@ -303,10 +305,12 @@ struct Vector(T, uint N) if (N > 0) {
      */
     Vector refract()(const T refractionIndex, const Vector normal) const 
             if (N >= 2 && normal._N == N) {
+
         auto const normalizedThis = this.normalize();
         auto const normalizedNormal = normal.normalize();
         auto const dotProduct = normalizedNormal.dot(normalizedThis);
         auto const k = 1 - (refractionIndex * refractionIndex) * (1 - (dotProduct * dotProduct));
+
         if (k < 0) {
             return Vector(0);
         }
@@ -596,14 +600,8 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
      * Returns a copy of this matrix whjere all rows and columns are flipped.
      */
     Matrix!(T, Columns, Rows) transpose() const {
-        Matrix!(T, Columns, Rows) resultMatrix;
-        static foreach (row; 0 .. Rows) {
-            static foreach (column; 0 .. Columns) {
-                resultMatrix[column, row] = this[row, column];
-            }
-        }
-
-        return resultMatrix;
+        auto transposedData = getTransposedDataArray();
+        return Matrix!(T, Columns, Rows)(transposedData);
     }
 
     /**
@@ -611,6 +609,35 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
      */
     Vector!(T, Columns) getRowVector(const size_t row) const {
         return Vector!(T, Columns)(data[row * Columns .. (row * Columns) + Columns]);
+    }
+
+    /**
+     * Returns the values of this matrix as continuous array.
+     *
+     * The array is row-major.
+     */
+    public CastType[Rows * Columns] getDataArray(CastType = T)() const {
+        static if (is(CastType == T)) {
+            return data;
+        } else {
+            return data.map((T v) => cast(CastType) v);
+        }
+    }
+
+    /**
+     * Returns the values of this matrix as continuous array, but transposed.
+     *
+     * This essentially turns the array into a column-major array.
+     */
+    public CastType[Rows * Columns] getTransposedDataArray(CastType = T)() const {
+        CastType[Rows * Columns] transposedData;
+        static foreach (row; 0 .. Rows) {
+            static foreach (column; 0 .. Columns) {
+                transposedData[column * Rows + row] = cast(CastType) data[row * Columns + column];
+            }
+        }
+
+        return transposedData;
     }
 }
 
@@ -1452,6 +1479,70 @@ version (unittest) {
         actualMatrix[2] = 6;
         assert(expectedMatrix == actualMatrix);
     }
+
+    @("Get data array")
+    unittest {
+        // dfmt off
+        auto const matrix = Matrix2D(
+            1, 2, 
+            3, 4
+        );
+        // dfmt on
+
+        const double[4] expectedArray = [1, 2, 3, 4];
+        const double[4] actualArray = matrix.getDataArray();
+
+        assert(expectedArray == actualArray);
+    }
+
+    @("Get casted data array")
+    unittest {
+        // dfmt off
+        auto const matrix = Matrix2D(
+            1, 2, 
+            3, 4
+        );
+        // dfmt on
+
+        const float[4] expectedArray = [1, 2, 3, 4];
+        const float[4] actualArray = matrix.getDataArray!float;
+
+        assert(expectedArray == actualArray);
+    }
+
+    @("Get transposed data array")
+    unittest {
+        // dfmt off
+        auto const matrix = Matrix2D(
+            1, 2, 
+            3, 4
+        );
+        // dfmt on
+
+        const double[4] expectedArray = [1, 3, 2, 4];
+        const double[4] actualArray = matrix.getTransposedDataArray();
+
+        assert(expectedArray == actualArray);
+    }
+
+    @("Get casted, transposed data array")
+    unittest {
+        // dfmt off
+        auto const matrix = Matrix2D(
+            1, 2, 
+            3, 4
+        );
+        // dfmt on
+
+        const float[4] expectedArray = [1, 3, 2, 4];
+        const float[4] actualArray = matrix.getTransposedDataArray!float;
+
+        assert(expectedArray == actualArray);
+    }
+}
+
+// Matrix utils tests
+version (unittest) {
 
     @("Create translation matrix from 2D vector")
     unittest {
