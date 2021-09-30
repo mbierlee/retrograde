@@ -11,7 +11,7 @@
 
 module retrograde.core.storage;
 
-import std.file : read, write, thisExePath, stdTempDir = tempDir, mkdirRecurse;
+import std.file : read, write, thisExePath, stdTempDir = tempDir, mkdirRecurse, stdExists = exists;
 import std.path : dirName, baseName, buildNormalizedPath, isValidPath;
 
 /**
@@ -163,6 +163,11 @@ interface StorageApi {
      * Whether it is sandboxed from other applications depends on the platform and storage API implementation.
      */
     string tempDir();
+
+    /**
+     * Determine whether the given file or directory exists.
+     */
+    bool exists(string location);
 }
 
 /**
@@ -213,6 +218,13 @@ class GenericStorageApi : StorageApi {
      */
     string tempDir() {
         return stdTempDir;
+    }
+
+    /**
+     * Determine whether the given file or directory exists.
+     */
+    bool exists(string location) {
+        return stdExists(location);
     }
 }
 
