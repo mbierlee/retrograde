@@ -11,7 +11,7 @@
 
 module retrograde.core.storage;
 
-import std.file : read, write, thisExePath, stdTempDir = tempDir;
+import std.file : read, write, thisExePath, stdTempDir = tempDir, mkdirRecurse;
 import std.path : dirName, baseName, buildNormalizedPath, isValidPath;
 
 /**
@@ -199,10 +199,10 @@ class GenericStorageApi : StorageApi {
      */
     void writeFile(string location, const File file) {
         assert(isValidPath(location));
-        //TODO create path
 
+        auto fileDir = dirName(location);
+        mkdirRecurse(fileDir);
         const(ubyte[]) data = file.data;
-
         write(location, data);
     }
 
