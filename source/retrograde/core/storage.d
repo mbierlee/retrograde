@@ -159,7 +159,7 @@ interface StorageApi {
     void writeFile(string location, const File file);
 
     /**
-     * Returns the absolute path to a directory where this application is allowed to read/write.
+     * Returns the absolute path to a directory where this application is allowed to read/write temporary data.
      * Whether it is sandboxed from other applications depends on the platform and storage API implementation.
      */
     string tempDir();
@@ -212,7 +212,7 @@ class GenericStorageApi : StorageApi {
     }
 
     /**
-     * Returns the absolute path to a directory where this application is allowed to read/write.
+     * Returns the absolute path to a directory where this application is allowed to read/write temporary data.
      * On Desktop OSes this directory is not sandboxed since it will be the shared temp directory.
      * If the temp directory cannot be found, "." is returned (the current working directory).
      */
