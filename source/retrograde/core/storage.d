@@ -11,6 +11,9 @@
 
 module retrograde.core.storage;
 
+import std.file : read, write, thisExePath, stdTempDir = tempDir;
+import std.path : dirName, baseName, buildNormalizedPath, isValidPath;
+
 /**
  * File metadata flags.
  */
@@ -93,10 +96,10 @@ class File {
     }
 
     /**
-     * Returns a slice of the binary representation of this file.
+     * Returns the binary representation of this file.
      */
-    ubyte[] data() {
-        return _data;
+    const(ubyte[]) data() const {
+        return cast(const(ubyte[])) _data;
     }
 
     /**
@@ -109,7 +112,7 @@ class File {
     }
 
     /**
-     * Returns a copy of the textual representation of this file.
+     * Returns the textual representation of this file.
      */
     string textData() const {
         return cast(string) _data;
@@ -131,6 +134,103 @@ class File {
         return _meta;
     }
 
+}
+
+/**
+ * An API interface for a platform-dependent storage system.
+ */
+interface StorageApi {
+
+    /**
+     * Read a file from storage at a specific location.
+     *
+     * The file is immediately loaded into memory.
+     * Params:
+     *  location = Location of the file. How to specify the location dependends on the API implementation.
+     */
+    File readFile(string location);
+
+    /**
+     * Write a file to storage at a specific location.
+     * Params:
+     *  location = Physical Location of the file. How to specify the location dependends on the API implementation.
+     *  file = File to store.
+     */
+    void writeFile(string location, const File file);
+
+    /**
+     * Returns the absolute path to a directory where this application is allowed to read/write.
+     * Whether it is sandboxed from other applications depends on the platform and storage API implementation.
+     */
+    string tempDir();
+}
+
+/**
+ * A generic storage API that uses the D std libary for file I/O.
+ *
+ * Typically used for desktop OSes with traditional filesystems.
+ */
+class GenericStorageApi : StorageApi {
+
+    /**
+     * Read a file from storage at a specific location.
+     *
+     * The file is immediately loaded into memory.
+     * Params:
+     *  location = Path of the file including the filename. Use the OS' file and path naming convention.
+     *
+     * Throws: FileException on read error.
+     */
+    File readFile(string location) {
+        assert(isValidPath(location));
+
+        ubyte[] data = cast(ubyte[]) read(location);
+        auto fileName = baseName(location);
+        return new File(fileName, data);
+    }
+
+    /**
+     * Write a file to storage at a specific location.
+     *
+     * If the file does not exist it will be created, including the complete path.
+     * Params:
+     *  location = Path of the file including the filename. Use the OS' file and path naming convention.
+     *  file = File to store.
+     */
+    void writeFile(string location, const File file) {
+        assert(isValidPath(location));
+        //TODO create path
+
+        const(ubyte[]) data = file.data;
+
+        write(location, data);
+    }
+
+    /**
+     * Returns the absolute path to a directory where this application is allowed to read/write.
+     * On Desktop OSes this directory is not sandboxed since it will be the shared temp directory.
+     * If the temp directory cannot be found, "." is returned (the current working directory).
+     */
+    string tempDir() {
+        return stdTempDir;
+    }
+}
+
+/**
+ * Returns the absolute location to the given file/directory relative from the directory of the program's executable.
+ *
+ * For example, if the executable (on Windows) resides in "C:\games\thisgame\game.exe" and the relative path given is "assets\tex.png", 
+ * the resulting path is "C:\games\thisgame\assets\tex.png".
+ *
+ * This function only returns absolute paths on platforms where the executable is physically located on a filesystem.
+ * On other platforms it might simply return relativePath. You want to use this function when the executable's current working
+ * directory differs from the executable's path.
+ *
+ * Params:
+ *  relativePath: Path of a file/dir relative from the executable.
+ */
+string appendToExeDir(string relativePath) {
+    return buildNormalizedPath(dirName(thisExePath), relativePath);
 }
 
 // File tests
@@ -166,14 +266,6 @@ version (unittest) {
         const ubyte[] data = [0x48, 0x69];
         auto file = new File("test.txt", data);
         assert(file.textData == "Hi");
-    }
-
-    @("Filebytes cannot be altered via get handle")
-    unittest {
-        const ubyte[] expectedData = [0x0, 0x1, 0x2, 0x3];
-        auto file = new File("test.bin", expectedData);
-        file.data[0] = 0x4;
-        assert(file.data == expectedData);
     }
 
     @("Default filemeta of files created on-the-fly")
