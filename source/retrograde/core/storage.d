@@ -15,35 +15,13 @@ import std.file : read, write, thisExePath, stdTempDir = tempDir, mkdirRecurse, 
 import std.path : dirName, baseName, buildNormalizedPath, isValidPath;
 
 /**
- * File metadata flags.
- */
-struct FileMeta {
-    /**
-     * Whether the file was created by the storage API.
-     *
-     * This is typically not the case for files created on-the-fly (via new File())
-     */
-    bool fromStorage = false;
-
-    /**
-     * Whether on the storage API the user has read access to the file.
-     */
-    bool readAccess = false;
-
-    /**
-     * Whether on the storage API the user has write access to the file.
-     */
-    bool writeAccess = false;
-}
-
-/**
  * A platform-independent implementation of files.
  */
 class File {
 
     private const string _name;
     private ubyte[] _data;
-    private FileMeta _meta;
+    private bool _fromStorage = false;
 
     /**
      * Creates a new empty file.
@@ -128,10 +106,10 @@ class File {
     }
 
     /**
-     * Returns a copy of this file's metadata flags.
+     * Whether this file was originally loaded via a Storage API.
      */
-    FileMeta meta() const {
-        return _meta;
+    bool fromStorage() const {
+        return _fromStorage;
     }
 
 }
@@ -191,7 +169,9 @@ class GenericStorageApi : StorageApi {
 
         ubyte[] data = cast(ubyte[]) read(location);
         auto fileName = baseName(location);
-        return new File(fileName, data);
+        auto file = new File(fileName, data);
+        file._fromStorage = true;
+        return file;
     }
 
     /**
@@ -255,6 +235,7 @@ version (unittest) {
         assert(file.name == "null");
         assert(file.data == []);
         assert(file.textData == "");
+        assert(!file.fromStorage);
     }
 
     @("Create binary file")
@@ -278,14 +259,6 @@ version (unittest) {
         const ubyte[] data = [0x48, 0x69];
         auto file = new File("test.txt", data);
         assert(file.textData == "Hi");
-    }
-
-    @("Default filemeta of files created on-the-fly")
-    unittest {
-        auto file = new File("test.txt", "Hi");
-        assert(!file.meta.fromStorage);
-        assert(!file.meta.readAccess);
-        assert(!file.meta.writeAccess);
     }
 
     @("Change binary file")
