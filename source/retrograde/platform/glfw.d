@@ -30,7 +30,7 @@ version (Have_glfw_d) {
         inputEventChannel, MouseMode, MouseButton, MouseButtonInputEventMessage,
         MouseScrollInputEventMessage, Axis, MouseMovementType;
     import retrograde.core.messaging : MessageHandler;
-    import retrograde.core.rendering; //TODO: limit imports
+    import retrograde.core.rendering : Renderer;
     import retrograde.core.storage : StorageApi;
 
     private struct GlfwKeyEvent {
