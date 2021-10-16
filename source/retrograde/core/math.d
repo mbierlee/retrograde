@@ -11,7 +11,7 @@
 
 module retrograde.core.math;
 
-import std.math : sqrt, atan2, PI, cos, sin, tan;
+import std.math : sqrt, atan2, PI, cos, sin, tan, asin;
 import std.conv : to;
 import std.string : join;
 
@@ -883,6 +883,138 @@ public double radiansToDegrees(double radians) {
     return radians * (180 / PI);
 }
 
+/**
+ * A complex mathematical number typically used for rotation.
+ * Quaternions prevent gimbal lock.
+ */
+struct Quaternion(T) {
+    private T realPart = 1;
+    private VectorType imaginaryVector = VectorType(0);
+
+    public alias _T = T;
+    public alias VectorType = Vector!(T, 3);
+
+    /**
+     * The real number component.
+     */
+    public @property T r() const {
+        return realPart;
+    }
+
+    /**
+     * The x component of the vector of imaginary numbers (a.k.a. bi).
+     */
+    public @property T x() const {
+        return imaginaryVector.x;
+    }
+
+    /**
+     * The y component of the vector of imaginary numbers (a.k.a. cj).
+     */
+    public @property T y() const {
+        return imaginaryVector.y;
+    }
+
+    /**
+     * The z component of the vector of imaginary numbers (a.k.a. dk).
+     */
+    public @property T z() const {
+        return imaginaryVector.z;
+    }
+
+    /**
+     * Construct a quaternion from a real number and the products of real and imaginary numbers.
+     * Params:
+     *  r = The real number component (a).
+     *  x = The product of b * i.
+     *  y = The product of c * j.
+     *  z = The product of d * k.
+     */
+    this(T r, T x, T y, T z) {
+        realPart = r;
+        imaginaryVector = VectorType(x, y, z);
+    }
+
+    /**
+     * Construct a quaternion from a real number and an imaginary vector.
+     * Params:
+     *  r = The real number component (a).
+     *  v = The imaginary vector.
+     */
+    this(T r, const VectorType v) {
+        realPart = r;
+        imaginaryVector = v;
+    }
+
+    /**
+     * Create a quaternion that rotates around a specified axis.
+     * Params:
+     *  radianAngle = Rotation around the given axis in radians.
+     *  axis = Regular three-dimensional axis to rotate around.
+     */
+    public static Quaternion createRotation(double radianAngle, const Vector3D axis) {
+        return Quaternion(cos(radianAngle / 2), axis.x * sin(radianAngle / 2),
+                axis.y * sin(radianAngle / 2), axis.z * sin(radianAngle / 2));
+    }
+
+    /**
+     * Multiple two quaternions.
+     */
+    Quaternion opBinary(string op)(const Quaternion rhs) const if (op == "*") {
+        return Quaternion(r * rhs.r - x * rhs.x - y * rhs.y - z * rhs.z,
+                r * rhs.x + x * rhs.r + y * rhs.z - z * rhs.y,
+                r * rhs.y - x * rhs.z + y * rhs.r + z * rhs.x,
+                r * rhs.z + x * rhs.y - y * rhs.x + z * rhs.r);
+    }
+
+    /**
+     * Convert quaterion to a four-dimensional rotation matrix.
+     */
+    public Matrix4D toRotationMatrix() const {
+        //TODO: Check if correct for row-major matrix
+        return Matrix4D(r * r + x * x - y * y - z * z, 2 * x * y - 2 * r * z,
+                2 * x * z + 2 * r * y, 0, 2 * x * y + 2 * r * z,
+                r * r - x * x + y * y - z * z, 2 * y * z + 2 * r * x, 0,
+                2 * x * z - 2 * r * y, 2 * y * z - 2 * r * x, r * r - x * x - y * y + z * z,
+                0, 0, 0, 0, 1);
+    }
+
+    /**
+     * Convert quaterion to a vector of euler angles.
+     */
+    public Vector3D toEulerAngles() const {
+        auto q = this;
+
+        auto sqw = q.r * q.r;
+        auto sqx = q.x * q.x;
+        auto sqy = q.y * q.y;
+        auto sqz = q.z * q.z;
+
+        auto unit = sqx + sqy + sqz + sqw;
+        auto poleTest = q.x * q.y + q.z * q.r;
+
+        if (poleTest > 0.499 * unit) {
+            auto yaw = 2 * atan2(q.x, q.r);
+            auto pitch = PI / 2;
+            return Vector3D(pitch, yaw, 0);
+        }
+
+        if (poleTest < -0.499 * unit) {
+            auto yaw = -2 * atan2(q.x, q.r);
+            auto pitch = -PI / 2;
+            return Vector3D(pitch, yaw, 0);
+        }
+
+        auto yaw = atan2(2 * q.y * q.r - 2 * q.x * q.z, sqx - sqy - sqz + sqw);
+        auto pitch = asin(2 * poleTest / unit);
+        auto roll = atan2(2 * q.x * q.r - 2 * q.y * q.z, -sqx + sqy - sqz + sqw);
+
+        return Vector3D(pitch, yaw, roll);
+    }
+}
+
+alias QuaternionD = Quaternion!double;
+
 // Vector tests
 version (unittest) {
     import std.math.operations : isClose;
@@ -1675,5 +1807,66 @@ version (unittest) {
         assert(180 == radiansToDegrees(PI));
         assert(0 == radiansToDegrees(0));
         assert(360 == radiansToDegrees(2 * PI));
+    }
+}
+
+// Quaternion tests
+version (unittest) {
+
+    @("Create quaternion")
+    unittest {
+        auto const quaternion = QuaternionD();
+        assert(QuaternionD(1, 0, 0, 0) == quaternion);
+
+        auto const quaternion2 = QuaternionD(4, 1, 2, 3);
+        assert(4 == quaternion2.r);
+        assert(1 == quaternion2.x);
+        assert(2 == quaternion2.y);
+        assert(3 == quaternion2.z);
+
+        auto const quaternion3 = QuaternionD(4, Vector3D(1, 2, 3));
+        assert(4 == quaternion3.r);
+        assert(1 == quaternion3.x);
+        assert(2 == quaternion3.y);
+        assert(3 == quaternion3.z);
+    }
+
+    @("Create quaternions")
+    unittest {
+        auto const quaternion1 = QuaternionD(1, 2, 3, 4);
+        auto const quaternion2 = QuaternionD(5, 6, 7, 8);
+        auto const expectedQuaternion = QuaternionD(-60, 12, 30, 24);
+        auto const actualQuaternion = quaternion1 * quaternion2;
+
+        assert(expectedQuaternion == actualQuaternion);
+        assert(quaternion1 * quaternion2 != quaternion2 * quaternion1);
+    }
+
+    @("Create from angle and axis vector")
+    unittest {
+        auto const expectedQuaternion = "const(Quaternion!double)(6.12303e-17, (1, 0, 0))";
+        auto const actualQuaternion = QuaternionD.createRotation(PI, Vector3D(1, 0, 0));
+        assert(expectedQuaternion == actualQuaternion.to!string);
+    }
+
+    @("Convert to rotation matrix")
+    unittest {
+        auto const quaternion = QuaternionD(6.12303e-17, 1, 0, 0);
+        auto const expectedRotationMatrix = "const(Matrix!(double, 4u, 4u))([1, 0, 0, 0, 0, -1, 1.22461e-16, 0, 0, -1.22461e-16, -1, 0, 0, 0, 0, 1])";
+        auto const actualRotationMatrix = quaternion.toRotationMatrix();
+        assert(expectedRotationMatrix == actualRotationMatrix.to!string);
+    }
+
+    @("Convert to euler angles vector")
+    unittest {
+        auto const quaternion = QuaternionD.createRotation(PI, Vector3D(0, 1, 0));
+        auto const expectedToEulerAngles = Vector3D(0, PI, 0);
+        auto const actualEulerAngles = quaternion.toEulerAngles();
+        assert(expectedToEulerAngles == actualEulerAngles);
+
+        auto const quaternion2 = QuaternionD.createRotation(PI, Vector3D(1, 0, 0));
+        auto const expectedToEulerAngles2 = Vector3D(0, 0, PI);
+        auto const actualEulerAngles2 = quaternion2.toEulerAngles();
+        assert(expectedToEulerAngles2 == actualEulerAngles2);
     }
 }
