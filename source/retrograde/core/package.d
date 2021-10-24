@@ -11,4 +11,5 @@ public import retrograde.core.messaging;
 public import retrograde.core.platform;
 public import retrograde.core.rendering;
 public import retrograde.core.runtime;
+public import retrograde.core.storage;
 public import retrograde.core.stringid;
