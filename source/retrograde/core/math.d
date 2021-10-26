@@ -35,7 +35,7 @@ struct Vector(T, uint N) if (N > 0) {
      * Params:
      *  val = Value to use for all components.
      */
-    this(T val) {
+    this(const T val) {
         this.components[0 .. N] = val;
     }
 
