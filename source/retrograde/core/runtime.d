@@ -37,7 +37,7 @@ interface EngineRuntime {
     /**
      * The targeted time a frame has for updating and rendering.
      * In the StandardEngineRuntime, when exceeded, the engine tries to catch up in the next loop cycle.
-     * Some systems, such as a renderer, might use this to dynamically optimize performance.
+     * Some systems, such as a render system, might use this to dynamically optimize performance.
      */
     @property long targetFrameTime();
 
@@ -45,7 +45,7 @@ interface EngineRuntime {
      * A limit imposed on the engine for the amount of frames it is allowed to catch up to.
      * In the StandardEngineRuntime, when the engine goes over the amount of lagged frames, it will take a break to 
      * render and resume catching up during the next loop cycle.
-     * Some systems, such as a renderer, might use this to dynamically optimize performance.
+     * Some systems, such as a render system, might use this to dynamically optimize performance.
      */
     @property long lagFrameLimit();
 

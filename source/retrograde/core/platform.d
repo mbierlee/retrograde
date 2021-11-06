@@ -87,7 +87,7 @@ class PlatformSettings {
 }
 
 /**
- * Viewport dimensions, typically used by a renderer to determine
+ * Viewport dimensions, typically used by a render system to determine
  * render buffer size.
  */
 struct Viewport {

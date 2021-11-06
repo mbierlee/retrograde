@@ -12,7 +12,7 @@
 module retrograde.rendering.opengl;
 
 version (Have_bindbc_opengl) {
-    import retrograde.core.rendering : Renderer, Shader, ShaderProgram, ShaderType;
+    import retrograde.core.rendering : RenderSystem, Shader, ShaderProgram, ShaderType;
     import retrograde.core.entity : Entity;
     import retrograde.core.platform : Platform;
 
@@ -25,11 +25,11 @@ version (Have_bindbc_opengl) {
     import bindbc.opengl;
 
     /**
-     * An OpenGL implementation of the renderer.
+     * An OpenGL implementation of the render system.
      *
      * This implementation is compatible up to OpenGL 4.6
      */
-    class OpenGlRenderer : Renderer {
+    class OpenGlRenderSystem : RenderSystem {
         private @Autowire Logger logger;
         private @Autowire Platform platform;
 
@@ -64,7 +64,7 @@ version (Have_bindbc_opengl) {
             }
 
             if (logInit && support.gl46) {
-                logger.info("OpenGL 4.6 renderer initialized.");
+                logger.info("OpenGL 4.6 render system initialized.");
             }
 
             auto viewport = platform.getViewport();

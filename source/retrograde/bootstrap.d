@@ -18,7 +18,7 @@ import retrograde.core.messaging : MessageHandler;
 import retrograde.core.platform : Platform, PlatformSettings, NullPlatform;
 import retrograde.core.logging : StdoutLogger;
 import retrograde.core.input : InputMapper;
-import retrograde.core.rendering : Renderer, NullRenderer;
+import retrograde.core.rendering : RenderSystem, NullRenderSystem;
 import retrograde.core.storage : StorageSystem, GenericStorageSystem;
 
 import poodinis;
@@ -40,11 +40,11 @@ version (Have_glfw_d) {
 }
 
 version (Have_bindbc_opengl) {
-    import retrograde.rendering.opengl : OpenGlRenderer;
+    import retrograde.rendering.opengl : OpenGlRenderSystem;
 
-    alias DefaultRenderer = OpenGlRenderer;
+    alias DefaultRenderSystem = OpenGlRenderSystem;
 } else {
-    alias DefaultRenderer = NullRenderer;
+    alias DefaultRenderSystem = NullRenderSystem;
 }
 
 /**
@@ -54,13 +54,13 @@ version (Have_bindbc_opengl) {
 public void startGame(GameType : Game, EngineRuntimeType:
         EngineRuntime = StandardEngineRuntime,
     PlatformType:
-        Platform = DefaultPlatform, RendererType:
-        Renderer = DefaultRenderer)(const PlatformSettings platformSettings = new DefaultPlatformSettings(),
+        Platform = DefaultPlatform, RenderSystemType:
+        RenderSystem = DefaultRenderSystem)(const PlatformSettings platformSettings = new DefaultPlatformSettings(),
         shared DependencyContainer dependencies = new shared DependencyContainer()) {
 
     dependencies.register!(EngineRuntime, EngineRuntimeType);
     dependencies.register!(Game, GameType);
-    dependencies.register!(Renderer, RendererType);
+    dependencies.register!(RenderSystem, RenderSystemType);
     dependencies.register!(Platform, PlatformType);
     dependencies.register!EntityManager;
     dependencies.register!MessageHandler;
@@ -90,10 +90,10 @@ public void startGame(GameType : Game, EngineRuntimeType:
         return logger;
     });
 
-    static if (!is(RendererType == NullRenderer)) {
-        auto renderer = dependencies.resolve!Renderer;
+    static if (!is(RenderSystemType == NullRenderSystem)) {
+        auto renderSystem = dependencies.resolve!RenderSystem;
         auto entityManager = dependencies.resolve!EntityManager;
-        entityManager.addEntityProcessor(renderer);
+        entityManager.addEntityProcessor(renderSystem);
     }
 
     auto runtime = dependencies.resolve!EngineRuntime;

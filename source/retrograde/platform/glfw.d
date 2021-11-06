@@ -30,7 +30,7 @@ version (Have_glfw_d) {
         inputEventChannel, MouseMode, MouseButton, MouseButtonInputEventMessage,
         MouseScrollInputEventMessage, Axis, MouseMovementType;
     import retrograde.core.messaging : MessageHandler;
-    import retrograde.core.rendering : Renderer;
+    import retrograde.core.rendering : RenderSystem;
     import retrograde.core.storage : StorageSystem;
 
     private struct GlfwKeyEvent {
@@ -119,7 +119,7 @@ version (Have_glfw_d) {
         private @Autowire EngineRuntime runtime;
         private @Autowire Logger logger;
         private @Autowire MessageHandler messageHandler;
-        private @Autowire Renderer renderer;
+        private @Autowire RenderSystem renderSystem;
         private @Autowire StorageSystem _storage;
 
         private @Value("logging.logComponentInitialization") bool logInit;
@@ -306,9 +306,9 @@ version (Have_glfw_d) {
                 return;
             }
 
-            if (renderer) {
-                glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, renderer.getContextHintMayor);
-                glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, renderer.getContextHintMinor);
+            if (renderSystem) {
+                glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, renderSystem.getContextHintMayor);
+                glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, renderSystem.getContextHintMinor);
             } else {
                 glfwDefaultWindowHints();
             }
@@ -347,8 +347,8 @@ version (Have_glfw_d) {
             glfwMakeContextCurrent(window);
             glfwSwapInterval(ps.swapInterval);
 
-            if (renderer) {
-                renderer.initialize();
+            if (renderSystem) {
+                renderSystem.initialize();
             }
 
             if (logInit) {

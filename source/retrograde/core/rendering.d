@@ -17,11 +17,11 @@ import retrograde.core.entity : EntityProcessor, Entity;
  * An abstraction of a render API that processes entities and
  * draws them on the screen.
  */
-abstract class Renderer : EntityProcessor {
+abstract class RenderSystem : EntityProcessor {
     /**
      * Desired mayor version of the rendering API to be used.
      *
-     * Typically used by the platform to initialize the renderer.
+     * Typically used by the platform to initialize the render system.
      * E.g. "4" for OpenGL 4.6
      */
     abstract public int getContextHintMayor();
@@ -29,16 +29,16 @@ abstract class Renderer : EntityProcessor {
     /**
      * Desired minor version of the rendering API to be used.
      *
-     * Typically used by the platform to initialize the renderer.
+     * Typically used by the platform to initialize the render system.
      * E.g. "6" for OpenGL 4.6
      */
     abstract public int getContextHintMinor();
 }
 
 /**
- * A fall-back renderer that doesn't actually render anything.
+ * A fall-back render system that doesn't actually render anything.
  */
-class NullRenderer : Renderer {
+class NullRenderSystem : RenderSystem {
     override public bool acceptsEntity(Entity entity) {
         return false;
     }
