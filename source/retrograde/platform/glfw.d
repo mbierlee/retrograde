@@ -31,7 +31,7 @@ version (Have_glfw_d) {
         MouseScrollInputEventMessage, Axis, MouseMovementType;
     import retrograde.core.messaging : MessageHandler;
     import retrograde.core.rendering : Renderer;
-    import retrograde.core.storage : StorageApi;
+    import retrograde.core.storage : StorageSystem;
 
     private struct GlfwKeyEvent {
         int key;
@@ -120,7 +120,7 @@ version (Have_glfw_d) {
         private @Autowire Logger logger;
         private @Autowire MessageHandler messageHandler;
         private @Autowire Renderer renderer;
-        private @Autowire StorageApi _storage;
+        private @Autowire StorageSystem _storage;
 
         private @Value("logging.logComponentInitialization") bool logInit;
 
@@ -388,9 +388,9 @@ version (Have_glfw_d) {
         }
 
         /**
-         * Returns the Storage API available through dependency injection.
+         * Returns the storage system available through dependency injection.
          */
-        StorageApi storage() {
+        StorageSystem storageSystem() {
             return _storage;
         }
 

@@ -11,7 +11,7 @@
 
 module retrograde.core.platform;
 
-import retrograde.core.storage : StorageApi, GenericStorageApi;
+import retrograde.core.storage : StorageSystem, GenericStorageSystem;
 
 /**
  * API for interfacing with the underlying platform.
@@ -47,17 +47,17 @@ interface Platform {
     Viewport getViewport();
 
     /**
-     * Returns the platform's default storage API. 
+     * Returns the platform's default storage system. 
      * This might be different from the one available through dependency injection.
      */
-    StorageApi storage();
+    StorageSystem storageSystem();
 }
 
 /**
  * Platform for interacting with the API when there is no underlying platform.
  */
 class NullPlatform : Platform {
-    private StorageApi _storage = new GenericStorageApi();
+    private StorageSystem _storage = new GenericStorageSystem();
 
     void initialize(const PlatformSettings platformSettings) {
     }
@@ -75,7 +75,7 @@ class NullPlatform : Platform {
         return Viewport();
     }
 
-    StorageApi storage() {
+    StorageSystem storageSystem() {
         return _storage;
     }
 }

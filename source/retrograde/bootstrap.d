@@ -19,7 +19,7 @@ import retrograde.core.platform : Platform, PlatformSettings, NullPlatform;
 import retrograde.core.logging : StdoutLogger;
 import retrograde.core.input : InputMapper;
 import retrograde.core.rendering : Renderer, NullRenderer;
-import retrograde.core.storage : StorageApi, GenericStorageApi;
+import retrograde.core.storage : StorageSystem, GenericStorageSystem;
 
 import poodinis;
 import poodinis.valueinjector.properd;
@@ -65,7 +65,7 @@ public void startGame(GameType : Game, EngineRuntimeType:
     dependencies.register!EntityManager;
     dependencies.register!MessageHandler;
     dependencies.register!InputMapper;
-    dependencies.register!(StorageApi, GenericStorageApi);
+    dependencies.register!(StorageSystem, GenericStorageSystem);
 
     const propertyFile = "./engine.cfg";
     string[string] engineProperties;

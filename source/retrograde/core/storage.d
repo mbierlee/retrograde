@@ -26,7 +26,7 @@ class File {
     /**
      * Creates a new empty file.
      *
-     * Creating the file does not implicitly store it on a storage device yet. You must use the Storage API for that.
+     * Creating the file does not implicitly store it on a storage device yet. You must use the storage system for that.
      *
      * Params:
      *  name = The name of the file. Platform constraints are not checked, the file may have an illegal name. 
@@ -39,7 +39,7 @@ class File {
     /**
      * Creates a new file with the given binary data.
      *
-     * Creating the file does not implicitly store it on a storage device yet. You must use the Storage API for that.
+     * Creating the file does not implicitly store it on a storage device yet. You must use the storage system for that.
      *
      * Params:
      *  name = The name of the file. Platform constraints are not checked, the file may have an illegal name. 
@@ -54,7 +54,7 @@ class File {
     /**
      * Creates a new file with the given textual data.
      *
-     * Creating the file does not implicitly store it on a storage device yet. You must use the Storage API for that.
+     * Creating the file does not implicitly store it on a storage device yet. You must use the storage system for that.
      *
      * Params:
      *  name = The name of the file. Platform constraints are not checked, the file may have an illegal name. 
@@ -83,7 +83,7 @@ class File {
     /**
      * Change this file's binary data.
      *
-     * Changing it doesn't persist it yet. Use the Storage API to persist it.
+     * Changing it doesn't persist it yet. Use the storage system to persist it.
      */
     void data(const ubyte[] newData) {
         _data = cast(ubyte[]) newData;
@@ -99,25 +99,25 @@ class File {
     /**
      * Change this file's textual data.
      *
-     * Changing it doesn't persist it yet. Use the Storage API to persist it.
+     * Changing it doesn't persist it yet. Use the storage system to persist it.
      */
     void textData(const string newTextData) {
         _data = cast(ubyte[]) newTextData;
     }
 
     /**
-     * Whether this file was originally loaded via a Storage API.
+     * Whether this file was originally loaded via a storage system.
      */
-    bool fromStorage() const {
+    bool fromStorageSystem() const {
         return _fromStorage;
     }
 
 }
 
 /**
- * An API interface for a platform-dependent storage system.
+ * Interface for a platform-dependent storage system.
  */
-interface StorageApi {
+interface StorageSystem {
 
     /**
      * Read a file from storage at a specific location.
@@ -138,7 +138,7 @@ interface StorageApi {
 
     /**
      * Returns the absolute path to a directory where this application is allowed to read/write temporary data.
-     * Whether it is sandboxed from other applications depends on the platform and storage API implementation.
+     * Whether it is sandboxed from other applications depends on the platform and storage system implementation.
      */
     string tempDir();
 
@@ -149,11 +149,11 @@ interface StorageApi {
 }
 
 /**
- * A generic storage API that uses the D std libary for file I/O.
+ * A generic storage system that uses the D std libary for file I/O.
  *
  * Typically used for desktop OSes with traditional filesystems.
  */
-class GenericStorageApi : StorageApi {
+class GenericStorageSystem : StorageSystem {
 
     /**
      * Read a file from storage at a specific location.
@@ -235,7 +235,7 @@ version (unittest) {
         assert(file.name == "null");
         assert(file.data == []);
         assert(file.textData == "");
-        assert(!file.fromStorage);
+        assert(!file.fromStorageSystem);
     }
 
     @("Create binary file")
