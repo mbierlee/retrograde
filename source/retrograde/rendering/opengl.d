@@ -54,7 +54,12 @@ version (Have_bindbc_opengl) {
         }
 
         override public void initialize() {
-            //TODO: Only allow initialize to be called once.
+            static bool isCalled = false;
+            if (isCalled) {
+                return;
+            }
+
+            isCalled = true;
 
             const GLSupport support = loadOpenGL();
             if (support == GLSupport.badLibrary || support == GLSupport.noLibrary) {
