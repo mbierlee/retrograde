@@ -12,7 +12,8 @@
 module retrograde.rendering.opengl;
 
 version (Have_bindbc_opengl) {
-    import retrograde.core.rendering : RenderSystem, Shader, ShaderProgram, ShaderType, RenderableComponent;
+    import retrograde.core.rendering : RenderSystem, Shader, ShaderProgram,
+        ShaderType, RenderableComponent;
     import retrograde.core.entity : Entity;
     import retrograde.core.platform : Platform;
 
@@ -101,19 +102,23 @@ version (Have_bindbc_opengl) {
         }
 
         override public void update() {
+            ////////// TEMP
             xoffset += 0.001;
             yoffset += 0.001;
+            //////////////////////////
         }
 
         override public void draw() {
-            //MORE TEMP STUFF
             glClearBufferfv(GL_COLOR, 0, &clearColor[0]);
 
-            glUseProgram(testShaderProgram.getOpenGlShaderProgram());
-            glVertexAttrib4f(0, xoffset, yoffset, 0.0f, 0.0f);
-            glVertexAttrib4f(1, 0.0f, 1.0f, 0.0f, 1.0f);
-            glDrawArrays(GL_TRIANGLES, 0, 3);
-            /////////////////////////////////
+            foreach (Entity entity; entities) {
+                // TEMP replace with actual model rendering
+                glUseProgram(testShaderProgram.getOpenGlShaderProgram());
+                glVertexAttrib4f(0, xoffset, yoffset, 0.0f, 0.0f);
+                glVertexAttrib4f(1, 0.0f, 1.0f, 0.0f, 1.0f);
+                glDrawArrays(GL_TRIANGLES, 0, 3);
+                /////////////////////////////////
+            }
         }
 
         ///// TEMP
