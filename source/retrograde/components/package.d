@@ -12,3 +12,4 @@
 module retrograde.components;
 
 public import retrograde.components.geometry;
+public import retrograde.components.rendering;

@@ -11,7 +11,7 @@
 
 module retrograde.core.rendering;
 
-import retrograde.core.entity : EntityProcessor, Entity, EntityComponent, EntityComponentIdentity;
+import retrograde.core.entity : EntityProcessor, Entity;
 
 /**
  * An abstraction of a render API that processes entities and
@@ -50,20 +50,6 @@ class NullRenderSystem : RenderSystem {
     override public int getContextHintMinor() {
         return 0;
     }
-}
-
-/**
- * Entities with the RenderableComponent will be rendered by a render system.
- */
-class RenderableComponent : EntityComponent {
-    mixin EntityComponentIdentity!"RenderableComponent";
-}
-
-/**
- * Entities with the DefaultShaderProgramComponent will use the render system's default shader program if it is available.
- */
-class DefaultShaderProgramComponent : EntityComponent {
-    mixin EntityComponentIdentity!"DefaultShaderProgramComponent";
 }
 
 /**

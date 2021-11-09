@@ -12,10 +12,11 @@
 module retrograde.rendering.opengl;
 
 version (Have_bindbc_opengl) {
-    import retrograde.core.rendering : RenderSystem, Shader, ShaderProgram,
-        ShaderType, RenderableComponent, DefaultShaderProgramComponent;
+    import retrograde.core.rendering : RenderSystem, Shader, ShaderProgram, ShaderType;
     import retrograde.core.entity : Entity;
     import retrograde.core.platform : Platform;
+
+    import retrograde.components.rendering : RenderableComponent, DefaultShaderProgramComponent;
 
     import std.experimental.logger : Logger;
     import std.string : fromStringz;
