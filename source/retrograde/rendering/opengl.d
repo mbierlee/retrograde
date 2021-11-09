@@ -12,7 +12,7 @@
 module retrograde.rendering.opengl;
 
 version (Have_bindbc_opengl) {
-    import retrograde.core.rendering : RenderSystem, Shader, ShaderProgram, ShaderType;
+    import retrograde.core.rendering : RenderSystem, Shader, ShaderProgram, ShaderType, RenderableComponent;
     import retrograde.core.entity : Entity;
     import retrograde.core.platform : Platform;
 
@@ -48,7 +48,7 @@ version (Have_bindbc_opengl) {
         }
 
         override public bool acceptsEntity(Entity entity) {
-            return false;
+            return entity.hasComponent!RenderableComponent;
         }
 
         override public void initialize() {
