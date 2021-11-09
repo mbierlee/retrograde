@@ -18,7 +18,7 @@ import retrograde.core.messaging : MessageHandler;
 import retrograde.core.platform : Platform, PlatformSettings, NullPlatform;
 import retrograde.core.logging : StdoutLogger;
 import retrograde.core.input : InputMapper;
-import retrograde.core.rendering : RenderSystem, NullRenderSystem;
+import retrograde.core.rendering : RenderSystem, NullRenderSystem, ShaderProgram;
 import retrograde.core.storage : StorageSystem, GenericStorageSystem;
 
 import poodinis;
@@ -40,9 +40,10 @@ version (Have_glfw_d) {
 }
 
 version (Have_bindbc_opengl) {
-    import retrograde.rendering.opengl : OpenGlRenderSystem;
+    import retrograde.rendering.opengl : OpenGlRenderSystem, createDefaultOpenGlShaderProgram;
 
     alias DefaultRenderSystem = OpenGlRenderSystem;
+    alias createDefaultShaderProgram = createDefaultOpenGlShaderProgram;
 } else {
     alias DefaultRenderSystem = NullRenderSystem;
 }
@@ -52,8 +53,7 @@ version (Have_bindbc_opengl) {
  * After set-up, the game is started.
  */
 public void startGame(GameType : Game, EngineRuntimeType:
-        EngineRuntime = StandardEngineRuntime,
-    PlatformType:
+        EngineRuntime = StandardEngineRuntime, PlatformType:
         Platform = DefaultPlatform, RenderSystemType:
         RenderSystem = DefaultRenderSystem)(const PlatformSettings platformSettings = new DefaultPlatformSettings(),
         shared DependencyContainer dependencies = new shared DependencyContainer()) {
@@ -91,6 +91,9 @@ public void startGame(GameType : Game, EngineRuntimeType:
     });
 
     static if (!is(RenderSystemType == NullRenderSystem)) {
+        auto defaultShaderProgram = createDefaultShaderProgram();
+        dependencies.register!ShaderProgram().existingInstance(defaultShaderProgram);
+
         auto renderSystem = dependencies.resolve!RenderSystem;
         auto entityManager = dependencies.resolve!EntityManager;
         entityManager.addEntityProcessor(renderSystem);

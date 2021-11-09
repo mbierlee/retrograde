@@ -13,7 +13,7 @@ module retrograde.rendering.opengl;
 
 version (Have_bindbc_opengl) {
     import retrograde.core.rendering : RenderSystem, Shader, ShaderProgram,
-        ShaderType, RenderableComponent;
+        ShaderType, RenderableComponent, DefaultShaderProgramComponent;
     import retrograde.core.entity : Entity;
     import retrograde.core.platform : Platform;
 
@@ -33,12 +33,12 @@ version (Have_bindbc_opengl) {
     class OpenGlRenderSystem : RenderSystem {
         private @Autowire Logger logger;
         private @Autowire Platform platform;
+        private @Autowire @OptionalDependency ShaderProgram defaultShaderProgram;
 
         private @Value("logging.logComponentInitialization") bool logInit;
 
-        private OpenGlShaderProgram testShaderProgram;
-
         private GLfloat[] clearColor = [0.576f, 0.439f, 0.859f, 1.0f];
+        private OpenGlShaderProgram defaultOpenGlShaderProgram;
 
         override public int getContextHintMayor() {
             return 4;
@@ -53,6 +53,8 @@ version (Have_bindbc_opengl) {
         }
 
         override public void initialize() {
+            //TODO: Only allow initialize to be called once.
+
             const GLSupport support = loadOpenGL();
             if (support == GLSupport.badLibrary || support == GLSupport.noLibrary) {
                 logger.error("Failed to load OpenGL Library.");
@@ -73,29 +75,9 @@ version (Have_bindbc_opengl) {
             glCullFace(GL_BACK);
             glEnable(GL_CULL_FACE);
 
+            initializeDefaultShaderProgram();
+
             // Temp stuff
-            auto vertexShader = new OpenGlShader("vertex",
-                    import("standard/vertex.glsl"), ShaderType.vertex);
-            auto fragmentShader = new OpenGlShader("fragment",
-                    import("standard/fragment.glsl"), ShaderType.fragment);
-            testShaderProgram = new OpenGlShaderProgram(vertexShader, fragmentShader);
-            testShaderProgram.compileShaders();
-
-            if (!vertexShader.isCompiled()) {
-                logger.errorf("Compilation errors for vertext shader: \n%s",
-                        vertexShader.getCompilationInfo());
-            }
-
-            if (!fragmentShader.isCompiled()) {
-                logger.errorf("Compilation errors for fragment shader: \n%s",
-                        fragmentShader.getCompilationInfo());
-            }
-
-            testShaderProgram.linkProgram();
-            if (!testShaderProgram.isLinked()) {
-                logger.errorf("Link errors for program: \n%s", testShaderProgram.getLinkInfo());
-            }
-
             glCreateVertexArrays(1, &voa);
             glBindVertexArray(voa);
             // ----
@@ -112,12 +94,37 @@ version (Have_bindbc_opengl) {
             glClearBufferfv(GL_COLOR, 0, &clearColor[0]);
 
             foreach (Entity entity; entities) {
+                if (defaultOpenGlShaderProgram && entity
+                        .hasComponent!DefaultShaderProgramComponent) {
+                    glUseProgram(defaultOpenGlShaderProgram.getOpenGlShaderProgram());
+                }
+
                 // TEMP replace with actual model rendering
-                glUseProgram(testShaderProgram.getOpenGlShaderProgram());
                 glVertexAttrib4f(0, xoffset, yoffset, 0.0f, 0.0f);
                 glVertexAttrib4f(1, 0.0f, 1.0f, 0.0f, 1.0f);
                 glDrawArrays(GL_TRIANGLES, 0, 3);
                 /////////////////////////////////
+            }
+        }
+
+        private void initializeDefaultShaderProgram() {
+            if (defaultShaderProgram is null) {
+                logger.warning("No default shader program is injected into the dependency system. Entities using the default shader program will not be rendered.");
+            } else {
+                defaultOpenGlShaderProgram = cast(OpenGlShaderProgram) defaultShaderProgram;
+                if (!defaultOpenGlShaderProgram) {
+                    logger.warning("Default shader program is not an OpenGL shader program. Entities using the default shader program will not be rendered.");
+                } else {
+                    compileAndLinkShaderProgram(defaultOpenGlShaderProgram);
+                }
+            }
+        }
+
+        private void compileAndLinkShaderProgram(OpenGlShaderProgram shaderProgram) {
+            shaderProgram.compileShaders();
+            shaderProgram.linkProgram();
+            if (!shaderProgram.isLinked()) {
+                logger.errorf("Link errors for shader program: \n%s", shaderProgram.getLinkInfo());
             }
         }
 
@@ -309,5 +316,19 @@ version (Have_bindbc_opengl) {
         public GLuint getOpenGlShaderProgram() {
             return program;
         }
+    }
+
+    /**
+     * Creates a default OpenGL shader program.
+     *
+     * The default shader program can be reused in a great amount of cases and should support
+     * generally all sorts of models.
+     */
+    public ShaderProgram createDefaultOpenGlShaderProgram() {
+        auto vertexShader = new OpenGlShader("vertex",
+                import("standard/vertex.glsl"), ShaderType.vertex);
+        auto fragmentShader = new OpenGlShader("fragment",
+                import("standard/fragment.glsl"), ShaderType.fragment);
+        return new OpenGlShaderProgram(vertexShader, fragmentShader);
     }
 }

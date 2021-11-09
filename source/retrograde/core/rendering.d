@@ -60,6 +60,13 @@ class RenderableComponent : EntityComponent {
 }
 
 /**
+ * Entities with the DefaultShaderProgramComponent will use the render system's default shader program if it is available.
+ */
+class DefaultShaderProgramComponent : EntityComponent {
+    mixin EntityComponentIdentity!"DefaultShaderProgramComponent";
+}
+
+/**
  * A generic single stage of a shader program.
  */
 abstract class Shader {
