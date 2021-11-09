@@ -54,8 +54,11 @@ version (Have_bindbc_opengl) {
  */
 public void startGame(GameType : Game, EngineRuntimeType:
         EngineRuntime = StandardEngineRuntime, PlatformType:
-        Platform = DefaultPlatform, RenderSystemType:
-        RenderSystem = DefaultRenderSystem)(const PlatformSettings platformSettings = new DefaultPlatformSettings(),
+        Platform = DefaultPlatform,
+    RenderSystemType:
+        RenderSystem = DefaultRenderSystem, bool registerDefaultShaderProgram = true)(
+        const PlatformSettings platformSettings = new DefaultPlatformSettings(),
+        const ShaderProgram defaultShaderProgram = null,
         shared DependencyContainer dependencies = new shared DependencyContainer()) {
 
     dependencies.register!(EngineRuntime, EngineRuntimeType);
@@ -91,8 +94,11 @@ public void startGame(GameType : Game, EngineRuntimeType:
     });
 
     static if (!is(RenderSystemType == NullRenderSystem)) {
-        auto defaultShaderProgram = createDefaultShaderProgram();
-        dependencies.register!ShaderProgram().existingInstance(defaultShaderProgram);
+        static if (registerDefaultShaderProgram) {
+            auto defaultShaderProgramInstance = defaultShaderProgram ? cast(ShaderProgram) defaultShaderProgram
+                : createDefaultShaderProgram();
+            dependencies.register!ShaderProgram().existingInstance(defaultShaderProgramInstance);
+        }
 
         auto renderSystem = dependencies.resolve!RenderSystem;
         auto entityManager = dependencies.resolve!EntityManager;
