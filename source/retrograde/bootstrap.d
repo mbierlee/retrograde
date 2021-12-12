@@ -53,13 +53,13 @@ version (Have_bindbc_opengl) {
  * After set-up, the game is started.
  */
 public void startGame(GameType : Game, EngineRuntimeType:
-        EngineRuntime = StandardEngineRuntime, PlatformType:
-        Platform = DefaultPlatform,
-    RenderSystemType:
-        RenderSystem = DefaultRenderSystem, bool registerDefaultShaderProgram = true)(
-        const PlatformSettings platformSettings = new DefaultPlatformSettings(),
-        const ShaderProgram defaultShaderProgram = null,
-        shared DependencyContainer dependencies = new shared DependencyContainer()) {
+    EngineRuntime = StandardEngineRuntime, PlatformType:
+    Platform = DefaultPlatform,
+RenderSystemType:
+    RenderSystem = DefaultRenderSystem, bool registerDefaultShaderProgram = true)(
+    const PlatformSettings platformSettings = new DefaultPlatformSettings(),
+    const ShaderProgram defaultShaderProgram = null,
+    shared DependencyContainer dependencies = new shared DependencyContainer()) {
 
     dependencies.register!(EngineRuntime, EngineRuntimeType);
     dependencies.register!(Game, GameType);
