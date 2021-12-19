@@ -314,7 +314,7 @@ version (Have_glfw_d) {
             }
 
             window = glfwCreateWindow(ps.windowWidth, ps.windowHeight,
-                    ps.windowTitle.toStringz(), null, null);
+                ps.windowTitle.toStringz(), null, null);
 
             if (!window) {
                 glfwTerminate();
@@ -380,7 +380,11 @@ version (Have_glfw_d) {
         }
 
         Viewport getViewport() {
-            if (platformSettings) {
+            if (window) {
+                int width, height;
+                glfwGetWindowSize(window, &width, &height);
+                return Viewport(0, 0, width, height);
+            } else if (platformSettings) {
                 return Viewport(0, 0, platformSettings.windowWidth, platformSettings.windowHeight);
             } else {
                 return Viewport();
@@ -410,8 +414,8 @@ version (Have_glfw_d) {
                 const double magnitude = (event.action == GLFW_RELEASE) ? 0 : 1;
 
                 auto message = KeyInputEventMessage.create(event.scanCode, glfwKeyMap[event.key],
-                        glfwActionMap[event.action],
-                        getRetrogradeKeyboardModifiers(event.modifiers), magnitude);
+                    glfwActionMap[event.action],
+                    getRetrogradeKeyboardModifiers(event.modifiers), magnitude);
 
                 messageHandler.sendMessage(inputEventChannel, message);
             }
@@ -431,7 +435,7 @@ version (Have_glfw_d) {
 
                 if (platformSettings.emitAbsoluteMouseMoveEvents) {
                     sendMouseMovementEvents(MouseMovementType.absolute, event.xPosition,
-                            event.yPosition, event.xPosition, event.yPosition);
+                        event.yPosition, event.xPosition, event.yPosition);
                 }
 
                 if (platformSettings.emitRelativeMouseMoveEvents) {
@@ -441,25 +445,25 @@ version (Have_glfw_d) {
                     previousMouseYPosition = event.yPosition;
 
                     sendMouseMovementEvents(MouseMovementType.relative,
-                            deltaXPosition, deltaYPosition, deltaXPosition, deltaYPosition);
+                        deltaXPosition, deltaYPosition, deltaXPosition, deltaYPosition);
                 }
             }
         }
 
         private void sendMouseMovementEvents(MouseMovementType movementType,
-                double xPosition, double yPosition, double xMagnitude, double yMagnitude) {
+            double xPosition, double yPosition, double xMagnitude, double yMagnitude) {
             if (platformSettings.splitAxisEvents) {
                 auto xMessage = MouseMovementEventMessage.create(xPosition, 0,
-                        Axis.x, movementType, xMagnitude);
+                    Axis.x, movementType, xMagnitude);
                 messageHandler.sendMessage(inputEventChannel, xMessage);
 
                 auto yMessage = MouseMovementEventMessage.create(0, yPosition,
-                        Axis.y, movementType, yMagnitude);
+                    Axis.y, movementType, yMagnitude);
                 messageHandler.sendMessage(inputEventChannel, yMessage);
             } else {
                 auto magnitude = sqrt((xMagnitude * xMagnitude) + (yMagnitude * yMagnitude));
                 auto message = MouseMovementEventMessage.create(xPosition,
-                        yPosition, Axis.both, movementType, magnitude);
+                    yPosition, Axis.both, movementType, magnitude);
                 messageHandler.sendMessage(inputEventChannel, message);
             }
         }
@@ -477,8 +481,8 @@ version (Have_glfw_d) {
                 auto event = stateData.mouseButtonEvents.dequeue();
                 const double magnitude = (event.action == GLFW_RELEASE) ? 0 : 1;
                 auto message = MouseButtonInputEventMessage.create(glfwMouseButtonMap[event.button],
-                        glfwActionMap[event.action],
-                        getRetrogradeKeyboardModifiers(event.modifiers), magnitude);
+                    glfwActionMap[event.action],
+                    getRetrogradeKeyboardModifiers(event.modifiers), magnitude);
                 messageHandler.sendMessage(inputEventChannel, message);
             }
         }
@@ -490,18 +494,18 @@ version (Have_glfw_d) {
                 if (platformSettings.splitAxisEvents) {
                     auto xMagnitude = event.xOffset;
                     auto xMessage = MouseScrollInputEventMessage.create(event.xOffset,
-                            0, xMagnitude);
+                        0, xMagnitude);
                     messageHandler.sendMessage(inputEventChannel, xMessage);
 
                     auto yMagnitude = event.yOffset;
                     auto yMessage = MouseScrollInputEventMessage.create(0,
-                            event.yOffset, yMagnitude);
+                        event.yOffset, yMagnitude);
                     messageHandler.sendMessage(inputEventChannel, yMessage);
                 } else {
                     auto magnitude = sqrt((event.xOffset * event.xOffset) + (
                             event.yOffset * event.yOffset));
                     auto message = MouseScrollInputEventMessage.create(event.xOffset,
-                            event.yOffset, magnitude);
+                        event.yOffset, magnitude);
                     messageHandler.sendMessage(inputEventChannel, message);
                 }
             }
@@ -559,7 +563,7 @@ version (Have_glfw_d) {
         private void setRawMouseMotion(bool enableRawMotion) {
             if (glfwRawMouseMotionSupported()) {
                 glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION,
-                        enableRawMotion ? GLFW_TRUE : GLFW_FALSE);
+                    enableRawMotion ? GLFW_TRUE : GLFW_FALSE);
             }
         }
     }
@@ -575,7 +579,7 @@ version (Have_glfw_d) {
     }
 
     private extern (C) void keyCallback(GLFWwindow* window, int key,
-            int scanCode, int action, int modifiers) @nogc nothrow {
+        int scanCode, int action, int modifiers) @nogc nothrow {
         StateData* state = cast(StateData*) glfwGetWindowUserPointer(window);
         assert(state);
 
@@ -590,7 +594,7 @@ version (Have_glfw_d) {
     }
 
     private extern (C) void mouseCursorPositionCallback(GLFWwindow* window,
-            double xPosition, double yPosition) @nogc nothrow {
+        double xPosition, double yPosition) @nogc nothrow {
         StateData* state = cast(StateData*) glfwGetWindowUserPointer(window);
         assert(state);
 
@@ -604,7 +608,7 @@ version (Have_glfw_d) {
     }
 
     private extern (C) void mouseButtonCallback(GLFWwindow* window, int button,
-            int action, int modifiers) @nogc nothrow {
+        int action, int modifiers) @nogc nothrow {
         StateData* state = cast(StateData*) glfwGetWindowUserPointer(window);
         assert(state);
 
