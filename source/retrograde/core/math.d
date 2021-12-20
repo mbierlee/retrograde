@@ -319,6 +319,32 @@ struct Vector(T, uint N) if (N > 0) {
                 normalizedThis) + sqrt(k)) * normalizedNormal;
     }
 
+    /** 
+     * Returns the interpolation of two vectors by amount t.
+     * 
+     * Params:
+     *  other = The other vector to interpolate with.
+     *  t = Interpolation factor between 0 and 1. If t is greater than 1, the result is the same as extrapolate.
+     *
+     * Returns: A vector that is the result of the interpolation factor. 
+     */
+    Vector interpolate(const Vector other, scalar t) const {
+        return (1 - t) * this + t * other;
+    }
+
+    /** 
+     * Returns the extrapolation of two vectors by amount t.
+     * 
+     * Params:
+     *  other = The other vector to extrapolate with.
+     *  t = Extrapolation factor greater than 1. If t is less than 1, the result is the same as interplate.
+     *
+     * Returns: A vector that is the result of the extrapolation factor. 
+     */
+    Vector extrapolate(const Vector other, scalar t) const {
+        return interpolate(other, t); // Deal with it
+    }
+
     /**
      * Cast vector type into another vector type. 
      *
@@ -1341,6 +1367,66 @@ version (unittest) {
         assert(vector2Hash != vector3Hash);
         assert(vector3Hash != vector4Hash);
         assert(vector3Hash != vector5Hash);
+    }
+
+    @("Interpolate vectors")
+    unittest {
+        auto const vector1 = Vector2D(0, 0);
+        auto const vector2 = Vector2D(0, 1);
+        auto const expectedInterplation1 = Vector2D(0, 0.5);
+        auto const actualInterpolation1 = vector1.interpolate(vector2, 0.5);
+        assert(actualInterpolation1 == expectedInterplation1);
+
+        auto const vector3 = Vector2D(0, 0);
+        auto const vector4 = Vector2D(1, 1);
+        auto const expectedInterplation2 = Vector2D(0.5, 0.5);
+        auto const actualInterpolation2 = vector3.interpolate(vector4, 0.5);
+        assert(actualInterpolation2 == expectedInterplation2);
+
+        auto const vector5 = Vector2D(0, 0);
+        auto const vector6 = Vector2D(1, 1);
+        auto const expectedInterplation3 = Vector2D(1, 1);
+        auto const actualInterpolation3 = vector5.interpolate(vector6, 1);
+        assert(actualInterpolation3 == expectedInterplation3);
+
+        auto const vector7 = Vector2D(12, 3);
+        auto const vector8 = Vector2D(6, 7);
+        auto const expectedInterplation4 = Vector2D(12, 3);
+        auto const actualInterpolation4 = vector7.interpolate(vector8, 0);
+        assert(actualInterpolation4 == expectedInterplation4);
+    }
+
+    @("Extraplate vectors")
+    unittest {
+        auto const vector1 = Vector2D(0, 0);
+        auto const vector2 = Vector2D(0, 1);
+        auto const expectedExtrapolation1 = Vector2D(0, 2);
+        auto const aactualExtrapolation1 = vector1.extrapolate(vector2, 2);
+        assert(aactualExtrapolation1 == expectedExtrapolation1);
+
+        auto const vector3 = Vector2D(0, 0);
+        auto const vector4 = Vector2D(1, 1);
+        auto const expectedExtrapolation2 = Vector2D(2, 2);
+        auto const aactualExtrapolation2 = vector3.extrapolate(vector4, 2);
+        assert(aactualExtrapolation2 == expectedExtrapolation2);
+
+        auto const vector5 = Vector2D(0, 0);
+        auto const vector6 = Vector2D(1, 1);
+        auto const expectedExtrapolation3 = Vector2D(1, 1);
+        auto const aactualExtrapolation3 = vector5.extrapolate(vector6, 1);
+        assert(aactualExtrapolation3 == expectedExtrapolation3);
+
+        auto const vector7 = Vector2D(12, 3);
+        auto const vector8 = Vector2D(6, 7);
+        auto const expectedExtrapolation4 = Vector2D(12, 3);
+        auto const aactualExtrapolation4 = vector7.extrapolate(vector8, 0);
+        assert(aactualExtrapolation4 == expectedExtrapolation4);
+
+        auto const vector9 = Vector2D(0, 0);
+        auto const vector10 = Vector2D(0, 1);
+        auto const expectedExtrapolation5 = Vector2D(0, -1);
+        auto const aactualExtrapolation5 = vector9.extrapolate(vector10, -1);
+        assert(aactualExtrapolation5 == expectedExtrapolation5);
     }
 }
 
