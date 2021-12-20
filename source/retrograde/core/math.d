@@ -493,6 +493,66 @@ alias UnitVector3F = UnitVector!Vector3F;
 alias UnitVector4D = UnitVector!Vector4D;
 
 /**
+ * A model of an infinitely sized bezier curve.
+ */
+struct BezierCurve(Vector, uint ControlPoints) if (ControlPoints > 2) {
+    private Vector[ControlPoints] controlPoints;
+    private enum theAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+    static if (ControlPoints > 0) {
+        static foreach (i; 0 .. ControlPoints) {
+            static if (i < theAlphabet.length) {
+                mixin(
+                    "public @property Vector " ~ theAlphabet[i] ~ "() const { return  controlPoints[" ~ i.to!string ~ "]; }"
+                );
+            }
+        }
+    }
+
+    /**
+     * Construct a Bezier curse with the given control points.
+     */
+    this(const Vector[] controlPoints...) {
+        assert(controlPoints.length == ControlPoints, "Amount of supplied control points need to be " ~ ControlPoints);
+        this.controlPoints = controlPoints;
+    }
+
+    /**
+     * Returns a vector at interpolation point t.
+     *
+     * Params: 
+     *  t = Interpolation point on the curve at which to return the vector.
+     *
+     * Returns: Vector that lays on interpolation point t
+     */
+    Vector getPointAt(scalar t) const {
+        Vector[] interpolationPoints = cast(Vector[]) controlPoints;
+
+        while (interpolationPoints.length > 1) {
+            Vector[] newInterpolationPoints;
+            Vector lastPoint;
+            foreach (size_t i, Vector point; interpolationPoints) {
+                if (i == 0) {
+                    lastPoint = point;
+                    continue;
+                }
+
+                newInterpolationPoints ~= lastPoint.interpolate(point, t);
+                lastPoint = point;
+            }
+
+            interpolationPoints = newInterpolationPoints;
+        }
+
+        return interpolationPoints[0];
+    }
+}
+
+alias QuadraticBezierCurve(Vector) = BezierCurve!(Vector, 3);
+alias CubicBezierCurve(Vector) = BezierCurve!(Vector, 4);
+alias QuinticBezierCurve(Vector) = BezierCurve!(Vector, 5);
+
+/**
  * A matrix!
  *
  * The data is laid out in a row-major order.
@@ -1489,6 +1549,56 @@ version (unittest) {
         auto const D = Vector2D(1, 0);
         auto const expectedPoint = Vector2D(0.5, 0.375);
         auto const actualPoint = A.cubicBezierCurvePoint(B, C, D, 0.5);
+        assert(expectedPoint == actualPoint);
+    }
+}
+
+// Bezier curve tests
+version (unittest) {
+    @("Create quadratic bezier curve")
+    unittest {
+        auto const A = Vector2D(0, 0);
+        auto const B = Vector2D(0.5, 0.5);
+        auto const C = Vector2D(1, 0);
+        auto const curve = QuadraticBezierCurve!Vector2D(A, B, C);
+        assert(curve.A == A);
+        assert(curve.B == B);
+        assert(curve.C == C);
+    }
+
+    @("Get point on quadratic bezier curve")
+    unittest {
+        auto const A = Vector2D(0, 0);
+        auto const B = Vector2D(0.5, 0.5);
+        auto const C = Vector2D(1, 0);
+        auto const curve = QuadraticBezierCurve!Vector2D(A, B, C);
+        auto const expectedPoint = Vector2D(0.5, 0.25);
+        auto const actualPoint = curve.getPointAt(0.5);
+        assert(expectedPoint == actualPoint);
+    }
+
+    @("Create cubic bezier curve")
+    unittest {
+        auto const A = Vector2D(0, 0);
+        auto const B = Vector2D(0.25, 0.25);
+        auto const C = Vector2D(0.75, 0.75);
+        auto const D = Vector2D(1, 0);
+        auto const curve = CubicBezierCurve!Vector2D(A, B, C, D);
+        assert(curve.A == A);
+        assert(curve.B == B);
+        assert(curve.C == C);
+        assert(curve.D == D);
+    }
+
+    @("Get point on cubic bezier curve")
+    unittest {
+        auto const A = Vector2D(0, 0);
+        auto const B = Vector2D(0.25, 0.25);
+        auto const C = Vector2D(0.75, 0.75);
+        auto const D = Vector2D(1, 0);
+        auto const curve = CubicBezierCurve!Vector2D(A, B, C, D);
+        auto const expectedPoint = Vector2D(0.5, 0.375);
+        auto const actualPoint = curve.getPointAt(0.5);
         assert(expectedPoint == actualPoint);
     }
 }
