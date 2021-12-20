@@ -546,6 +546,31 @@ struct BezierCurve(Vector, uint ControlPoints) if (ControlPoints > 2) {
 
         return interpolationPoints[0];
     }
+
+    /**
+     * Returns a curve described as an array of vectors points with the
+     * given sample rate.
+     *
+     * Each vector is a point on the line relative to the first
+     * control point.
+     *
+     * Params: 
+     *  samples = Amount of samples to take. A higher rate
+     *            leads to a smoother curve. The first sample is the first
+     *            control point. One more sample is returned which is 
+     *            always the last control point.
+     */
+    Vector[] getCurvePoints(uint samples) const {
+        assert(samples > 0, "Amount of samples must be non-zero and positive");
+        Vector[] curvePoints;
+        scalar lengthPerSample = 1.0 / samples;
+        foreach (uint sample; 0 .. samples + 1) {
+            curvePoints ~= getPointAt(sample * lengthPerSample);
+        }
+
+        return curvePoints;
+    }
+
 }
 
 alias QuadraticBezierCurve(Vector) = BezierCurve!(Vector, 3);
@@ -1566,7 +1591,7 @@ version (unittest) {
         assert(curve.C == C);
     }
 
-    @("Get point on quadratic bezier curve")
+    @("Get point on a quadratic bezier curve")
     unittest {
         auto const A = Vector2D(0, 0);
         auto const B = Vector2D(0.5, 0.5);
@@ -1590,7 +1615,7 @@ version (unittest) {
         assert(curve.D == D);
     }
 
-    @("Get point on cubic bezier curve")
+    @("Get point on cubic a bezier curve")
     unittest {
         auto const A = Vector2D(0, 0);
         auto const B = Vector2D(0.25, 0.25);
@@ -1600,6 +1625,19 @@ version (unittest) {
         auto const expectedPoint = Vector2D(0.5, 0.375);
         auto const actualPoint = curve.getPointAt(0.5);
         assert(expectedPoint == actualPoint);
+    }
+
+    @("Get curve points on a cubic bezier curve")
+    unittest {
+        auto const A = Vector2D(0, 0);
+        auto const B = Vector2D(0.25, 0.25);
+        auto const C = Vector2D(0.75, 0.75);
+        auto const D = Vector2D(1, 0);
+        auto const curve = CubicBezierCurve!Vector2D(A, B, C, D);
+        auto const expectedPoints = "[(0, 0), (0.314815, 0.277778), (0.685185, 0.388889), (1, 0)]";
+        auto const actualPoints = curve.getCurvePoints(3);
+        assert(actualPoints.length == 4);
+        assert(expectedPoints == actualPoints.to!string);
     }
 }
 
