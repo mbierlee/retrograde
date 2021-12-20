@@ -52,7 +52,7 @@ struct Vector(T, uint N) if (N > 0) {
      */
     this(const T[] components...) {
         assert(components.length == N,
-                "Cannot initialize a vector with a different amount of components than available.");
+            "Cannot initialize a vector with a different amount of components than available.");
         this.components = components;
     }
 
@@ -205,8 +205,8 @@ struct Vector(T, uint N) if (N > 0) {
     /**
      * Returns a copy of this and another vector added/substracted together.
      */
-    Vector opBinary(string op)(const Vector rhs) const 
-            if (rhs._N == N && (op == "+" || op == "-")) {
+    Vector opBinary(string op)(const Vector rhs) const
+    if (rhs._N == N && (op == "+" || op == "-")) {
         Vector vec;
         static foreach (i; 0 .. N) {
             mixin("vec[i] = cast(T) (components[i] " ~ op ~ " rhs[i]);");
@@ -303,8 +303,8 @@ struct Vector(T, uint N) if (N > 0) {
      *  refractionIndex = Intensity of the refraction.
      *  normal = A normal used to determine the direction of the reflection.
      */
-    Vector refract()(const T refractionIndex, const Vector normal) const 
-            if (N >= 2 && normal._N == N) {
+    Vector refract()(const T refractionIndex, const Vector normal) const
+    if (N >= 2 && normal._N == N) {
 
         auto const normalizedThis = this.normalize();
         auto const normalizedNormal = normal.normalize();
@@ -434,7 +434,7 @@ struct UnitVector(VectorType) {
      */
     this(const VectorType._T[] components...) {
         assert(components.length == VectorType._N,
-                "Cannot initialize a unit vector with a different amount of components than its vector type has.");
+            "Cannot initialize a unit vector with a different amount of components than its vector type has.");
         this(VectorType(components));
     }
 
@@ -490,7 +490,7 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
      */
     this(const T[] initialValues...) {
         assert(initialValues.length == data.length,
-                "Cannot initialize a matrix with a different size of data than available.");
+            "Cannot initialize a matrix with a different size of data than available.");
         data = initialValues;
     }
 
@@ -585,8 +585,8 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
      * Returns a copy of this matrix that is multiplied by another matrix.
      */
     Matrix!(T, Rows, OtherColumns) opBinary(string op, uint OtherRows, uint OtherColumns)(
-            const Matrix!(T, OtherRows, OtherColumns) rhs) const 
-            if (op == "*" && Columns == OtherRows) {
+        const Matrix!(T, OtherRows, OtherColumns) rhs) const
+    if (op == "*" && Columns == OtherRows) {
 
         //TODO: This looks like it could use some improvement. Certainly less allocation!
         Matrix!(T, Rows, OtherColumns) resultMatrix;
@@ -612,8 +612,8 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
     /**
      * Returns a copy of this matrix that adds or subtracts another matrix.
      */
-    Matrix opBinary(string op)(const Matrix rhs) const 
-            if ((op == "+" || op == "-") && Columns == rhs._Columns && Rows == rhs._Rows) {
+    Matrix opBinary(string op)(const Matrix rhs) const
+    if ((op == "+" || op == "-") && Columns == rhs._Columns && Rows == rhs._Rows) {
         Matrix resultMatrix;
         static foreach (i; 0 .. Rows * Columns) {
             mixin("resultMatrix[i] = this[i] " ~ op ~ " rhs[i];");
@@ -735,7 +735,7 @@ public Matrix4D toScalingMatrix(const Vector3D scalingVector) {
  *  z = Z component of the axis to rotate around.
  */
 public Matrix4D createRotationMatrix(const scalar radianAngle, const double x,
-        const double y, const double z) {
+    const double y, const double z) {
     const double x2 = x * x;
     const double y2 = y * y;
     const double z2 = z * z;
@@ -835,7 +835,7 @@ public Matrix4D createZRotationMatrix(const scalar radianAngle) {
  * Creates a world transformation matrix that looks at a target vector.
  */
 public Matrix4D createLookatMatrix(const Vector3D eyePosition,
-        const Vector3D targetPosition, const UnitVector3D upVector) {
+    const Vector3D targetPosition, const UnitVector3D upVector) {
 
     auto const forwardVector = (targetPosition - eyePosition).normalize();
     auto const sideVector = forwardVector.cross(upVector.vector);
@@ -879,7 +879,7 @@ public Matrix4D createViewMatrix(Vector3D eyePosition, scalar pitchInRadian, sca
  * Creates a perspective projection matrix.
  */
 public Matrix4D createPerspectiveMatrix(scalar fovyDegrees, scalar aspectRatio,
-        scalar near, scalar far) {
+    scalar near, scalar far) {
     const scalar q = 1.0 / tan(degreesToRadians(0.5 * fovyDegrees));
     const scalar A = q / aspectRatio;
     const scalar B = (near + far) / (near - far);
@@ -980,17 +980,19 @@ struct Quaternion(T) {
      */
     public static Quaternion createRotation(double radianAngle, const Vector3D axis) {
         return Quaternion(cos(radianAngle / 2), axis.x * sin(radianAngle / 2),
-                axis.y * sin(radianAngle / 2), axis.z * sin(radianAngle / 2));
+            axis.y * sin(radianAngle / 2), axis.z * sin(radianAngle / 2));
     }
 
     /**
      * Multiple two quaternions.
      */
     Quaternion opBinary(string op)(const Quaternion rhs) const if (op == "*") {
-        return Quaternion(r * rhs.r - x * rhs.x - y * rhs.y - z * rhs.z,
-                r * rhs.x + x * rhs.r + y * rhs.z - z * rhs.y,
-                r * rhs.y - x * rhs.z + y * rhs.r + z * rhs.x,
-                r * rhs.z + x * rhs.y - y * rhs.x + z * rhs.r);
+        return Quaternion(
+            r * rhs.r - x * rhs.x - y * rhs.y - z * rhs.z,
+            r * rhs.x + x * rhs.r + y * rhs.z - z * rhs.y,
+            r * rhs.y - x * rhs.z + y * rhs.r + z * rhs.x,
+            r * rhs.z + x * rhs.y - y * rhs.x + z * rhs.r
+        );
     }
 
     /**
@@ -998,11 +1000,13 @@ struct Quaternion(T) {
      */
     public Matrix4D toRotationMatrix() const {
         //TODO: Check if correct for row-major matrix
-        return Matrix4D(r * r + x * x - y * y - z * z, 2 * x * y - 2 * r * z,
-                2 * x * z + 2 * r * y, 0, 2 * x * y + 2 * r * z,
-                r * r - x * x + y * y - z * z, 2 * y * z + 2 * r * x, 0,
-                2 * x * z - 2 * r * y, 2 * y * z - 2 * r * x, r * r - x * x - y * y + z * z,
-                0, 0, 0, 0, 1);
+        return Matrix4D(
+            r * r + x * x - y * y - z * z, 2 * x * y - 2 * r * z,
+            2 * x * z + 2 * r * y, 0, 2 * x * y + 2 * r * z,
+            r * r - x * x + y * y - z * z, 2 * y * z + 2 * r * x, 0,
+            2 * x * z - 2 * r * y, 2 * y * z - 2 * r * x, r * r - x * x - y * y + z * z,
+            0, 0, 0, 0, 1
+        );
     }
 
     /**
