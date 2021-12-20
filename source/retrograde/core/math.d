@@ -346,6 +346,44 @@ struct Vector(T, uint N) if (N > 0) {
     }
 
     /**
+     * Create a point on a quadratic bezier curve.
+     * 
+     * The current vector serves as beginning of the curve, control point 1.
+     *
+     * Params:
+     *  B = Apex of curve, control point 2.
+     *  C = End of curve, control point 3.
+     *  t = Interpolation amount on curve for which to return a point.
+     *
+     * Returns: Point on curve at t
+     */
+    Vector quadraticBezierCurvePoint(const Vector B, const Vector C, const scalar t) const {
+        auto const D = this.interpolate(B, t);
+        auto const E = B.interpolate(C, t);
+        return D.interpolate(E, t);
+    }
+
+    /**
+     * Create a point on a cubic bezier curve.
+     * 
+     * The current vector serves as beginning of the curve, control point 1.
+     *
+     * Params:
+     *  B = First apex of curve, control point 2.
+     *  C = Second apex of curve, control point 3.
+     *  D = End of curve, control point 4.
+     *  t = Interpolation amount on curve for which to return a point.
+     *
+     * Returns: Point on curve at t
+     */
+    Vector cubicBezierCurvePoint(const Vector B, const Vector C, const Vector D, const scalar t) const {
+        auto const E = this.interpolate(B, t);
+        auto const F = B.interpolate(C, t);
+        auto const G = C.interpolate(D, t);
+        return E.quadraticBezierCurvePoint(F, G, t);
+    }
+
+    /**
      * Cast vector type into another vector type. 
      *
      * When the target type is bigger, extra components are set to their default init.
@@ -1431,6 +1469,27 @@ version (unittest) {
         auto const expectedExtrapolation5 = Vector2D(0, -1);
         auto const aactualExtrapolation5 = vector9.extrapolate(vector10, -1);
         assert(aactualExtrapolation5 == expectedExtrapolation5);
+    }
+
+    @("Create point on quadratic bezier curve")
+    unittest {
+        auto const A = Vector2D(0, 0);
+        auto const B = Vector2D(0.5, 0.5);
+        auto const C = Vector2D(1, 0);
+        auto const expectedPoint = Vector2D(0.5, 0.25);
+        auto const actualPoint = A.quadraticBezierCurvePoint(B, C, 0.5);
+        assert(expectedPoint == actualPoint);
+    }
+
+    @("Create point on cubic bezier curve")
+    unittest {
+        auto const A = Vector2D(0, 0);
+        auto const B = Vector2D(0.25, 0.25);
+        auto const C = Vector2D(0.75, 0.75);
+        auto const D = Vector2D(1, 0);
+        auto const expectedPoint = Vector2D(0.5, 0.375);
+        auto const actualPoint = A.cubicBezierCurvePoint(B, C, D, 0.5);
+        assert(expectedPoint == actualPoint);
     }
 }
 
