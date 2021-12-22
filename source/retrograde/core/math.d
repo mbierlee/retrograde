@@ -11,7 +11,7 @@
 
 module retrograde.core.math;
 
-import std.math : sqrt, atan2, PI, cos, sin, tan, asin;
+import std.math : sqrt, atan2, PI, cos, sin, tan, asin, ceil, floor;
 import std.conv : to;
 import std.string : join;
 
@@ -522,6 +522,7 @@ struct BezierCurve(Vector, uint ControlPoints) if (ControlPoints > 2) {
      *
      * Params: 
      *  t = Interpolation point on the curve at which to return the vector.
+     *      Should be between 0 and 1 inclusive.
      *
      * Returns: Vector that lays on interpolation point t
      */
@@ -576,6 +577,67 @@ struct BezierCurve(Vector, uint ControlPoints) if (ControlPoints > 2) {
 alias QuadraticBezierCurve(Vector) = BezierCurve!(Vector, 3);
 alias CubicBezierCurve(Vector) = BezierCurve!(Vector, 4);
 alias QuinticBezierCurve(Vector) = BezierCurve!(Vector, 5);
+
+/**
+ * A model of an infinitely sized bezier spline.
+ */
+struct BezierSpline(Vector, uint ControlPointsPerCurve) {
+    private Vector[] controlPoints;
+
+    this(Vector[] controlPoints...) {
+        assert((controlPoints.length > 2), "Spline has not enough control points to describe a proper curve.");
+        this.controlPoints = controlPoints;
+    }
+
+    uint segments() const {
+        return to!uint(ceil(controlPoints.length.to!double / ControlPointsPerCurve));
+    }
+
+    /**
+     * Returns a vector at interpolation point t.
+     *
+     * Params: 
+     *  t = Interpolation point on the curve at which to return the vector. 
+     *      Should be between 0 and the amount of segements the curve has.
+     *      For example: 1.34 would return the point at 0.34 in the second
+     *      curve of the spline.
+     *
+     * Returns: Vector that lays on interpolation point t
+     */
+    Vector getPointAt(scalar t) const {
+        if (t == segments) {
+            return controlPoints[$ - 1];
+        }
+
+        auto segment = to!uint(floor(t));
+        auto start = segment * (ControlPointsPerCurve - 1);
+        auto curvePoints = controlPoints[start .. start + ControlPointsPerCurve];
+        auto curve = BezierCurve!(Vector, ControlPointsPerCurve)(curvePoints);
+        auto curveT = t - segment;
+        return curve.getPointAt(curveT);
+    }
+
+    /**
+     * Returns a vector at interpolation point t.
+     *
+     * Unlike getPointAt, getPointAtSimple will automatically interpolate between
+     * segments/curves.
+     *
+     * Params: 
+     *  t = Interpolation point on the curve at which to return the vector. 
+     *      Should be between 0 and 1 inclusive, where 0 is the start of the
+     *      spline and 1 the end. 
+     *
+     * Returns: Vector that lays on interpolation point t
+     */
+    Vector getPointAtSimple(scalar t) const {
+        auto actualT = t * segments;
+        return getPointAt(actualT);
+    }
+}
+
+alias QuadraticBezierSpline(Vector) = BezierSpline!(Vector, 3);
+alias CubicBezierSpline(Vector) = BezierSpline!(Vector, 4);
 
 /**
  * A matrix!
@@ -1638,6 +1700,44 @@ version (unittest) {
         auto const actualPoints = curve.getCurvePoints(3);
         assert(actualPoints.length == 4);
         assert(expectedPoints == actualPoints.to!string);
+    }
+}
+
+// Bezier spline tests
+version (unittest) {
+    @("Create bezier spline")
+    unittest {
+        auto const A = Vector2D(0, 0);
+        auto const B = Vector2D(0.25, 0.25);
+        auto const C = Vector2D(0.75, 0.75);
+        auto const D = Vector2D(1, 0);
+        auto const E = Vector2D(1.25, -0.25);
+        auto const F = Vector2D(1.75, -0.75);
+        auto const G = Vector2D(2, 0);
+
+        auto const spline = CubicBezierSpline!Vector2D(A, B, C, D, E, F, G);
+        assert(spline.segments == 2);
+    }
+
+    @("Get point on bezier spline")
+    unittest {
+        auto const A = Vector2D(0, 0);
+        auto const B = Vector2D(0.25, 0.25);
+        auto const C = Vector2D(0.75, 0.75);
+        auto const D = Vector2D(1, 0);
+        auto const E = Vector2D(1.25, -0.25);
+        auto const F = Vector2D(1.75, -0.75);
+        auto const G = Vector2D(2, 0);
+
+        auto const spline = CubicBezierSpline!Vector2D(A, B, C, D, E, F, G);
+        assert(spline.getPointAt(0) == A);
+        assert(spline.getPointAt(1) == D);
+        assert(spline.getPointAt(1.5) == Vector2D(1.5, -0.375));
+        assert(spline.getPointAt(2) == G);
+
+        assert(spline.getPointAtSimple(0) == A);
+        assert(spline.getPointAtSimple(0.5) == D);
+        assert(spline.getPointAtSimple(1) == G);
     }
 }
 
