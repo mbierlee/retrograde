@@ -564,7 +564,7 @@ struct BezierCurve(Vector, uint ControlPoints) if (ControlPoints > 2) {
     Vector[] getCurvePoints(uint samples) const {
         assert(samples > 0, "Amount of samples must be non-zero and positive");
         Vector[] curvePoints;
-        scalar lengthPerSample = 1.0 / samples;
+        auto lengthPerSample = 1.0 / samples;
         foreach (uint sample; 0 .. samples + 1) {
             curvePoints ~= getPointAt(sample * lengthPerSample);
         }
@@ -633,6 +633,30 @@ struct BezierSpline(Vector, uint ControlPointsPerCurve) {
     Vector getPointAtSimple(scalar t) const {
         auto actualT = t * segments;
         return getPointAt(actualT);
+    }
+
+    /**
+     * Returns a spline described as an array of vectors points with the
+     * given sample rate.
+     *
+     * Each vector is a point on the line relative to the first
+     * control point.
+     *
+     * Params: 
+     *  samples = Amount of samples to take. A higher rate
+     *            leads to a smoother curve. The first sample is the first
+     *            control point. One more sample is returned which is 
+     *            always the last control point.
+     */
+    Vector[] getSplinePoints(uint samples) const {
+        assert(samples > 0, "Amount of samples must be non-zero and positive");
+        Vector[] curvePoints;
+        auto lengthPerSample = to!double(segments) / samples;
+        foreach (uint sample; 0 .. samples + 1) {
+            curvePoints ~= getPointAt(sample * lengthPerSample);
+        }
+
+        return curvePoints;
     }
 }
 
@@ -1738,6 +1762,23 @@ version (unittest) {
         assert(spline.getPointAtSimple(0) == A);
         assert(spline.getPointAtSimple(0.5) == D);
         assert(spline.getPointAtSimple(1) == G);
+    }
+
+    @("Get spline points on bezier spline")
+    unittest {
+        auto const A = Vector2D(0, 0);
+        auto const B = Vector2D(0.25, 0.25);
+        auto const C = Vector2D(0.75, 0.75);
+        auto const D = Vector2D(1, 0);
+        auto const E = Vector2D(1.25, -0.25);
+        auto const F = Vector2D(1.75, -0.75);
+        auto const G = Vector2D(2, 0);
+
+        auto const spline = CubicBezierSpline!Vector2D(A, B, C, D, E, F, G);
+        auto expectedPoints = "[(0, 0), (0.388, 0.324), (0.824, 0.312), (1.176, -0.168), (1.612, -0.396), (2, 0)]";
+        auto actualPoints = spline.getSplinePoints(5);
+        assert(actualPoints.length == 6);
+        assert(to!string(actualPoints) == expectedPoints);
     }
 }
 
