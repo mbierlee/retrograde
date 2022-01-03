@@ -81,8 +81,40 @@ class VertexMesh(Vector) : Mesh!Vector {
     }
 }
 
-alias VertexMesh3D = VertexMesh!Vector3D;
 alias VertexMesh2D = VertexMesh!Vector2D;
+alias VertexMesh3D = VertexMesh!Vector3D;
+//TODO: All other vector types
+
+/**
+ * A mesh that is made up of a list of vertices and an index
+ * pointing to those vertices.
+ */
+class IndexedMesh(Vector) : Mesh!Vector {
+    private const(size_t)[] _indices;
+    private const(Vector)[] _vertices;
+
+    this(const(size_t)[] indices, const(Vector)[] vertices...) {
+        this._indices = indices;
+        this._vertices = vertices;
+    }
+
+    const(size_t)[] indices() const {
+        return _indices;
+    }
+
+    const(Vector)[] vertices() const {
+        return _vertices;
+    }
+
+    void forEachVertex(void delegate(size_t, Vector) fn) const {
+        foreach (size_t i, const(size_t) index; _indices) {
+            fn(i, _vertices[index]);
+        }
+    }
+}
+
+alias IndexedMesh2D = IndexedMesh!Vector2D;
+alias IndexedMesh3D = IndexedMesh!Vector3D;
 //TODO: All other vector types
 
 version (unittest) {
@@ -98,6 +130,32 @@ version (unittest) {
             hasIterated = true;
         });
 
+        assert(mesh.vertices.length == 2);
+        assert(hasIterated);
+    }
+
+    @("Iterate over indexed meshes")
+    unittest {
+        size_t[] indices = [1, 0, 0];
+        auto vertices = [Vector3D(1, 0, 0), Vector3D(1, 1, 1)];
+        const auto mesh = new IndexedMesh3D(indices, vertices);
+        const auto model = new Model3D(mesh);
+        bool hasIterated = false;
+
+        auto expectedVertices = [
+            Vector3D(1, 1, 1),
+            Vector3D(1, 0, 0),
+            Vector3D(1, 0, 0)
+        ];
+
+        model.meshes[0].forEachVertex((size_t index, Vector3D vec) {
+
+            assert(vec == expectedVertices[index]);
+            hasIterated = true;
+        });
+
+        assert(mesh.vertices.length == 2);
+        assert(mesh.indices.length == 3);
         assert(hasIterated);
     }
 }
