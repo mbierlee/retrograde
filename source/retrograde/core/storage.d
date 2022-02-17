@@ -123,18 +123,39 @@ interface StorageSystem {
      * Read a file from storage at a specific location.
      *
      * The file is immediately loaded into memory.
+     *
      * Params:
      *  location = Location of the file. How to specify the location dependends on the API implementation.
      */
     File readFile(string location);
 
     /**
+     * Read a file from storage at a specific location relative to the executable.
+     *
+     * The file is immediately loaded into memory.
+     *
+     * Params:
+     *  location = Location of the file. How to specify the location dependends on the API implementation.
+     */
+    File readFileRelative(string location);
+
+    /**
      * Write a file to storage at a specific location.
+     *
      * Params:
      *  location = Physical Location of the file. How to specify the location dependends on the API implementation.
      *  file = File to store.
      */
     void writeFile(string location, const File file);
+
+    /**
+     * Write a file to storage at a specific location relative to the executable.
+     *
+     * Params:
+     *  location = Physical Location of the file. How to specify the location dependends on the API implementation.
+     *  file = File to store.
+     */
+    void writeFileRelative(string location, const File file);
 
     /**
      * Returns the absolute path to a directory where this application is allowed to read/write temporary data.
@@ -159,6 +180,7 @@ class GenericStorageSystem : StorageSystem {
      * Read a file from storage at a specific location.
      *
      * The file is immediately loaded into memory.
+     *
      * Params:
      *  location = Path of the file including the filename. Use the OS' file and path naming convention.
      *
@@ -175,9 +197,24 @@ class GenericStorageSystem : StorageSystem {
     }
 
     /**
+     * Read a file from storage at a specific location relative to the executable.
+     *
+     * The file is immediately loaded into memory.
+     *
+     * Params:
+     *  location = Path of the file including the filename. Use the OS' file and path naming convention.
+     *
+     * Throws: FileException on read error.
+     */
+    File readFileRelative(string location) {
+        return readFile(appendToExeDir(location));
+    }
+
+    /**
      * Write a file to storage at a specific location.
      *
      * If the file does not exist it will be created, including the complete path.
+     *
      * Params:
      *  location = Path of the file including the filename. Use the OS' file and path naming convention.
      *  file = File to store.
@@ -189,6 +226,19 @@ class GenericStorageSystem : StorageSystem {
         mkdirRecurse(fileDir);
         const(ubyte[]) data = file.data;
         write(location, data);
+    }
+
+    /**
+     * Write a file to storage at a specific location relative to the executable.
+     *
+     * If the file does not exist it will be created, including the complete path.
+     *
+     * Params:
+     *  location = Path of the file including the filename. Use the OS' file and path naming convention.
+     *  file = File to store.
+     */
+    void writeFileRelative(string location, const File file) {
+        writeFile(appendToExeDir(location), file);
     }
 
     /**
