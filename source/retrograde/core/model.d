@@ -11,9 +11,11 @@
 
 module retrograde.core.model;
 
-import retrograde.core.math : Vector3D;
+import retrograde.core.math : Vector, Vector3D;
 
 alias Vertex = Vector3D;
+alias VertexIndex = size_t;
+alias Face = Vector!(VertexIndex, 3);
 
 /** 
  * A data object containing a representation of a multi-dimensional geometric object
@@ -32,29 +34,30 @@ class Model {
 }
 
 /**
- * A mesh that is made up of a list of vertices and an index
- * pointing to those vertices.
+ * A mesh that contains geometry data.
  */
 class Mesh {
-    private const(size_t)[] _indices;
     private const(Vertex)[] _vertices;
+    private const(Face)[] _faces;
 
-    this(const(size_t)[] indices, const(Vertex)[] vertices...) {
-        this._indices = indices;
+    this(const(Vertex)[] vertices, const(Face)[] faces) {
         this._vertices = vertices;
-    }
-
-    const(size_t)[] indices() const {
-        return _indices;
+        this._faces = faces;
     }
 
     const(Vertex)[] vertices() const {
         return _vertices;
     }
 
+    const(Face)[] faces() const {
+        return _faces;
+    }
+
     void forEachVertex(void delegate(size_t, Vertex) fn) const {
-        foreach (size_t i, const(size_t) index; _indices) {
-            fn(i, _vertices[index]);
+        foreach (size_t i, const(Face) _face; _faces) {
+            fn(i * 3, _vertices[_face.x]);
+            fn(i * 3 + 1, _vertices[_face.y]);
+            fn(i * 3 + 2, _vertices[_face.z]);
         }
     }
 }
@@ -62,15 +65,18 @@ class Mesh {
 version (unittest) {
     @("Iterate over meshes")
     unittest {
-        size_t[] indices = [1, 0, 0];
-        auto vertices = [Vertex(1, 0, 0), Vertex(1, 1, 1)];
-        const auto mesh = new Mesh(indices, vertices);
+        Face[] faces = [Face(0, 1, 2), Face(2, 1, 0)];
+        auto vertices = [Vertex(1, 0, 0), Vertex(1, 1, 1), Vertex(2, 2, 2)];
+        const auto mesh = new Mesh(vertices, faces);
         const auto model = new Model([mesh]);
         bool hasIterated = false;
 
         auto expectedVertices = [
-            Vertex(1, 1, 1),
             Vertex(1, 0, 0),
+            Vertex(1, 1, 1),
+            Vertex(2, 2, 2),
+            Vertex(2, 2, 2),
+            Vertex(1, 1, 1),
             Vertex(1, 0, 0)
         ];
 
@@ -79,8 +85,8 @@ version (unittest) {
             hasIterated = true;
         });
 
-        assert(mesh.vertices.length == 2);
-        assert(mesh.indices.length == 3);
+        assert(mesh.vertices.length == 3);
+        assert(mesh.faces.length == 2);
         assert(hasIterated);
     }
 }
