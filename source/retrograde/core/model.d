@@ -11,89 +11,35 @@
 
 module retrograde.core.model;
 
-import retrograde.core.math;
+import retrograde.core.math : Vector3D;
+
+alias Vertex = Vector3D;
 
 /** 
  * A data object containing a representation of a multi-dimensional geometric object
  * and its properties/metadata.
  */
-class Model(Vector) {
-    private const(Mesh!Vector)[] _meshes;
+class Model {
+    private const(Mesh)[] _meshes;
 
-    this(const(Mesh!Vector)[] meshes...) {
+    this(const(Mesh)[] meshes) {
         this._meshes = meshes;
     }
 
-    const(Mesh!Vector)[] meshes() const {
+    const(Mesh)[] meshes() const {
         return _meshes;
     }
 }
-
-alias Model2D = Model!Vector2D;
-alias Model3D = Model!Vector3D;
-//TODO: All other vector types
-
-/**
- * A data object containing a polygonal, geometric shape.
- *
- * The base class Mesh does not contain actual data; different kinds 
- * subclasses exist that store mesh data in particular ways.
- *
- * See_Also: VertexMesh
- */
-interface Mesh(Vector) {
-
-    /**
-     * Iterates over each vertex of the mesh in a way that makes
-     * sense for a specific kind of mesh, executing fn() for every
-     * vertex.
-     *
-     * For example, for simple vertex meshes each vertex is iterated but
-     * for an indexed-vertex each index item is iterated, not neccesarily each
-     * vertex.
-     *
-     * Params: 
-     *  fn = Delegate that is executed for each logical vertex.
-     *  index = Linear, arbitrary index of the vector.
-     *  Vertex = Vertex data.
-     */
-    void forEachVertex(void delegate(size_t index, Vector Vertex) fn) const;
-}
-
-/**
- * A Mesh that is made up of a continuous array of vertices.
- */
-class VertexMesh(Vector) : Mesh!Vector {
-    private const(Vector)[] _vertices;
-
-    this(const(Vector)[] vertices...) {
-        this._vertices = vertices;
-    }
-
-    const(Vector)[] vertices() const {
-        return _vertices;
-    }
-
-    void forEachVertex(void delegate(size_t, Vector) fn) const {
-        foreach (size_t i, const(Vector) vertex; _vertices) {
-            fn(i, vertex);
-        }
-    }
-}
-
-alias VertexMesh2D = VertexMesh!Vector2D;
-alias VertexMesh3D = VertexMesh!Vector3D;
-//TODO: All other vector types
 
 /**
  * A mesh that is made up of a list of vertices and an index
  * pointing to those vertices.
  */
-class IndexedMesh(Vector) : Mesh!Vector {
+class Mesh {
     private const(size_t)[] _indices;
-    private const(Vector)[] _vertices;
+    private const(Vertex)[] _vertices;
 
-    this(const(size_t)[] indices, const(Vector)[] vertices...) {
+    this(const(size_t)[] indices, const(Vertex)[] vertices...) {
         this._indices = indices;
         this._vertices = vertices;
     }
@@ -102,54 +48,33 @@ class IndexedMesh(Vector) : Mesh!Vector {
         return _indices;
     }
 
-    const(Vector)[] vertices() const {
+    const(Vertex)[] vertices() const {
         return _vertices;
     }
 
-    void forEachVertex(void delegate(size_t, Vector) fn) const {
+    void forEachVertex(void delegate(size_t, Vertex) fn) const {
         foreach (size_t i, const(size_t) index; _indices) {
             fn(i, _vertices[index]);
         }
     }
 }
 
-alias IndexedMesh2D = IndexedMesh!Vector2D;
-alias IndexedMesh3D = IndexedMesh!Vector3D;
-//TODO: All other vector types
-
 version (unittest) {
-    @("Iterate over vertex meshes")
-    unittest {
-        auto vertices = [Vector3D(1, 0, 0), Vector3D(1, 1, 1)];
-        const auto mesh = new VertexMesh3D(vertices);
-        const auto model = new Model3D(mesh);
-        bool hasIterated = false;
-
-        model.meshes[0].forEachVertex((size_t index, Vector3D vec) {
-            assert(vec == vertices[index]);
-            hasIterated = true;
-        });
-
-        assert(mesh.vertices.length == 2);
-        assert(hasIterated);
-    }
-
-    @("Iterate over indexed meshes")
+    @("Iterate over meshes")
     unittest {
         size_t[] indices = [1, 0, 0];
-        auto vertices = [Vector3D(1, 0, 0), Vector3D(1, 1, 1)];
-        const auto mesh = new IndexedMesh3D(indices, vertices);
-        const auto model = new Model3D(mesh);
+        auto vertices = [Vertex(1, 0, 0), Vertex(1, 1, 1)];
+        const auto mesh = new Mesh(indices, vertices);
+        const auto model = new Model([mesh]);
         bool hasIterated = false;
 
         auto expectedVertices = [
-            Vector3D(1, 1, 1),
-            Vector3D(1, 0, 0),
-            Vector3D(1, 0, 0)
+            Vertex(1, 1, 1),
+            Vertex(1, 0, 0),
+            Vertex(1, 0, 0)
         ];
 
-        model.meshes[0].forEachVertex((size_t index, Vector3D vec) {
-
+        model.meshes[0].forEachVertex((size_t index, Vertex vec) {
             assert(vec == expectedVertices[index]);
             hasIterated = true;
         });
