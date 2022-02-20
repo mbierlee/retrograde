@@ -349,6 +349,8 @@ const auto entityLifeCycleChannel = sid("entity_life_cycle");
 const auto cmdAddEntity = sid("cmd_add_entity");
 const auto cmdRemoveEntity = sid("cmd_remove_entity");
 const auto evEntityCompositionChanged = sid("ev_entity_composition_changed");
+const auto evEntityAddedToManager = sid("ev_entity_added_to_manager");
+const auto evEntityRemovedFromManager = sid("ev_entity_removed_from_manager");
 
 class EntityLifeCycleMessage : Message {
     @property StringId id;
@@ -511,10 +513,12 @@ class EntityManager {
 
             case cmdAddEntity:
                 addEntity(cast(Entity) message.entity);
+                sendLifeCycleMessage(evEntityAddedToManager, message.entity);
                 break;
 
             case cmdRemoveEntity:
                 removeEntity(cast(Entity) message.entity);
+                sendLifeCycleMessage(evEntityRemovedFromManager, message.entity);
                 break;
 
             case evEntityCompositionChanged:
@@ -1129,6 +1133,17 @@ version (unittest) {
         manager.update();
 
         assert(manager.hasEntity(entity));
+
+        bool entityAddedEventWasSent = false;
+        messageHandler.shiftStandbyToActiveQueue();
+        messageHandler.receiveMessages(entityLifeCycleChannel, (
+                immutable EntityLifeCycleMessage message) {
+            if (message.id == evEntityAddedToManager && message.entity == entity) {
+                entityAddedEventWasSent = true;
+            }
+        });
+
+        assert(entityAddedEventWasSent);
     }
 
     @("Remove entity via entity life cycle message")
@@ -1146,5 +1161,16 @@ version (unittest) {
         manager.update();
 
         assert(!manager.hasEntity(entity));
+
+        bool entityRemovedEventWasSent = false;
+        messageHandler.shiftStandbyToActiveQueue();
+        messageHandler.receiveMessages(entityLifeCycleChannel, (
+                immutable EntityLifeCycleMessage message) {
+            if (message.id == evEntityRemovedFromManager && message.entity == entity) {
+                entityRemovedEventWasSent = true;
+            }
+        });
+
+        assert(entityRemovedEventWasSent);
     }
 }
