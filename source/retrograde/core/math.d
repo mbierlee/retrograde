@@ -15,8 +15,6 @@ import std.math : sqrt, atan2, PI, cos, sin, tan, asin, ceil, floor;
 import std.conv : to;
 import std.string : join;
 
-import retrograde.core.functional : map;
-
 alias scalar = double;
 
 /**
@@ -855,7 +853,12 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
         static if (is(CastType == T)) {
             return data;
         } else {
-            return data.map((T v) => cast(CastType) v);
+            CastType[Rows * Columns] newData;
+            foreach (size_t i, T item; data) {
+                newData[i] = cast(CastType) item;
+            }
+            
+            return newData;
         }
     }
 
