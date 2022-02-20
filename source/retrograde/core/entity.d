@@ -390,7 +390,10 @@ class EntityManager {
      *  entity = Entity to be added.
      */
     public void addEntity(Entity entity) {
-        entity.id = nextAvailableId++;
+        if (entity.id == 0) {
+            entity.id = nextAvailableId++;
+        }
+
         _entities.add(entity);
         foreach (processor; _processors) {
             processor.addEntity(entity);
@@ -1007,7 +1010,19 @@ version (unittest) {
 
         manager.addEntity(entity);
 
-        assert(1 == entity.id);
+        assert(entity.id == 1);
+    }
+
+    @("Adding an entity to entity manager only sets entity's ID when none is assigned yet")
+    unittest {
+        auto manager = new EntityManager();
+        auto entity = new Entity();
+
+        manager.addEntity(entity);
+        manager.addEntity(entity);
+        manager.addEntity(entity);
+
+        assert(entity.id == 1);
     }
 
     @("Add entity processor to entity manager")
