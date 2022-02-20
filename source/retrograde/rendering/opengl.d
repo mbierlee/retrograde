@@ -17,6 +17,7 @@ version (Have_bindbc_opengl) {
     import retrograde.core.platform : Platform;
 
     import retrograde.components.rendering : RenderableComponent, DefaultShaderProgramComponent;
+    import retrograde.components.geometry : ModelComponent;
 
     import std.experimental.logger : Logger;
     import std.string : fromStringz;
@@ -41,6 +42,8 @@ version (Have_bindbc_opengl) {
         private GLfloat[] clearColor = [0.576f, 0.439f, 0.859f, 1.0f];
         private OpenGlShaderProgram defaultOpenGlShaderProgram;
 
+        private GlModelInfo[ModelComponent] modelInfo; //TODO: Move to entity? Should be part of enity state. Requires removal of entity finalization.
+
         override public int getContextHintMayor() {
             return 4;
         }
@@ -51,6 +54,21 @@ version (Have_bindbc_opengl) {
 
         override public bool acceptsEntity(Entity entity) {
             return entity.hasComponent!RenderableComponent;
+        }
+
+        override protected void processAcceptedEntity(Entity entity) {
+            entity.maybeWithComponent!ModelComponent((ModelComponent c) {
+                GlModelInfo info;
+                glCreateVertexArrays(1, &info.vertexArrayObject);
+                glBindVertexArray(info.vertexArrayObject);
+                modelInfo[c] = info;
+            });
+        }
+
+        override protected void processRemovedEntity(Entity entity) {
+            entity.maybeWithComponent!ModelComponent((ModelComponent c) {
+                modelInfo.remove(c);
+            });
         }
 
         override public void initialize() {
@@ -82,34 +100,27 @@ version (Have_bindbc_opengl) {
             glEnable(GL_CULL_FACE);
 
             initializeDefaultShaderProgram();
-
-            // Temp stuff
-            glCreateVertexArrays(1, &voa);
-            glBindVertexArray(voa);
-            // ----
         }
 
         override public void update() {
-            ////////// TEMP
-            xoffset += 0.001;
-            yoffset += 0.001;
-            //////////////////////////
         }
 
         override public void draw() {
             glClearBufferfv(GL_COLOR, 0, &clearColor[0]);
 
             foreach (Entity entity; entities) {
-                if (defaultOpenGlShaderProgram && entity
-                        .hasComponent!DefaultShaderProgramComponent) {
+                if (defaultOpenGlShaderProgram &&
+                    entity.hasComponent!DefaultShaderProgramComponent) {
                     glUseProgram(defaultOpenGlShaderProgram.getOpenGlShaderProgram());
-                }
+                } //TODO: Else use custom shader program
 
-                // TEMP replace with actual model rendering
-                glVertexAttrib4f(0, xoffset, yoffset, 0.0f, 0.0f);
-                glVertexAttrib4f(1, 0.0f, 1.0f, 0.0f, 1.0f);
-                glDrawArrays(GL_TRIANGLES, 0, 3);
-                /////////////////////////////////
+                entity.maybeWithComponent!ModelComponent((ModelComponent c) {
+                    // TEMP replace with actual model rendering
+                    glVertexAttrib4f(0, 0, 0, 0.0f, 0.0f);
+                    glVertexAttrib4f(1, 0.0f, 1.0f, 0.0f, 1.0f);
+                    glDrawArrays(GL_TRIANGLES, 0, 3);
+                    /////////////////////////////////
+                });
             }
         }
 
@@ -133,13 +144,10 @@ version (Have_bindbc_opengl) {
                 logger.errorf("Link errors for shader program: \n%s", shaderProgram.getLinkInfo());
             }
         }
+    }
 
-        ///// TEMP
-        GLuint voa;
-        GLfloat xoffset = 0;
-        GLfloat yoffset = 0;
-        ////
-
+    private struct GlModelInfo {
+        GLuint vertexArrayObject;
     }
 
     /**
@@ -332,9 +340,9 @@ version (Have_bindbc_opengl) {
      */
     public ShaderProgram createDefaultOpenGlShaderProgram() {
         auto vertexShader = new OpenGlShader("vertex",
-                import("standard/vertex.glsl"), ShaderType.vertex);
+            import("standard/vertex.glsl"), ShaderType.vertex);
         auto fragmentShader = new OpenGlShader("fragment",
-                import("standard/fragment.glsl"), ShaderType.fragment);
+            import("standard/fragment.glsl"), ShaderType.fragment);
         return new OpenGlShaderProgram(vertexShader, fragmentShader);
     }
 }
