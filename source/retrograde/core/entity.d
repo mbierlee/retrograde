@@ -24,7 +24,6 @@ alias EntityIdType = ulong;
  */
 class Entity {
     private string _name;
-    private bool _isFinalized;
     public EntityIdType id = 0;
 
     /**
@@ -49,15 +48,6 @@ class Entity {
         return _components.values;
     }
 
-    /**
-     * Whether the current entity is modifiable or not.
-     * See_Also:
-     *  finalize
-     */
-    public @property isFinalized() {
-        return _isFinalized;
-    }
-
     this() {
         this("Undefined");
     }
@@ -70,12 +60,6 @@ class Entity {
         this._name = name;
     }
 
-    private void enforceNonFinalized(string message) {
-        if (isFinalized) {
-            throw new EntityIsFinalizedException(this, message);
-        }
-    }
-
     /**
      * Adds the given entity component to this entity.
      * Adding entity components is not allowed when the entity is finalized.
@@ -86,7 +70,6 @@ class Entity {
      */
     public void addComponent(EntityComponent component) {
         enforce!Exception(component !is null, "Passed component reference is null.");
-        enforceNonFinalized("Cannot add new component, entity is finalized. Entities will become finalized when they are added to the entity manager or by calling Entity.finalize().");
         auto typeId = component.getComponentTypeId();
         _components[typeId] = component;
     }
@@ -104,8 +87,8 @@ class Entity {
         TypeInfo_Class typeInfo = typeid(EntityComponentType);
         auto component = cast(EntityComponentType) typeInfo.create();
         enforce!Exception(component !is null,
-                format("Error creating component of type %s. Does the component have a default constructor?",
-                    typeInfo));
+            format("Error creating component of type %s. Does the component have a default constructor?",
+                typeInfo));
         addComponent(component);
     }
 
@@ -132,7 +115,6 @@ class Entity {
      *  addComponent, finalize
      */
     public void removeComponent(StringId componentType) {
-        enforceNonFinalized("Cannot remove components, entity is finalized. Entities will become finalized when they are added to the entity manager or by calling Entity.finalize().");
         _components.remove(componentType);
     }
 
@@ -185,7 +167,7 @@ class Entity {
      *  EntityComponentType = Type of the entity component that has to be present.
      */
     public void maybeWithComponent(EntityComponentType : EntityComponent)(
-            void delegate(EntityComponentType) fn) {
+        void delegate(EntityComponentType) fn) {
         if (hasComponent!EntityComponentType) {
             withComponent(fn);
         }
@@ -200,7 +182,7 @@ class Entity {
      *  ComponentNotFoundException when the entity does not have a component of the given type.
      */
     public void withComponent(EntityComponentType : EntityComponent)(
-            void delegate(EntityComponentType) fn) {
+        void delegate(EntityComponentType) fn) {
         fn(getComponent!EntityComponentType);
     }
 
@@ -214,7 +196,7 @@ class Entity {
      *  ComponentNotFoundException when the entity does not have a component of the given type.
      */
     public ReturnType getFromComponent(EntityComponentType : EntityComponent, ReturnType)(
-            ReturnType delegate(EntityComponentType) fn) {
+        ReturnType delegate(EntityComponentType) fn) {
         return fn(getComponent!EntityComponentType);
     }
 
@@ -227,7 +209,7 @@ class Entity {
      *  ReturnType = Type of the data expected to be returned.
      */
     public ReturnType getFromComponent(EntityComponentType : EntityComponent, ReturnType)(
-            ReturnType delegate(EntityComponentType) fn, lazy ReturnType defaultValue) {
+        ReturnType delegate(EntityComponentType) fn, lazy ReturnType defaultValue) {
         return hasComponent!EntityComponentType ? getFromComponent(fn) : defaultValue();
     }
 
@@ -265,17 +247,7 @@ class Entity {
      *  finalize
      */
     public void clearComponents() {
-        enforceNonFinalized("Cannot clear components.");
         _components.destroy();
-    }
-
-    /**
-     * Finalizes the component.
-     * A finalized component cannot be modified anymore; entity components
-     * cannot be added or removed.
-     */
-    public void finalize() {
-        _isFinalized = true;
     }
 }
 
@@ -394,10 +366,6 @@ class EntityManager {
      *  entity = Entity to be added.
      */
     public void addEntity(Entity entity) {
-        if (!entity.isFinalized) {
-            entity.finalize();
-        }
-
         entity.id = nextAvailableId++;
         _entities.add(entity);
         foreach (processor; _processors) {
@@ -570,9 +538,6 @@ abstract class EntityProcessor {
      *  Exception when an unfinalized entity was added to entity processor
      */
     public void addEntity(Entity entity) {
-        enforce!Exception(entity.isFinalized,
-                "An unfinalized entity was added to entity processor. Finalize entities first using Entity.finalize()");
-
         if (!acceptsEntity(entity))
             return;
 
@@ -773,7 +738,7 @@ version (unittest) {
     }
 
     @(
-            "Maybe execute delegate on entity for specific component when component is not added to entity")
+        "Maybe execute delegate on entity for specific component when component is not added to entity")
     unittest {
         auto entity = new Entity();
         auto executedTestFunction = false;
@@ -792,7 +757,7 @@ version (unittest) {
         entity.addComponent(component);
 
         auto theAnswer = entity.getFromComponent!TestEntityComponent(
-                component => component.theAnswer);
+            component => component.theAnswer);
         assert(42 == theAnswer);
     }
 
@@ -800,7 +765,7 @@ version (unittest) {
     unittest {
         auto entity = new Entity();
         assertThrown!ComponentNotFoundException(
-                entity.getFromComponent!TestEntityComponent(component => component.theAnswer));
+            entity.getFromComponent!TestEntityComponent(component => component.theAnswer));
     }
 
     @("Get from component of type with giving default value")
@@ -811,17 +776,17 @@ version (unittest) {
 
         auto wrongAnswer = 88;
         auto theAnswer = entity.getFromComponent!TestEntityComponent(
-                component => component.theAnswer, wrongAnswer);
+            component => component.theAnswer, wrongAnswer);
         assert(42 == theAnswer);
     }
 
     @(
-            "Get from component of type with giving default value when entity doesn't have component of type")
+        "Get from component of type with giving default value when entity doesn't have component of type")
     unittest {
         auto entity = new Entity();
         auto const expectedCodeword = "I am a fish";
         auto const actualCodeword = entity.getFromComponent!TestEntityComponent(
-                component => "Sharks r cool", expectedCodeword);
+            component => "Sharks r cool", expectedCodeword);
         assert(expectedCodeword == actualCodeword);
     }
 
@@ -832,50 +797,14 @@ version (unittest) {
         entity.addComponent(component);
 
         entity.getFromComponent!(TestEntityComponent,
-                NonlazySloth)(component => new NonlazySloth(), new LazySloth());
+            NonlazySloth)(component => new NonlazySloth(), new LazySloth());
     }
-
-    @("Finalization of entities")
-    unittest {
-        auto entity = new Entity();
-        entity.finalize();
-        assert(entity.isFinalized);
-    }
-
-    @("Cannot add components to finalized entities")
-    unittest {
-        auto entity = new Entity();
-        entity.finalize();
-        assertThrown!EntityIsFinalizedException(entity.addComponent(new TestEntityComponent()));
-        assertThrown!EntityIsFinalizedException(entity.addComponent!TestEntityComponent);
-    }
-
-    @("Cannot remove components from finalized entities")
-    unittest {
-        auto entity = new Entity();
-        auto component = new TestEntityComponent();
-        entity.addComponent(component);
-        entity.finalize();
-        assertThrown!EntityIsFinalizedException(entity.removeComponent(component));
-        assertThrown!EntityIsFinalizedException(entity.removeComponent!TestEntityComponent);
-        assertThrown!EntityIsFinalizedException(
-                entity.removeComponent(component.getComponentTypeId()));
-    }
-
-    @("Cannot clear components from finalized entities")
-    unittest {
-        auto entity = new Entity();
-        entity.finalize();
-        assertThrown!EntityIsFinalizedException(entity.clearComponents());
-    }
-
 }
 
 // Entity processor tests
 version (unittest) {
     Entity createTestEntity() {
         auto entity = new Entity();
-        entity.finalize();
         entity.id = 1234;
         return entity;
     }
@@ -920,14 +849,6 @@ version (unittest) {
         assert(processor.hasEntity(entity.id));
     }
 
-    @("Add non-finalized entity to entity processor")
-    unittest {
-        auto entity = new Entity();
-        auto processor = new TestEntityProcessor();
-        assertThrown!Exception(processor.addEntity(entity));
-        assert(!processor.hasEntity(entity.id));
-    }
-
     @("Remove entity from entity processor")
     unittest {
         auto entity = createTestEntity();
@@ -970,15 +891,6 @@ version (unittest) {
         auto manager = new EntityManager();
         auto entity = new Entity();
         manager.addEntity(entity);
-    }
-
-    @("Adding an entity to entity manager finalizes entity")
-    unittest {
-        auto manager = new EntityManager();
-        auto entity = new Entity();
-        assert(!entity.isFinalized);
-        manager.addEntity(entity);
-        assert(entity.isFinalized);
     }
 
     @("Adding an entity to entity manager sets entity's ID")
