@@ -523,6 +523,10 @@ class EntityManager {
             }
         });
     }
+
+    public void sendLifeCycleMessage(const StringId messageId, const Entity entity) {
+        messageHandler.sendMessage(entityLifeCycleChannel, EntityLifeCycleMessage.create(messageId, entity));
+    }
 }
 
 /**
@@ -1102,12 +1106,11 @@ version (unittest) {
         dependencies.register!MessageHandler;
         dependencies.register!EntityManager;
         auto entity = new Entity();
-
         auto messageHandler = dependencies.resolve!MessageHandler;
-        messageHandler.sendMessage(entityLifeCycleChannel, EntityLifeCycleMessage.create(cmdAddEntity, entity));
-        messageHandler.shiftStandbyToActiveQueue();
-
         auto manager = dependencies.resolve!EntityManager;
+
+        manager.sendLifeCycleMessage(cmdAddEntity, entity);
+        messageHandler.shiftStandbyToActiveQueue();
         manager.update();
 
         assert(manager.hasEntity(entity));
@@ -1119,12 +1122,11 @@ version (unittest) {
         dependencies.register!MessageHandler;
         dependencies.register!EntityManager;
         auto entity = new Entity();
-
-        auto manager = dependencies.resolve!EntityManager;
-        manager.addEntity(entity);
-
         auto messageHandler = dependencies.resolve!MessageHandler;
-        messageHandler.sendMessage(entityLifeCycleChannel, EntityLifeCycleMessage.create(cmdRemoveEntity, entity));
+        auto manager = dependencies.resolve!EntityManager;
+
+        manager.addEntity(entity);
+        manager.sendLifeCycleMessage(cmdRemoveEntity, entity);
         messageHandler.shiftStandbyToActiveQueue();
         manager.update();
 
