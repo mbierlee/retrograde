@@ -11,10 +11,13 @@
 
 module retrograde.core.entity;
 
-import retrograde.core.stringid;
+import retrograde.core.stringid : sid, StringId;
+import retrograde.core.messaging : MessageHandler, Message;
 
-import std.exception;
-import std.string;
+import std.exception : enforce;
+import std.string : format;
+
+import poodinis;
 
 alias EntityIdType = ulong;
 
@@ -342,6 +345,25 @@ class EntityCollection {
     }
 }
 
+const auto entityLifeCycleChannel = sid("entity_life_cycle");
+const auto cmdAddEntity = sid("cmd_add_entity");
+const auto cmdRemoveEntity = sid("cmd_remove_entity");
+const auto evEntityCompositionChanged = sid("ev_entity_composition_changed");
+
+class EntityLifeCycleMessage : Message {
+    @property StringId id;
+    @property const Entity entity;
+
+    this(const StringId id, const Entity entity) {
+        this.id = id;
+        this.entity = entity;
+    }
+
+    static immutable(EntityLifeCycleMessage) create(const StringId id, const Entity entity) {
+        return cast(immutable(EntityLifeCycleMessage)) new EntityLifeCycleMessage(id, entity);
+    }
+}
+
 /**
  * Manages the lifecycle of entity processors and their entities.
  */
@@ -349,6 +371,8 @@ class EntityManager {
     private EntityCollection _entities = new EntityCollection();
     private EntityProcessor[] _processors;
     private EntityIdType nextAvailableId = 1;
+
+    private @Autowire MessageHandler messageHandler;
 
     public @property entities() {
         return _entities.getAll();
@@ -461,6 +485,8 @@ class EntityManager {
      * Calls the update method of all processors managed by this manager.
      */
     public void update() {
+        handleLifeCycleMessages();
+
         foreach (processor; _processors) {
             processor.update();
         }
@@ -473,6 +499,29 @@ class EntityManager {
         foreach (processor; _processors) {
             processor.draw();
         }
+    }
+
+    private void handleLifeCycleMessages() {
+        messageHandler.receiveMessages(entityLifeCycleChannel, (
+                immutable EntityLifeCycleMessage message) {
+            switch (message.id) {
+
+            case cmdAddEntity:
+                addEntity(cast(Entity) message.entity);
+                break;
+
+            case cmdRemoveEntity:
+                removeEntity(cast(Entity) message.entity);
+                break;
+
+            case evEntityCompositionChanged:
+                //TODO: reconsider entity
+                assert(0);
+
+            default:
+                break;
+            }
+        });
     }
 }
 
@@ -620,6 +669,8 @@ abstract class EntityProcessor {
 
 // Entity tests
 version (unittest) {
+    import std.exception : assertThrown;
+
     class TestEntityComponent : EntityComponent {
         mixin EntityComponentIdentity!"TestEntityComponent";
         public int theAnswer = 42;
@@ -989,7 +1040,11 @@ version (unittest) {
 
     @("Update entity processor by entity manager")
     unittest {
-        auto manager = new EntityManager();
+        shared DependencyContainer dependencies = new shared DependencyContainer();
+        dependencies.register!MessageHandler;
+        dependencies.register!EntityManager;
+
+        auto manager = dependencies.resolve!EntityManager;
         auto processor = new TestEntityProcessor();
         auto entity = new TestEntity();
         manager.addEntityProcessor(processor);
@@ -1039,5 +1094,40 @@ version (unittest) {
         auto entity = new Entity();
         manager.addEntity(entity);
         assert(manager.hasEntity(entity));
+    }
+
+    @("Add entity via entity life cycle message")
+    unittest {
+        shared DependencyContainer dependencies = new shared DependencyContainer();
+        dependencies.register!MessageHandler;
+        dependencies.register!EntityManager;
+        auto entity = new Entity();
+
+        auto messageHandler = dependencies.resolve!MessageHandler;
+        messageHandler.sendMessage(entityLifeCycleChannel, EntityLifeCycleMessage.create(cmdAddEntity, entity));
+        messageHandler.shiftStandbyToActiveQueue();
+
+        auto manager = dependencies.resolve!EntityManager;
+        manager.update();
+
+        assert(manager.hasEntity(entity));
+    }
+
+    @("Remove entity via entity life cycle message")
+    unittest {
+        shared DependencyContainer dependencies = new shared DependencyContainer();
+        dependencies.register!MessageHandler;
+        dependencies.register!EntityManager;
+        auto entity = new Entity();
+
+        auto manager = dependencies.resolve!EntityManager;
+        manager.addEntity(entity);
+
+        auto messageHandler = dependencies.resolve!MessageHandler;
+        messageHandler.sendMessage(entityLifeCycleChannel, EntityLifeCycleMessage.create(cmdRemoveEntity, entity));
+        messageHandler.shiftStandbyToActiveQueue();
+        manager.update();
+
+        assert(!manager.hasEntity(entity));
     }
 }
