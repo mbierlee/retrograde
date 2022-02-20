@@ -585,9 +585,36 @@ abstract class EntityProcessor {
     }
 
     /**
+     * Removes an entity.
+     * Params:
+     *  entityId = Entity to be checked.
+     */
+    public void removeEntity(Entity entity) {
+        removeEntity(entity.id);
+    }
+
+    /**
      * Called when the given entity is removed.
      */
     protected void processRemovedEntity(Entity entity) {
+    }
+
+    /**
+     * Reconsider whether an entity is acceptable to this entity processor. 
+     *
+     * If the processor has the entity and it is not acceptable anymore, 
+     * it will be removed. If the processor does not have the entity and
+     * it is acceptable now, it will be added.
+     *
+     * Params:
+     *  entity = Entity to be reconsidered.
+     */
+    public void reconsiderEntity(Entity entity) {
+        if (hasEntity(entity) && !acceptsEntity(entity)) {
+            removeEntity(entity);
+        } else if (!hasEntity(entity)) {
+            addEntity(entity);
+        }
     }
 }
 
@@ -838,6 +865,16 @@ version (unittest) {
         }
     }
 
+    class ParticularEntityComponent : EntityComponent {
+        mixin EntityComponentIdentity!"ParticularEntityComponent";
+    }
+
+    class PickyTestEntityProcessor : EntityProcessor {
+        public override bool acceptsEntity(Entity entity) {
+            return entity.hasComponent!ParticularEntityComponent;
+        }
+    }
+
     @("Add entity to entity processor")
     unittest {
         auto entity = createTestEntity();
@@ -878,6 +915,21 @@ version (unittest) {
         processor.removeEntity(entity.id);
 
         assert(1 == processor.processRemoveCalls);
+    }
+
+    @("Entity processor reconsiders an entity")
+    unittest {
+        auto entity = createTestEntity();
+        auto processor = new PickyTestEntityProcessor();
+        entity.addComponent!ParticularEntityComponent;
+        processor.reconsiderEntity(entity);
+
+        assert(processor.hasEntity(entity));
+
+        entity.removeComponent!ParticularEntityComponent;
+        processor.reconsiderEntity(entity);
+
+        assert(!processor.hasEntity(entity));
     }
 }
 
