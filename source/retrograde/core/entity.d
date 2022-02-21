@@ -678,10 +678,8 @@ abstract class EntityProcessor {
     }
 }
 
-// Entity tests
+// Test entitiies, components and processors.
 version (unittest) {
-    import std.exception : assertThrown;
-
     class TestEntityComponent : EntityComponent {
         mixin EntityComponentIdentity!"TestEntityComponent";
         public int theAnswer = 42;
@@ -695,6 +693,56 @@ version (unittest) {
 
     class NonlazySloth {
     }
+
+    Entity createTestEntity() {
+        auto entity = new Entity();
+        entity.id = 1234;
+        return entity;
+    }
+
+    class TestEntityProcessor : EntityProcessor {
+        public int acceptsEntityCalls = 0;
+        public int updateCalls = 0;
+        public int drawCalls = 0;
+        public int processAddCalls = 0;
+        public int processRemoveCalls = 0;
+
+        public override bool acceptsEntity(Entity entity) {
+            acceptsEntityCalls++;
+            return true;
+        }
+
+        protected override void processAcceptedEntity(Entity entity) {
+            processAddCalls++;
+        }
+
+        protected override void processRemovedEntity(Entity entity) {
+            processRemoveCalls++;
+        }
+
+        public override void update() {
+            updateCalls++;
+        }
+
+        public override void draw() {
+            drawCalls++;
+        }
+    }
+
+    class ParticularEntityComponent : EntityComponent {
+        mixin EntityComponentIdentity!"ParticularEntityComponent";
+    }
+
+    class PickyTestEntityProcessor : EntityProcessor {
+        public override bool acceptsEntity(Entity entity) {
+            return entity.hasComponent!ParticularEntityComponent;
+        }
+    }
+}
+
+// Entity tests
+version (unittest) {
+    import std.exception : assertThrown;
 
     @("Set entity ID")
     unittest {
@@ -892,50 +940,6 @@ version (unittest) {
 
 // Entity processor tests
 version (unittest) {
-    Entity createTestEntity() {
-        auto entity = new Entity();
-        entity.id = 1234;
-        return entity;
-    }
-
-    class TestEntityProcessor : EntityProcessor {
-        public int acceptsEntityCalls = 0;
-        public int updateCalls = 0;
-        public int drawCalls = 0;
-        public int processAddCalls = 0;
-        public int processRemoveCalls = 0;
-
-        public override bool acceptsEntity(Entity entity) {
-            acceptsEntityCalls++;
-            return true;
-        }
-
-        protected override void processAcceptedEntity(Entity entity) {
-            processAddCalls++;
-        }
-
-        protected override void processRemovedEntity(Entity entity) {
-            processRemoveCalls++;
-        }
-
-        public override void update() {
-            updateCalls++;
-        }
-
-        public override void draw() {
-            drawCalls++;
-        }
-    }
-
-    class ParticularEntityComponent : EntityComponent {
-        mixin EntityComponentIdentity!"ParticularEntityComponent";
-    }
-
-    class PickyTestEntityProcessor : EntityProcessor {
-        public override bool acceptsEntity(Entity entity) {
-            return entity.hasComponent!ParticularEntityComponent;
-        }
-    }
 
     @("Add entity to entity processor")
     unittest {
@@ -1172,5 +1176,10 @@ version (unittest) {
         });
 
         assert(entityRemovedEventWasSent);
+    }
+
+    @("Reconsider entity when changed via entity life cycle message")
+    unittest {
+
     }
 }
