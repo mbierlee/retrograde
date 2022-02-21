@@ -13,7 +13,7 @@ module retrograde.rendering.opengl;
 
 version (Have_bindbc_opengl) {
     import retrograde.core.rendering : RenderSystem, Shader, ShaderProgram, ShaderType;
-    import retrograde.core.entity : Entity;
+    import retrograde.core.entity : Entity, EntityComponent, EntityComponentIdentity;
     import retrograde.core.platform : Platform;
 
     import retrograde.components.rendering : RenderableComponent, DefaultShaderProgramComponent;
@@ -42,8 +42,6 @@ version (Have_bindbc_opengl) {
         private GLfloat[] clearColor = [0.576f, 0.439f, 0.859f, 1.0f];
         private OpenGlShaderProgram defaultOpenGlShaderProgram;
 
-        private GlModelInfo[ModelComponent] modelInfo; //TODO: Move to entity? Should be part of enity state. Requires removal of entity finalization.
-
         override public int getContextHintMayor() {
             return 4;
         }
@@ -61,14 +59,15 @@ version (Have_bindbc_opengl) {
                 GlModelInfo info;
                 glCreateVertexArrays(1, &info.vertexArrayObject);
                 glBindVertexArray(info.vertexArrayObject);
-                modelInfo[c] = info;
+
+                entity.addComponent(new GlModelInfoComponent(info));
             });
         }
 
         override protected void processRemovedEntity(Entity entity) {
-            entity.maybeWithComponent!ModelComponent((ModelComponent c) {
-                modelInfo.remove(c);
-            });
+            if (entity.hasComponent!GlModelInfoComponent) {
+                entity.removeComponent!GlModelInfoComponent;
+            }
         }
 
         override public void initialize() {
@@ -148,6 +147,19 @@ version (Have_bindbc_opengl) {
 
     private struct GlModelInfo {
         GLuint vertexArrayObject;
+    }
+
+    private class GlModelInfoComponent : EntityComponent {
+        mixin EntityComponentIdentity!"GlModelInfo";
+
+        public GlModelInfo info;
+
+        this() {
+        }
+
+        this(GlModelInfo info) {
+            this.info = info;
+        }
     }
 
     /**
