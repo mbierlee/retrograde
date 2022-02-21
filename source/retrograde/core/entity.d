@@ -450,7 +450,7 @@ class EntityManager {
      * Params:
      *  entityId = ID of the entity to check.
      */
-    public bool hasEntity(EntityIdType entityId) {
+    public bool hasEntity(const EntityIdType entityId) {
         return _entities.hasEntity(entityId);
     }
 
@@ -459,7 +459,7 @@ class EntityManager {
      * Params:
      *  entity: Entity to check.
      */
-    public bool hasEntity(Entity entity) {
+    public bool hasEntity(const Entity entity) {
         return hasEntity(entity.id);
     }
 
@@ -468,7 +468,7 @@ class EntityManager {
      * Params:
      *  entityId = ID of the entity to be removed.
      */
-    public void removeEntity(EntityIdType entityId) {
+    public void removeEntity(const EntityIdType entityId) {
         _entities.remove(entityId);
         foreach (processor; _processors) {
             if (processor.hasEntity(entityId)) {
@@ -482,8 +482,18 @@ class EntityManager {
      * Params:
      *  entity = Entity to be removed.
      */
-    public void removeEntity(Entity entity) {
+    public void removeEntity(const Entity entity) {
         removeEntity(entity.id);
+    }
+
+    /** 
+     * Asks all entity processors to reconsider whether the entity
+     * is acceptable by them and adds it to them when it is.
+     */
+    public void reconsiderEntity(Entity entity) {
+        foreach (EntityProcessor processor; _processors) {
+            processor.reconsiderEntity(entity);
+        }
     }
 
     /**
@@ -522,8 +532,10 @@ class EntityManager {
                 break;
 
             case evEntityCompositionChanged:
-                //TODO: reconsider entity
-                assert(0);
+                if (hasEntity(message.entity)) {
+                    reconsiderEntity(cast(Entity) message.entity);
+                }
+                break;
 
             default:
                 break;
@@ -1180,6 +1192,23 @@ version (unittest) {
 
     @("Reconsider entity when changed via entity life cycle message")
     unittest {
+        shared DependencyContainer dependencies = new shared DependencyContainer();
+        dependencies.register!MessageHandler;
+        dependencies.register!EntityManager;
+        auto manager = dependencies.resolve!EntityManager;
+        auto messageHandler = dependencies.resolve!MessageHandler;
+        auto entity = new Entity();
+        auto processor = new PickyTestEntityProcessor();
+        manager.addEntityProcessor(processor);
+        manager.addEntity(entity);
 
+        assert(!processor.hasEntity(entity));
+
+        entity.addComponent!ParticularEntityComponent;
+        manager.sendLifeCycleMessage(evEntityCompositionChanged, entity);
+        messageHandler.shiftStandbyToActiveQueue();
+        manager.update();
+
+        assert(processor.hasEntity(entity));
     }
 }
