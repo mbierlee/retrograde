@@ -338,6 +338,18 @@ class EntityCollection {
         return entities[entityId];
     }
 
+    int opApply(int delegate(Entity) op)  {
+        int result = 0;
+        foreach (Entity entity; entities.values) {
+            result = op(entity);
+            if (result) {
+                break;
+            }
+        }
+
+        return result;
+    }
+
     public void clearAll() {
         entities.destroy();
     }
@@ -353,8 +365,7 @@ class EntityCollection {
     }
 
     public bool hasEntity(EntityIdType entityId) {
-        Entity* entity = entityId in entities;
-        return entity !is null;
+        return (entityId in entities) !is null;
     }
 
     public Entity[] getAll() {
@@ -505,6 +516,17 @@ class EntityManager {
      */
     public void removeEntity(Entity entity) {
         removeEntity(entity.id);
+    }
+
+    /** 
+     * Remove all entities from this entity manager.
+     */
+    public void clearEntities() {
+        foreach (Entity entity; _entities) {
+            entity.manager = null;
+        }
+
+        _entities.clearAll();
     }
 
     /** 
@@ -1146,6 +1168,31 @@ version (unittest) {
         manager.draw();
 
         assert(1 == processor.drawCalls);
+    }
+
+    @("Remove entity from entity manager")
+    unittest {
+        auto manager = new EntityManager();
+        auto entity = new Entity();
+        manager.addEntity(entity);
+        manager.removeEntity(entity);
+
+        assert(!manager.hasEntity(entity));
+    }
+
+    @("Remove all entities from entity manager")
+    unittest {
+        auto manager = new EntityManager();
+        auto entityOne = new Entity();
+        auto entityTwo = new Entity();
+        manager.addEntity(entityOne);
+        manager.addEntity(entityTwo);
+        manager.clearEntities();
+
+        assert(!manager.hasEntity(entityOne));
+        assert(!manager.hasEntity(entityTwo));
+        assert(entityOne.manager is null);
+        assert(entityTwo.manager is null);
     }
 
     @("Remove entity processor from entity manager")
