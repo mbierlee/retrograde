@@ -376,7 +376,6 @@ class EntityCollection {
 const auto entityLifeCycleChannel = sid("entity_life_cycle");
 const auto cmdAddEntity = sid("cmd_add_entity");
 const auto cmdRemoveEntity = sid("cmd_remove_entity");
-const auto evEntityCompositionChanged = sid("ev_entity_composition_changed");
 const auto evEntityAddedToManager = sid("ev_entity_added_to_manager");
 const auto evEntityRemovedFromManager = sid("ev_entity_removed_from_manager");
 
@@ -572,12 +571,6 @@ class EntityManager {
             case cmdRemoveEntity:
                 removeEntity(cast(Entity) message.entity);
                 sendLifeCycleMessage(evEntityRemovedFromManager, message.entity);
-                break;
-
-            case evEntityCompositionChanged:
-                if (hasEntity(message.entity)) {
-                    reconsiderEntity(cast(Entity) message.entity);
-                }
                 break;
 
             default:
@@ -1279,27 +1272,5 @@ version (unittest) {
         });
 
         assert(entityRemovedEventWasSent);
-    }
-
-    @("Reconsider entity when changed via entity life cycle message")
-    unittest {
-        shared DependencyContainer dependencies = new shared DependencyContainer();
-        dependencies.register!MessageHandler;
-        dependencies.register!EntityManager;
-        auto manager = dependencies.resolve!EntityManager;
-        auto messageHandler = dependencies.resolve!MessageHandler;
-        auto entity = new Entity();
-        auto processor = new PickyTestEntityProcessor();
-        manager.addEntityProcessor(processor);
-        manager.addEntity(entity);
-
-        assert(!processor.hasEntity(entity));
-
-        entity.addComponent!ParticularEntityComponent;
-        manager.sendLifeCycleMessage(evEntityCompositionChanged, entity);
-        messageHandler.shiftStandbyToActiveQueue();
-        manager.update();
-
-        assert(processor.hasEntity(entity));
     }
 }
