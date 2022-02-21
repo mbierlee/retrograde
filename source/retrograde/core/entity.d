@@ -27,6 +27,8 @@ alias EntityIdType = ulong;
  */
 class Entity {
     private string _name;
+    private EntityManager manager;
+
     public EntityIdType id = 0;
 
     /**
@@ -75,6 +77,7 @@ class Entity {
         enforce!Exception(component !is null, "Passed component reference is null.");
         auto typeId = component.getComponentTypeId();
         _components[typeId] = component;
+        reconsiderEntity();
     }
 
     /**
@@ -119,6 +122,7 @@ class Entity {
      */
     public void removeComponent(StringId componentType) {
         _components.remove(componentType);
+        reconsiderEntity();
     }
 
     /**
@@ -251,6 +255,19 @@ class Entity {
      */
     public void clearComponents() {
         _components.destroy();
+        reconsiderEntity();
+    }
+
+    /** 
+     * Reconsiders whether this entity is still acceptable by all
+     * processors that are managed by its entity manager.
+     *
+     * Does nothing if this entity is not managed by an entity manager.
+     */
+    public void reconsiderEntity() {
+        if (manager) {
+            manager.reconsiderEntity(this);
+        }
     }
 }
 
@@ -396,6 +413,7 @@ class EntityManager {
             entity.id = nextAvailableId++;
         }
 
+        entity.manager = this;
         _entities.add(entity);
         foreach (processor; _processors) {
             processor.addEntity(entity);
@@ -469,10 +487,13 @@ class EntityManager {
      *  entityId = ID of the entity to be removed.
      */
     public void removeEntity(const EntityIdType entityId) {
-        _entities.remove(entityId);
-        foreach (processor; _processors) {
-            if (processor.hasEntity(entityId)) {
-                processor.removeEntity(entityId);
+        if (hasEntity(entityId)) {
+            _entities[entityId].manager = null;
+            _entities.remove(entityId);
+            foreach (processor; _processors) {
+                if (processor.hasEntity(entityId)) {
+                    processor.removeEntity(entityId);
+                }
             }
         }
     }
@@ -482,7 +503,7 @@ class EntityManager {
      * Params:
      *  entity = Entity to be removed.
      */
-    public void removeEntity(const Entity entity) {
+    public void removeEntity(Entity entity) {
         removeEntity(entity.id);
     }
 
@@ -948,6 +969,27 @@ version (unittest) {
         entity.getFromComponent!(TestEntityComponent,
             NonlazySloth)(component => new NonlazySloth(), new LazySloth());
     }
+
+    @("Entity reconsiders itself when components change")
+    unittest {
+        auto manager = new EntityManager();
+        auto entity = new Entity();
+        auto processor = new PickyTestEntityProcessor();
+        manager.addEntityProcessor(processor);
+        manager.addEntity(entity);
+
+        assert(!processor.hasEntity(entity));
+
+        entity.addComponent!ParticularEntityComponent;
+        assert(processor.hasEntity(entity));
+
+        entity.removeComponent!ParticularEntityComponent;
+        assert(!processor.hasEntity(entity));
+
+        entity.addComponent!ParticularEntityComponent;
+        entity.clearComponents();
+        assert(!processor.hasEntity(entity));
+    }
 }
 
 // Entity processor tests
@@ -1075,6 +1117,7 @@ version (unittest) {
         manager.addEntity(entity);
 
         assert(1 == processor.entityCount);
+        assert(entity.manager is manager);
     }
 
     @("Update entity processor by entity manager")
@@ -1117,6 +1160,7 @@ version (unittest) {
 
         assert(!manager.hasEntity(entity));
         assert(!processor.hasEntity(entity));
+        assert(entity.manager is null);
     }
 
     @("Entity manager has entity with id")
