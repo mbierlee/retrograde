@@ -108,7 +108,7 @@ version (Have_bindbc_opengl) {
         override public void draw() {
             glClearBufferfv(GL_COLOR, 0, &clearColor[0]);
 
-            foreach (Entity entity; entities) {
+            foreach (Entity entity; _entities) {
                 if (defaultOpenGlShaderProgram &&
                     entity.hasComponent!DefaultShaderProgramComponent) {
                     glUseProgram(defaultOpenGlShaderProgram.getOpenGlShaderProgram());
