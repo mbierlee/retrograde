@@ -66,10 +66,16 @@ class Mesh {
             fn(i * 3 + 2, _vertices[_face.c]);
         }
     }
+
+    void forEachFace(void delegate(size_t, Vertex, Vertex, Vertex) fn) const {
+        foreach (size_t i, const(Face) _face; _faces) {
+            fn(i, _vertices[_face.a], _vertices[_face.b], _vertices[_face.c]);
+        }
+    }
 }
 
 version (unittest) {
-    @("Iterate over meshes")
+    @("Iterate over vertices")
     unittest {
         Face[] faces = [Face(0, 1, 2), Face(2, 1, 0)];
         auto vertices = [Vertex(1, 0, 0), Vertex(1, 1, 1), Vertex(2, 2, 2)];
@@ -86,13 +92,41 @@ version (unittest) {
             Vertex(1, 0, 0)
         ];
 
-        model.meshes[0].forEachVertex((size_t index, Vertex vec) {
-            assert(vec == expectedVertices[index]);
+        model.meshes[0].forEachVertex((size_t index, Vertex vert) {
+            assert(vert == expectedVertices[index]);
             hasIterated = true;
         });
 
         assert(mesh.vertices.length == 3);
         assert(mesh.faces.length == 2);
+        assert(hasIterated);
+    }
+
+    @("Iterate over faces")
+    unittest {
+        Face[] faces = [Face(0, 1, 2), Face(2, 1, 0)];
+        auto vertices = [Vertex(1, 0, 0), Vertex(1, 1, 1), Vertex(2, 2, 2)];
+        const auto mesh = new Mesh(vertices, faces);
+        const auto model = new Model([mesh]);
+        bool hasIterated = false;
+
+        auto expectedFaces = [
+            [Vertex(1, 0, 0),
+                Vertex(1, 1, 1),
+                Vertex(2, 2, 2)],
+            [Vertex(2, 2, 2),
+                Vertex(1, 1, 1),
+                Vertex(1, 0, 0)]
+        ];
+
+        model.meshes[0].forEachFace((size_t index, Vertex vertA, Vertex vertB, Vertex vertC) {
+            assert(expectedFaces[index][0] == vertA);
+            assert(expectedFaces[index][1] == vertB);
+            assert(expectedFaces[index][2] == vertC);
+
+            hasIterated = true;
+        });
+
         assert(hasIterated);
     }
 }
