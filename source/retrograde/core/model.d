@@ -11,11 +11,17 @@
 
 module retrograde.core.model;
 
-import retrograde.core.math : Vector, Vector3D;
+alias VertexComponent = double;
 
-alias Vertex = Vector3D;
+struct Vertex {
+    VertexComponent x, y, z;
+}
+
 alias VertexIndex = size_t;
-alias Face = Vector!(VertexIndex, 3);
+
+struct Face {
+    VertexIndex a, b, c;
+}
 
 /** 
  * A data object containing a representation of a multi-dimensional geometric object
@@ -55,9 +61,9 @@ class Mesh {
 
     void forEachVertex(void delegate(size_t, Vertex) fn) const {
         foreach (size_t i, const(Face) _face; _faces) {
-            fn(i * 3, _vertices[_face.x]);
-            fn(i * 3 + 1, _vertices[_face.y]);
-            fn(i * 3 + 2, _vertices[_face.z]);
+            fn(i * 3, _vertices[_face.a]);
+            fn(i * 3 + 1, _vertices[_face.b]);
+            fn(i * 3 + 2, _vertices[_face.c]);
         }
     }
 }

@@ -85,7 +85,7 @@ class WavefrontObjParser {
 
     private void addVertex(ParseState state, string[] parts) {
         if (parts.length >= 3) {
-            auto vector = Vector3D(to!double(parts[0]), to!double(parts[1]), to!double(parts[2]));
+            auto vector = Vertex(to!double(parts[0]), to!double(parts[1]), to!double(parts[2]));
             state.vertices ~= vector;
         }
     }
