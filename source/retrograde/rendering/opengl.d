@@ -96,9 +96,14 @@ version (Have_bindbc_opengl) {
         }
 
         override protected void processRemovedEntity(Entity entity) {
-            if (entity.hasComponent!GlModelInfoComponent) {
+            entity.maybeWithComponent!GlModelInfoComponent((GlModelInfoComponent c) {
+                foreach (GlMeshInfo mesh; c.info.meshes) {
+                    glDeleteVertexArrays(1, &mesh.vertexArrayObject);
+                    glDeleteBuffers(1, &mesh.vertexBufferObject);
+                }
+
                 entity.removeComponent!GlModelInfoComponent;
-            }
+            });
         }
 
         override public void initialize() {
