@@ -85,7 +85,7 @@ class WavefrontObjParser {
 
     private void addVertex(ParseState state, string[] parts) {
         if (parts.length >= 3) {
-            auto vector = Vertex(to!double(parts[0]), to!double(parts[1]), to!double(parts[2]));
+            auto vector = Vertex(to!double(parts[0]), to!double(parts[1]), to!double(parts[2]), 1);
             state.vertices ~= vector;
         }
     }
@@ -150,14 +150,14 @@ version (unittest) {
         assert(model.meshes.length == 1);
 
         auto expectedVertices = [
-            Vertex(1.000000, 1.000000, -1.000000),
-            Vertex(1.000000, -1.000000, -1.000000),
-            Vertex(1.000000, 1.000000, 1.000000),
-            Vertex(1.000000, -1.000000, 1.000000),
-            Vertex(-1.000000, 1.000000, -1.000000),
-            Vertex(-1.000000, -1.000000, -1.000000),
-            Vertex(-1.000000, 1.000000, 1.000000),
-            Vertex(-1.000000, -1.000000, 1.000000)
+            Vertex(1.000000, 1.000000, -1.000000, 1),
+            Vertex(1.000000, -1.000000, -1.000000, 1),
+            Vertex(1.000000, 1.000000, 1.000000, 1),
+            Vertex(1.000000, -1.000000, 1.000000, 1),
+            Vertex(-1.000000, 1.000000, -1.000000, 1),
+            Vertex(-1.000000, -1.000000, -1.000000, 1),
+            Vertex(-1.000000, 1.000000, 1.000000, 1),
+            Vertex(-1.000000, -1.000000, 1.000000, 1)
         ];
 
         auto mesh = model.meshes[0];
