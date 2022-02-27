@@ -15,12 +15,13 @@ version (Have_bindbc_opengl) {
     import retrograde.core.rendering : RenderSystem, Shader, ShaderProgram, ShaderType;
     import retrograde.core.entity : Entity, EntityComponent, EntityComponentIdentity;
     import retrograde.core.platform : Platform;
+    import retrograde.core.model : Vertex, Mesh;
 
     import retrograde.components.rendering : RenderableComponent, DefaultShaderProgramComponent;
     import retrograde.components.geometry : ModelComponent;
 
     import std.experimental.logger : Logger;
-    import std.string : fromStringz;
+    import std.string : fromStringz, format;
     import std.conv : to;
 
     import poodinis;
@@ -36,6 +37,7 @@ version (Have_bindbc_opengl) {
         private @Autowire Logger logger;
         private @Autowire Platform platform;
         private @Autowire @OptionalDependency ShaderProgram defaultShaderProgram;
+        private @Autowire GLErrorService errorService;
 
         private @Value("logging.logComponentInitialization") bool logInit;
 
@@ -56,11 +58,40 @@ version (Have_bindbc_opengl) {
 
         override protected void processAcceptedEntity(Entity entity) {
             entity.maybeWithComponent!ModelComponent((ModelComponent c) {
-                GlModelInfo info;
-                glCreateVertexArrays(1, &info.vertexArrayObject);
-                glBindVertexArray(info.vertexArrayObject);
+                GlModelInfo modelInfo;
+                foreach (size_t index, const Mesh mesh; c.model.meshes) {
+                    Vertex[] vertices;
+                    mesh.forEachFace((size_t index, Vertex vertA, Vertex vertB, Vertex vertC) {
+                        vertices ~= vertA;
+                        vertices ~= vertB;
+                        vertices ~= vertC;
+                    });
 
-                entity.addComponent(new GlModelInfoComponent(info));
+                    GLuint vertexArrayObject;
+                    GLuint vertexBufferObject;
+                    glCreateVertexArrays(1, &vertexArrayObject);
+                    glCreateBuffers(1, &vertexBufferObject);
+
+                    ulong verticesByteSize = Vertex.sizeof * vertices.length;
+                    glNamedBufferStorage(vertexBufferObject, verticesByteSize, vertices.ptr, 0);
+
+                    glVertexArrayAttribBinding(vertexArrayObject, 0, 0);
+                    glVertexArrayVertexBuffer(vertexArrayObject, 0, vertexBufferObject, 0, Vertex
+                        .sizeof);
+                    glVertexArrayAttribFormat(vertexArrayObject, 0, 4, GL_DOUBLE, GL_FALSE, Vertex
+                        .x.offsetof);
+                    glEnableVertexArrayAttrib(vertexArrayObject, 0);
+
+                    GlMeshInfo meshInfo;
+                    meshInfo.vertexArrayObject = vertexArrayObject;
+                    meshInfo.vertexBufferObject = vertexBufferObject;
+                    meshInfo.vertexCount = to!int(vertices.length);
+                    modelInfo.meshes ~= meshInfo;
+
+                    errorService.logErrorsIfAny();
+                }
+
+                entity.addComponent(new GlModelInfoComponent(modelInfo));
             });
         }
 
@@ -113,12 +144,12 @@ version (Have_bindbc_opengl) {
                     glUseProgram(defaultOpenGlShaderProgram.getOpenGlShaderProgram());
                 } //TODO: Else use custom shader program
 
-                entity.maybeWithComponent!ModelComponent((ModelComponent c) {
-                    // TEMP replace with actual model rendering
-                    glVertexAttrib4f(0, 0, 0, 0.0f, 0.0f);
-                    glVertexAttrib4f(1, 0.0f, 1.0f, 0.0f, 1.0f);
-                    glDrawArrays(GL_TRIANGLES, 0, 3);
-                    /////////////////////////////////
+                entity.maybeWithComponent!GlModelInfoComponent((GlModelInfoComponent c) {
+                    foreach (GlMeshInfo mesh; c.info.meshes) {
+                        glBindVertexArray(mesh.vertexArrayObject);
+                        glDrawArrays(GL_TRIANGLES, 0, mesh.vertexCount);
+                        glBindVertexArray(0);
+                    }
                 });
             }
         }
@@ -145,8 +176,14 @@ version (Have_bindbc_opengl) {
         }
     }
 
-    private struct GlModelInfo {
+    private struct GlMeshInfo {
         GLuint vertexArrayObject;
+        GLuint vertexBufferObject;
+        int vertexCount;
+    }
+
+    private struct GlModelInfo {
+        GlMeshInfo[] meshes;
     }
 
     private class GlModelInfoComponent : EntityComponent {
@@ -356,5 +393,38 @@ version (Have_bindbc_opengl) {
         auto fragmentShader = new OpenGlShader("fragment",
             import("standard/fragment.glsl"), ShaderType.fragment);
         return new OpenGlShaderProgram(vertexShader, fragmentShader);
+    }
+
+    class GLErrorService {
+        private @Autowire Logger logger;
+
+        public GLenum[] getAllErrors() {
+            GLenum[] errors;
+            while (true) {
+                GLenum error = glGetError();
+                if (error == GL_NO_ERROR) {
+                    break;
+                }
+
+                errors ~= error;
+            }
+            return errors;
+        }
+
+        public void throwOnErrors(ExceptionType : Exception)(string action = "") {
+            auto errors = getAllErrors();
+            auto actionSpecifier = !action.empty ? " while " ~ action : "";
+            if (errors.length > 0) {
+                throw new ExceptionType(format("OpenGL errors were flagged%s: %s", actionSpecifier, errors));
+            }
+        }
+
+        public void logErrorsIfAny() {
+            auto errors = getAllErrors();
+            if (errors.length > 0) {
+                logger.error(format("OpenGL errors were flagged: %s", errors));
+            }
+
+        }
     }
 }
