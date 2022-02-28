@@ -57,54 +57,11 @@ version (Have_bindbc_opengl) {
         }
 
         override protected void processAcceptedEntity(Entity entity) {
-            entity.maybeWithComponent!ModelComponent((ModelComponent c) {
-                GlModelInfo modelInfo;
-                foreach (size_t index, const Mesh mesh; c.model.meshes) {
-                    Vertex[] vertices;
-                    mesh.forEachFace((size_t index, Vertex vertA, Vertex vertB, Vertex vertC) {
-                        vertices ~= vertA;
-                        vertices ~= vertB;
-                        vertices ~= vertC;
-                    });
-
-                    GLuint vertexArrayObject;
-                    GLuint vertexBufferObject;
-                    glCreateVertexArrays(1, &vertexArrayObject);
-                    glCreateBuffers(1, &vertexBufferObject);
-
-                    ulong verticesByteSize = Vertex.sizeof * vertices.length;
-                    glNamedBufferStorage(vertexBufferObject, verticesByteSize, vertices.ptr, 0);
-
-                    glVertexArrayAttribBinding(vertexArrayObject, 0, 0);
-                    glVertexArrayAttribFormat(vertexArrayObject, 0, 4, GL_DOUBLE, GL_FALSE, Vertex
-                        .x.offsetof);
-                    glEnableVertexArrayAttrib(vertexArrayObject, 0);
-
-                    glVertexArrayVertexBuffer(vertexArrayObject, 0, vertexBufferObject, 0, Vertex
-                        .sizeof);
-
-                    GlMeshInfo meshInfo;
-                    meshInfo.vertexArrayObject = vertexArrayObject;
-                    meshInfo.vertexBufferObject = vertexBufferObject;
-                    meshInfo.vertexCount = to!int(vertices.length);
-                    modelInfo.meshes ~= meshInfo;
-
-                    errorService.logErrorsIfAny();
-                }
-
-                entity.addComponent(new GlModelInfoComponent(modelInfo));
-            });
+            loadModelIntoVideoMemory(entity);
         }
 
         override protected void processRemovedEntity(Entity entity) {
-            entity.maybeWithComponent!GlModelInfoComponent((GlModelInfoComponent c) {
-                foreach (GlMeshInfo mesh; c.info.meshes) {
-                    glDeleteVertexArrays(1, &mesh.vertexArrayObject);
-                    glDeleteBuffers(1, &mesh.vertexBufferObject);
-                }
-
-                entity.removeComponent!GlModelInfoComponent;
-            });
+            unloadModelFromVideoMemory(entity);
         }
 
         override public void initialize() {
@@ -179,6 +136,57 @@ version (Have_bindbc_opengl) {
             if (!shaderProgram.isLinked()) {
                 logger.errorf("Link errors for shader program: \n%s", shaderProgram.getLinkInfo());
             }
+        }
+
+        private void loadModelIntoVideoMemory(Entity entity) {
+            entity.maybeWithComponent!ModelComponent((ModelComponent c) {
+                GlModelInfo modelInfo;
+                foreach (size_t index, const Mesh mesh; c.model.meshes) {
+                    Vertex[] vertices;
+                    mesh.forEachFace((size_t index, Vertex vertA, Vertex vertB, Vertex vertC) {
+                        vertices ~= vertA;
+                        vertices ~= vertB;
+                        vertices ~= vertC;
+                    });
+
+                    GLuint vertexArrayObject;
+                    GLuint vertexBufferObject;
+                    glCreateVertexArrays(1, &vertexArrayObject);
+                    glCreateBuffers(1, &vertexBufferObject);
+
+                    ulong verticesByteSize = Vertex.sizeof * vertices.length;
+                    glNamedBufferStorage(vertexBufferObject, verticesByteSize, vertices.ptr, 0);
+
+                    glVertexArrayAttribBinding(vertexArrayObject, 0, 0);
+                    glVertexArrayAttribFormat(vertexArrayObject, 0, 4, GL_DOUBLE, GL_FALSE, Vertex
+                        .x.offsetof);
+                    glEnableVertexArrayAttrib(vertexArrayObject, 0);
+
+                    glVertexArrayVertexBuffer(vertexArrayObject, 0, vertexBufferObject, 0, Vertex
+                        .sizeof);
+
+                    GlMeshInfo meshInfo;
+                    meshInfo.vertexArrayObject = vertexArrayObject;
+                    meshInfo.vertexBufferObject = vertexBufferObject;
+                    meshInfo.vertexCount = to!int(vertices.length);
+                    modelInfo.meshes ~= meshInfo;
+
+                    errorService.logErrorsIfAny();
+                }
+
+                entity.addComponent(new GlModelInfoComponent(modelInfo));
+            });
+        }
+
+        private void unloadModelFromVideoMemory(Entity entity) {
+            entity.maybeWithComponent!GlModelInfoComponent((GlModelInfoComponent c) {
+                foreach (GlMeshInfo mesh; c.info.meshes) {
+                    glDeleteVertexArrays(1, &mesh.vertexArrayObject);
+                    glDeleteBuffers(1, &mesh.vertexBufferObject);
+                }
+
+                entity.removeComponent!GlModelInfoComponent;
+            });
         }
     }
 
