@@ -76,11 +76,12 @@ version (Have_bindbc_opengl) {
                     glNamedBufferStorage(vertexBufferObject, verticesByteSize, vertices.ptr, 0);
 
                     glVertexArrayAttribBinding(vertexArrayObject, 0, 0);
-                    glVertexArrayVertexBuffer(vertexArrayObject, 0, vertexBufferObject, 0, Vertex
-                        .sizeof);
                     glVertexArrayAttribFormat(vertexArrayObject, 0, 4, GL_DOUBLE, GL_FALSE, Vertex
                         .x.offsetof);
                     glEnableVertexArrayAttrib(vertexArrayObject, 0);
+
+                    glVertexArrayVertexBuffer(vertexArrayObject, 0, vertexBufferObject, 0, Vertex
+                        .sizeof);
 
                     GlMeshInfo meshInfo;
                     meshInfo.vertexArrayObject = vertexArrayObject;
