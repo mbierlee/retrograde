@@ -14,7 +14,7 @@ module retrograde.rendering.opengl;
 version (Have_bindbc_opengl) {
     import retrograde.core.rendering : RenderSystem, Shader, ShaderProgram, ShaderType;
     import retrograde.core.entity : Entity, EntityComponent, EntityComponentIdentity;
-    import retrograde.core.platform : Platform;
+    import retrograde.core.platform : Platform, Viewport;
     import retrograde.core.model : Vertex, Mesh;
     import retrograde.core.math : Vector3D, QuaternionD, createViewMatrix, createPerspectiveMatrix, Matrix4D,
         toTranslationMatrix, toScalingMatrix, scalar;
@@ -45,17 +45,14 @@ version (Have_bindbc_opengl) {
 
         private @Value("logging.logComponentInitialization") bool logInit;
 
+        private Viewport viewport;
         private GLfloat[] clearColor = [0.576f, 0.439f, 0.859f, 1.0f];
         private OpenGlShaderProgram defaultOpenGlShaderProgram;
         private Entity activeCamera;
         private Matrix4D projectionMatrix;
-        private QuaternionD standardOrientation;
 
+        private static const QuaternionD standardOrientation = QuaternionD.createRotation(0, Vector3D(0, 1, 0));
         private static const uint standardMvpUniformLocation = 1;
-
-        this() {
-            standardOrientation = QuaternionD.createRotation(0, Vector3D(0, 1, 0));
-        }
 
         override public int getContextHintMayor() {
             return 4;
@@ -109,11 +106,8 @@ version (Have_bindbc_opengl) {
                 logger.info("OpenGL 4.6 render system initialized.");
             }
 
-            //TODO: Update when window changes.
-            auto viewport = platform.getViewport();
-            glViewport(viewport.x, viewport.y, viewport.width, viewport.height);
-            projectionMatrix = createPerspectiveMatrix(45, cast(scalar) viewport.width / cast(scalar) viewport.height, 0.1, 1000);
-            // ---
+            viewport = platform.getViewport();
+            updateProjectionMatrix();
 
             glCullFace(GL_BACK);
             glEnable(GL_CULL_FACE);
@@ -141,7 +135,7 @@ version (Have_bindbc_opengl) {
 
                 entity.maybeWithComponent!GlModelInfoComponent((GlModelInfoComponent c) {
                     auto modelViewProjectionMatrix =
-                        createMvpMatrix(entity, viewProjectionMatrix)
+                        createModelViewProjectionMatrix(entity, viewProjectionMatrix)
                         .getDataArray!float;
 
                     glUniformMatrix4fv(standardMvpUniformLocation, 1, GL_TRUE,
@@ -171,7 +165,7 @@ version (Have_bindbc_opengl) {
             return createViewMatrix(position, orientation.x, orientation.y);
         }
 
-        private Matrix4D createMvpMatrix(Entity entity, Matrix4D viewProjectionMatrix) {
+        private Matrix4D createModelViewProjectionMatrix(Entity entity, Matrix4D viewProjectionMatrix) {
             auto position = entity.getFromComponent!Position3DComponent(c => c.position,
                 Vector3D(0));
             auto orientation = entity.getFromComponent!Orientation3DComponent(c => c.orientation,
@@ -255,6 +249,12 @@ version (Have_bindbc_opengl) {
 
                 entity.removeComponent!GlModelInfoComponent;
             });
+        }
+
+        private void updateProjectionMatrix() {
+            //TODO: Actually update when window changes.
+            glViewport(viewport.x, viewport.y, viewport.width, viewport.height);
+            projectionMatrix = createPerspectiveMatrix(45, cast(scalar) viewport.width / cast(scalar) viewport.height, 0.1, 1000);
         }
     }
 
