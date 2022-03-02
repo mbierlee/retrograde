@@ -17,11 +17,12 @@ version (Have_bindbc_opengl) {
     import retrograde.core.platform : Platform;
     import retrograde.core.model : Vertex, Mesh;
     import retrograde.core.math : Vector3D, QuaternionD, createViewMatrix, createPerspectiveMatrix, Matrix4D,
-        toTranslationMatrix, scalar;
+        toTranslationMatrix, toScalingMatrix, scalar;
 
     import retrograde.components.rendering : RenderableComponent, DefaultShaderProgramComponent, CameraComponent,
         ActiveCameraComponent;
-    import retrograde.components.geometry : ModelComponent, Position3DComponent, Orientation3DComponent;
+    import retrograde.components.geometry : ModelComponent, Position3DComponent, Orientation3DComponent,
+        Scale3DComponent;
 
     import std.experimental.logger : Logger;
     import std.string : fromStringz, format;
@@ -48,8 +49,13 @@ version (Have_bindbc_opengl) {
         private OpenGlShaderProgram defaultOpenGlShaderProgram;
         private Entity activeCamera;
         private Matrix4D projectionMatrix;
+        private QuaternionD standardOrientation;
 
         private static const uint standardMvpUniformLocation = 1;
+
+        this() {
+            standardOrientation = QuaternionD.createRotation(0, Vector3D(0, 1, 0));
+        }
 
         override public int getContextHintMayor() {
             return 4;
@@ -134,15 +140,12 @@ version (Have_bindbc_opengl) {
                 } //TODO: Else use custom shader program
 
                 entity.maybeWithComponent!GlModelInfoComponent((GlModelInfoComponent c) {
-                    auto position = entity.getFromComponent!Position3DComponent(c => c.position,
-                        Vector3D(0));
-                    //TODO: orientation
-                    //TODO: scale
-                    // auto modelMatrix = position.toTranslationMatrix() * orientation.toRotationMatrix() * scale.toScalingMatrix();
-                    auto modelMatrix = position.toTranslationMatrix();
-                    auto modelViewProjectionMatrix = (viewProjectionMatrix * modelMatrix);
-                    auto mvpMatrixRawData = modelViewProjectionMatrix.getDataArray!float;
-                    glUniformMatrix4fv(standardMvpUniformLocation, 1, GL_TRUE, mvpMatrixRawData.ptr);
+                    auto modelViewProjectionMatrix =
+                        createMvpMatrix(entity, viewProjectionMatrix)
+                        .getDataArray!float;
+
+                    glUniformMatrix4fv(standardMvpUniformLocation, 1, GL_TRUE,
+                        modelViewProjectionMatrix.ptr);
 
                     foreach (GlMeshInfo mesh; c.info.meshes) {
                         glBindVertexArray(mesh.vertexArrayObject);
@@ -166,6 +169,20 @@ version (Have_bindbc_opengl) {
                 .toEulerAngles();
 
             return createViewMatrix(position, orientation.x, orientation.y);
+        }
+
+        private Matrix4D createMvpMatrix(Entity entity, Matrix4D viewProjectionMatrix) {
+            auto position = entity.getFromComponent!Position3DComponent(c => c.position,
+                Vector3D(0));
+            auto orientation = entity.getFromComponent!Orientation3DComponent(c => c.orientation,
+                standardOrientation);
+            auto scale = entity.getFromComponent!Scale3DComponent(c => c.scale,
+                Vector3D(1));
+
+            auto modelMatrix = position.toTranslationMatrix() * orientation.toRotationMatrix() *
+                scale.toScalingMatrix();
+            auto modelViewProjectionMatrix = viewProjectionMatrix * modelMatrix;
+            return modelViewProjectionMatrix;
         }
 
         private void initializeDefaultShaderProgram() {
