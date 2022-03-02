@@ -16,9 +16,12 @@ version (Have_bindbc_opengl) {
     import retrograde.core.entity : Entity, EntityComponent, EntityComponentIdentity;
     import retrograde.core.platform : Platform;
     import retrograde.core.model : Vertex, Mesh;
+    import retrograde.core.math : Vector3D, QuaternionD, createViewMatrix, createPerspectiveMatrix, Matrix4D,
+        toTranslationMatrix, scalar;
 
-    import retrograde.components.rendering : RenderableComponent, DefaultShaderProgramComponent;
-    import retrograde.components.geometry : ModelComponent;
+    import retrograde.components.rendering : RenderableComponent, DefaultShaderProgramComponent, CameraComponent,
+        ActiveCameraComponent;
+    import retrograde.components.geometry : ModelComponent, Position3DComponent, Orientation3DComponent;
 
     import std.experimental.logger : Logger;
     import std.string : fromStringz, format;
@@ -43,6 +46,10 @@ version (Have_bindbc_opengl) {
 
         private GLfloat[] clearColor = [0.576f, 0.439f, 0.859f, 1.0f];
         private OpenGlShaderProgram defaultOpenGlShaderProgram;
+        private Entity activeCamera;
+        private Matrix4D projectionMatrix;
+
+        private static const uint standardMvpUniformLocation = 1;
 
         override public int getContextHintMayor() {
             return 4;
@@ -53,15 +60,24 @@ version (Have_bindbc_opengl) {
         }
 
         override public bool acceptsEntity(Entity entity) {
-            return entity.hasComponent!RenderableComponent;
+            return entity.hasComponent!RenderableComponent ||
+                (entity.hasComponent!CameraComponent && entity.hasComponent!ActiveCameraComponent);
         }
 
         override protected void processAcceptedEntity(Entity entity) {
-            loadModelIntoVideoMemory(entity);
+            if (entity.hasComponent!ActiveCameraComponent) {
+                activeCamera = entity;
+            } else if (entity.hasComponent!RenderableComponent) {
+                loadModelIntoVideoMemory(entity);
+            }
         }
 
         override protected void processRemovedEntity(Entity entity) {
-            unloadModelFromVideoMemory(entity);
+            if (activeCamera == entity) {
+                activeCamera = null;
+            } else if (entity.hasComponent!RenderableComponent) {
+                unloadModelFromVideoMemory(entity);
+            }
         }
 
         override public void initialize() {
@@ -87,8 +103,12 @@ version (Have_bindbc_opengl) {
                 logger.info("OpenGL 4.6 render system initialized.");
             }
 
+            //TODO: Update when window changes.
             auto viewport = platform.getViewport();
             glViewport(viewport.x, viewport.y, viewport.width, viewport.height);
+            projectionMatrix = createPerspectiveMatrix(45, cast(scalar) viewport.width / cast(scalar) viewport.height, 0.1, 1000);
+            // ---
+
             glCullFace(GL_BACK);
             glEnable(GL_CULL_FACE);
 
@@ -101,13 +121,29 @@ version (Have_bindbc_opengl) {
         override public void draw() {
             glClearBufferfv(GL_COLOR, 0, &clearColor[0]);
 
+            auto viewProjectionMatrix = projectionMatrix * createRenderViewMatrix();
+
             foreach (Entity entity; _entities) {
+                if (entity is activeCamera) {
+                    continue;
+                }
+
                 if (defaultOpenGlShaderProgram &&
                     entity.hasComponent!DefaultShaderProgramComponent) {
                     glUseProgram(defaultOpenGlShaderProgram.getOpenGlShaderProgram());
                 } //TODO: Else use custom shader program
 
                 entity.maybeWithComponent!GlModelInfoComponent((GlModelInfoComponent c) {
+                    auto position = entity.getFromComponent!Position3DComponent(c => c.position,
+                        Vector3D(0));
+                    //TODO: orientation
+                    //TODO: scale
+                    // auto modelMatrix = position.toTranslationMatrix() * orientation.toRotationMatrix() * scale.toScalingMatrix();
+                    auto modelMatrix = position.toTranslationMatrix();
+                    auto modelViewProjectionMatrix = (viewProjectionMatrix * modelMatrix);
+                    auto mvpMatrixRawData = modelViewProjectionMatrix.getDataArray!float;
+                    glUniformMatrix4fv(standardMvpUniformLocation, 1, GL_TRUE, mvpMatrixRawData.ptr);
+
                     foreach (GlMeshInfo mesh; c.info.meshes) {
                         glBindVertexArray(mesh.vertexArrayObject);
                         glDrawArrays(GL_TRIANGLES, 0, mesh.vertexCount);
@@ -115,6 +151,21 @@ version (Have_bindbc_opengl) {
                     }
                 });
             }
+        }
+
+        private Matrix4D createRenderViewMatrix() {
+            if (!activeCamera) {
+                return Matrix4D.identity;
+            }
+
+            auto position = activeCamera.getFromComponent!Position3DComponent(c => c.position,
+                Vector3D(0));
+            auto orientation = activeCamera
+                .getFromComponent!Orientation3DComponent(c => c.orientation,
+                    QuaternionD.createRotation(0, Vector3D(0, 1, 0)))
+                .toEulerAngles();
+
+            return createViewMatrix(position, orientation.x, orientation.y);
         }
 
         private void initializeDefaultShaderProgram() {
