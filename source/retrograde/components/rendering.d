@@ -12,6 +12,7 @@
 module retrograde.components.rendering;
 
 import retrograde.core.entity : EntityComponent, EntityComponentIdentity;
+import retrograde.core.rendering : CameraConfiguration;
 
 /**
  * Entities with the RenderableComponent will be rendered by a render system.
@@ -35,6 +36,15 @@ class DefaultShaderProgramComponent : EntityComponent {
  */
 class CameraComponent : EntityComponent {
     mixin EntityComponentIdentity!"CameraComponent";
+
+    CameraConfiguration cameraConfiguration;
+
+    this() {
+    }
+
+    this(CameraConfiguration cameraConfiguration) {
+        this.cameraConfiguration = cameraConfiguration;
+    }
 }
 
 /**

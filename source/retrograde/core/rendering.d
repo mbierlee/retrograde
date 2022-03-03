@@ -12,6 +12,22 @@
 module retrograde.core.rendering;
 
 import retrograde.core.entity : EntityProcessor, Entity;
+import retrograde.core.math : scalar;
+
+/** 
+ * Constant used to indicate that a camera should calculate the aspect ratio based on the viewport.
+ */
+public static const scalar autoAspectRatio = 0;
+
+/** 
+ * Configuration of as 3D camera
+ */
+struct CameraConfiguration {
+    scalar horizontalFieldOfView = 45;
+    scalar aspectRatio = autoAspectRatio;
+    scalar nearClippingDistance = 0.1;
+    scalar farClippingDistance = 1000;
+}
 
 /**
  * An abstraction of a render API that processes entities and

@@ -12,7 +12,8 @@
 module retrograde.rendering.opengl;
 
 version (Have_bindbc_opengl) {
-    import retrograde.core.rendering : RenderSystem, Shader, ShaderProgram, ShaderType;
+    import retrograde.core.rendering : RenderSystem, Shader, ShaderProgram, ShaderType, autoAspectRatio,
+        CameraConfiguration;
     import retrograde.core.entity : Entity, EntityComponent, EntityComponentIdentity;
     import retrograde.core.platform : Platform, Viewport;
     import retrograde.core.model : Vertex, Mesh;
@@ -50,6 +51,7 @@ version (Have_bindbc_opengl) {
         private OpenGlShaderProgram defaultOpenGlShaderProgram;
         private Entity activeCamera;
         private Matrix4D projectionMatrix;
+        private CameraConfiguration cameraConfiguration;
 
         private static const QuaternionD standardOrientation = QuaternionD.createRotation(0, Vector3D(0, 1, 0));
         private static const uint standardMvpUniformLocation = 1;
@@ -126,6 +128,13 @@ version (Have_bindbc_opengl) {
 
             foreach (Entity entity; _entities) {
                 if (entity is activeCamera) {
+                    entity.maybeWithComponent!CameraComponent((c) {
+                        if (cameraConfiguration != c.cameraConfiguration) {
+                            cameraConfiguration = c.cameraConfiguration;
+                            updateProjectionMatrix();
+                        }
+                    });
+
                     continue;
                 }
 
@@ -134,7 +143,7 @@ version (Have_bindbc_opengl) {
                     glUseProgram(defaultOpenGlShaderProgram.getOpenGlShaderProgram());
                 } //TODO: Else use custom shader program
 
-                entity.maybeWithComponent!GlModelInfoComponent((GlModelInfoComponent c) {
+                entity.maybeWithComponent!GlModelInfoComponent((c) {
                     auto modelViewProjectionMatrix =
                         createModelViewProjectionMatrix(entity, viewProjectionMatrix)
                         .getDataArray!float;
@@ -202,7 +211,7 @@ version (Have_bindbc_opengl) {
         }
 
         private void loadModelIntoVideoMemory(Entity entity) {
-            entity.maybeWithComponent!ModelComponent((ModelComponent c) {
+            entity.maybeWithComponent!ModelComponent((c) {
                 GlModelInfo modelInfo;
                 foreach (size_t index, const Mesh mesh; c.model.meshes) {
                     Vertex[] vertices;
@@ -242,7 +251,7 @@ version (Have_bindbc_opengl) {
         }
 
         private void unloadModelFromVideoMemory(Entity entity) {
-            entity.maybeWithComponent!GlModelInfoComponent((GlModelInfoComponent c) {
+            entity.maybeWithComponent!GlModelInfoComponent((c) {
                 foreach (GlMeshInfo mesh; c.info.meshes) {
                     glDeleteVertexArrays(1, &mesh.vertexArrayObject);
                     glDeleteBuffers(1, &mesh.vertexBufferObject);
@@ -259,7 +268,13 @@ version (Have_bindbc_opengl) {
 
         private void updateProjectionMatrix() {
             //TODO: Update when window changes and aspect ratio is auto.
-            projectionMatrix = createPerspectiveMatrix(45, cast(scalar) viewport.width / cast(scalar) viewport.height, 0.1, 1000);
+            auto aspectRatio =
+                cameraConfiguration.aspectRatio == autoAspectRatio ?
+                cast(scalar) viewport.width / cast(scalar) viewport.height
+                : cameraConfiguration.aspectRatio;
+
+            projectionMatrix = createPerspectiveMatrix(cameraConfiguration.horizontalFieldOfView, aspectRatio,
+                cameraConfiguration.nearClippingDistance, cameraConfiguration.farClippingDistance);
         }
     }
 
