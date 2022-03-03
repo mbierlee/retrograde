@@ -107,6 +107,7 @@ version (Have_bindbc_opengl) {
             }
 
             viewport = platform.getViewport();
+            updateViewport();
             updateProjectionMatrix();
 
             glCullFace(GL_BACK);
@@ -251,9 +252,13 @@ version (Have_bindbc_opengl) {
             });
         }
 
-        private void updateProjectionMatrix() {
+        private void updateViewport() {
             //TODO: Actually update when window changes.
             glViewport(viewport.x, viewport.y, viewport.width, viewport.height);
+        }
+
+        private void updateProjectionMatrix() {
+            //TODO: Update when window changes and aspect ratio is auto.
             projectionMatrix = createPerspectiveMatrix(45, cast(scalar) viewport.width / cast(scalar) viewport.height, 0.1, 1000);
         }
     }
