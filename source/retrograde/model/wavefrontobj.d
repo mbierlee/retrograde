@@ -19,7 +19,7 @@ import std.string : lineSplitter, strip;
 import std.array : split;
 import std.conv : to;
 
-class ParseState {
+private class ParseState {
     Mesh[] meshes;
     bool isProcessingObject = false;
 
@@ -43,8 +43,9 @@ class WavefrontObjParser {
             auto sanitizedLine = strip(line);
             auto parts = sanitizedLine.split(" ");
 
-            if (parts.length == 0)
+            if (parts.length == 0) {
                 continue;
+            }
 
             auto objectType = parts[0];
 
@@ -85,12 +86,14 @@ class WavefrontObjParser {
 
     private void addVertex(ParseState state, string[] parts) {
         if (parts.length >= 3) {
-            auto vector = Vertex(to!double(parts[0]), to!double(parts[1]), to!double(parts[2]), 1);
-            state.vertices ~= vector;
+            auto vertex = Vertex(to!double(parts[0]), to!double(parts[1]), to!double(parts[2]), 1);
+            state.vertices ~= vertex;
         }
     }
 
     private void addFace(ParseState state, string[] parts) {
+        //TODO: Reject non-triangles via exception
+
         if (parts.length >= 3) {
             VertexIndex[] indices;
             foreach (string part; parts) {

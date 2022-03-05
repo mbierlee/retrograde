@@ -1,0 +1,252 @@
+/**
+ * Retrograde Engine
+ *
+ * Authors:
+ *  Mike Bierlee, m.bierlee@lostmoment.com
+ * Copyright: 2014-2022 Mike Bierlee
+ * License:
+ *  This software is licensed under the terms of the MIT license.
+ *  The full terms of the license can be found in the LICENSE.txt file.
+ */
+
+module retrograde.model.stanfordply;
+
+import retrograde.core.storage : File;
+import retrograde.core.model : Model, Vertex, Mesh, Face, VertexComponent, VertexIndex;
+
+import std.exception : enforce;
+import std.string : lineSplitter, strip, startsWith;
+import std.array : split;
+import std.conv : to;
+
+private enum Section {
+    magicNumber,
+    header,
+    vertices,
+    faces
+}
+
+private enum Element {
+    vertex,
+    face
+}
+
+private class ParseState {
+    Mesh[] meshes;
+    Vertex[] vertices;
+    Face[] faces;
+    bool breakParsing = false;
+    bool encounteredFormat = false;
+    Section section = Section.magicNumber;
+    Element element = Element.vertex;
+    uint vertexCount = 0;
+    uint faceCount = 0;
+    size_t[string] vertexPropertyLocations;
+    string[string] vertexPropertyType;
+}
+
+class StanfordPlyParser {
+    Model parse(File modelFile) {
+        auto lines = modelFile.textData.lineSplitter();
+        auto state = new ParseState();
+
+        foreach (line; lines) {
+            if (state.breakParsing) {
+                break;
+            }
+
+            auto sanitizedLine = strip(line);
+
+            if (sanitizedLine.length == 0) {
+                continue;
+            }
+
+            if (state.section == Section.magicNumber) {
+                enforce!ModelParseException(sanitizedLine.startsWith("ply"), "Model file is not a ply model (doesn't start with ply header)");
+                state.section = Section.header;
+            }
+
+            auto parts = sanitizedLine.split(" ");
+            if (parts.length == 0) {
+                continue;
+            }
+
+            if (state.section == Section.header) {
+                parseHeader(parts, state);
+            } else if (state.section == Section.vertices) {
+                parseVertex(parts, state);
+
+                if (state.vertices.length == state.vertexCount) {
+                    state.section = Section.faces;
+                }
+            } else if (state.section == Section.faces) {
+                parseFace(parts, state);
+
+                if (state.faces.length == state.faceCount) {
+                    state.breakParsing = true;
+                    break;
+                }
+            }
+        }
+
+        return new Model([new Mesh(state.vertices, state.faces)]);
+    }
+
+    private void parseHeader(string[] parts, ParseState state) {
+        auto headerType = parts[0];
+        switch (headerType) {
+        case "format":
+            enforce!ModelParseException(parts[1] == "ascii", "Only ASCII format is supported");
+            enforce!ModelParseException(parts[2] == "1.0", "Only ASCII format version 1.0 is supported");
+            state.encounteredFormat = true;
+            break;
+
+        case "end_header":
+            if (!state.encounteredFormat) {
+                // Break parsing to not accidentaly read garbage binary data.
+                state.breakParsing = true;
+            }
+
+            state.section = Section.vertices;
+            break;
+
+        case "element":
+            auto elementType = parts[1];
+            if (elementType == "vertex") {
+                state.vertexCount = to!uint(parts[2]);
+                state.element = Element.vertex;
+            } else if (elementType == "face") {
+                state.faceCount = to!uint(parts[2]);
+                state.element = Element.face;
+            }
+            break;
+
+        case "property":
+            if (state.element == Element.vertex) {
+                auto vertexPropertyType = parts[1];
+                auto propertyName = parts[2];
+                state.vertexPropertyLocations[propertyName] = state.vertexPropertyLocations.length;
+                state.vertexPropertyType[propertyName] = vertexPropertyType;
+            }
+            break;
+
+        default:
+            break;
+        }
+    }
+
+    private void parseVertex(string[] parts, ParseState state) {
+        auto x = getVertex("x", parts, state);
+        auto y = getVertex("y", parts, state);
+        auto z = getVertex("z", parts, state);
+        //TODO: Add vertex color
+        state.vertices ~= Vertex(x, y, z, 1);
+    }
+
+    private void parseFace(string[] parts, ParseState state) {
+        // The following face format is assumed:
+        // property list uchar uint vertex_indices
+        // Because it is the most common.
+        // TODO: Make flexible too
+
+        auto verticesInFace = to!uint(parts[0]);
+        enforce!ModelParseException(verticesInFace == 3, "Only triangulated faces are supported. Quads and N-poly faces must be converted to triangles.");
+
+        auto a = to!VertexIndex(parts[1]);
+        auto b = to!VertexIndex(parts[2]);
+        auto c = to!VertexIndex(parts[3]);
+        state.faces ~= Face(a, b, c);
+    }
+
+    private VertexComponent getVertex(string name, string[] parts, ParseState state) {
+        auto vertexPropertyType = state.vertexPropertyType[name];
+        return vertexPropertyType.startsWith("float") || vertexPropertyType == "double" ?
+            to!VertexComponent(parts[state.vertexPropertyLocations[name]]) : 0;
+    }
+}
+
+class ModelParseException : Exception {
+    this(string message, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) {
+        super(message, file, line, nextInChain);
+    }
+}
+
+version (unittest) {
+    @("Parse model file")
+    unittest {
+        string modelData = "
+            ply
+            format ascii 1.0
+            comment Created by Blender 3.0.1 - www.blender.org
+            element vertex 8
+            property float x
+            property float y
+            property float z
+            property float nx
+            property float ny
+            property float nz
+            property uchar red
+            property uchar green
+            property uchar blue
+            property uchar alpha
+            element face 12
+            property list uchar uint vertex_indices
+            end_header
+            1.000000 1.000000 1.000000 0.577349 0.577349 0.577349 128 183 255 255
+            -1.000000 1.000000 -1.000000 -0.577349 0.577349 -0.577349 255 89 86 255
+            -1.000000 1.000000 1.000000 -0.577349 0.577349 0.577349 252 255 210 255
+            1.000000 -1.000000 -1.000000 0.577349 -0.577349 -0.577349 251 255 182 255
+            -1.000000 -1.000000 -1.000000 -0.577349 -0.577349 -0.577349 143 255 156 255
+            1.000000 1.000000 -1.000000 0.577349 0.577349 -0.577349 143 255 156 255
+            1.000000 -1.000000 1.000000 0.577349 -0.577349 0.577349 255 88 92 255
+            -1.000000 -1.000000 1.000000 -0.577349 -0.577349 0.577349 137 187 255 255
+            3 0 1 2
+            3 1 3 4
+            3 5 6 3
+            3 7 3 6
+            3 2 4 7
+            3 0 7 6
+            3 0 5 1
+            3 1 5 3
+            3 5 0 6
+            3 7 4 3
+            3 2 1 4
+            3 0 2 7
+        ";
+
+        auto modelFile = new File("cube.ply", modelData);
+        auto parser = new StanfordPlyParser();
+        auto model = parser.parse(modelFile);
+        auto mesh = model.meshes[0];
+
+        auto expectedVertices = [
+            Vertex(1.000000, 1.000000, 1.000000, 1),
+            Vertex(-1.000000, 1.000000, -1.000000, 1),
+            Vertex(-1.000000, 1.000000, 1.000000, 1),
+            Vertex(1.000000, -1.000000, -1.000000, 1),
+            Vertex(-1.000000, -1.000000, -1.000000, 1),
+            Vertex(1.000000, 1.000000, -1.000000, 1),
+            Vertex(1.000000, -1.000000, 1.000000, 1),
+            Vertex(-1.000000, -1.000000, 1.000000, 1)
+        ];
+
+        assert(mesh.vertices == expectedVertices);
+
+        auto expectedFaces = [
+            Face(0, 1, 2),
+            Face(1, 3, 4),
+            Face(5, 6, 3),
+            Face(7, 3, 6),
+            Face(2, 4, 7),
+            Face(0, 7, 6),
+            Face(0, 5, 1),
+            Face(1, 5, 3),
+            Face(5, 0, 6),
+            Face(7, 4, 3),
+            Face(2, 1, 4),
+            Face(0, 2, 7)
+        ];
+
+        assert(mesh.faces == expectedFaces);
+    }
+}
