@@ -11,13 +11,14 @@
 
 module retrograde.model.wavefrontobj;
 
-import retrograde.core.model : Mesh, Model, Vertex, VertexIndex, Face;
+import retrograde.core.model : Mesh, Model, Vertex, VertexIndex, Face, ModelParseException;
 import retrograde.core.storage : File;
 import retrograde.core.math : Vector3D;
 
 import std.string : lineSplitter, strip;
 import std.array : split;
 import std.conv : to;
+import std.exception : enforce;
 
 private class ParseState {
     Mesh[] meshes;
@@ -35,6 +36,11 @@ private class ParseState {
  * - Faces (vertex position only, no normals/texture coords, triangulated only)
  */
 class WavefrontObjParser {
+    /** 
+     * Parse an OBJ model file
+     *
+     *Throws: ModelParseException when model is syntactically incorrect or elements are not supported by parser.
+     */
     Model parse(File modelFile) {
         auto lines = modelFile.textData.lineSplitter();
         auto state = new ParseState();
@@ -92,19 +98,17 @@ class WavefrontObjParser {
     }
 
     private void addFace(ParseState state, string[] parts) {
-        //TODO: Reject non-triangles via exception
+        enforce!ModelParseException(parts.length == 3, "Only triangulated faces are supported. Quads and N-poly faces must be converted to triangles.");
 
-        if (parts.length >= 3) {
-            VertexIndex[] indices;
-            foreach (string part; parts) {
-                auto index = part.split("/");
-                auto vertexIndex = to!VertexIndex(strip(index[0])) - 1;
-                indices ~= vertexIndex;
-            }
+        VertexIndex[] indices;
+        foreach (string part; parts) {
+            auto index = part.split("/");
+            auto vertexIndex = to!VertexIndex(strip(index[0])) - 1;
+            indices ~= vertexIndex;
+        }
 
-            if (indices.length == 3) {
-                state.faces ~= Face(indices[0], indices[1], indices[2]);
-            }
+        if (indices.length == 3) {
+            state.faces ~= Face(indices[0], indices[1], indices[2]);
         }
     }
 }

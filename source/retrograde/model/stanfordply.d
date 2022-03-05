@@ -12,7 +12,7 @@
 module retrograde.model.stanfordply;
 
 import retrograde.core.storage : File;
-import retrograde.core.model : Model, Vertex, Mesh, Face, VertexComponent, VertexIndex;
+import retrograde.core.model : Model, Vertex, Mesh, Face, VertexComponent, VertexIndex, ModelParseException;
 
 import std.exception : enforce;
 import std.string : lineSplitter, strip, startsWith;
@@ -45,7 +45,20 @@ private class ParseState {
     string[string] vertexPropertyType;
 }
 
+/**
+ * A model parser for Stanford .ply files.
+ *
+ * Currently supports:
+ * - Vertices
+ * - Faces (vertex position only, no normals/texture coords, triangulated only)
+ */
 class StanfordPlyParser {
+
+    /** 
+     * Parse a PLY model file
+     *
+     *Throws: ModelParseException when model is syntactically incorrect or elements are not supported by parser.
+     */
     Model parse(File modelFile) {
         auto lines = modelFile.textData.lineSplitter();
         auto state = new ParseState();
@@ -162,12 +175,6 @@ class StanfordPlyParser {
         auto vertexPropertyType = state.vertexPropertyType[name];
         return vertexPropertyType.startsWith("float") || vertexPropertyType == "double" ?
             to!VertexComponent(parts[state.vertexPropertyLocations[name]]) : 0;
-    }
-}
-
-class ModelParseException : Exception {
-    this(string message, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) {
-        super(message, file, line, nextInChain);
     }
 }
 
