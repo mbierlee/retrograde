@@ -18,7 +18,7 @@ import retrograde.core.math : Vector3D;
 import std.string : lineSplitter, strip;
 import std.array : split;
 import std.conv : to;
-import std.exception : enforce;
+import std.exception : enforce, assertThrown;
 
 private class ParseState {
     Mesh[] meshes;
@@ -39,7 +39,7 @@ class WavefrontObjParser {
     /** 
      * Parse an OBJ model file
      *
-     *Throws: ModelParseException when model is syntactically incorrect or elements are not supported by parser.
+     * Throws: ModelParseException when model is syntactically incorrect or elements are not supported by parser.
      */
     Model parse(File modelFile) {
         auto lines = modelFile.textData.lineSplitter();
@@ -187,5 +187,22 @@ version (unittest) {
         ];
 
         assert(mesh.faces == expectedFaces);
+    }
+
+    @("Exception is thrown when model doesn't have polygonal faces")
+    unittest {
+        string modelData = "
+            # Example model file
+            mtllib cube.mtl
+            o Cube
+            v -1.000000 -1.000000 1.000000
+            usemtl None
+            s off
+            f 5//6 1//6 2//6 2//6
+        ";
+
+        auto modelFile = new File("cube.obj", modelData);
+        auto parser = new WavefrontObjParser();
+        assertThrown!ModelParseException(parser.parse(modelFile));
     }
 }

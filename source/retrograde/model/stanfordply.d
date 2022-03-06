@@ -14,7 +14,7 @@ module retrograde.model.stanfordply;
 import retrograde.core.storage : File;
 import retrograde.core.model : Model, Vertex, Mesh, Face, VertexComponent, VertexIndex, ModelParseException;
 
-import std.exception : enforce;
+import std.exception : enforce, assertThrown;
 import std.string : lineSplitter, strip, startsWith;
 import std.array : split;
 import std.conv : to;
@@ -57,7 +57,7 @@ class StanfordPlyParser {
     /** 
      * Parse a PLY model file
      *
-     *Throws: ModelParseException when model is syntactically incorrect or elements are not supported by parser.
+     * Throws: ModelParseException when model is syntactically incorrect or elements are not supported by parser.
      */
     Model parse(File modelFile) {
         auto lines = modelFile.textData.lineSplitter();
@@ -255,5 +255,68 @@ version (unittest) {
         ];
 
         assert(mesh.faces == expectedFaces);
+    }
+
+    @("Exception is thrown when model is not a ply model")
+    unittest {
+        string modelData = "
+            notply
+        ";
+
+        auto modelFile = new File("cube.ply", modelData);
+        auto parser = new StanfordPlyParser();
+        assertThrown!ModelParseException(parser.parse(modelFile));
+    }
+
+    @("Exception is thrown when model is not using ASCII format")
+    unittest {
+        string modelData = "
+            ply
+            format binary_big_endian 1.0
+        ";
+
+        auto modelFile = new File("cube.ply", modelData);
+        auto parser = new StanfordPlyParser();
+        assertThrown!ModelParseException(parser.parse(modelFile));
+    }
+
+    @("Exception is thrown when model is not using ASCII format version 1.0")
+    unittest {
+        string modelData = "
+            ply
+            format ascii 987.0
+        ";
+
+        auto modelFile = new File("cube.ply", modelData);
+        auto parser = new StanfordPlyParser();
+        assertThrown!ModelParseException(parser.parse(modelFile));
+    }
+
+    @("Exception is thrown when model doesn't have polygonal faces")
+    unittest {
+        string modelData = "
+            ply
+            format ascii 1.0
+            element vertex 1
+            property float x
+            property float y
+            property float z
+            property float nx
+            property float ny
+            property float nz
+            property uchar red
+            property uchar green
+            property uchar blue
+            property uchar alpha
+            element face 1
+            property list uchar uint vertex_indices
+            end_header
+            -1.000000 -1.000000 1.000000 -0.577349 -0.577349 0.577349 137 187 255 255
+            4 0 0 0 0
+        ";
+
+        auto modelFile = new File("cube.ply", modelData);
+        auto parser = new StanfordPlyParser();
+        assertThrown!ModelParseException(parser.parse(modelFile));
     }
 }
