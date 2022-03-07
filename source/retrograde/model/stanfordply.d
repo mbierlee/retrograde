@@ -152,8 +152,13 @@ class StanfordPlyParser {
         auto x = getVertex("x", parts, state);
         auto y = getVertex("y", parts, state);
         auto z = getVertex("z", parts, state);
-        //TODO: Add vertex color
-        state.vertices ~= Vertex(x, y, z, 1);
+
+        auto r = getColor("red", parts, state);
+        auto g = getColor("green", parts, state);
+        auto b = getColor("blue", parts, state);
+        auto a = getColor("alpha", parts, state);
+
+        state.vertices ~= Vertex(x, y, z, 1, r, g, b, a);
     }
 
     private void parseFace(string[] parts, ParseState state) {
@@ -172,13 +177,35 @@ class StanfordPlyParser {
     }
 
     private VertexComponent getVertex(string name, string[] parts, ParseState state) {
-        auto vertexPropertyType = state.vertexPropertyType[name];
-        return vertexPropertyType.startsWith("float") || vertexPropertyType == "double" ?
-            to!VertexComponent(parts[state.vertexPropertyLocations[name]]) : 0;
+        auto vertexPropertyType = name in state.vertexPropertyType;
+        if (vertexPropertyType) {
+            return (*vertexPropertyType).startsWith("float") || (*vertexPropertyType) == "double" ?
+                to!VertexComponent(parts[state.vertexPropertyLocations[name]]) : 0;
+        } else {
+            return 0;
+        }
+    }
+
+    private VertexComponent getColor(string name, string[] parts, ParseState state) {
+        auto vertexPropertyType = name in state.vertexPropertyType;
+        if (vertexPropertyType) {
+            if ((*vertexPropertyType).startsWith("float")) {
+                return to!VertexComponent(parts[state.vertexPropertyLocations[name]]);
+            } else if ((*vertexPropertyType) == "uchar") {
+                return to!ubyte(parts[state.vertexPropertyLocations[name]]) / 255.0;
+            } else {
+                throw new ModelParseException(
+                    "Data type '" ~ *vertexPropertyType ~ "' not supported for vertex colors.");
+            }
+        } else {
+            return 1;
+        }
     }
 }
 
 version (unittest) {
+    import std.math.operations : isClose;
+
     @("Parse model file")
     unittest {
         string modelData = "
@@ -227,17 +254,28 @@ version (unittest) {
         auto mesh = model.meshes[0];
 
         auto expectedVertices = [
-            Vertex(1.000000, 1.000000, 1.000000, 1),
-            Vertex(-1.000000, 1.000000, -1.000000, 1),
-            Vertex(-1.000000, 1.000000, 1.000000, 1),
-            Vertex(1.000000, -1.000000, -1.000000, 1),
-            Vertex(-1.000000, -1.000000, -1.000000, 1),
-            Vertex(1.000000, 1.000000, -1.000000, 1),
-            Vertex(1.000000, -1.000000, 1.000000, 1),
-            Vertex(-1.000000, -1.000000, 1.000000, 1)
+            Vertex(1.000000, 1.000000, 1.000000, 1, 0.501961, 0.717647, 1, 1),
+            Vertex(-1.000000, 1.000000, -1.000000, 1, 1, 0.34902, 0.337255, 1),
+            Vertex(-1.000000, 1.000000, 1.000000, 1, 0.988235, 1, 0.823529, 1),
+            Vertex(1.000000, -1.000000, -1.000000, 1, 0.984314, 1, 0.713725, 1),
+            Vertex(-1.000000, -1.000000, -1.000000, 1, 0.560784, 1, 0.611765, 1),
+            Vertex(1.000000, 1.000000, -1.000000, 1, 0.560784, 1, 0.611765, 1),
+            Vertex(1.000000, -1.000000, 1.000000, 1, 1, 0.345098, 0.360784, 1),
+            Vertex(-1.000000, -1.000000, 1.000000, 1, 0.537255, 0.733333, 1, 1)
         ];
 
-        assert(mesh.vertices == expectedVertices);
+        import std.stdio;
+
+        foreach (index, vertex; mesh.vertices) {
+            assert(isClose(vertex.x, expectedVertices[index].x, 1e-3));
+            assert(isClose(vertex.y, expectedVertices[index].y, 1e-3));
+            assert(isClose(vertex.z, expectedVertices[index].z, 1e-3));
+            assert(isClose(vertex.w, expectedVertices[index].w, 1e-3));
+            assert(isClose(vertex.r, expectedVertices[index].r, 1e-3));
+            assert(isClose(vertex.g, expectedVertices[index].g, 1e-3));
+            assert(isClose(vertex.b, expectedVertices[index].b, 1e-3));
+            assert(isClose(vertex.a, expectedVertices[index].a, 1e-3));
+        }
 
         auto expectedFaces = [
             Face(0, 1, 2),
