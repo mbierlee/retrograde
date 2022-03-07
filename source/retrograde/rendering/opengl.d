@@ -54,7 +54,9 @@ version (Have_bindbc_opengl) {
         private CameraConfiguration cameraConfiguration;
 
         private static const QuaternionD standardOrientation = QuaternionD.createRotation(0, Vector3D(0, 1, 0));
-        private static const uint standardMvpUniformLocation = 1;
+        private static const uint standardPositionAttribLocation = 0;
+        private static const uint standardColorAttribLocation = 1;
+        private static const uint standardMvpUniformLocation = 2;
 
         override public int getContextHintMayor() {
             return 4;
@@ -229,10 +231,17 @@ version (Have_bindbc_opengl) {
                     ulong verticesByteSize = Vertex.sizeof * vertices.length;
                     glNamedBufferStorage(vertexBufferObject, verticesByteSize, vertices.ptr, 0);
 
-                    glVertexArrayAttribBinding(vertexArrayObject, 0, 0);
-                    glVertexArrayAttribFormat(vertexArrayObject, 0, 4, GL_DOUBLE, GL_FALSE, Vertex
+                    // Position attrib
+                    glVertexArrayAttribBinding(vertexArrayObject, standardPositionAttribLocation, 0);
+                    glVertexArrayAttribFormat(vertexArrayObject, standardPositionAttribLocation, 4, GL_DOUBLE, GL_FALSE, Vertex
                         .x.offsetof);
-                    glEnableVertexArrayAttrib(vertexArrayObject, 0);
+                    glEnableVertexArrayAttrib(vertexArrayObject, standardPositionAttribLocation);
+
+                    // Color attrib
+                    glVertexArrayAttribBinding(vertexArrayObject, standardColorAttribLocation, 0);
+                    glVertexArrayAttribFormat(vertexArrayObject, standardColorAttribLocation, 4, GL_DOUBLE, GL_FALSE, Vertex
+                        .r.offsetof);
+                    glEnableVertexArrayAttrib(vertexArrayObject, standardColorAttribLocation);
 
                     glVertexArrayVertexBuffer(vertexArrayObject, 0, vertexBufferObject, 0, Vertex
                         .sizeof);
