@@ -53,7 +53,6 @@ version (Have_bindbc_opengl) {
         private Matrix4D projectionMatrix;
         private CameraConfiguration cameraConfiguration;
 
-        private static const QuaternionD standardOrientation = QuaternionD.createRotation(0, Vector3D(0, 1, 0));
         private static const uint standardPositionAttribLocation = 0;
         private static const uint standardColorAttribLocation = 1;
         private static const uint standardMvpUniformLocation = 2;
@@ -170,8 +169,7 @@ version (Have_bindbc_opengl) {
             auto position = activeCamera.getFromComponent!Position3DComponent(c => c.position,
                 Vector3D(0));
             auto orientation = activeCamera
-                .getFromComponent!Orientation3DComponent(c => c.orientation,
-                    QuaternionD.createRotation(0, Vector3D(0, 1, 0)))
+                .getFromComponent!Orientation3DComponent(c => c.orientation, QuaternionD())
                 .toEulerAngles();
 
             return createViewMatrix(position, orientation.x, orientation.y);
@@ -180,8 +178,7 @@ version (Have_bindbc_opengl) {
         private Matrix4D createModelViewProjectionMatrix(Entity entity, Matrix4D viewProjectionMatrix) {
             auto position = entity.getFromComponent!Position3DComponent(c => c.position,
                 Vector3D(0));
-            auto orientation = entity.getFromComponent!Orientation3DComponent(c => c.orientation,
-                standardOrientation);
+            auto orientation = entity.getFromComponent!Orientation3DComponent(c => c.orientation, QuaternionD());
             auto scale = entity.getFromComponent!Scale3DComponent(c => c.scale,
                 Vector3D(1));
 

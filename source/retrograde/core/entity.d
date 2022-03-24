@@ -338,7 +338,7 @@ class EntityCollection {
         return entities[entityId];
     }
 
-    int opApply(int delegate(Entity) op)  {
+    int opApply(int delegate(Entity) op) {
         int result = 0;
         foreach (Entity entity; entities.values) {
             result = op(entity);
@@ -451,6 +451,22 @@ class EntityManager {
         foreach (entity; _entities.getAll()) {
             processor.addEntity(entity);
         }
+    }
+
+    /**
+     * Adds an entity processor with the given type to the manager.
+     *
+     * The entity processor must have a default constructor.
+     * Params:
+     *  processor: Entity processor to be added.
+     * Throws: Exception when the entity processor cannot be instantiated.
+     */
+    public void addEntityProcessor(EntityProcessorType : EntityProcessor)() {
+        TypeInfo_Class typeInfo = typeid(EntityProcessorType);
+        auto processor = cast(EntityProcessorType) typeInfo.create();
+        enforce!Exception(processor !is null,
+            format("Error creating processor of type %s. Does the processor have a default constructor?", typeInfo));
+        addEntityProcessor(processor);
     }
 
     /**
@@ -1108,6 +1124,12 @@ version (unittest) {
         auto processor = new TestEntityProcessor();
 
         manager.addEntityProcessor(processor);
+    }
+
+    @("Add entity processor via type template to entity manager")
+    unittest {
+        auto manager = new EntityManager();
+        manager.addEntityProcessor!TestEntityProcessor;
     }
 
     @("Add entity processor with pre-existing entities to entity manager")
