@@ -15,10 +15,11 @@ version (Have_bindbc_opengl) {
     import retrograde.core.rendering : RenderSystem, Shader, ShaderProgram, ShaderType, autoAspectRatio,
         CameraConfiguration;
     import retrograde.core.entity : Entity, EntityComponent, EntityComponentIdentity;
-    import retrograde.core.platform : Platform, Viewport;
+    import retrograde.core.platform : Platform, Viewport, platformEventChannel, ViewportResizeEventMessage;
     import retrograde.core.model : Vertex, Mesh;
     import retrograde.core.math : Vector3D, QuaternionD, createViewMatrix, createPerspectiveMatrix, Matrix4D,
         toTranslationMatrix, toScalingMatrix, scalar;
+    import retrograde.core.messaging : MessageHandler;
 
     import retrograde.components.rendering : RenderableComponent, DefaultShaderProgramComponent, CameraComponent,
         ActiveCameraComponent;
@@ -43,6 +44,7 @@ version (Have_bindbc_opengl) {
         private @Autowire Platform platform;
         private @Autowire @OptionalDependency ShaderProgram defaultShaderProgram;
         private @Autowire GLErrorService errorService;
+        private @Autowire MessageHandler messageHandler;
 
         private @Value("logging.logComponentInitialization") bool logInit;
 
@@ -110,8 +112,7 @@ version (Have_bindbc_opengl) {
             }
 
             viewport = platform.getViewport();
-            updateViewport();
-            updateProjectionMatrix();
+            updateView();
 
             glCullFace(GL_BACK);
             glEnable(GL_CULL_FACE);
@@ -120,6 +121,7 @@ version (Have_bindbc_opengl) {
         }
 
         override public void update() {
+            handleMessages();
         }
 
         override public void draw() {
@@ -159,6 +161,14 @@ version (Have_bindbc_opengl) {
                     }
                 });
             }
+        }
+
+        private void handleMessages() {
+            messageHandler.receiveMessages(platformEventChannel, (
+                    immutable ViewportResizeEventMessage message) {
+                viewport = message.newViewport;
+                updateView();
+            });
         }
 
         private Matrix4D createRenderViewMatrix() {
@@ -267,13 +277,16 @@ version (Have_bindbc_opengl) {
             });
         }
 
+        private void updateView() {
+            updateViewport();
+            updateProjectionMatrix();
+        }
+
         private void updateViewport() {
-            //TODO: Actually update when window changes.
             glViewport(viewport.x, viewport.y, viewport.width, viewport.height);
         }
 
         private void updateProjectionMatrix() {
-            //TODO: Update when window changes and aspect ratio is auto.
             auto aspectRatio =
                 cameraConfiguration.aspectRatio == autoAspectRatio ?
                 cast(scalar) viewport.width / cast(scalar) viewport.height

@@ -12,6 +12,10 @@
 module retrograde.core.platform;
 
 import retrograde.core.storage : StorageSystem, GenericStorageSystem;
+import retrograde.core.stringid : StringId, sid;
+import retrograde.core.messaging : Message;
+
+const StringId platformEventChannel = sid("platform_event_channel");
 
 /**
  * API for interfacing with the underlying platform.
@@ -88,11 +92,30 @@ class PlatformSettings {
 
 /**
  * Viewport dimensions, typically used by a render system to determine
- * render buffer size.
+ * framebuffer size.
  */
 struct Viewport {
     int x;
     int y;
     int width;
     int height;
+}
+
+/** 
+ * An event emitted when the platform's viewport is resized.
+ */
+class ViewportResizeEventMessage : Message {
+    static const StringId msgId = sid("ev_viewport_resize");
+
+    Viewport newViewport;
+
+    this(Viewport newViewport) {
+        super(msgId);
+        this.newViewport = newViewport;
+    }
+
+    static immutable(ViewportResizeEventMessage) create(const Viewport newViewport) {
+        return cast(immutable(ViewportResizeEventMessage)) new ViewportResizeEventMessage(
+            newViewport);
+    }
 }

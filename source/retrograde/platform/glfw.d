@@ -21,7 +21,7 @@ version (Have_glfw_d) {
 
     import poodinis;
 
-    import retrograde.core.platform : Platform, PlatformSettings, Viewport;
+    import retrograde.core.platform : Platform, PlatformSettings, Viewport, platformEventChannel, ViewportResizeEventMessage;
     import retrograde.core.runtime : EngineRuntime;
     import retrograde.core.collections : Queue;
     import retrograde.core.input : KeyboardKeyCode, InputEventAction, KeyboardKeyModifier,
@@ -57,6 +57,7 @@ version (Have_glfw_d) {
     }
 
     private struct StateData {
+        Queue!Viewport windowSizeEvents;
         Queue!GlfwKeyEvent keyEvents;
         Queue!dchar charEvents;
         Queue!GlfwMouseMovementEvent mouseMovementEvents;
@@ -109,6 +110,15 @@ version (Have_glfw_d) {
          * and a mouse.
          */
         bool splitAxisEvents = true;
+
+        /** 
+         * Whether to use framebuffer size in ViewportResizeEventMessages or screen coordinates.
+         * 
+         * When set to true, the framebuffer size in pixels will be used instead of a screen coordinate size.
+         * Some renderers such as OpenGL prefer framebuffer size since they directly relate to the units used in that API.
+         * See_Also: https://www.glfw.org/docs/3.3/window_guide.html#window_size, https://www.glfw.org/docs/3.3/window_guide.html#window_fbsize
+         */
+        bool useFrameBufferSizeOnResize = true;
     }
 
     /**
@@ -327,6 +337,12 @@ version (Have_glfw_d) {
             setMouseMode(ps.mouseMode);
             setRawMouseMotion(ps.enableRawMouseMotion);
 
+            if (ps.useFrameBufferSizeOnResize) {
+                glfwSetFramebufferSizeCallback(window, &windowSizeCallback);
+            } else {
+                glfwSetWindowSizeCallback(window, &windowSizeCallback);
+            }
+
             if (ps.enableKeyInputEvents) {
                 glfwSetKeyCallback(window, &keyCallback);
             }
@@ -399,12 +415,21 @@ version (Have_glfw_d) {
         }
 
         private void processPolledEvents() {
+            processWindowSizeEvents();
             processKeyEvents();
             processCharacterEvents();
             processMouseMovementEvents();
             processMouseEnteredEvents();
             processMouseButtonEvents();
             processMouseScrollEvents();
+        }
+
+        private void processWindowSizeEvents() {
+            while (stateData.windowSizeEvents.length > 0) {
+                auto viewPort = stateData.windowSizeEvents.dequeue();
+                auto message = ViewportResizeEventMessage.create(viewPort);
+                messageHandler.sendMessage(platformEventChannel, message);
+            }
         }
 
         private void processKeyEvents() {
@@ -576,6 +601,13 @@ version (Have_glfw_d) {
             auto errorCode = toStringz(to!string(error));
             fprintf(stderr, "GLFW Platform Error %s: %s\n", errorCode, description);
         }
+    }
+
+    private extern (C) void windowSizeCallback(GLFWwindow* window, int width, int height) @nogc nothrow {
+        StateData* state = cast(StateData*) glfwGetWindowUserPointer(window);
+        assert(state);
+
+        state.windowSizeEvents.enqueue(Viewport(0, 0, width, height));
     }
 
     private extern (C) void keyCallback(GLFWwindow* window, int key,
