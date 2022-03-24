@@ -117,6 +117,9 @@ version (Have_bindbc_opengl) {
             glCullFace(GL_BACK);
             glEnable(GL_CULL_FACE);
 
+            glDepthFunc(GL_LEQUAL);
+            glEnable(GL_DEPTH_TEST);
+
             initializeDefaultShaderProgram();
         }
 
@@ -126,6 +129,7 @@ version (Have_bindbc_opengl) {
 
         override public void draw() {
             glClearBufferfv(GL_COLOR, 0, &clearColor[0]);
+            glClearBufferfi(GL_DEPTH_STENCIL, 0, 1, 0);
 
             auto viewProjectionMatrix = projectionMatrix * createRenderViewMatrix();
 
