@@ -2,4 +2,5 @@
 /*.exe
 /*.lib
 /*.a
+/*.pdb
 /retrograde-test-unittest
