@@ -584,7 +584,7 @@ struct BezierSpline(Vector, uint ControlPointsPerCurve) {
 
     this(Vector[] controlPoints...) {
         assert((controlPoints.length > 2), "Spline has not enough control points to describe a proper curve.");
-        this.controlPoints = controlPoints;
+        this.controlPoints = controlPoints.dup;
     }
 
     uint segments() const {
