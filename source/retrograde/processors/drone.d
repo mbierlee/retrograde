@@ -26,6 +26,8 @@ const auto cmdDroneMoveUp = sid("cmd_drone_move_up");
 const auto cmdDroneMoveDown = sid("cmd_drone_move_down");
 const auto cmdDroneMoveLeft = sid("cmd_drone_move_left");
 const auto cmdDroneMoveRight = sid("cmd_drone_move_right");
+const auto cmdDroneMoveForwards = sid("cmd_drone_move_forwards");
+const auto cmdDroneMoveBackwards = sid("cmd_drone_move_backwards");
 
 /** 
  * Controls entities with a DroneControllableComponent.
@@ -76,6 +78,16 @@ class DroneControllerProcessor : EntityProcessor {
             case cmdDroneMoveRight:
                 receivedMessages = true;
                 newTranslation = newTranslation + Vector3D(message.magnitude, 0, 0);
+                break;
+
+            case cmdDroneMoveForwards:
+                receivedMessages = true;
+                newTranslation = newTranslation + Vector3D(0, 0, -message.magnitude);
+                break;
+
+            case cmdDroneMoveBackwards:
+                receivedMessages = true;
+                newTranslation = newTranslation + Vector3D(0, 0, message.magnitude);
                 break;
 
             default:
