@@ -14,7 +14,7 @@ module retrograde.processors.drone;
 import retrograde.core.entity : Entity, EntityProcessor;
 import retrograde.core.stringid : sid;
 import retrograde.core.messaging : MessageHandler, MagnitudeMessage;
-import retrograde.core.math : Vector3D;
+import retrograde.core.math : Vector3D, scalar;
 
 import retrograde.components.drone : DroneControllableComponent;
 import retrograde.components.animation : TranslatingComponent, SpinningComponent;
@@ -56,38 +56,43 @@ class DroneControllerProcessor : EntityProcessor {
 
     public override void update() {
         //TODO: Rotation
-        auto newTranslation = Vector3D(0);
-        bool receivedMessages = false;
+
+        Vector3D newTranslation = Vector3D(0);
+
+        bool receivedXTranslation = false;
+        bool receivedYTranslation = false;
+        bool receivedZTranslation = false;
+
         messageHandler.receiveMessages(droneChannel, (immutable MagnitudeMessage message) {
             switch (message.id) {
-            case cmdDroneMoveUp:
-                receivedMessages = true;
-                newTranslation = newTranslation + Vector3D(0, message.magnitude, 0);
-                break;
-
-            case cmdDroneMoveDown:
-                receivedMessages = true;
-                newTranslation = newTranslation + Vector3D(0, -message.magnitude, 0);
-                break;
-
             case cmdDroneMoveLeft:
-                receivedMessages = true;
-                newTranslation = newTranslation + Vector3D(-message.magnitude, 0, 0);
+                receivedXTranslation = true;
+                newTranslation.x = -message.magnitude;
                 break;
 
             case cmdDroneMoveRight:
-                receivedMessages = true;
-                newTranslation = newTranslation + Vector3D(message.magnitude, 0, 0);
+                receivedXTranslation = true;
+                newTranslation.x = message.magnitude;
+                break;
+
+            case cmdDroneMoveUp:
+                receivedYTranslation = true;
+                newTranslation.y = message.magnitude;
+                break;
+
+            case cmdDroneMoveDown:
+                receivedYTranslation = true;
+                newTranslation.y = -message.magnitude;
                 break;
 
             case cmdDroneMoveForwards:
-                receivedMessages = true;
-                newTranslation = newTranslation + Vector3D(0, 0, -message.magnitude);
+                receivedZTranslation = true;
+                newTranslation.z = -message.magnitude;
                 break;
 
             case cmdDroneMoveBackwards:
-                receivedMessages = true;
-                newTranslation = newTranslation + Vector3D(0, 0, message.magnitude);
+                receivedZTranslation = true;
+                newTranslation.z = message.magnitude;
                 break;
 
             default:
@@ -95,13 +100,23 @@ class DroneControllerProcessor : EntityProcessor {
             }
         });
 
-        if (receivedMessages) {
+        if (receivedXTranslation || receivedYTranslation || receivedZTranslation) {
             foreach (entity; entities) {
                 auto translationSpeedModifier = entity.getFromComponent!DroneControllableComponent(
                     c => c.translationSpeedModifier, 1);
 
                 entity.maybeWithComponent!TranslatingComponent((c) {
-                    c.translation = newTranslation * translationSpeedModifier;
+                    if (receivedXTranslation) {
+                        c.translation.x = newTranslation.x * translationSpeedModifier;
+                    }
+
+                    if (receivedYTranslation) {
+                        c.translation.y = newTranslation.y * translationSpeedModifier;
+                    }
+
+                    if (receivedZTranslation) {
+                        c.translation.z = newTranslation.z * translationSpeedModifier;
+                    }
                 });
             }
         }
