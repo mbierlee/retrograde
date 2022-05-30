@@ -17,7 +17,8 @@ import retrograde.core.messaging : MessageHandler, MagnitudeMessage;
 import retrograde.core.math : Vector3D;
 
 import retrograde.components.drone : DroneControllableComponent;
-import retrograde.components.animation : TranslatingComponent;
+import retrograde.components.animation : TranslatingComponent, SpinningComponent;
+import retrograde.components.geometry : Orientation3DComponent, Position3DComponent;
 
 const auto droneChannel = sid("drone_channel");
 
@@ -92,5 +93,13 @@ class DroneControllerProcessor : EntityProcessor {
                 });
             }
         }
+    }
+
+    public static void addExpectedComponents(Entity entity) {
+        entity.addComponent!DroneControllableComponent;
+        entity.addComponent!SpinningComponent;
+        entity.addComponent!TranslatingComponent;
+        entity.addComponent!Orientation3DComponent;
+        entity.addComponent!Position3DComponent;
     }
 }
