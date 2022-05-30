@@ -15,6 +15,7 @@ import std.typecons : Nullable, nullable;
 
 import retrograde.core.stringid : StringId, sid;
 import retrograde.core.messaging : Message, MessageHandler, MagnitudeMessage;
+import retrograde.core.algorithm : forEach;
 
 const StringId inputEventChannel = sid("input_event_channel");
 
@@ -47,7 +48,7 @@ class KeyInputEventMessage : InputEventMessage {
      *  magnitude = Amount of pressure applied. Since keyboards are digital, this is either 0.0 or 1.0.
      */
     this(const int scanCode, const KeyboardKeyCode keyCode, const InputEventAction action,
-            const KeyboardKeyModifier modifiers, const double magnitude) {
+        const KeyboardKeyModifier modifiers, const double magnitude) {
         super(msgId, magnitude);
         this.scanCode = scanCode;
         this.keyCode = keyCode;
@@ -66,10 +67,10 @@ class KeyInputEventMessage : InputEventMessage {
      *  magnitude = Amount of pressure applied. Since keyboards are digital, this is either 0.0 or 1.0.
      */
     static immutable(KeyInputEventMessage) create(const int scanCode, const KeyboardKeyCode keyCode,
-            const InputEventAction action, const KeyboardKeyModifier modifiers,
-            const double magnitude) {
+        const InputEventAction action, const KeyboardKeyModifier modifiers,
+        const double magnitude) {
         return cast(immutable(KeyInputEventMessage)) new KeyInputEventMessage(scanCode,
-                keyCode, action, modifiers, magnitude);
+            keyCode, action, modifiers, magnitude);
     }
 }
 
@@ -97,7 +98,7 @@ class MouseMovementEventMessage : InputEventMessage {
      *  magnitude = Amount of movement in two-dimensions.
      */
     this(const double xPosition, const double yPosition, const Axis axis,
-            const MouseMovementType movementType, const double magnitude) {
+        const MouseMovementType movementType, const double magnitude) {
         super(msgId, magnitude);
         this.xPosition = xPosition;
         this.yPosition = yPosition;
@@ -116,9 +117,9 @@ class MouseMovementEventMessage : InputEventMessage {
      *  magnitude = Amount of movement in two-dimensions.
      */
     static immutable(MouseMovementEventMessage) create(const double xPosition, const double yPosition,
-            const Axis axis, const MouseMovementType movementType, const double magnitude) {
+        const Axis axis, const MouseMovementType movementType, const double magnitude) {
         return cast(immutable(MouseMovementEventMessage)) new MouseMovementEventMessage(xPosition,
-                yPosition, axis, movementType, magnitude);
+            yPosition, axis, movementType, magnitude);
     }
 }
 
@@ -164,7 +165,7 @@ class MouseButtonInputEventMessage : InputEventMessage {
      *  magnitude = Amount of pressure applied. Since keyboards are digital, this is either 0.0 or 1.0.
      */
     this(const MouseButton mouseButton, const InputEventAction action,
-            const KeyboardKeyModifier modifiers, const double magnitude) {
+        const KeyboardKeyModifier modifiers, const double magnitude) {
         super(msgId, magnitude);
         this.mouseButton = mouseButton;
         this.action = action;
@@ -181,10 +182,10 @@ class MouseButtonInputEventMessage : InputEventMessage {
      *  magnitude = Amount of pressure applied. Since keyboards are digital, this is either 0.0 or 1.0.
      */
     static immutable(MouseButtonInputEventMessage) create(const MouseButton mouseButton,
-            const InputEventAction action, const KeyboardKeyModifier modifiers,
-            const double magnitude) {
+        const InputEventAction action, const KeyboardKeyModifier modifiers,
+        const double magnitude) {
         return cast(immutable(MouseButtonInputEventMessage)) new MouseButtonInputEventMessage(mouseButton,
-                action, modifiers, magnitude);
+            action, modifiers, magnitude);
     }
 }
 
@@ -218,9 +219,9 @@ class MouseScrollInputEventMessage : InputEventMessage {
      *  magnitude = Amount of scroll in two-dimensions.
      */
     static immutable(MouseScrollInputEventMessage) create(const double xOffset,
-            double yOffset, const double magnitude) {
+        double yOffset, const double magnitude) {
         return cast(immutable(MouseScrollInputEventMessage)) new MouseScrollInputEventMessage(xOffset,
-                yOffset, magnitude);
+            yOffset, magnitude);
     }
 }
 
@@ -337,14 +338,51 @@ class InputMapper {
 
     /**
      * Add a keyboard key mapping.
+     *
+     * Mapping is added on InputEventActions.press and InputEventActions.release only,
+     * not InputEventActions.repeat. Use one of the overloads to also map on repeat.
      * 
      * Params:
      *  keyCode = Key code to map from.
      *  mappingTarget = Target properties of the mapping.
      */
     void addKeyMapping(KeyboardKeyCode keyCode, MappingTarget mappingTarget) {
+        addKeyMapping(
+            keyCode,
+            [
+                InputEventAction.press,
+                InputEventAction.release
+            ],
+            mappingTarget
+        );
+    }
+
+    /**
+     * Add a keyboard key mapping.
+     * 
+     * Params:
+     *  keyCode = Key code to map from.
+     *  action = Input action to map.
+     *  mappingTarget = Target properties of the mapping.
+     */
+    void addKeyMapping(KeyboardKeyCode keyCode, InputEventAction action, MappingTarget mappingTarget) {
         addMapping(MappingKey(KeyInputEventMessage.msgId, (cast(int) keyCode)
-                .nullable), mappingTarget);
+                .nullable, (cast(int) action).nullable), mappingTarget);
+    }
+
+    /**
+     * Add a keyboard key mapping.
+     * 
+     * Params:
+     *  keyCode = Key code to map from.
+     *  actions = Input actions to map.
+     *  mappingTarget = Target properties of the mapping.
+     */
+    void addKeyMapping(KeyboardKeyCode keyCode, InputEventAction[] actions, MappingTarget mappingTarget) {
+        actions.forEach((InputEventAction action) {
+            addMapping(MappingKey(KeyInputEventMessage.msgId, (cast(int) keyCode)
+                .nullable, (cast(int) action).nullable), mappingTarget);
+        });
     }
 
     /**
@@ -362,7 +400,8 @@ class InputMapper {
             if (message.id == KeyInputEventMessage.msgId) {
                 auto keyInputMessage = cast(KeyInputEventMessage) message;
                 if (keyInputMessage) {
-                    auto key = MappingKey(message.id, (cast(int) keyInputMessage.keyCode).nullable);
+                    auto key = MappingKey(message.id, (cast(int) keyInputMessage.keyCode)
+                        .nullable, (cast(int) keyInputMessage.action).nullable);
                     auto mapping = key in mappings;
                     if (mapping) {
                         messageHandler.sendMessage(mapping.channel,
@@ -384,8 +423,8 @@ version (unittest) {
         mapper.addMapping(MappingKey(KeyInputEventMessage.msgId, (cast(int) KeyboardKeyCode.e)
                 .nullable), MappingTarget(sid("test_channel"), sid("cmd_rejoice")));
 
-        mapper.addKeyMapping(KeyboardKeyCode.b,
-                MappingTarget(sid("test_channel"), sid("cmd_buckle_up")));
+        mapper.addKeyMapping(KeyboardKeyCode.b, MappingTarget(sid("test_channel"), sid(
+                "cmd_buckle_up")));
     }
 
     @("Process KeyInputEventMessage mapping")
@@ -399,22 +438,119 @@ version (unittest) {
 
         messageHandler.sendMessage(inputEventChannel, KeyInputEventMessage.create(123,
                 KeyboardKeyCode.a, InputEventAction.press, KeyboardKeyModifier.none, 0.6));
+        messageHandler.sendMessage(inputEventChannel, KeyInputEventMessage.create(123,
+                KeyboardKeyCode.a, InputEventAction.repeat, KeyboardKeyModifier.none, 0.4));
+        messageHandler.sendMessage(inputEventChannel, KeyInputEventMessage.create(123,
+                KeyboardKeyCode.a, InputEventAction.release, KeyboardKeyModifier.none, 0));
 
         messageHandler.shiftStandbyToActiveQueue();
         mapper.update();
         messageHandler.shiftStandbyToActiveQueue();
 
-        bool messageReceived = false;
+        int receivedMessages = 0;
+        bool expectedPressMessageReceived = false;
+        bool unexpectedRepeatMessageReceived = false;
+        bool expectedReleaseMessageReceived = false;
         messageHandler.receiveMessages(expectedChannel, (immutable Message message) {
             auto magnitudeMessage = cast(MagnitudeMessage) message;
             if (magnitudeMessage) {
-                messageReceived = magnitudeMessage.id == expectedMessageId
-                    && isClose(magnitudeMessage.magnitude, 0.6);
+                receivedMessages += 1;
+                expectedPressMessageReceived = expectedPressMessageReceived ||
+                    (magnitudeMessage.id == expectedMessageId && isClose(magnitudeMessage.magnitude, 0.6));
+                unexpectedRepeatMessageReceived = unexpectedRepeatMessageReceived ||
+                    (magnitudeMessage.id == expectedMessageId && isClose(magnitudeMessage.magnitude, 0.4));
+                expectedReleaseMessageReceived = expectedReleaseMessageReceived ||
+                    (magnitudeMessage.id == expectedMessageId && isClose(magnitudeMessage.magnitude, 0));
 
             }
         });
 
-        assert(messageReceived);
+        assert(expectedPressMessageReceived);
+        assert(!unexpectedRepeatMessageReceived);
+        assert(expectedReleaseMessageReceived);
+        assert(receivedMessages == 2);
+    }
+
+    @(
+        "Only process KeyInputEventMessage mapping of certain InputEventActions when mapping one action")
+    unittest {
+        auto expectedChannel = sid("test");
+        auto expectedMessageId = sid("b");
+
+        auto messageHandler = new MessageHandler();
+        auto mapper = new InputMapper(messageHandler);
+        mapper.addKeyMapping(KeyboardKeyCode.a, InputEventAction.press, MappingTarget(expectedChannel, expectedMessageId));
+
+        messageHandler.sendMessage(inputEventChannel, KeyInputEventMessage.create(123,
+                KeyboardKeyCode.a, InputEventAction.press, KeyboardKeyModifier.none, 0.6));
+        messageHandler.sendMessage(inputEventChannel, KeyInputEventMessage.create(123,
+                KeyboardKeyCode.a, InputEventAction.repeat, KeyboardKeyModifier.none, 0.4));
+        messageHandler.sendMessage(inputEventChannel, KeyInputEventMessage.create(123,
+                KeyboardKeyCode.a, InputEventAction.release, KeyboardKeyModifier.none, 0));
+
+        messageHandler.shiftStandbyToActiveQueue();
+        mapper.update();
+        messageHandler.shiftStandbyToActiveQueue();
+
+        int receivedMessages = 0;
+        bool expectedMessageReceived = false;
+        messageHandler.receiveMessages(expectedChannel, (immutable Message message) {
+            auto magnitudeMessage = cast(MagnitudeMessage) message;
+            if (magnitudeMessage) {
+                receivedMessages += 1;
+                expectedMessageReceived = magnitudeMessage.id == expectedMessageId &&
+                    isClose(magnitudeMessage.magnitude, 0.6);
+            }
+        });
+
+        assert(expectedMessageReceived);
+        assert(receivedMessages == 1);
+    }
+
+    @(
+        "Only process KeyInputEventMessage mapping of certain InputEventActions when mapping multiple actions")
+    unittest {
+        auto expectedChannel = sid("test");
+        auto expectedMessageId = sid("b");
+
+        auto messageHandler = new MessageHandler();
+        auto mapper = new InputMapper(messageHandler);
+        mapper.addKeyMapping(KeyboardKeyCode.a, [
+                InputEventAction.press, InputEventAction.release
+            ], MappingTarget(expectedChannel, expectedMessageId));
+
+        messageHandler.sendMessage(inputEventChannel, KeyInputEventMessage.create(123,
+                KeyboardKeyCode.a, InputEventAction.press, KeyboardKeyModifier.none, 0.6));
+        messageHandler.sendMessage(inputEventChannel, KeyInputEventMessage.create(123,
+                KeyboardKeyCode.a, InputEventAction.repeat, KeyboardKeyModifier.none, 0.4));
+        messageHandler.sendMessage(inputEventChannel, KeyInputEventMessage.create(123,
+                KeyboardKeyCode.a, InputEventAction.release, KeyboardKeyModifier.none, 0));
+
+        messageHandler.shiftStandbyToActiveQueue();
+        mapper.update();
+        messageHandler.shiftStandbyToActiveQueue();
+
+        int receivedMessages = 0;
+        bool expectedPressMessageReceived = false;
+        bool unexpectedRepeatMessageReceived = false;
+        bool expectedReleaseMessageReceived = false;
+        messageHandler.receiveMessages(expectedChannel, (immutable Message message) {
+            auto magnitudeMessage = cast(MagnitudeMessage) message;
+            if (magnitudeMessage) {
+                receivedMessages += 1;
+                expectedPressMessageReceived = expectedPressMessageReceived ||
+                    (magnitudeMessage.id == expectedMessageId && isClose(magnitudeMessage.magnitude, 0.6));
+                unexpectedRepeatMessageReceived = unexpectedRepeatMessageReceived ||
+                    (magnitudeMessage.id == expectedMessageId && isClose(magnitudeMessage.magnitude, 0.4));
+                expectedReleaseMessageReceived = expectedReleaseMessageReceived ||
+                    (magnitudeMessage.id == expectedMessageId && isClose(magnitudeMessage.magnitude, 0));
+            }
+        });
+
+        assert(expectedPressMessageReceived);
+        assert(!unexpectedRepeatMessageReceived);
+        assert(expectedReleaseMessageReceived);
+        assert(receivedMessages == 2);
     }
 
     @("Clear mapping")
