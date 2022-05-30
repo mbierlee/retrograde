@@ -12,7 +12,7 @@
 module retrograde.components.animation;
 
 import retrograde.core.entity : EntityComponent, EntityComponentIdentity;
-import retrograde.core.math : QuaternionD;
+import retrograde.core.math : QuaternionD, Vector3D;
 
 /**
  * An entity component that adds a rotational spin to an entity.
@@ -37,5 +37,31 @@ class SpinningComponent : EntityComponent {
 
     this(QuaternionD rotation) {
         this.rotation = rotation;
+    }
+}
+
+/** 
+ * An entity component that adds a constant translation to an entity.
+ *
+ * Make sure to add the TranslatingEntityProcessor to the entity system and that
+ * the entity has a Position3DComponent.
+ */
+class TranslatingComponent : EntityComponent {
+    mixin EntityComponentIdentity!"TranslatingComponent";
+
+    /** 
+     * Direction and amount of translation applied to the entity.
+     *
+     * The translation will be applied per frame, so the speed depends on the update loop
+     * framerate (not the renderer framerate.)
+     */
+    public Vector3D translation = Vector3D(0);
+
+    this() {
+
+    }
+
+    this(Vector3D translation) {
+        this.translation = translation;
     }
 }
