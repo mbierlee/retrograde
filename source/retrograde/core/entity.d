@@ -601,8 +601,11 @@ class EntityManager {
 }
 
 /**
- * An entity processor performs game logic with the given entities it has
- * been assigned by an entity manager.
+ * An entity processor performs game logic with the given entities it has been assigned by an entity manager.
+ *
+ * In the most ideal cases an EntityProcessor remains stateless and only uses and modifies the state
+ * of their entities' components. This allows for simplified save-and-resume functionality where only
+ * entity state must be persisted.
  */
 abstract class EntityProcessor {
     protected EntityCollection _entities;
