@@ -23,11 +23,20 @@ class DroneControllableComponent : EntityComponent {
     mixin EntityComponentIdentity!"DroneControllableComponent";
 
     public scalar translationSpeedModifier = 1;
+    public scalar rotationSpeedModifier = 1;
+
+    public scalar pitchUp = 0;
+    public scalar pitchDown = 0;
+    public scalar yawLeft = 0;
+    public scalar yawRight = 0;
+    public scalar bankLeft = 0;
+    public scalar bankRight = 0;
 
     this() {
     }
 
-    this(scalar translationSpeedModifier) {
+    this(scalar translationSpeedModifier, scalar rotationSpeedModifier) {
         this.translationSpeedModifier = translationSpeedModifier;
+        this.rotationSpeedModifier = rotationSpeedModifier;
     }
 }

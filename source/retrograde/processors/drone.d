@@ -54,6 +54,7 @@ const auto cmdDroneBankRight = sid("cmd_drone_bank_right");
  */
 class DroneControllerProcessor : EntityProcessor {
     private MessageHandler messageHandler;
+    private const defaultRotationSpeedFactor = (2 * PI) / 100;
 
     this(MessageHandler messageHandler) {
         this.messageHandler = messageHandler;
@@ -64,77 +65,81 @@ class DroneControllerProcessor : EntityProcessor {
     }
 
     public override void update() {
-        //TODO: Rotation
+        //TODO: Make translation dependent on rotation
+        bool receivedPitchUp = false;
+        bool receivedPitchDown = false;
+        bool receivedYawLeft = false;
+        bool receivedYawRight = false;
+        bool receivedBankLeft = false;
+        bool receivedBankRight = false;
 
-        Vector3D newTranslation = Vector3D(0);
-        QuaternionD newRotation = QuaternionD();
-
-        bool receivedXTranslation = false;
-        bool receivedYTranslation = false;
-        bool receivedZTranslation = false;
-
-        bool receivedRotation = false;
+        scalar pitchUp = 0;
+        scalar pitchDown = 0;
+        scalar yawLeft = 0;
+        scalar yawRight = 0;
+        scalar bankLeft = 0;
+        scalar bankRight = 0;
 
         messageHandler.receiveMessages(droneChannel, (immutable MagnitudeMessage message) {
             switch (message.id) {
-            case cmdDroneMoveLeft:
-                receivedXTranslation = true;
-                newTranslation.x = -message.magnitude;
-                break;
+                // case cmdDroneMoveLeft:
+                //     receivedXTranslation = true;
+                //     newTranslation.x = -message.magnitude;
+                //     break;
 
-            case cmdDroneMoveRight:
-                receivedXTranslation = true;
-                newTranslation.x = message.magnitude;
-                break;
+                // case cmdDroneMoveRight:
+                //     receivedXTranslation = true;
+                //     newTranslation.x = message.magnitude;
+                //     break;
 
-            case cmdDroneMoveUp:
-                receivedYTranslation = true;
-                newTranslation.y = message.magnitude;
-                break;
+                // case cmdDroneMoveUp:
+                //     receivedYTranslation = true;
+                //     newTranslation.y = message.magnitude;
+                //     break;
 
-            case cmdDroneMoveDown:
-                receivedYTranslation = true;
-                newTranslation.y = -message.magnitude;
-                break;
+                // case cmdDroneMoveDown:
+                //     receivedYTranslation = true;
+                //     newTranslation.y = -message.magnitude;
+                //     break;
 
-            case cmdDroneMoveForwards:
-                receivedZTranslation = true;
-                newTranslation.z = -message.magnitude;
-                break;
+                // case cmdDroneMoveForwards:
+                //     receivedZTranslation = true;
+                //     newTranslation.z = -message.magnitude;
+                //     break;
 
-            case cmdDroneMoveBackwards:
-                receivedZTranslation = true;
-                newTranslation.z = message.magnitude;
-                break;
+                // case cmdDroneMoveBackwards:
+                //     receivedZTranslation = true;
+                //     newTranslation.z = message.magnitude;
+                //     break;
 
             case cmdDroneYawLeft:
-                receivedRotation = true;
-                newRotation = QuaternionD.createRotation(((2 * PI) / 100) * message.magnitude, Vector3D(0, 1, 0));
+                receivedYawLeft = true;
+                yawLeft = message.magnitude;
                 break;
 
             case cmdDroneYawRight:
-                receivedRotation = true;
-                newRotation = QuaternionD.createRotation(-(((2 * PI) / 100) * message.magnitude), Vector3D(0, 1, 0));
+                receivedYawRight = true;
+                yawRight = message.magnitude;
                 break;
 
             case cmdDronePitchUp:
-                receivedRotation = true;
-                newRotation = QuaternionD.createRotation(-(((2 * PI) / 100) * message.magnitude), Vector3D(1, 0, 0));
+                receivedPitchUp = true;
+                pitchUp = message.magnitude;
                 break;
 
             case cmdDronePitchDown:
-                receivedRotation = true;
-                newRotation = QuaternionD.createRotation(((2 * PI) / 100) * message.magnitude, Vector3D(1, 0, 0));
+                receivedPitchDown = true;
+                pitchDown = message.magnitude;
                 break;
 
             case cmdDroneBankLeft:
-                receivedRotation = true;
-                newRotation = QuaternionD.createRotation(-(((2 * PI) / 100) * message.magnitude), Vector3D(0, 0, 1));
+                receivedBankLeft = true;
+                bankLeft = message.magnitude;
                 break;
 
             case cmdDroneBankRight:
-                receivedRotation = true;
-                newRotation = QuaternionD.createRotation(((2 * PI) / 100) * message.magnitude, Vector3D(0, 0, 1));
+                receivedBankRight = true;
+                bankRight = message.magnitude;
                 break;
 
             default:
@@ -142,30 +147,65 @@ class DroneControllerProcessor : EntityProcessor {
             }
         });
 
-        if (receivedXTranslation || receivedYTranslation || receivedZTranslation || receivedRotation) {
+        bool receivedRotation = receivedBankLeft || receivedBankRight || receivedPitchUp || receivedPitchDown || receivedYawLeft || receivedYawRight;
+
+        if (receivedRotation) {
             foreach (entity; entities) {
-                auto translationSpeedModifier = entity.getFromComponent!DroneControllableComponent(
-                    c => c.translationSpeedModifier, 1);
+                // auto translationSpeedModifier = entity.getFromComponent!DroneControllableComponent(
+                //     c => c.translationSpeedModifier, 1);
 
-                entity.maybeWithComponent!TranslatingComponent((c) {
-                    if (receivedXTranslation) {
-                        c.translation.x = newTranslation.x * translationSpeedModifier;
-                    }
+                // entity.maybeWithComponent!TranslatingComponent((c) {
+                //     if (receivedXTranslation) {
+                //         c.translation.x = newTranslation.x * translationSpeedModifier;
+                //     }
 
-                    if (receivedYTranslation) {
-                        c.translation.y = newTranslation.y * translationSpeedModifier;
-                    }
+                //     if (receivedYTranslation) {
+                //         c.translation.y = newTranslation.y * translationSpeedModifier;
+                //     }
 
-                    if (receivedZTranslation) {
-                        c.translation.z = newTranslation.z * translationSpeedModifier;
-                    }
-                });
+                //     if (receivedZTranslation) {
+                //         c.translation.z = newTranslation.z * translationSpeedModifier;
+                //     }
+                // });
 
-                entity.maybeWithComponent!SpinningComponent((c) {
-                    if (receivedRotation) {
+                if (!entity.hasComponent!DroneControllableComponent) {
+                    continue;
+                }
+
+                auto dc = entity.getComponent!DroneControllableComponent;
+
+                if (receivedBankLeft)
+                    dc.bankLeft = bankLeft;
+                if (receivedBankRight)
+                    dc.bankRight = bankRight;
+                if (receivedPitchUp)
+                    dc.pitchUp = pitchUp;
+                if (receivedPitchDown)
+                    dc.pitchDown = pitchDown;
+                if (receivedYawLeft)
+                    dc.yawLeft = yawLeft;
+                if (receivedYawRight)
+                    dc.yawRight = yawRight;
+
+                if (receivedRotation) {
+                    entity.maybeWithComponent!SpinningComponent((c) {
+                        QuaternionD newRotation =
+                            QuaternionD.createRotation(
+                                (dc.yawLeft + -dc.yawRight) * defaultRotationSpeedFactor * dc.rotationSpeedModifier,
+                                Vector3D(0, 1, 0)
+                            ) *
+                            QuaternionD.createRotation(
+                                (-dc.pitchUp + dc.pitchDown) * defaultRotationSpeedFactor * dc.rotationSpeedModifier,
+                                Vector3D(1, 0, 0)
+                            ) *
+                            QuaternionD.createRotation(
+                                (-dc.bankLeft + dc.bankRight) * defaultRotationSpeedFactor * dc.rotationSpeedModifier,
+                                Vector3D(0, 0, 1)
+                            );
+
                         c.rotation = newRotation;
-                    }
-                });
+                    });
+                }
             }
         }
     }
