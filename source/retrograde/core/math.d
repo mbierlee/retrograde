@@ -1135,7 +1135,7 @@ struct Quaternion(T) {
     /**
      * The real number component.
      */
-    public @property T r() const {
+    public @property T w() const {
         return realPart;
     }
 
@@ -1168,8 +1168,8 @@ struct Quaternion(T) {
      *  y = The product of c * j.
      *  z = The product of d * k.
      */
-    this(T r, T x, T y, T z) {
-        realPart = r;
+    this(T w, T x, T y, T z) {
+        realPart = w;
         imaginaryVector = VectorType(x, y, z);
     }
 
@@ -1191,8 +1191,12 @@ struct Quaternion(T) {
      *  axis = Regular three-dimensional axis to rotate around.
      */
     public static Quaternion createRotation(double radianAngle, const Vector3D axis) {
-        return Quaternion(cos(radianAngle / 2), axis.x * sin(radianAngle / 2),
-            axis.y * sin(radianAngle / 2), axis.z * sin(radianAngle / 2));
+        return Quaternion(
+            cos(radianAngle / 2),
+            sin(radianAngle / 2) * axis.x,
+            sin(radianAngle / 2) * axis.y,
+            sin(radianAngle / 2) * axis.z
+        );
     }
 
     /**
@@ -1200,10 +1204,10 @@ struct Quaternion(T) {
      */
     Quaternion opBinary(string op)(const Quaternion rhs) const if (op == "*") {
         return Quaternion(
-            r * rhs.r - x * rhs.x - y * rhs.y - z * rhs.z,
-            r * rhs.x + x * rhs.r + y * rhs.z - z * rhs.y,
-            r * rhs.y - x * rhs.z + y * rhs.r + z * rhs.x,
-            r * rhs.z + x * rhs.y - y * rhs.x + z * rhs.r
+            w * rhs.w - x * rhs.x - y * rhs.y - z * rhs.z,
+            w * rhs.x + x * rhs.w + y * rhs.z - z * rhs.y,
+            w * rhs.y - x * rhs.z + y * rhs.w + z * rhs.x,
+            w * rhs.z + x * rhs.y - y * rhs.x + z * rhs.w
         );
     }
 
@@ -1213,9 +1217,9 @@ struct Quaternion(T) {
     public Matrix4D toRotationMatrix() const {
         // dfmt off
          return Matrix4D(
-            1 - 2 * (y * y) - 2 * (z * z), 2 * x * y - 2 * z * r          , (2 * x * z) + (2 * y * r)     , 0,
-            2 * x * y + 2 * z * r        , 1 - 2 * (x * x) - 2 * (z * z)  , 2 * y * z - 2 * x * r         , 0,
-            2 * x * z - 2 * y * r        , 2 * y * z + 2 * x * r          , 1 - 2 * (x * x)  - 2 * (y * y), 0,
+            1 - 2 * (y * y) - 2 * (z * z), 2 * x * y - 2 * z * w          , (2 * x * z) + (2 * y * w)     , 0,
+            2 * x * y + 2 * z * w        , 1 - 2 * (x * x) - 2 * (z * z)  , 2 * y * z - 2 * x * w         , 0,
+            2 * x * z - 2 * y * w        , 2 * y * z + 2 * x * w          , 1 - 2 * (x * x)  - 2 * (y * y), 0,
             0                            , 0                              , 0                             , 1
          );
         // dfmt on
@@ -1227,29 +1231,29 @@ struct Quaternion(T) {
     public Vector3D toEulerAngles() const {
         auto q = this;
 
-        auto sqw = q.r * q.r;
+        auto sqw = q.w * q.w;
         auto sqx = q.x * q.x;
         auto sqy = q.y * q.y;
         auto sqz = q.z * q.z;
 
         auto unit = sqx + sqy + sqz + sqw;
-        auto poleTest = q.x * q.y + q.z * q.r;
+        auto poleTest = q.x * q.y + q.z * q.w;
 
         if (poleTest > 0.499 * unit) {
-            auto yaw = 2 * atan2(q.x, q.r);
+            auto yaw = 2 * atan2(q.x, q.w);
             auto pitch = PI / 2;
             return Vector3D(pitch, yaw, 0);
         }
 
         if (poleTest < -0.499 * unit) {
-            auto yaw = -2 * atan2(q.x, q.r);
+            auto yaw = -2 * atan2(q.x, q.w);
             auto pitch = -PI / 2;
             return Vector3D(pitch, yaw, 0);
         }
 
-        auto yaw = atan2(2 * q.y * q.r - 2 * q.x * q.z, sqx - sqy - sqz + sqw);
+        auto yaw = atan2(2 * q.y * q.w - 2 * q.x * q.z, sqx - sqy - sqz + sqw);
         auto pitch = asin(2 * poleTest / unit);
-        auto roll = atan2(2 * q.x * q.r - 2 * q.y * q.z, -sqx + sqy - sqz + sqw);
+        auto roll = atan2(2 * q.x * q.w - 2 * q.y * q.z, -sqx + sqy - sqz + sqw);
 
         return Vector3D(pitch, yaw, roll);
     }
@@ -2260,13 +2264,13 @@ version (unittest) {
         assert(QuaternionD(1, 0, 0, 0) == quaternion);
 
         auto const quaternion2 = QuaternionD(4, 1, 2, 3);
-        assert(4 == quaternion2.r);
+        assert(4 == quaternion2.w);
         assert(1 == quaternion2.x);
         assert(2 == quaternion2.y);
         assert(3 == quaternion2.z);
 
         auto const quaternion3 = QuaternionD(4, Vector3D(1, 2, 3));
-        assert(4 == quaternion3.r);
+        assert(4 == quaternion3.w);
         assert(1 == quaternion3.x);
         assert(2 == quaternion3.y);
         assert(3 == quaternion3.z);
