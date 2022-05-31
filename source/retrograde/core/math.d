@@ -857,7 +857,7 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
             foreach (size_t i, T item; data) {
                 newData[i] = cast(CastType) item;
             }
-            
+
             return newData;
         }
     }
@@ -1211,14 +1211,14 @@ struct Quaternion(T) {
      * Convert quaterion to a four-dimensional rotation matrix.
      */
     public Matrix4D toRotationMatrix() const {
-        //TODO: Check if correct for row-major matrix
-        return Matrix4D(
-            r * r + x * x - y * y - z * z, 2 * x * y - 2 * r * z,
-            2 * x * z + 2 * r * y, 0, 2 * x * y + 2 * r * z,
-            r * r - x * x + y * y - z * z, 2 * y * z + 2 * r * x, 0,
-            2 * x * z - 2 * r * y, 2 * y * z - 2 * r * x, r * r - x * x - y * y + z * z,
-            0, 0, 0, 0, 1
-        );
+        // dfmt off
+         return Matrix4D(
+            1 - 2 * (y * y) - 2 * (z * z), 2 * x * y - 2 * z * r          , (2 * x * z) + (2 * y * r)     , 0,
+            2 * x * y + 2 * z * r        , 1 - 2 * (x * x) - 2 * (z * z)  , 2 * y * z - 2 * x * r         , 0,
+            2 * x * z - 2 * y * r        , 2 * y * z + 2 * x * r          , 1 - 2 * (x * x)  - 2 * (y * y), 0,
+            0                            , 0                              , 0                             , 1
+         );
+        // dfmt on
     }
 
     /**
@@ -2293,7 +2293,7 @@ version (unittest) {
     @("Convert to rotation matrix")
     unittest {
         auto const quaternion = QuaternionD(6.12303e-17, 1, 0, 0);
-        auto const expectedRotationMatrix = "const(Matrix!(double, 4u, 4u))([1, 0, 0, 0, 0, -1, 1.22461e-16, 0, 0, -1.22461e-16, -1, 0, 0, 0, 0, 1])";
+        auto const expectedRotationMatrix = "const(Matrix!(double, 4u, 4u))([1, 0, 0, 0, 0, -1, -1.22461e-16, 0, 0, 1.22461e-16, -1, 0, 0, 0, 0, 1])";
         auto const actualRotationMatrix = quaternion.toRotationMatrix();
         assert(expectedRotationMatrix == actualRotationMatrix.to!string);
     }

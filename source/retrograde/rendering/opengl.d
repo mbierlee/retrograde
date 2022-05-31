@@ -196,8 +196,7 @@ version (Have_bindbc_opengl) {
             auto scale = entity.getFromComponent!Scale3DComponent(c => c.scale,
                 Vector3D(1));
 
-            auto modelMatrix = position.toTranslationMatrix() * orientation.toRotationMatrix() *
-                scale.toScalingMatrix();
+            auto modelMatrix = position.toTranslationMatrix() * orientation.toRotationMatrix() * scale.toScalingMatrix();
             auto modelViewProjectionMatrix = viewProjectionMatrix * modelMatrix;
             return modelViewProjectionMatrix;
         }
