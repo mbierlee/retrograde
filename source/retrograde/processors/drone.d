@@ -17,7 +17,7 @@ import retrograde.core.messaging : MessageHandler, MagnitudeMessage;
 import retrograde.core.math : Vector3D, scalar, QuaternionD;
 
 import retrograde.components.drone : DroneControllableComponent;
-import retrograde.components.animation : TranslatingComponent, SpinningComponent;
+import retrograde.components.animation : TranslationComponent, RotationComponent;
 import retrograde.components.geometry : Orientation3DComponent, Position3DComponent;
 
 import std.math : PI;
@@ -41,12 +41,12 @@ const auto cmdDroneBankRight = sid("cmd_drone_bank_right");
 /** 
  * Controls entities with a DroneControllableComponent.
  *
- * The drone controller works in conjunction with the SpinningEntityProcessor and
- * TranslatingEntityProcessor to provide actual movement and rotation. As such all entities need
+ * The drone controller works in conjunction with the RotationEntityProcessor and
+ * TranslationEntityProcessor to provide actual movement and rotation. As such all entities need
  * to have the following components:
  * - DroneControllableComponent
- * - SpinningComponent
- * - TranslatingComponent
+ * - RotationComponent
+ * - TranslationComponent
  * - Orientation3DComponent
  * - Position3DComponent
  *
@@ -154,7 +154,7 @@ class DroneControllerProcessor : EntityProcessor {
                 // auto translationSpeedModifier = entity.getFromComponent!DroneControllableComponent(
                 //     c => c.translationSpeedModifier, 1);
 
-                // entity.maybeWithComponent!TranslatingComponent((c) {
+                // entity.maybeWithComponent!TranslationComponent((c) {
                 //     if (receivedXTranslation) {
                 //         c.translation.x = newTranslation.x * translationSpeedModifier;
                 //     }
@@ -188,7 +188,7 @@ class DroneControllerProcessor : EntityProcessor {
                     dc.yawRight = yawRight;
 
                 if (receivedRotation) {
-                    entity.maybeWithComponent!SpinningComponent((c) {
+                    entity.maybeWithComponent!RotationComponent((c) {
                         QuaternionD newRotation =
                             QuaternionD.createRotation(
                                 (dc.yawLeft + -dc.yawRight) * defaultRotationSpeedFactor * dc.rotationSpeedModifier,
@@ -212,8 +212,8 @@ class DroneControllerProcessor : EntityProcessor {
 
     public static void addExpectedComponents(Entity entity) {
         entity.addComponent!DroneControllableComponent;
-        entity.addComponent!SpinningComponent;
-        entity.addComponent!TranslatingComponent;
+        entity.addComponent!RotationComponent;
+        entity.addComponent!TranslationComponent;
         entity.addComponent!Orientation3DComponent;
         entity.addComponent!Position3DComponent;
     }

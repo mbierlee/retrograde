@@ -14,33 +14,33 @@ module retrograde.processors.animation;
 import retrograde.core.entity : Entity, EntityProcessor;
 import retrograde.core.math : QuaternionD, Vector3D;
 
-import retrograde.components.animation : SpinningComponent, TranslatingComponent;
+import retrograde.components.animation : RotationComponent, TranslationComponent;
 import retrograde.components.geometry : Orientation3DComponent, Position3DComponent;
 
-class SpinningEntityProcessor : EntityProcessor {
+class RotationEntityProcessor : EntityProcessor {
     public override bool acceptsEntity(Entity entity) {
-        return entity.hasComponent!SpinningComponent && entity.hasComponent!Orientation3DComponent;
+        return entity.hasComponent!RotationComponent && entity.hasComponent!Orientation3DComponent;
     }
 
     public override void update() {
         foreach (entity; entities) {
             entity.maybeWithComponent!Orientation3DComponent((c) {
-                auto rotation = entity.getFromComponent!SpinningComponent(c => c.rotation, QuaternionD());
+                auto rotation = entity.getFromComponent!RotationComponent(c => c.rotation, QuaternionD());
                 c.orientation = c.orientation * rotation;
             });
         }
     }
 }
 
-class TranslatingEntityProcessor : EntityProcessor {
+class TranslationEntityProcessor : EntityProcessor {
     public override bool acceptsEntity(Entity entity) {
-        return entity.hasComponent!TranslatingComponent && entity.hasComponent!Position3DComponent;
+        return entity.hasComponent!TranslationComponent && entity.hasComponent!Position3DComponent;
     }
 
     public override void update() {
         foreach (entity; entities) {
             entity.maybeWithComponent!Position3DComponent((c) {
-                auto translation = entity.getFromComponent!TranslatingComponent(c => c.translation, Vector3D());
+                auto translation = entity.getFromComponent!TranslationComponent(c => c.translation, Vector3D());
                 c.position = c.position + translation;
             });
         }
