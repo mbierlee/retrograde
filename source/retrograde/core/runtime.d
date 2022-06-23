@@ -140,6 +140,12 @@ class StandardEngineRuntime : EngineRuntime {
     }
 }
 
+version (customizeableGc) {
+} else {
+    extern (C) __gshared bool rt_cmdline_enabled = false;
+    extern (C) __gshared bool rt_envvars_enabled = false;
+}
+
 version (unittest) {
     class TestGame : Game {
         public bool isInitialized;
