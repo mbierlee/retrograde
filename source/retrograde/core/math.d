@@ -11,7 +11,8 @@
 
 module retrograde.core.math;
 
-import std.math : sqrt, atan2, PI, cos, sin, tan, asin, ceil, floor;
+import std.math : sqrt, atan2, PI, cos, acos, sin, tan, asin, ceil, floor;
+import std.math.operations : isClose;
 import std.conv : to;
 import std.string : join;
 
@@ -1211,6 +1212,18 @@ struct Quaternion(T) {
         );
     }
 
+    /** 
+     * Multiply or divide quaternion by the given scalar.
+     */
+    Quaternion opBinary(string op)(const scalar rhs) const if (op == "*" || op == "/") {
+        return Quaternion(
+            mixin("w " ~ op ~ " rhs"),
+            mixin("x " ~ op ~ " rhs"),
+            mixin("y " ~ op ~ " rhs"),
+            mixin("z " ~ op ~ " rhs"),
+        );
+    }
+
     /**
      * Convert quaterion to a four-dimensional rotation matrix.
      */
@@ -1229,6 +1242,7 @@ struct Quaternion(T) {
      * Convert quaterion to a vector of euler angles.
      */
     public Vector3D toEulerAngles() const {
+        //TODO: Verify for correctness
         auto q = this;
 
         auto sqw = q.w * q.w;
@@ -1257,8 +1271,58 @@ struct Quaternion(T) {
 
         return Vector3D(pitch, yaw, roll);
     }
+
+    /**
+     * Calculates the squared Euclidian magnitude of the quaternion.
+     */
+    public scalar magnitudeSquared() const {
+        return w * w + x * x + y * y + z * z;
+    }
+
+    /**
+     * Calculates the Euclidian magnitude of the quaternion.
+     */
+    public scalar magnitude() const {
+        return sqrt(magnitudeSquared);
+    }
+
+    /** 
+     * Returns a normalized form of this Quaternion.
+     */
+    public Quaternion normalize() const {
+        return this / magnitude;
+    }
+
+    /**
+     * Return angle of quaternion in radian.
+     */
+    public scalar angle() const {
+        return 2 * acos(w);
+    }
+
+    /**
+     * Return Euclidian axis of quaternion.
+     *
+     * In case angle = 0 the axis is (0, 1, 0)
+     */
+    public VectorType axis() const {
+        auto q = normalize();
+        auto _angle = q.angle;
+        if (_angle == 0) {
+            return VectorType(0, 1, 0);
+        }
+
+        return VectorType(
+            q.x / sqrt(1 - q.w * q.w),
+            q.y / sqrt(1 - q.w * q.w),
+            q.z / sqrt(1 - q.w * q.w)
+        );
+    }
+
+    //TODO: Invert/conjugate
 }
 
+alias QuaternionF = Quaternion!float;
 alias QuaternionD = Quaternion!double;
 
 // Vector tests
@@ -2313,5 +2377,23 @@ version (unittest) {
         auto const expectedToEulerAngles2 = Vector3D(0, 0, PI);
         auto const actualEulerAngles2 = quaternion2.toEulerAngles();
         assert(expectedToEulerAngles2 == actualEulerAngles2);
+    }
+
+    @("Angle")
+    unittest {
+        auto const quaternion = QuaternionD.createRotation(PI, Vector3D(0, 1, 0));
+        assert(isClose(quaternion.angle, PI));
+    }
+
+    @("Axis when rotation is zero")
+    unittest {
+        auto const quaternion = QuaternionD.createRotation(0, Vector3D(0, 1, 0));
+        assert(quaternion.axis == Vector3D(0, 1, 0));
+    }
+
+    @("Axis when rotation is non-zero")
+    unittest {
+        auto const quaternion = QuaternionD.createRotation(PI, Vector3D(0, 0, 1));
+        assert(quaternion.axis == Vector3D(0, 0, 1));
     }
 }
