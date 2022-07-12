@@ -65,13 +65,19 @@ class DroneControllerProcessor : EntityProcessor {
     }
 
     public override void update() {
-        //TODO: Make translation dependent on rotation
         bool receivedPitchUp = false;
         bool receivedPitchDown = false;
         bool receivedYawLeft = false;
         bool receivedYawRight = false;
         bool receivedBankLeft = false;
         bool receivedBankRight = false;
+
+        bool receivedMoveForwards = false;
+        bool receivedMoveBackwards = false;
+        bool receivedMoveLeft = false;
+        bool receivedMoveRight = false;
+        bool receivedMoveUp = false;
+        bool receivedMoveDown = false;
 
         scalar pitchUp = 0;
         scalar pitchDown = 0;
@@ -80,37 +86,44 @@ class DroneControllerProcessor : EntityProcessor {
         scalar bankLeft = 0;
         scalar bankRight = 0;
 
+        scalar moveForwards = 0;
+        scalar moveBackwards = 0;
+        scalar moveLeft = 0;
+        scalar moveRight = 0;
+        scalar moveUp = 0;
+        scalar moveDown = 0;
+
         messageHandler.receiveMessages(droneChannel, (immutable MagnitudeMessage message) {
             switch (message.id) {
-                // case cmdDroneMoveLeft:
-                //     receivedXTranslation = true;
-                //     newTranslation.x = -message.magnitude;
-                //     break;
+            case cmdDroneMoveLeft:
+                receivedMoveLeft = true;
+                moveLeft = message.magnitude;
+                break;
 
-                // case cmdDroneMoveRight:
-                //     receivedXTranslation = true;
-                //     newTranslation.x = message.magnitude;
-                //     break;
+            case cmdDroneMoveRight:
+                receivedMoveRight = true;
+                moveRight = message.magnitude;
+                break;
 
-                // case cmdDroneMoveUp:
-                //     receivedYTranslation = true;
-                //     newTranslation.y = message.magnitude;
-                //     break;
+            case cmdDroneMoveUp:
+                receivedMoveUp = true;
+                moveUp = message.magnitude;
+                break;
 
-                // case cmdDroneMoveDown:
-                //     receivedYTranslation = true;
-                //     newTranslation.y = -message.magnitude;
-                //     break;
+            case cmdDroneMoveDown:
+                receivedMoveDown = true;
+                moveDown = message.magnitude;
+                break;
 
-                // case cmdDroneMoveForwards:
-                //     receivedZTranslation = true;
-                //     newTranslation.z = -message.magnitude;
-                //     break;
+            case cmdDroneMoveForwards:
+                receivedMoveForwards = true;
+                moveForwards = message.magnitude;
+                break;
 
-                // case cmdDroneMoveBackwards:
-                //     receivedZTranslation = true;
-                //     newTranslation.z = message.magnitude;
-                //     break;
+            case cmdDroneMoveBackwards:
+                receivedMoveBackwards = true;
+                moveBackwards = message.magnitude;
+                break;
 
             case cmdDroneYawLeft:
                 receivedYawLeft = true;
@@ -148,30 +161,10 @@ class DroneControllerProcessor : EntityProcessor {
         });
 
         bool receivedRotation = receivedBankLeft || receivedBankRight || receivedPitchUp || receivedPitchDown || receivedYawLeft || receivedYawRight;
+        bool receivedTranslation = receivedMoveBackwards || receivedMoveForwards || receivedMoveLeft || receivedMoveRight || receivedMoveUp || receivedMoveDown;
 
-        if (receivedRotation) {
+        if (receivedRotation || receivedTranslation) {
             foreach (entity; entities) {
-                // auto translationSpeedModifier = entity.getFromComponent!DroneControllableComponent(
-                //     c => c.translationSpeedModifier, 1);
-
-                // entity.maybeWithComponent!TranslationComponent((c) {
-                //     if (receivedXTranslation) {
-                //         c.translation.x = newTranslation.x * translationSpeedModifier;
-                //     }
-
-                //     if (receivedYTranslation) {
-                //         c.translation.y = newTranslation.y * translationSpeedModifier;
-                //     }
-
-                //     if (receivedZTranslation) {
-                //         c.translation.z = newTranslation.z * translationSpeedModifier;
-                //     }
-                // });
-
-                if (!entity.hasComponent!DroneControllableComponent) {
-                    continue;
-                }
-
                 auto dc = entity.getComponent!DroneControllableComponent;
 
                 if (receivedBankLeft)
@@ -186,6 +179,19 @@ class DroneControllerProcessor : EntityProcessor {
                     dc.yawLeft = yawLeft;
                 if (receivedYawRight)
                     dc.yawRight = yawRight;
+
+                if (receivedMoveForwards)
+                    dc.moveForwards = moveForwards;
+                if (receivedMoveBackwards)
+                    dc.moveBackwards = moveBackwards;
+                if (receivedMoveLeft)
+                    dc.moveLeft = moveLeft;
+                if (receivedMoveRight)
+                    dc.moveRight = moveRight;
+                if (receivedMoveUp)
+                    dc.moveUp = moveUp;
+                if (receivedMoveDown)
+                    dc.moveDown = moveDown;
 
                 if (receivedRotation) {
                     entity.maybeWithComponent!RotationComponent((c) {
@@ -204,6 +210,16 @@ class DroneControllerProcessor : EntityProcessor {
                             );
 
                         c.rotation = newRotation;
+                    });
+                }
+
+                if (receivedTranslation) {
+                    entity.maybeWithComponent!TranslationComponent((c) {
+                        c.translation = Vector3D(
+                            (dc.moveRight - dc.moveLeft) * dc.translationSpeedModifier,
+                            (dc.moveUp - dc.moveDown) * dc.translationSpeedModifier,
+                            (dc.moveBackwards - dc.moveForwards) * dc.translationSpeedModifier
+                        );
                     });
                 }
             }

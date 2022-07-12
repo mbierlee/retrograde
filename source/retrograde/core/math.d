@@ -911,6 +911,17 @@ public Matrix4D toTranslationMatrix(const Vector3D vector) {
     // dfmt on
 }
 
+/** 
+ * Creates a translation vector from a matrix.
+ */
+public Vector3D toTranslationVector(const Matrix4D matrix) {
+    return Vector3D(
+        matrix[0, 3],
+        matrix[1, 3],
+        matrix[2, 3]
+    );
+}
+
 /**
  * Creates a scaling matrix from a 2D scaling vector.
  */

@@ -32,6 +32,13 @@ class DroneControllableComponent : EntityComponent {
     public scalar bankLeft = 0;
     public scalar bankRight = 0;
 
+    public scalar moveForwards = 0;
+    public scalar moveBackwards = 0;
+    public scalar moveLeft = 0;
+    public scalar moveRight = 0;
+    public scalar moveUp = 0;
+    public scalar moveDown = 0;
+
     this() {
     }
 

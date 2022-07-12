@@ -12,7 +12,7 @@
 module retrograde.processors.animation;
 
 import retrograde.core.entity : Entity, EntityProcessor;
-import retrograde.core.math : QuaternionD, Vector3D;
+import retrograde.core.math : QuaternionD, Vector3D, toTranslationMatrix, toTranslationVector;
 
 import retrograde.components.animation : RotationComponent, TranslationComponent;
 import retrograde.components.geometry : Orientation3DComponent, Position3DComponent;
@@ -30,8 +30,14 @@ class RotationEntityProcessor : EntityProcessor {
             });
         }
     }
+
+    public static void addExpectedComponents(Entity entity) {
+        entity.addComponent!RotationComponent;
+        entity.addComponent!Orientation3DComponent;
+    }
 }
 
+//TODO: Find way to make sure TranslationEntityProcessor is always run after RotationEntityProcessor
 class TranslationEntityProcessor : EntityProcessor {
     public override bool acceptsEntity(Entity entity) {
         return entity.hasComponent!TranslationComponent && entity.hasComponent!Position3DComponent;
@@ -40,9 +46,26 @@ class TranslationEntityProcessor : EntityProcessor {
     public override void update() {
         foreach (entity; entities) {
             entity.maybeWithComponent!Position3DComponent((c) {
-                auto translation = entity.getFromComponent!TranslationComponent(c => c.translation, Vector3D());
-                c.position = c.position + translation;
+                auto rotationMatrix =
+                    entity
+                    .getFromComponent!Orientation3DComponent(c => c.orientation, QuaternionD())
+                    .toRotationMatrix;
+
+                auto translationMatrix =
+                    entity
+                    .getFromComponent!TranslationComponent(c => c.translation, Vector3D())
+                    .toTranslationMatrix;
+
+                auto newTranslation =
+                    (rotationMatrix * translationMatrix).toTranslationVector;
+
+                c.position = c.position + newTranslation;
             });
         }
+    }
+
+    public static void addExpectedComponents(Entity entity) {
+        entity.addComponent!TranslationComponent;
+        entity.addComponent!Position3DComponent;
     }
 }
