@@ -180,13 +180,15 @@ version (Have_bindbc_opengl) {
                 return Matrix4D.identity;
             }
 
-            auto position = activeCamera.getFromComponent!Position3DComponent(c => c.position,
-                Vector3D(0));
-            auto orientation = activeCamera
-                .getFromComponent!Orientation3DComponent(c => c.orientation, QuaternionD())
-                .toEulerAngles();
+            auto position =
+                activeCamera
+                .getFromComponent!Position3DComponent(c => c.position, Vector3D(0));
 
-            return createViewMatrix(position, orientation.x, orientation.y);
+            auto orientation =
+                activeCamera
+                .getFromComponent!Orientation3DComponent(c => c.orientation, QuaternionD());
+
+            return createViewMatrix(position, orientation);
         }
 
         private Matrix4D createModelViewProjectionMatrix(Entity entity, Matrix4D viewProjectionMatrix) {

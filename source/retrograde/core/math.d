@@ -1099,6 +1099,10 @@ public Matrix4D createViewMatrix(Vector3D eyePosition, scalar pitchInRadian, sca
     // dfmt on
 }
 
+public Matrix4D createViewMatrix(Vector3D eyePosition, QuaternionD eyeOrientation) {
+    return eyeOrientation.inverse.toRotationMatrix * (-eyePosition).toTranslationMatrix;
+}
+
 /**
  * Creates a perspective projection matrix.
  */
