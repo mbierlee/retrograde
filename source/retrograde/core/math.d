@@ -1236,6 +1236,13 @@ struct Quaternion(T) {
     }
 
     /**
+     * Calculates the dot product of two quaternions.
+     */
+    T dot()(const Quaternion other) const {
+        return x * other.x + y * other.y + z * other.z + w * other.w;
+    }
+
+    /**
      * Convert quaterion to a four-dimensional rotation matrix.
      */
     public Matrix4D toRotationMatrix() const {
@@ -1253,7 +1260,7 @@ struct Quaternion(T) {
      * Convert quaterion to a vector of euler angles.
      */
     public Vector3D toEulerAngles() const {
-        //TODO: Verify for correctness
+        //TODO: Verify for correctness. Also not really euler angles but that brian... bairn?...björn? guy angles.
         auto q = this;
 
         auto sqw = q.w * q.w;
@@ -1330,7 +1337,19 @@ struct Quaternion(T) {
         );
     }
 
-    //TODO: Invert/conjugate
+    /**
+     * Returns a new quaternion that is the conjugate of the current.
+     */
+    public Quaternion conjugate() const {
+        return Quaternion(w, -x, -y, -z);
+    }
+
+    /**
+     * Returns a new quaternion that is the inverse of the current.
+     */
+    public Quaternion inverse() const {
+        return conjugate / magnitudeSquared;
+    }
 }
 
 alias QuaternionF = Quaternion!float;
@@ -2406,5 +2425,35 @@ version (unittest) {
     unittest {
         auto const quaternion = QuaternionD.createRotation(PI, Vector3D(0, 0, 1));
         assert(quaternion.axis == Vector3D(0, 0, 1));
+    }
+
+    @("Conjugate")
+    unittest {
+        auto const quaternion = QuaternionD(1, 2, 3, 4);
+        assert(quaternion.conjugate == QuaternionD(1, -2, -3, -4));
+    }
+
+    @("Inverse")
+    unittest {
+        auto const quaternion = QuaternionD(1, 2, 3, 4);
+        auto const inverse = quaternion.inverse;
+        assert(isClose(inverse.w, 0.0333333, 0.01));
+        assert(isClose(inverse.x, -0.0666667, 0.01));
+        assert(isClose(inverse.y, -0.1, 0.1));
+        assert(isClose(inverse.z, -0.1333333, 0.01));
+    }
+
+    @("Dot product")
+    unittest {
+        auto const quaternion1 = QuaternionD(1, 2, 3, 4);
+        auto const quaternion2 = QuaternionD(5, 6, 7, 8);
+        assert(quaternion1.dot(quaternion2) == 70);
+    }
+
+    @("Multiply")
+    unittest {
+        auto const quaternion1 = QuaternionD(1, 2, 3, 4);
+        auto const quaternion2 = QuaternionD(5, 6, 7, 8);
+        assert(quaternion1 * quaternion2 == QuaternionD(-60, 12, 30, 24));
     }
 }
