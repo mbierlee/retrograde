@@ -15,6 +15,7 @@ import retrograde.core.entity : Entity, EntityProcessor;
 import retrograde.core.stringid : sid;
 import retrograde.core.messaging : MessageHandler, MagnitudeMessage;
 import retrograde.core.math : Vector3D, scalar, QuaternionD;
+import retrograde.core.input : InputMapper, KeyboardKeyCode, MappingTarget;
 
 import retrograde.components.drone : DroneControllableComponent;
 import retrograde.components.animation : TranslationComponent, RotationComponent;
@@ -233,4 +234,27 @@ class DroneControllerProcessor : EntityProcessor {
         entity.addComponent!Orientation3DComponent;
         entity.addComponent!Position3DComponent;
     }
+}
+
+/**
+ * Adds standard keyboard-based drone controls mapping.
+ *
+ * WASD: Move forwards, left, backwards, right.
+ * Q/E:  Tilt (roll) left/right.
+ * R/F:  Move up/down.
+ * Arrow keys: rotate up, down, left, right.
+ */
+void mapStandardKeyboardControls(InputMapper inputMapper) {
+    inputMapper.addKeyMapping(KeyboardKeyCode.r, MappingTarget(droneChannel, cmdDroneMoveUp));
+    inputMapper.addKeyMapping(KeyboardKeyCode.f, MappingTarget(droneChannel, cmdDroneMoveDown));
+    inputMapper.addKeyMapping(KeyboardKeyCode.a, MappingTarget(droneChannel, cmdDroneMoveLeft));
+    inputMapper.addKeyMapping(KeyboardKeyCode.d, MappingTarget(droneChannel, cmdDroneMoveRight));
+    inputMapper.addKeyMapping(KeyboardKeyCode.w, MappingTarget(droneChannel, cmdDroneMoveForwards));
+    inputMapper.addKeyMapping(KeyboardKeyCode.s, MappingTarget(droneChannel, cmdDroneMoveBackwards));
+    inputMapper.addKeyMapping(KeyboardKeyCode.left, MappingTarget(droneChannel, cmdDroneYawLeft));
+    inputMapper.addKeyMapping(KeyboardKeyCode.right, MappingTarget(droneChannel, cmdDroneYawRight));
+    inputMapper.addKeyMapping(KeyboardKeyCode.down, MappingTarget(droneChannel, cmdDronePitchUp));
+    inputMapper.addKeyMapping(KeyboardKeyCode.up, MappingTarget(droneChannel, cmdDronePitchDown));
+    inputMapper.addKeyMapping(KeyboardKeyCode.q, MappingTarget(droneChannel, cmdDroneBankLeft));
+    inputMapper.addKeyMapping(KeyboardKeyCode.e, MappingTarget(droneChannel, cmdDroneBankRight));
 }
