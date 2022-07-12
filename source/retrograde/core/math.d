@@ -1276,9 +1276,9 @@ struct Quaternion(T) {
             return Vector3D(pitch, yaw, 0);
         }
 
+        auto pitch = atan2(2 * q.x * q.w - 2 * q.y * q.z, -sqx + sqy - sqz + sqw);
         auto yaw = atan2(2 * q.y * q.w - 2 * q.x * q.z, sqx - sqy - sqz + sqw);
-        auto pitch = asin(2 * poleTest / unit);
-        auto roll = atan2(2 * q.x * q.w - 2 * q.y * q.z, -sqx + sqy - sqz + sqw);
+        auto roll = asin(2 * poleTest / unit);
 
         return Vector3D(pitch, yaw, roll);
     }
@@ -2385,7 +2385,7 @@ version (unittest) {
         assert(expectedToEulerAngles == actualEulerAngles);
 
         auto const quaternion2 = QuaternionD.createRotation(PI, Vector3D(1, 0, 0));
-        auto const expectedToEulerAngles2 = Vector3D(0, 0, PI);
+        auto const expectedToEulerAngles2 = Vector3D(PI, 0, 0);
         auto const actualEulerAngles2 = quaternion2.toEulerAngles();
         assert(expectedToEulerAngles2 == actualEulerAngles2);
     }
