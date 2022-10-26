@@ -108,6 +108,35 @@ RenderSystemType:
     runtime.startGame(platformSettings);
 }
 
+/** 
+ * An implementation of the Game interface that contains the usual engine functionality.
+ *
+ * A bootstrap game takes care of initializing, updating and rendering an EntityManager,
+ * MessageHandler and InputMapper. Make sure to call super.X() when overriding any of the Game 
+ * interface methods.
+ */
+class BootstrapGame : Game {
+    protected @Autowire EntityManager entityManager;
+    protected @Autowire MessageHandler messageHandler;
+    protected @Autowire InputMapper inputMapper;
+
+    public void initialize() {
+    }
+
+    public void update() {
+        messageHandler.shiftStandbyToActiveQueue();
+        inputMapper.update();
+        entityManager.update();
+    }
+
+    public void render(double extraPolation) {
+        entityManager.draw();
+    }
+
+    public void terminate() {
+    }
+}
+
 version (unittest) {
     class TestGame : Game {
         public bool isInitialized;
