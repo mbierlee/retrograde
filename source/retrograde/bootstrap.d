@@ -49,8 +49,8 @@ version (Have_bindbc_opengl) {
 }
 
 /**
- * Bootstrap function for quickly setting up the DI framework with all required and typically used components.
- * After set-up, the game is started.
+ * Bootstrap function for quickly setting up the DI framework with all required and typically
+ * used engine functionality. After set-up, the game is started.
  */
 public void startGame(GameType : Game, EngineRuntimeType:
     EngineRuntime = StandardEngineRuntime, PlatformType:
