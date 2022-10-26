@@ -66,7 +66,6 @@ RenderSystemType:
     dependencies.register!(Game, GameType);
     dependencies.register!(RenderSystem, RenderSystemType);
     dependencies.register!(Platform, PlatformType);
-    dependencies.register!InputMapper; //TODO: find out why registerBeforeResolving won't take care of this one
     dependencies.register!(StorageSystem, GenericStorageSystem);
 
     const propertyFile = "./engine.cfg";
