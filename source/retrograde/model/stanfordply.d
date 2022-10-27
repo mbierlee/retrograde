@@ -12,8 +12,7 @@
 module retrograde.model.stanfordply;
 
 import retrograde.core.storage : File;
-import retrograde.core.model : Model, Vertex, Mesh, Face, VertexComponent, VertexIndex, ModelParseException,
-    TextureCoordinateMode;
+import retrograde.core.model : Model, Vertex, Mesh, Face, VertexComponent, VertexIndex, ModelParseException;
 
 import std.exception : enforce, assertThrown;
 import std.string : lineSplitter, strip, startsWith;
@@ -104,8 +103,8 @@ class StanfordPlyParser {
         }
 
         return new Model([
-            new Mesh(state.vertices, state.faces, TextureCoordinateMode.perVertex)
-        ]);
+                new Mesh(state.vertices, state.faces)
+            ]);
     }
 
     private void parseHeader(string[] parts, ParseState state) {

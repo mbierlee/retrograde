@@ -11,7 +11,7 @@
 
 module retrograde.model.wavefrontobj;
 
-import retrograde.core.model : Mesh, Model, Vertex, VertexIndex, Face, ModelParseException, TextureCoordinateMode;
+import retrograde.core.model : Mesh, Model, Vertex, VertexIndex, Face, ModelParseException;
 import retrograde.core.storage : File;
 import retrograde.core.math : Vector3D;
 
@@ -80,7 +80,7 @@ class WavefrontObjParser {
 
     private void createNewObject(ParseState state) {
         if (state.isProcessingObject) {
-            auto mesh = new Mesh(state.vertices, state.faces, TextureCoordinateMode.perFace);
+            auto mesh = new Mesh(state.vertices, state.faces);
             state.meshes ~= mesh;
 
             state.vertices.destroy();
@@ -100,7 +100,7 @@ class WavefrontObjParser {
     private void addFace(ParseState state, string[] parts) {
         enforce!ModelParseException(parts.length == 3, "Only triangulated faces are supported. Quads and N-poly faces must be converted to triangles.");
 
-        //TODO: Read texture coord
+        //TODO: Read texture coord <---------------
 
         VertexIndex[] indices;
         foreach (string part; parts) {
