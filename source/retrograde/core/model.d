@@ -13,6 +13,21 @@ module retrograde.core.model;
 
 alias VertexComponent = double;
 
+/** 
+ * How does the model store its texture coordinates.
+ */
+enum TextureCoordinateMode {
+    /** 
+     * Coordinates are stored in each face.
+     */
+    perFace,
+
+    /** 
+     * Coordinates are stored in each vertex.
+     */
+    perVertex
+}
+
 struct Vertex {
     // Position
     VertexComponent x;
@@ -25,6 +40,11 @@ struct Vertex {
     VertexComponent g;
     VertexComponent b;
     VertexComponent a;
+
+    // Texture Coordinate
+    VertexComponent u;
+    VertexComponent v;
+    VertexComponent tw;
 }
 
 alias VertexIndex = size_t;
@@ -55,10 +75,12 @@ class Model {
 class Mesh {
     private const(Vertex)[] _vertices;
     private const(Face)[] _faces;
+    public const TextureCoordinateMode textureCoordinateMode;
 
-    this(const(Vertex)[] vertices, const(Face)[] faces) {
+    this(const(Vertex)[] vertices, const(Face)[] faces, TextureCoordinateMode textureCoordinateMode) {
         this._vertices = vertices;
         this._faces = faces;
+        this.textureCoordinateMode = textureCoordinateMode;
     }
 
     const(Vertex)[] vertices() const {
@@ -95,21 +117,21 @@ version (unittest) {
     unittest {
         Face[] faces = [Face(0, 1, 2), Face(2, 1, 0)];
         auto vertices = [
-            Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1),
-            Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1),
-            Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1)
+            Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1, 0, 0, 0),
+            Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1, 0, 0, 0),
+            Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1, 0, 0, 0)
         ];
-        const auto mesh = new Mesh(vertices, faces);
+        const auto mesh = new Mesh(vertices, faces, TextureCoordinateMode.perVertex);
         const auto model = new Model([mesh]);
         bool hasIterated = false;
 
         auto expectedVertices = [
-            Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1),
-            Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1),
-            Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1),
-            Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1),
-            Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1),
-            Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1)
+            Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1, 0, 0, 0),
+            Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1, 0, 0, 0),
+            Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1, 0, 0, 0),
+            Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1, 0, 0, 0),
+            Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1, 0, 0, 0),
+            Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1, 0, 0, 0)
         ];
 
         model.meshes[0].forEachVertex((size_t index, Vertex vert) {
@@ -126,24 +148,24 @@ version (unittest) {
     unittest {
         Face[] faces = [Face(0, 1, 2), Face(2, 1, 0)];
         auto vertices = [
-            Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1),
-            Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1),
-            Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1)
+            Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1, 0, 0, 0),
+            Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1, 0, 0, 0),
+            Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1, 0, 0, 0)
         ];
-        const auto mesh = new Mesh(vertices, faces);
+        const auto mesh = new Mesh(vertices, faces, TextureCoordinateMode.perVertex);
         const auto model = new Model([mesh]);
         bool hasIterated = false;
 
         auto expectedFaces = [
             [
-                Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1),
-                Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1),
-                Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1)
+                Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1, 0, 0, 0),
+                Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1, 0, 0, 0),
+                Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1, 0, 0, 0)
             ],
             [
-                Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1),
-                Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1),
-                Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1)
+                Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1, 0, 0, 0),
+                Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1, 0, 0, 0),
+                Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1, 0, 0, 0)
             ]
         ];
 

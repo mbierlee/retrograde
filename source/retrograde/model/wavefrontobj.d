@@ -11,7 +11,7 @@
 
 module retrograde.model.wavefrontobj;
 
-import retrograde.core.model : Mesh, Model, Vertex, VertexIndex, Face, ModelParseException;
+import retrograde.core.model : Mesh, Model, Vertex, VertexIndex, Face, ModelParseException, TextureCoordinateMode;
 import retrograde.core.storage : File;
 import retrograde.core.math : Vector3D;
 
@@ -80,7 +80,7 @@ class WavefrontObjParser {
 
     private void createNewObject(ParseState state) {
         if (state.isProcessingObject) {
-            auto mesh = new Mesh(state.vertices, state.faces);
+            auto mesh = new Mesh(state.vertices, state.faces, TextureCoordinateMode.perFace);
             state.meshes ~= mesh;
 
             state.vertices.destroy();
@@ -92,13 +92,15 @@ class WavefrontObjParser {
 
     private void addVertex(ParseState state, string[] parts) {
         if (parts.length >= 3) {
-            auto vertex = Vertex(to!double(parts[0]), to!double(parts[1]), to!double(parts[2]), 1, 1, 1, 1, 1);
+            auto vertex = Vertex(to!double(parts[0]), to!double(parts[1]), to!double(parts[2]), 1, 1, 1, 1, 1, 0, 0, 0);
             state.vertices ~= vertex;
         }
     }
 
     private void addFace(ParseState state, string[] parts) {
         enforce!ModelParseException(parts.length == 3, "Only triangulated faces are supported. Quads and N-poly faces must be converted to triangles.");
+
+        //TODO: Read texture coord
 
         VertexIndex[] indices;
         foreach (string part; parts) {
@@ -157,14 +159,14 @@ version (unittest) {
         assert(model.meshes.length == 1);
 
         auto expectedVertices = [
-            Vertex(1.000000, 1.000000, -1.000000, 1, 1, 1, 1, 1),
-            Vertex(1.000000, -1.000000, -1.000000, 1, 1, 1, 1, 1),
-            Vertex(1.000000, 1.000000, 1.000000, 1, 1, 1, 1, 1),
-            Vertex(1.000000, -1.000000, 1.000000, 1, 1, 1, 1, 1),
-            Vertex(-1.000000, 1.000000, -1.000000, 1, 1, 1, 1, 1),
-            Vertex(-1.000000, -1.000000, -1.000000, 1, 1, 1, 1, 1),
-            Vertex(-1.000000, 1.000000, 1.000000, 1, 1, 1, 1, 1),
-            Vertex(-1.000000, -1.000000, 1.000000, 1, 1, 1, 1, 1)
+            Vertex(1.000000, 1.000000, -1.000000, 1, 1, 1, 1, 1, 0, 0, 0),
+            Vertex(1.000000, -1.000000, -1.000000, 1, 1, 1, 1, 1, 0, 0, 0),
+            Vertex(1.000000, 1.000000, 1.000000, 1, 1, 1, 1, 1, 0, 0, 0),
+            Vertex(1.000000, -1.000000, 1.000000, 1, 1, 1, 1, 1, 0, 0, 0),
+            Vertex(-1.000000, 1.000000, -1.000000, 1, 1, 1, 1, 1, 0, 0, 0),
+            Vertex(-1.000000, -1.000000, -1.000000, 1, 1, 1, 1, 1, 0, 0, 0),
+            Vertex(-1.000000, 1.000000, 1.000000, 1, 1, 1, 1, 1, 0, 0, 0),
+            Vertex(-1.000000, -1.000000, 1.000000, 1, 1, 1, 1, 1, 0, 0, 0)
         ];
 
         auto mesh = model.meshes[0];

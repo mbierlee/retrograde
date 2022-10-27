@@ -12,7 +12,8 @@
 module retrograde.model.stanfordply;
 
 import retrograde.core.storage : File;
-import retrograde.core.model : Model, Vertex, Mesh, Face, VertexComponent, VertexIndex, ModelParseException;
+import retrograde.core.model : Model, Vertex, Mesh, Face, VertexComponent, VertexIndex, ModelParseException,
+    TextureCoordinateMode;
 
 import std.exception : enforce, assertThrown;
 import std.string : lineSplitter, strip, startsWith;
@@ -102,7 +103,9 @@ class StanfordPlyParser {
             }
         }
 
-        return new Model([new Mesh(state.vertices, state.faces)]);
+        return new Model([
+            new Mesh(state.vertices, state.faces, TextureCoordinateMode.perVertex)
+        ]);
     }
 
     private void parseHeader(string[] parts, ParseState state) {
@@ -149,16 +152,19 @@ class StanfordPlyParser {
     }
 
     private void parseVertex(string[] parts, ParseState state) {
-        auto x = getVertex("x", parts, state);
-        auto y = getVertex("y", parts, state);
-        auto z = getVertex("z", parts, state);
+        auto x = getComponent("x", parts, state);
+        auto y = getComponent("y", parts, state);
+        auto z = getComponent("z", parts, state);
 
-        auto r = getColor("red", parts, state);
-        auto g = getColor("green", parts, state);
-        auto b = getColor("blue", parts, state);
-        auto a = getColor("alpha", parts, state);
+        auto r = getComponent("red", parts, state);
+        auto g = getComponent("green", parts, state);
+        auto b = getComponent("blue", parts, state);
+        auto a = getComponent("alpha", parts, state);
 
-        state.vertices ~= Vertex(x, y, z, 1, r, g, b, a);
+        auto u = getComponent("s", parts, state);
+        auto v = getComponent("t", parts, state);
+
+        state.vertices ~= Vertex(x, y, z, 1, r, g, b, a, u, v, 0);
     }
 
     private void parseFace(string[] parts, ParseState state) {
@@ -176,26 +182,16 @@ class StanfordPlyParser {
         state.faces ~= Face(a, b, c);
     }
 
-    private VertexComponent getVertex(string name, string[] parts, ParseState state) {
+    private VertexComponent getComponent(string name, string[] parts, ParseState state) {
         auto vertexPropertyType = name in state.vertexPropertyType;
         if (vertexPropertyType) {
-            return (*vertexPropertyType).startsWith("float") || (*vertexPropertyType) == "double" ?
-                to!VertexComponent(parts[state.vertexPropertyLocations[name]]) : 0;
-        } else {
-            return 0;
-        }
-    }
-
-    private VertexComponent getColor(string name, string[] parts, ParseState state) {
-        auto vertexPropertyType = name in state.vertexPropertyType;
-        if (vertexPropertyType) {
-            if ((*vertexPropertyType).startsWith("float")) {
+            if ((*vertexPropertyType).startsWith("float") || (*vertexPropertyType) == "double") {
                 return to!VertexComponent(parts[state.vertexPropertyLocations[name]]);
             } else if ((*vertexPropertyType) == "uchar") {
                 return to!ubyte(parts[state.vertexPropertyLocations[name]]) / 255.0;
             } else {
                 throw new ModelParseException(
-                    "Data type '" ~ *vertexPropertyType ~ "' not supported for vertex colors.");
+                    "Data type '" ~ *vertexPropertyType ~ "' not supported.");
             }
         } else {
             return 1;
@@ -223,17 +219,19 @@ version (unittest) {
             property uchar green
             property uchar blue
             property uchar alpha
+            property float s
+            property float t
             element face 12
             property list uchar uint vertex_indices
             end_header
-            1.000000 1.000000 1.000000 0.577349 0.577349 0.577349 128 183 255 255
-            -1.000000 1.000000 -1.000000 -0.577349 0.577349 -0.577349 255 89 86 255
-            -1.000000 1.000000 1.000000 -0.577349 0.577349 0.577349 252 255 210 255
-            1.000000 -1.000000 -1.000000 0.577349 -0.577349 -0.577349 251 255 182 255
-            -1.000000 -1.000000 -1.000000 -0.577349 -0.577349 -0.577349 143 255 156 255
-            1.000000 1.000000 -1.000000 0.577349 0.577349 -0.577349 143 255 156 255
-            1.000000 -1.000000 1.000000 0.577349 -0.577349 0.577349 255 88 92 255
-            -1.000000 -1.000000 1.000000 -0.577349 -0.577349 0.577349 137 187 255 255
+            1.000000 1.000000 1.000000 0.577349 0.577349 0.577349 128 183 255 255 1.000000 0.000000
+            -1.000000 1.000000 -1.000000 -0.577349 0.577349 -0.577349 255 89 86 255 1.000000 0.000000
+            -1.000000 1.000000 1.000000 -0.577349 0.577349 0.577349 252 255 210 255 1.000000 0.000000
+            1.000000 -1.000000 -1.000000 0.577349 -0.577349 -0.577349 251 255 182 255 1.000000 0.000000
+            -1.000000 -1.000000 -1.000000 -0.577349 -0.577349 -0.577349 143 255 156 255 0.000000 1.000000
+            1.000000 1.000000 -1.000000 0.577349 0.577349 -0.577349 143 255 156 255 0.000000 1.000000
+            1.000000 -1.000000 1.000000 0.577349 -0.577349 0.577349 255 88 92 255 0.000000 1.000000
+            -1.000000 -1.000000 1.000000 -0.577349 -0.577349 0.577349 137 187 255 255 0.000000 1.000000
             3 0 1 2
             3 1 3 4
             3 5 6 3
@@ -254,14 +252,14 @@ version (unittest) {
         auto mesh = model.meshes[0];
 
         auto expectedVertices = [
-            Vertex(1.000000, 1.000000, 1.000000, 1, 0.501961, 0.717647, 1, 1),
-            Vertex(-1.000000, 1.000000, -1.000000, 1, 1, 0.34902, 0.337255, 1),
-            Vertex(-1.000000, 1.000000, 1.000000, 1, 0.988235, 1, 0.823529, 1),
-            Vertex(1.000000, -1.000000, -1.000000, 1, 0.984314, 1, 0.713725, 1),
-            Vertex(-1.000000, -1.000000, -1.000000, 1, 0.560784, 1, 0.611765, 1),
-            Vertex(1.000000, 1.000000, -1.000000, 1, 0.560784, 1, 0.611765, 1),
-            Vertex(1.000000, -1.000000, 1.000000, 1, 1, 0.345098, 0.360784, 1),
-            Vertex(-1.000000, -1.000000, 1.000000, 1, 0.537255, 0.733333, 1, 1)
+            Vertex(1.000000, 1.000000, 1.000000, 1, 0.501961, 0.717647, 1, 1, 1.000000, 0, 0),
+            Vertex(-1.000000, 1.000000, -1.000000, 1, 1, 0.34902, 0.337255, 1, 1.000000, 0, 0),
+            Vertex(-1.000000, 1.000000, 1.000000, 1, 0.988235, 1, 0.823529, 1, 1.000000, 0, 0),
+            Vertex(1.000000, -1.000000, -1.000000, 1, 0.984314, 1, 0.713725, 1, 1.000000, 0, 0),
+            Vertex(-1.000000, -1.000000, -1.000000, 1, 0.560784, 1, 0.611765, 1, 0, 1.000000, 0),
+            Vertex(1.000000, 1.000000, -1.000000, 1, 0.560784, 1, 0.611765, 1, 0, 1.000000, 0),
+            Vertex(1.000000, -1.000000, 1.000000, 1, 1, 0.345098, 0.360784, 1, 0, 1.000000, 0),
+            Vertex(-1.000000, -1.000000, 1.000000, 1, 0.537255, 0.733333, 1, 1, 0, 1.000000, 0)
         ];
 
         import std.stdio;
@@ -275,6 +273,9 @@ version (unittest) {
             assert(isClose(vertex.g, expectedVertices[index].g, 1e-3));
             assert(isClose(vertex.b, expectedVertices[index].b, 1e-3));
             assert(isClose(vertex.a, expectedVertices[index].a, 1e-3));
+            assert(isClose(vertex.u, expectedVertices[index].u, 1e-3));
+            assert(isClose(vertex.v, expectedVertices[index].v, 1e-3));
+            assert(isClose(vertex.tw, expectedVertices[index].tw, 1e-3));
         }
 
         auto expectedFaces = [
