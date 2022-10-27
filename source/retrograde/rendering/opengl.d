@@ -20,15 +20,18 @@ version (Have_bindbc_opengl) {
     import retrograde.core.math : Vector3D, QuaternionD, createViewMatrix, createPerspectiveMatrix, Matrix4D,
         toTranslationMatrix, toScalingMatrix, scalar;
     import retrograde.core.messaging : MessageHandler;
+    import retrograde.core.stringid : sid;
 
     import retrograde.components.rendering : RenderableComponent, DefaultShaderProgramComponent, CameraComponent,
-        ActiveCameraComponent;
+        ActiveCameraComponent, RandomFaceColorsComponent;
     import retrograde.components.geometry : ModelComponent, Position3DComponent, Orientation3DComponent,
         Scale3DComponent;
 
     import std.experimental.logger : Logger;
     import std.string : fromStringz, format;
     import std.conv : to;
+    import std.random : Random, uniform01;
+    import std.functional : memoize;
 
     import poodinis;
 
@@ -225,11 +228,24 @@ version (Have_bindbc_opengl) {
         }
 
         private void loadModelIntoVideoMemory(Entity entity) {
+            auto assignRandomFaceColors = entity.hasComponent!RandomFaceColorsComponent;
+            Random* random = assignRandomFaceColors ? new Random(sid(entity.name)) : null;
+
             entity.maybeWithComponent!ModelComponent((c) {
                 GlModelInfo modelInfo;
                 foreach (size_t index, const Mesh mesh; c.model.meshes) {
                     Vertex[] vertices;
                     mesh.forEachFace((size_t index, Vertex vertA, Vertex vertB, Vertex vertC) {
+                        if (assignRandomFaceColors) {
+                            auto randomR = uniform01(random);
+                            auto randomG = uniform01(random);
+                            auto randomB = uniform01(random);
+
+                            vertA.r = vertB.r = vertC.r = randomR;
+                            vertA.g = vertB.g = vertC.g = randomG;
+                            vertA.b = vertB.b = vertC.b = randomB;
+                        }
+
                         vertices ~= vertA;
                         vertices ~= vertB;
                         vertices ~= vertC;
@@ -269,6 +285,10 @@ version (Have_bindbc_opengl) {
 
                 entity.addComponent(new GlModelInfoComponent(modelInfo));
             });
+
+            if (random) {
+                random.destroy();
+            }
         }
 
         private void unloadModelFromVideoMemory(Entity entity) {
