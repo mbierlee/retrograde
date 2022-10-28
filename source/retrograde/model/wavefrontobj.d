@@ -35,7 +35,7 @@ private class ParseState {
  *
  * Currently supports:
  * - Vertices
- * - Faces (vertex position only, no normals/texture coords, triangulated only)
+ * - Faces (vertex position and texture coords, no normals, triangulated only)
  */
 class WavefrontObjParser {
     /** 
