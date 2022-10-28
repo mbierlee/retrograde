@@ -46,20 +46,20 @@ private class ParseState {
 }
 
 /**
- * A model parser for Stanford .ply files.
+ * A model loader for Stanford .ply files.
  *
  * Currently supports:
  * - Vertices
  * - Faces (vertex position and texture coords, no normals, triangulated only)
  */
-class StanfordPlyParser {
+class StanfordPlyLoader {
 
     /** 
      * Parse a PLY model file
      *
-     * Throws: ModelParseException when model is syntactically incorrect or elements are not supported by parser.
+     * Throws: ModelParseException when model is syntactically incorrect or elements are not supported by loader.
      */
-    Model parse(File modelFile) {
+    Model load(File modelFile) {
         auto lines = modelFile.textData.lineSplitter();
         auto state = new ParseState();
 
@@ -246,8 +246,8 @@ version (unittest) {
         ";
 
         auto modelFile = new File("cube.ply", modelData);
-        auto parser = new StanfordPlyParser();
-        auto model = parser.parse(modelFile);
+        auto loader = new StanfordPlyLoader();
+        auto model = loader.load(modelFile);
         auto mesh = model.meshes[0];
 
         auto expectedVertices = [
@@ -302,8 +302,8 @@ version (unittest) {
         ";
 
         auto modelFile = new File("cube.ply", modelData);
-        auto parser = new StanfordPlyParser();
-        assertThrown!ModelParseException(parser.parse(modelFile));
+        auto loader = new StanfordPlyLoader();
+        assertThrown!ModelParseException(loader.load(modelFile));
     }
 
     @("Exception is thrown when model is not using ASCII format")
@@ -314,8 +314,8 @@ version (unittest) {
         ";
 
         auto modelFile = new File("cube.ply", modelData);
-        auto parser = new StanfordPlyParser();
-        assertThrown!ModelParseException(parser.parse(modelFile));
+        auto loader = new StanfordPlyLoader();
+        assertThrown!ModelParseException(loader.load(modelFile));
     }
 
     @("Exception is thrown when model is not using ASCII format version 1.0")
@@ -326,8 +326,8 @@ version (unittest) {
         ";
 
         auto modelFile = new File("cube.ply", modelData);
-        auto parser = new StanfordPlyParser();
-        assertThrown!ModelParseException(parser.parse(modelFile));
+        auto loader = new StanfordPlyLoader();
+        assertThrown!ModelParseException(loader.load(modelFile));
     }
 
     @("Exception is thrown when model doesn't have polygonal faces")
@@ -354,7 +354,7 @@ version (unittest) {
         ";
 
         auto modelFile = new File("cube.ply", modelData);
-        auto parser = new StanfordPlyParser();
-        assertThrown!ModelParseException(parser.parse(modelFile));
+        auto loader = new StanfordPlyLoader();
+        assertThrown!ModelParseException(loader.load(modelFile));
     }
 }

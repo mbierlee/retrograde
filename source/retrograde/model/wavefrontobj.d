@@ -31,19 +31,19 @@ private class ParseState {
 }
 
 /**
- * A model parser for Wavefront .obj files.
+ * A model loader for Wavefront .obj files.
  *
  * Currently supports:
  * - Vertices
  * - Faces (vertex position and texture coords, no normals, triangulated only)
  */
-class WavefrontObjParser {
+class WavefrontObjLoader {
     /** 
      * Parse an OBJ model file
      *
-     * Throws: ModelParseException when model is syntactically incorrect or elements are not supported by parser.
+     * Throws: ModelParseException when model is syntactically incorrect or elements are not supported by loader.
      */
-    Model parse(File modelFile) {
+    Model load(File modelFile) {
         auto lines = modelFile.textData.lineSplitter();
         auto state = new ParseState();
 
@@ -190,8 +190,8 @@ version (unittest) {
         ";
 
         auto modelFile = new File("cube.obj", modelData);
-        auto parser = new WavefrontObjParser();
-        auto model = parser.parse(modelFile);
+        auto loader = new WavefrontObjLoader();
+        auto model = loader.load(modelFile);
 
         assert(model.meshes.length == 1);
 
@@ -242,7 +242,7 @@ version (unittest) {
         ";
 
         auto modelFile = new File("cube.obj", modelData);
-        auto parser = new WavefrontObjParser();
-        assertThrown!ModelParseException(parser.parse(modelFile));
+        auto loader = new WavefrontObjLoader();
+        assertThrown!ModelParseException(loader.load(modelFile));
     }
 }
