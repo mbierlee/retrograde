@@ -48,8 +48,7 @@ class WavefrontObjParser {
         auto state = new ParseState();
 
         foreach (string line; lines) {
-            auto sanitizedLine = strip(line);
-            auto parts = sanitizedLine.split(" ");
+            auto parts = line.strip.split(" ");
 
             if (parts.length == 0) {
                 continue;
@@ -121,7 +120,7 @@ class WavefrontObjParser {
             vertexIndices ~= to!VertexIndex(index[0].strip) - 1;
 
             if (index.length >= 2 && index[1].strip.length > 0) {
-                textureCoordinatesIndices ~= to!VertexIndex(index[0].strip) - 1;
+                textureCoordinatesIndices ~= to!VertexIndex(index[1].strip) - 1;
             } else {
                 textureCoordinatesIndices ~= 0;
             }
@@ -145,7 +144,6 @@ version (unittest) {
     unittest {
         string modelData = "
             # Example model file
-            mtllib cube.mtl
             o Cube
             v 1.000000 1.000000 -1.000000
             v 1.000000 -1.000000 -1.000000
@@ -155,26 +153,39 @@ version (unittest) {
             v -1.000000 -1.000000 -1.000000
             v -1.000000 1.000000 1.000000
             v -1.000000 -1.000000 1.000000
-            vn 0.0000 1.0000 0.0000
-            vn 0.0000 0.0000 1.0000
-            vn -1.0000 0.0000 0.0000
-            vn 0.0000 -1.0000 0.0000
-            vn 1.0000 0.0000 0.0000
-            vn 0.0000 0.0000 -1.0000
-            usemtl None
-            s off
-            f 5//1 3//1 1//1
-            f 3//2 8//2 4//2
-            f 7//3 6//3 8//3
-            f 2//4 8//4 6//4
-            f 1//5 4//5 2//5
-            f 5//6 2//6 6//6
-            f 5//1 7//1 3//1
-            f 3//2 7//2 8//2
-            f 7//3 5//3 6//3
-            f 2//4 4//4 8//4
-            f 1//5 3//5 4//5
-            f 5//6 1//6 2//6
+            vt 0.000000 0.000000
+            vt 1.000000 0.000000
+            vt 1.000000 1.000000
+            vt 0.000000 0.000000
+            vt 1.000000 0.000000
+            vt 0.000000 1.000000
+            vt 0.000000 1.000000
+            vt 1.000000 0.000000
+            vt 1.000000 1.000000
+            vt 0.000000 0.000000
+            vt 1.000000 1.000000
+            vt 0.000000 1.000000
+            vt 1.000000 1.000000
+            vt 1.000000 0.000000
+            vt 0.000000 0.000000
+            vt 0.000000 1.000000
+            vt 1.000000 1.000000
+            vt 1.000000 0.000000
+            vt 0.000000 0.000000
+            vt 0.000000 1.000000
+            s 0
+            f 5/14 3/7 1/1
+            f 3/8 8/20 4/10
+            f 7/18 6/16 8/19
+            f 2/5 8/20 6/15
+            f 1/2 4/12 2/4
+            f 5/14 2/6 6/15
+            f 5/14 7/17 3/7
+            f 3/8 7/17 8/20
+            f 7/18 5/13 6/16
+            f 2/5 4/11 8/20
+            f 1/2 3/9 4/12
+            f 5/14 1/3 2/6
         ";
 
         auto modelFile = new File("cube.obj", modelData);
@@ -199,18 +210,18 @@ version (unittest) {
         assert(mesh.vertices == expectedVertices);
 
         auto expectedFaces = [
-            Face(4, 2, 0),
-            Face(2, 7, 3),
-            Face(6, 5, 7),
-            Face(1, 7, 5),
-            Face(0, 3, 1),
-            Face(4, 1, 5),
-            Face(4, 6, 2),
-            Face(2, 6, 7),
-            Face(6, 4, 5),
-            Face(1, 3, 7),
-            Face(0, 2, 3),
-            Face(4, 0, 1)
+            Face(4, 2, 0, 13, 6, 0),
+            Face(2, 7, 3, 7, 19, 9),
+            Face(6, 5, 7, 17, 15, 18),
+            Face(1, 7, 5, 4, 19, 14),
+            Face(0, 3, 1, 1, 11, 3),
+            Face(4, 1, 5, 13, 5, 14),
+            Face(4, 6, 2, 13, 16, 6),
+            Face(2, 6, 7, 7, 16, 19),
+            Face(6, 4, 5, 17, 12, 15),
+            Face(1, 3, 7, 4, 10, 19),
+            Face(0, 2, 3, 1, 8, 11),
+            Face(4, 0, 1, 13, 2, 5)
         ];
 
         assert(mesh.faces == expectedFaces);
