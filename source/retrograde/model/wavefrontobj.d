@@ -11,7 +11,8 @@
 
 module retrograde.model.wavefrontobj;
 
-import retrograde.core.model : Mesh, Model, Vertex, VertexIndex, Face, ModelParseException;
+import retrograde.core.model : Mesh, Model, Vertex, VertexIndex, TextureCoordinateIndex, Face, ModelParseException,
+    TextureCoordinate;
 import retrograde.core.storage : File;
 import retrograde.core.math : Vector3D;
 
@@ -26,6 +27,7 @@ private class ParseState {
 
     Vertex[] vertices;
     Face[] faces;
+    TextureCoordinate[] textureCoordinates;
 }
 
 /**
@@ -64,6 +66,10 @@ class WavefrontObjParser {
                 addVertex(state, parts[1 .. $]);
                 break;
 
+            case "vt":
+                addTextureCoordinate(state, parts[1 .. $]);
+                break;
+
             case "f":
                 addFace(state, parts[1 .. $]);
                 break;
@@ -80,11 +86,12 @@ class WavefrontObjParser {
 
     private void createNewObject(ParseState state) {
         if (state.isProcessingObject) {
-            auto mesh = new Mesh(state.vertices, state.faces);
+            auto mesh = new Mesh(state.vertices, state.faces, state.textureCoordinates);
             state.meshes ~= mesh;
 
             state.vertices.destroy();
             state.faces.destroy();
+            state.textureCoordinates.destroy();
         } else {
             state.isProcessingObject = true;
         }
@@ -97,20 +104,38 @@ class WavefrontObjParser {
         }
     }
 
+    private void addTextureCoordinate(ParseState state, string[] parts) {
+        if (parts.length >= 2) {
+            auto textureCoordinate = TextureCoordinate(to!double(parts[0]), to!double(parts[1]));
+            state.textureCoordinates ~= textureCoordinate;
+        }
+    }
+
     private void addFace(ParseState state, string[] parts) {
         enforce!ModelParseException(parts.length == 3, "Only triangulated faces are supported. Quads and N-poly faces must be converted to triangles.");
 
-        //TODO: Read texture coord <---------------
-
-        VertexIndex[] indices;
+        VertexIndex[] vertexIndices;
+        TextureCoordinateIndex[] textureCoordinatesIndices;
         foreach (string part; parts) {
             auto index = part.split("/");
-            auto vertexIndex = to!VertexIndex(strip(index[0])) - 1;
-            indices ~= vertexIndex;
+            vertexIndices ~= to!VertexIndex(index[0].strip) - 1;
+
+            if (index.length >= 2 && index[1].strip.length > 0) {
+                textureCoordinatesIndices ~= to!VertexIndex(index[0].strip) - 1;
+            } else {
+                textureCoordinatesIndices ~= 0;
+            }
         }
 
-        if (indices.length == 3) {
-            state.faces ~= Face(indices[0], indices[1], indices[2]);
+        if (vertexIndices.length == 3) {
+            state.faces ~= Face(
+                vertexIndices[0],
+                vertexIndices[1],
+                vertexIndices[2],
+                textureCoordinatesIndices[0],
+                textureCoordinatesIndices[1],
+                textureCoordinatesIndices[2]
+            );
         }
     }
 }

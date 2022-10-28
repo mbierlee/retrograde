@@ -33,9 +33,17 @@ struct Vertex {
 }
 
 alias VertexIndex = size_t;
+alias TextureCoordinateIndex = size_t;
 
 struct Face {
-    VertexIndex a, b, c;
+    VertexIndex vA, vB, vC;
+    TextureCoordinateIndex vtA, vtB, vtC;
+}
+
+struct TextureCoordinate {
+    VertexComponent u;
+    VertexComponent v;
+    VertexComponent w;
 }
 
 /** 
@@ -60,10 +68,12 @@ class Model {
 class Mesh {
     private const(Vertex)[] _vertices;
     private const(Face)[] _faces;
+    private const(TextureCoordinate)[] _textureCoordinates;
 
-    this(const(Vertex)[] vertices, const(Face)[] faces) {
+    this(const(Vertex)[] vertices, const(Face)[] faces, const(TextureCoordinate)[] textureCoordinates) {
         this._vertices = vertices;
         this._faces = faces;
+        this._textureCoordinates = textureCoordinates;
     }
 
     const(Vertex)[] vertices() const {
@@ -74,18 +84,61 @@ class Mesh {
         return _faces;
     }
 
+    const(TextureCoordinate)[] textureCoordinates() const {
+        return _textureCoordinates;
+    }
+
     void forEachVertex(void delegate(size_t, Vertex) fn) const {
         foreach (size_t i, const(Face) _face; _faces) {
-            fn(i * 3, _vertices[_face.a]);
-            fn(i * 3 + 1, _vertices[_face.b]);
-            fn(i * 3 + 2, _vertices[_face.c]);
+            Vertex a = _vertices[_face.vA];
+            Vertex b = _vertices[_face.vB];
+            Vertex c = _vertices[_face.vC];
+
+            TextureCoordinate vtA = TextureCoordinate(a.u, a.v, a.tw);
+            TextureCoordinate vtB = TextureCoordinate(b.u, b.v, b.tw);
+            TextureCoordinate vtC = TextureCoordinate(c.u, c.v, c.tw);
+            if (textureCoordinates.length > 0) {
+                vtA = _textureCoordinates[_face.vtA];
+                vtB = _textureCoordinates[_face.vtB];
+                vtC = _textureCoordinates[_face.vtC];
+            }
+
+            fn(i * 3, Vertex(a.x, a.y, a.z, a.w, a.r, a.g, a.b, a.a, vtA.u, vtA.v, vtA.w));
+            fn(i * 3 + 1, Vertex(b.x, b.y, b.z, b.w, b.r, b.g, b.b, b.a, vtB.u, vtB.v, vtB.w));
+            fn(i * 3 + 2, Vertex(c.x, c.y, c.z, c.w, c.r, c.g, c.b, c.a, vtC.u, vtC.v, vtC.w));
         }
     }
 
     void forEachFace(void delegate(size_t, Vertex, Vertex, Vertex) fn) const {
         foreach (size_t i, const(Face) _face; _faces) {
-            fn(i, _vertices[_face.a], _vertices[_face.b], _vertices[_face.c]);
+            //TODO: remove duplication
+            Vertex a = _vertices[_face.vA];
+            Vertex b = _vertices[_face.vB];
+            Vertex c = _vertices[_face.vC];
+
+            TextureCoordinate vtA = TextureCoordinate(a.u, a.v, a.tw);
+            TextureCoordinate vtB = TextureCoordinate(b.u, b.v, b.tw);
+            TextureCoordinate vtC = TextureCoordinate(c.u, c.v, c.tw);
+            if (textureCoordinates.length > 0) {
+                vtA = _textureCoordinates[_face.vtA];
+                vtB = _textureCoordinates[_face.vtB];
+                vtC = _textureCoordinates[_face.vtC];
+            }
+
+            fn(
+                i,
+                Vertex(a.x, a.y, a.z, a.w, a.r, a.g, a.b, a.a, vtA.u, vtA.v, vtA.w),
+                Vertex(b.x, b.y, b.z, b.w, b.r, b.g, b.b, b.a, vtB.u, vtB.v, vtB.w),
+                Vertex(c.x, c.y, c.z, c.w, c.r, c.g, c.b, c.a, vtC.u, vtC.v, vtC.w)
+            );
         }
+    }
+
+    private void setVertextTextureCoordinateFromIndex(ref Vertex vertex, const TextureCoordinateIndex index) {
+        auto coordinate = _textureCoordinates[index];
+        vertex.u = coordinate.u;
+        vertex.v = coordinate.v;
+        vertex.tw = coordinate.w;
     }
 }
 
@@ -100,21 +153,21 @@ version (unittest) {
     unittest {
         Face[] faces = [Face(0, 1, 2), Face(2, 1, 0)];
         auto vertices = [
-            Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1, 0, 0, 0),
-            Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1, 0, 0, 0),
-            Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1, 0, 0, 0)
+            Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1, 1, 0, 0),
+            Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1, 0, 1, 0),
+            Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1, 0, 0, 1)
         ];
-        const auto mesh = new Mesh(vertices, faces);
-        const auto model = new Model([mesh]);
+        auto mesh = new Mesh(vertices, faces, []);
+        auto model = new Model([mesh]);
         bool hasIterated = false;
 
         auto expectedVertices = [
-            Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1, 0, 0, 0),
-            Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1, 0, 0, 0),
-            Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1, 0, 0, 0),
-            Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1, 0, 0, 0),
-            Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1, 0, 0, 0),
-            Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1, 0, 0, 0)
+            Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1, 1, 0, 0),
+            Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1, 0, 1, 0),
+            Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1, 0, 0, 1),
+            Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1, 0, 0, 1),
+            Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1, 0, 1, 0),
+            Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1, 1, 0, 0)
         ];
 
         model.meshes[0].forEachVertex((size_t index, Vertex vert) {
@@ -131,24 +184,24 @@ version (unittest) {
     unittest {
         Face[] faces = [Face(0, 1, 2), Face(2, 1, 0)];
         auto vertices = [
-            Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1, 0, 0, 0),
-            Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1, 0, 0, 0),
-            Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1, 0, 0, 0)
+            Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1, 1, 0, 0),
+            Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1, 0, 1, 0),
+            Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1, 0, 0, 1)
         ];
-        const auto mesh = new Mesh(vertices, faces);
+        const auto mesh = new Mesh(vertices, faces, []);
         const auto model = new Model([mesh]);
         bool hasIterated = false;
 
         auto expectedFaces = [
             [
-                Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1, 0, 0, 0),
-                Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1, 0, 0, 0),
-                Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1, 0, 0, 0)
+                Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1, 1, 0, 0),
+                Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1, 0, 1, 0),
+                Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1, 0, 0, 1)
             ],
             [
-                Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1, 0, 0, 0),
-                Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1, 0, 0, 0),
-                Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1, 0, 0, 0)
+                Vertex(2, 2, 2, 1, 0.3, 0.4, 0.33, 1, 0, 0, 1),
+                Vertex(1, 1, 1, 1, 0.5, 0.3, 0.7, 1, 0, 1, 0),
+                Vertex(1, 0, 0, 1, 0.5, 0.8, 1, 1, 1, 0, 0)
             ]
         ];
 

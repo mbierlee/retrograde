@@ -103,7 +103,7 @@ class StanfordPlyParser {
         }
 
         return new Model([
-                new Mesh(state.vertices, state.faces)
+                new Mesh(state.vertices, state.faces, [])
             ]);
     }
 
