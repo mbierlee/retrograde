@@ -12,13 +12,12 @@
 module retrograde.core.storage;
 
 import std.file : read, write, thisExePath, stdTempDir = tempDir, mkdirRecurse, stdExists = exists;
-import std.path : dirName, baseName, buildNormalizedPath, isValidPath;
+import std.path : dirName, baseName, buildNormalizedPath, isValidPath, getExtension = extension;
 
 /**
  * A platform-independent implementation of files.
  */
 class File {
-
     private const string _name;
     private ubyte[] _data;
     private bool _fromStorage = false;
@@ -71,6 +70,14 @@ class File {
      */
     string name() const {
         return _name;
+    }
+
+    /** 
+     * Extension of the file, if it has one.
+     * The dot is included.
+     */
+    string extension() const {
+        return _name.getExtension;
     }
 
     /**
@@ -293,6 +300,7 @@ version (unittest) {
         const ubyte[] expectedData = [0x0, 0x1, 0x2, 0x3];
         auto file = new File("test.bin", expectedData);
         assert(file.name == "test.bin");
+        assert(file.extension == ".bin");
         assert(file.data == expectedData);
     }
 
