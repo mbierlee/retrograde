@@ -12,5 +12,7 @@
 module retrograde.components;
 
 public import retrograde.components.animation;
+public import retrograde.components.drone;
 public import retrograde.components.geometry;
+public import retrograde.components.image;
 public import retrograde.components.rendering;

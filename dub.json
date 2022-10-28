@@ -1,45 +1,39 @@
 {
-	"name": "retrograde",
-	"description": "The Retrograde Game Engine",
-	"copyright": "Copyright Mike Bierlee 2014-2022",
-	"homepage": "https://github.com/mbierlee/retrograde/",
-	"license": "MIT",
-	"authors": [
-		"Mike Bierlee",
-		"Lostmoment"
-	],
-	"configurations": [
-		{
-			"name": "build",
-			"targetType": "library"
-		},
-		{
-			"name": "unittest",
-			"targetType": "library",
-			
-			"sourcePaths": [
-				"source"
-			],
-			"importPaths": [
-				"source"
-			]
-		}
-	],
-	"dependencies": {
-		"poodinis": "~>8.0",
-		"proper-d": "~>0.0.2",
-		"poodinis-proper-d-injector": "~>1.0.0",
-		"glfw-d": {
-			"version": "~>1.1.0",
-			"optional": true
-		},
-		"bindbc-opengl": {
-			"version": "~>1.0.0",
-			"optional": true
-		}
-	},
-	"stringImportPaths": [
-		"source/retrograde/config/",
-		"source/retrograde/shader/"
-	]
+  "name": "retrograde",
+  "description": "The Retrograde Game Engine",
+  "copyright": "Copyright Mike Bierlee 2014-2022",
+  "homepage": "https://github.com/mbierlee/retrograde/",
+  "license": "MIT",
+  "authors": ["Mike Bierlee", "Lostmoment"],
+  "configurations": [
+    {
+      "name": "build",
+      "targetType": "library"
+    },
+    {
+      "name": "unittest",
+      "targetType": "library",
+
+      "sourcePaths": ["source"],
+      "importPaths": ["source"]
+    }
+  ],
+  "dependencies": {
+    "poodinis": "~>8.0",
+    "proper-d": "~>0.0.2",
+    "poodinis-proper-d-injector": "~>1.0.0",
+    "imageformats": "~>7.0.2",
+    "glfw-d": {
+      "version": "~>1.1.0",
+      "optional": true
+    },
+    "bindbc-opengl": {
+      "version": "~>1.0.0",
+      "optional": true
+    }
+  },
+  "stringImportPaths": [
+    "source/retrograde/config/",
+    "source/retrograde/shader/"
+  ]
 }
