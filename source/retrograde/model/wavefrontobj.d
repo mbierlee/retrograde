@@ -143,7 +143,8 @@ version (unittest) {
     @("Parse model file")
     unittest {
         string modelData = "
-            # Example model file
+            # Blender 3.3.1
+            # www.blender.org
             o Cube
             v 1.000000 1.000000 -1.000000
             v 1.000000 -1.000000 -1.000000
@@ -230,7 +231,8 @@ version (unittest) {
     @("Exception is thrown when model doesn't have polygonal faces")
     unittest {
         string modelData = "
-            # Example model file
+            # Blender 3.0.1
+            # www.blender.org
             mtllib cube.mtl
             o Cube
             v -1.000000 -1.000000 1.000000
