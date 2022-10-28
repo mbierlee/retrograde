@@ -12,7 +12,8 @@
 module retrograde.model.stanfordply;
 
 import retrograde.core.storage : File;
-import retrograde.core.model : Model, Vertex, Mesh, Face, VertexComponent, VertexIndex, ModelParseException;
+import retrograde.core.model : ModelLoader, Model, Vertex, Mesh, Face, VertexComponent, VertexIndex,
+    ModelParseException;
 
 import std.exception : enforce, assertThrown;
 import std.string : lineSplitter, strip, startsWith;
@@ -52,10 +53,10 @@ private class ParseState {
  * - Vertices
  * - Faces (vertex position and texture coords, no normals, triangulated only)
  */
-class StanfordPlyLoader {
+class StanfordPlyLoader : ModelLoader {
 
     /** 
-     * Parse a PLY model file
+     * Load a PLY model file
      *
      * Throws: ModelParseException when model is syntactically incorrect or elements are not supported by loader.
      */

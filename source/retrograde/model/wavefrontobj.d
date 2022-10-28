@@ -11,8 +11,8 @@
 
 module retrograde.model.wavefrontobj;
 
-import retrograde.core.model : Mesh, Model, Vertex, VertexIndex, TextureCoordinateIndex, Face, ModelParseException,
-    TextureCoordinate;
+import retrograde.core.model : ModelLoader, Mesh, Model, Vertex, VertexIndex, TextureCoordinateIndex, Face,
+    ModelParseException, TextureCoordinate;
 import retrograde.core.storage : File;
 import retrograde.core.math : Vector3D;
 
@@ -37,9 +37,10 @@ private class ParseState {
  * - Vertices
  * - Faces (vertex position and texture coords, no normals, triangulated only)
  */
-class WavefrontObjLoader {
+class WavefrontObjLoader : ModelLoader {
+
     /** 
-     * Parse an OBJ model file
+     * Load an OBJ model file
      *
      * Throws: ModelParseException when model is syntactically incorrect or elements are not supported by loader.
      */

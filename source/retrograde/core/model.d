@@ -11,6 +11,8 @@
 
 module retrograde.core.model;
 
+import retrograde.core.storage : File;
+
 alias VertexComponent = double;
 
 struct Vertex {
@@ -142,10 +144,20 @@ class Mesh {
     }
 }
 
+/** 
+ * Typically thrown when a model loader fails to parse model data.
+ */
 class ModelParseException : Exception {
     this(string message, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) {
         super(message, file, line, nextInChain);
     }
+}
+
+/** 
+ * Common interface for model loaders.
+ */
+interface ModelLoader {
+    public Model load(File modelFile);
 }
 
 version (unittest) {
