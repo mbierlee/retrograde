@@ -14,17 +14,17 @@ module retrograde.core.image;
 import retrograde.core.storage : File;
 
 /** 
- * Base for image implementations.
+ * Generic image data.
  */
-abstract interface Image {
-    public uint width();
-    public uint height();
-    public uint channels();
+class Image {
+    public uint width;
+    public uint height;
+    public uint channels;
 
     /** 
      * Raw image data.
      */
-    public ubyte[] data();
+    public ubyte[] data;
 }
 
 /** 

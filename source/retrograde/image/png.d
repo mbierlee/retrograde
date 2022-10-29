@@ -16,39 +16,17 @@ import retrograde.core.storage : File;
 
 import imageformats : IFImage, read_image_from_mem, ColFmt;
 
-class PngImage : Image {
-    private IFImage _image;
-
-    this(IFImage image) {
-        _image = image;
-    }
-
-    public uint width() {
-        return _image.w;
-    }
-
-    public uint height() {
-        return _image.h;
-    }
-
-    public uint channels() {
-        return _image.c;
-    }
-
-    /** 
-     * Raw image data.
-     */
-    public ubyte[] data() {
-        return _image.pixels;
-    }
-}
-
 /** 
  * Loads PNG image data.
  */
 class PngImageLoader : ImageLoader {
     public Image load(File imageFile) {
         auto imageData = read_image_from_mem(imageFile.data, ColFmt.RGBA);
-        return new PngImage(imageData);
+        auto image = new Image();
+        image.width = imageData.w;
+        image.height = imageData.h;
+        image.channels = imageData.c;
+        image.data = imageData.pixels;
+        return image;
     }
 }
