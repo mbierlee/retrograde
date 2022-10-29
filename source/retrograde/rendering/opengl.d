@@ -23,8 +23,8 @@ version (Have_bindbc_opengl) {
     import retrograde.core.stringid : sid;
 
     import retrograde.components.rendering : RenderableComponent, DefaultShaderProgramComponent, CameraComponent,
-        ActiveCameraComponent, RandomFaceColorsComponent;
-    import retrograde.components.geometry : ModelComponent, Position3DComponent, Orientation3DComponent,
+        ActiveCameraComponent, RandomFaceColorsComponent, ModelComponent;
+    import retrograde.components.geometry : Position3DComponent, Orientation3DComponent,
         Scale3DComponent;
 
     import std.experimental.logger : Logger;

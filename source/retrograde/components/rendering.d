@@ -13,6 +13,8 @@ module retrograde.components.rendering;
 
 import retrograde.core.entity : EntityComponent, EntityComponentIdentity;
 import retrograde.core.rendering : CameraConfiguration;
+import retrograde.core.model : Model;
+import retrograde.core.image : Image;
 
 /**
  * Entities with the RenderableComponent will be rendered by a render system.
@@ -67,4 +69,36 @@ class ActiveCameraComponent : EntityComponent {
  */
 class RandomFaceColorsComponent : EntityComponent {
     mixin EntityComponentIdentity!"RandomFaceColorsComponent";
+}
+
+/**
+ * An entity component containing 3D model data.
+ */
+class ModelComponent : EntityComponent {
+    mixin EntityComponentIdentity!"Model";
+
+    public Model model;
+
+    this() {
+    }
+
+    this(Model model) {
+        this.model = model;
+    }
+}
+
+/** 
+ * An entity component containing a texture for 3D meshes.
+ */
+class TextureComponent : EntityComponent {
+    mixin EntityComponentIdentity!"TextureComponent";
+
+    public Image texture;
+
+    this() {
+    }
+
+    this(Image texture) {
+        this.texture = texture;
+    }
 }

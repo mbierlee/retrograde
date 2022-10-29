@@ -13,7 +13,6 @@ module retrograde.components.geometry;
 
 import retrograde.core.entity : EntityComponent, EntityComponentIdentity;
 import retrograde.core.math : Vector3D, QuaternionD, scalar;
-import retrograde.core.model : Model;
 
 /**
  * An entity component representing three-dimensional position in world space.
@@ -115,21 +114,7 @@ class Scale3DComponent : EntityComponent {
     }
 }
 
-/**
- * An entity component containing 3D model data.
- */
-class ModelComponent : EntityComponent {
-    mixin EntityComponentIdentity!"Model";
 
-    public Model model;
-
-    this() {
-    }
-
-    this(Model model) {
-        this.model = model;
-    }
-}
 
 // Position3DComponent tests
 version (unittest) {
