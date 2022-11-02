@@ -1105,6 +1105,13 @@ public Matrix4D createViewMatrix(Vector3D eyePosition, QuaternionD eyeOrientatio
 
 /**
  * Creates a perspective projection matrix.
+ * 
+ * Params:
+ *   fovyDegrees = Field of view in degrees.
+ *   aspectRatio = Aspect ratio of the viewing window, pre-divided (e.g. the result of 4 / 3)
+ *   near = Near clipping plane.
+ *   far = Far clipping plane.
+ * Returns: Perspective Matrix
  */
 public Matrix4D createPerspectiveMatrix(scalar fovyDegrees, scalar aspectRatio,
     scalar near, scalar far) {
@@ -1119,6 +1126,37 @@ public Matrix4D createPerspectiveMatrix(scalar fovyDegrees, scalar aspectRatio,
         0, q,  0, 0,
         0, 0,  B, C,
         0, 0, -1, 0
+    );
+    // dfmt on
+}
+
+/** 
+ * Creates an orthographic projection matrix.
+ *
+ * Params:
+ *   left = Farthest left on the x-axis
+ *   right = Farthest right on the x-axis
+ *   bottom = Farthest down on the y-axis
+ *   top = Farthest up on the y-axis
+ *   near = Distance to the near clipping plane along the -Z axis
+ *   far = Distance to the far clipping plane along the -Z axis
+ * Returns: Orthographic Matrix
+ */
+public Matrix4D createOrthographicMatrix(scalar left, scalar right, scalar bottom, scalar top, scalar near, scalar far) {
+    auto scaleX = 2 / (right - left);
+    auto scaleY = 2 / (top - bottom);
+    auto scaleZ = -2 / (far - near);
+
+    auto xTranslate = -(right + left) / (right - left);
+    auto yTranslate = -(top + bottom) / (top - bottom);
+    auto zTranslate = -(far + near) / (far - near);
+
+    // dfmt off
+    return Matrix4D(
+        scaleX, 0      , 0                , xTranslate,
+        0     , scaleY , 0                , yTranslate,
+        0     , 0      , scaleZ           , zTranslate,
+        0     , 0      , 0                , 1
     );
     // dfmt on
 }
@@ -2335,6 +2373,13 @@ version (unittest) {
     unittest {
         auto const expectedMatrix = "Matrix!(double, 4u, 4u)([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1.0002, -0.20002, 0, 0, -1, 0])";
         auto actualMatrix = createPerspectiveMatrix(90, 1920 / 1080, 0.1, 1000);
+        assert(expectedMatrix == to!string(actualMatrix));
+    }
+
+    @("Create orthographic matrix")
+    unittest {
+        auto const expectedMatrix = "Matrix!(double, 4u, 4u)([0.2, 0, 0, -0, 0, 0.2, 0, -0, 0, 0, -0.2, -0, 0, 0, 0, 1])";
+        auto actualMatrix = createOrthographicMatrix(-5, 5, -5, 5, -5, 5);
         assert(expectedMatrix == to!string(actualMatrix));
     }
 
