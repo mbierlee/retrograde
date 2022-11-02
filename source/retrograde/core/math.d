@@ -1179,7 +1179,7 @@ struct Quaternion(T) {
     /**
      * Construct a quaternion from a real number and the products of real and imaginary numbers.
      * Params:
-     *  r = The real number component (a).
+     *  w = The real number component.
      *  x = The product of b * i.
      *  y = The product of c * j.
      *  z = The product of d * k.
@@ -1192,7 +1192,7 @@ struct Quaternion(T) {
     /**
      * Construct a quaternion from a real number and an imaginary vector.
      * Params:
-     *  r = The real number component (a).
+     *  r = The real number component.
      *  v = The imaginary vector.
      */
     this(T r, const VectorType v) {
