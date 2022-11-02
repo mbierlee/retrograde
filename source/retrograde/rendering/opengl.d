@@ -13,12 +13,12 @@ module retrograde.rendering.opengl;
 
 version (Have_bindbc_opengl) {
     import retrograde.core.rendering : RenderSystem, Shader, ShaderProgram, ShaderType, autoAspectRatio,
-        CameraConfiguration;
+        CameraConfiguration, ProjectionType;
     import retrograde.core.entity : Entity, EntityComponent, EntityComponentIdentity;
     import retrograde.core.platform : Platform, Viewport, platformEventChannel, ViewportResizeEventMessage;
     import retrograde.core.model : Vertex, Mesh;
-    import retrograde.core.math : Vector3D, QuaternionD, createViewMatrix, createPerspectiveMatrix, Matrix4D,
-        toTranslationMatrix, toScalingMatrix, scalar;
+    import retrograde.core.math : Vector3D, QuaternionD, createViewMatrix, createPerspectiveMatrix,
+        createOrthographicMatrix, Matrix4D, toTranslationMatrix, toScalingMatrix, scalar;
     import retrograde.core.messaging : MessageHandler;
     import retrograde.core.stringid : sid;
 
@@ -317,8 +317,24 @@ version (Have_bindbc_opengl) {
                 cast(scalar) viewport.width / cast(scalar) viewport.height
                 : cameraConfiguration.aspectRatio;
 
-            projectionMatrix = createPerspectiveMatrix(cameraConfiguration.horizontalFieldOfView, aspectRatio,
-                cameraConfiguration.nearClippingDistance, cameraConfiguration.farClippingDistance);
+            if (cameraConfiguration.projectionType == ProjectionType.perspective) {
+                projectionMatrix = createPerspectiveMatrix(
+                    cameraConfiguration.horizontalFieldOfView,
+                    aspectRatio,
+                    cameraConfiguration.nearClippingDistance,
+                    cameraConfiguration.farClippingDistance
+                );
+            } else if (cameraConfiguration.projectionType == ProjectionType.ortographic) {
+                projectionMatrix = createOrthographicMatrix(
+                    -(aspectRatio * cameraConfiguration.orthoScale),
+                    aspectRatio * cameraConfiguration.orthoScale,
+                    -cameraConfiguration.orthoScale,
+                    cameraConfiguration.orthoScale,
+                    cameraConfiguration.nearClippingDistance,
+                    cameraConfiguration.farClippingDistance
+                );
+            }
+
         }
     }
 

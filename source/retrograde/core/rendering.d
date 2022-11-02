@@ -20,6 +20,14 @@ import retrograde.core.math : scalar;
 public static const scalar autoAspectRatio = 0;
 
 /** 
+ * Type of projection to be used when rendering an active camera.
+ */
+enum ProjectionType {
+    ortographic,
+    perspective
+}
+
+/** 
  * Configuration of as 3D camera
  */
 struct CameraConfiguration {
@@ -27,6 +35,8 @@ struct CameraConfiguration {
     scalar aspectRatio = autoAspectRatio;
     scalar nearClippingDistance = 0.1;
     scalar farClippingDistance = 1000;
+    ProjectionType projectionType = ProjectionType.perspective;
+    scalar orthoScale = 1;
 }
 
 /**
