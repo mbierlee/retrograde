@@ -88,7 +88,7 @@ class ModelComponent : EntityComponent {
 }
 
 /** 
- * An entity component containing a texture for 3D meshes.
+ * An entity component containing a texture for 3D meshes or backgrounds.
  */
 class TextureComponent : EntityComponent {
     mixin EntityComponentIdentity!"TextureComponent";
@@ -101,4 +101,15 @@ class TextureComponent : EntityComponent {
     this(Image texture) {
         this.texture = texture;
     }
+}
+
+/** 
+ * Renders the entity's TextureComponent as background using an orthographic
+ * projections.
+ * Backgrounds do not move based on the position of the camera, but can be
+ * moved themselves using Position2DComponents. The origin of a background is in
+ * the top-left.
+ */
+class OrthoBackgroundComponent : EntityComponent {
+    mixin EntityComponentIdentity!"OrthoBackgroundComponent";
 }

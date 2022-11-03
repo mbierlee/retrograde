@@ -11,6 +11,9 @@
 
 module retrograde.rendering.opengl;
 
+// TODO: split API calls from rendering logic so that migrating to a different rendering API is easier
+// and does not require one to re-implement rendering logic.
+
 version (Have_bindbc_opengl) {
     import retrograde.core.rendering : RenderSystem, Shader, ShaderProgram, ShaderType, autoAspectRatio,
         CameraConfiguration, ProjectionType;
@@ -23,7 +26,7 @@ version (Have_bindbc_opengl) {
     import retrograde.core.stringid : sid;
 
     import retrograde.components.rendering : RenderableComponent, DefaultShaderProgramComponent, CameraComponent,
-        ActiveCameraComponent, RandomFaceColorsComponent, ModelComponent;
+        ActiveCameraComponent, RandomFaceColorsComponent, ModelComponent, OrthoBackgroundComponent;
     import retrograde.components.geometry : Position3DComponent, Orientation3DComponent,
         Scale3DComponent;
 
@@ -32,6 +35,7 @@ version (Have_bindbc_opengl) {
     import std.conv : to;
     import std.random : Random, uniform01;
     import std.functional : memoize;
+    import std.algorithm.mutation : remove;
 
     import poodinis;
 
@@ -58,6 +62,8 @@ version (Have_bindbc_opengl) {
         private Matrix4D projectionMatrix;
         private CameraConfiguration cameraConfiguration;
 
+        private Entity[] orthoBackgrounds;
+
         private static const uint standardPositionAttribLocation = 0;
         private static const uint standardColorAttribLocation = 1;
         private static const uint standardMvpUniformLocation = 2;
@@ -79,7 +85,11 @@ version (Have_bindbc_opengl) {
             if (entity.hasComponent!ActiveCameraComponent) {
                 activeCamera = entity;
             } else if (entity.hasComponent!RenderableComponent) {
-                loadModelIntoVideoMemory(entity);
+                if (entity.hasComponent!OrthoBackgroundComponent) {
+                    orthoBackgrounds ~= entity;
+                }
+
+                loadIntoVideoMemory(entity);
             }
         }
 
@@ -87,7 +97,11 @@ version (Have_bindbc_opengl) {
             if (activeCamera == entity) {
                 activeCamera = null;
             } else if (entity.hasComponent!RenderableComponent) {
-                unloadModelFromVideoMemory(entity);
+                if (entity.hasComponent!OrthoBackgroundComponent) {
+                    orthoBackgrounds.remove!(e => e is entity);
+                }
+
+                unloadFromVideoMemory(entity);
             }
         }
 
@@ -134,9 +148,25 @@ version (Have_bindbc_opengl) {
             glClearBufferfv(GL_COLOR, 0, &clearColor[0]);
             glClearBufferfi(GL_DEPTH_STENCIL, 0, 1, 0);
 
+            if (orthoBackgrounds.length > 0) {
+                auto orthoProjectionMatrix = createOrthographicMatrix(-1, 1, -1, 1, 0, 1);
+                foreach (Entity orthoBackground; orthoBackgrounds) {
+                    orthoBackground.maybeWithComponent!GlModelInfoComponent((c) {
+                        useShader(orthoBackground);
+                        drawModel(orthoBackground, c, orthoProjectionMatrix);
+                    });
+                }
+
+                glClearBufferfi(GL_DEPTH_STENCIL, 0, 1, 0);
+            }
+
             auto viewProjectionMatrix = projectionMatrix * createRenderViewMatrix();
 
             foreach (Entity entity; _entities) {
+                if (entity.hasComponent!OrthoBackgroundComponent) {
+                    continue;
+                }
+
                 if (entity is activeCamera) {
                     entity.maybeWithComponent!CameraComponent((c) {
                         if (cameraConfiguration != c.cameraConfiguration) {
@@ -148,25 +178,32 @@ version (Have_bindbc_opengl) {
                     continue;
                 }
 
-                if (defaultOpenGlShaderProgram &&
-                    entity.hasComponent!DefaultShaderProgramComponent) {
-                    glUseProgram(defaultOpenGlShaderProgram.getOpenGlShaderProgram());
-                } //TODO: Else use custom shader program
-
                 entity.maybeWithComponent!GlModelInfoComponent((c) {
-                    auto modelViewProjectionMatrix =
-                        createModelViewProjectionMatrix(entity, viewProjectionMatrix)
-                        .getDataArray!float;
-
-                    glUniformMatrix4fv(standardMvpUniformLocation, 1, GL_TRUE,
-                        modelViewProjectionMatrix.ptr);
-
-                    foreach (GlMeshInfo mesh; c.info.meshes) {
-                        glBindVertexArray(mesh.vertexArrayObject);
-                        glDrawArrays(GL_TRIANGLES, 0, mesh.vertexCount);
-                        glBindVertexArray(0);
-                    }
+                    useShader(entity);
+                    drawModel(entity, c, viewProjectionMatrix);
                 });
+            }
+        }
+
+        private void useShader(Entity entity) {
+            if (defaultOpenGlShaderProgram &&
+                entity.hasComponent!DefaultShaderProgramComponent) {
+                glUseProgram(defaultOpenGlShaderProgram.getOpenGlShaderProgram());
+            } //TODO: Else use custom shader program
+        }
+
+        private void drawModel(Entity entity, const GlModelInfoComponent modelInfo, const ref Matrix4D viewProjectionMatrix) {
+            auto modelViewProjectionMatrix =
+                createModelViewProjectionMatrix(entity, viewProjectionMatrix)
+                .getDataArray!float;
+
+            glUniformMatrix4fv(standardMvpUniformLocation, 1, GL_TRUE,
+                modelViewProjectionMatrix.ptr);
+
+            foreach (GlMeshInfo mesh; modelInfo.info.meshes) {
+                glBindVertexArray(mesh.vertexArrayObject);
+                glDrawArrays(GL_TRIANGLES, 0, mesh.vertexCount);
+                glBindVertexArray(0);
             }
         }
 
@@ -227,11 +264,18 @@ version (Have_bindbc_opengl) {
             }
         }
 
-        private void loadModelIntoVideoMemory(Entity entity) {
-            auto assignRandomFaceColors = entity.hasComponent!RandomFaceColorsComponent;
-            Random* random = assignRandomFaceColors ? new Random(sid(entity.name)) : null;
+        private void loadIntoVideoMemory(Entity entity) {
+            entity.maybeWithComponent!OrthoBackgroundComponent((c) {
+                GlModelInfo modelInfo;
+                Vertex[] vertices = getPlaneVertices();
+                modelInfo.meshes ~= createMeshInfo(vertices);
+                entity.addComponent(new GlModelInfoComponent(modelInfo));
+            });
 
             entity.maybeWithComponent!ModelComponent((c) {
+                auto assignRandomFaceColors = entity.hasComponent!RandomFaceColorsComponent;
+                Random* random = assignRandomFaceColors ? new Random(sid(entity.name)) : null;
+
                 GlModelInfo modelInfo;
                 foreach (size_t index, const Mesh mesh; c.model.meshes) {
                     Vertex[] vertices;
@@ -251,47 +295,46 @@ version (Have_bindbc_opengl) {
                         vertices ~= vertC;
                     });
 
-                    GLuint vertexArrayObject;
-                    GLuint vertexBufferObject;
-                    glCreateVertexArrays(1, &vertexArrayObject);
-                    glCreateBuffers(1, &vertexBufferObject);
-
-                    ulong verticesByteSize = Vertex.sizeof * vertices.length;
-                    glNamedBufferStorage(vertexBufferObject, verticesByteSize, vertices.ptr, 0);
-
-                    // Position attrib
-                    glVertexArrayAttribBinding(vertexArrayObject, standardPositionAttribLocation, 0);
-                    glVertexArrayAttribFormat(vertexArrayObject, standardPositionAttribLocation, 4, GL_DOUBLE, GL_FALSE, Vertex
-                        .x.offsetof);
-                    glEnableVertexArrayAttrib(vertexArrayObject, standardPositionAttribLocation);
-
-                    // Color attrib
-                    glVertexArrayAttribBinding(vertexArrayObject, standardColorAttribLocation, 0);
-                    glVertexArrayAttribFormat(vertexArrayObject, standardColorAttribLocation, 4, GL_DOUBLE, GL_FALSE, Vertex
-                        .r.offsetof);
-                    glEnableVertexArrayAttrib(vertexArrayObject, standardColorAttribLocation);
-
-                    glVertexArrayVertexBuffer(vertexArrayObject, 0, vertexBufferObject, 0, Vertex
-                        .sizeof);
-
-                    GlMeshInfo meshInfo;
-                    meshInfo.vertexArrayObject = vertexArrayObject;
-                    meshInfo.vertexBufferObject = vertexBufferObject;
-                    meshInfo.vertexCount = to!int(vertices.length);
-                    modelInfo.meshes ~= meshInfo;
-
+                    modelInfo.meshes ~= createMeshInfo(vertices);
                     errorService.logErrorsIfAny();
                 }
 
                 entity.addComponent(new GlModelInfoComponent(modelInfo));
-            });
 
-            if (random) {
-                random.destroy();
-            }
+                if (random) {
+                    random.destroy();
+                }
+            });
         }
 
-        private void unloadModelFromVideoMemory(Entity entity) {
+        private GlMeshInfo createMeshInfo(Vertex[] vertices) {
+            GLuint vertexArrayObject;
+            GLuint vertexBufferObject;
+            glCreateVertexArrays(1, &vertexArrayObject);
+            glCreateBuffers(1, &vertexBufferObject);
+
+            ulong verticesByteSize = Vertex.sizeof * vertices.length;
+            glNamedBufferStorage(vertexBufferObject, verticesByteSize, vertices.ptr, 0); // Position attrib
+            glVertexArrayAttribBinding(vertexArrayObject, standardPositionAttribLocation, 0);
+            glVertexArrayAttribFormat(vertexArrayObject, standardPositionAttribLocation, 4, GL_DOUBLE, GL_FALSE, Vertex
+                    .x.offsetof);
+            glEnableVertexArrayAttrib(vertexArrayObject, standardPositionAttribLocation);
+
+            // Color attrib
+            glVertexArrayAttribBinding(vertexArrayObject, standardColorAttribLocation, 0);
+            glVertexArrayAttribFormat(vertexArrayObject, standardColorAttribLocation, 4, GL_DOUBLE, GL_FALSE, Vertex
+                    .r.offsetof);
+            glEnableVertexArrayAttrib(vertexArrayObject, standardColorAttribLocation);
+
+            glVertexArrayVertexBuffer(vertexArrayObject, 0, vertexBufferObject, 0, Vertex.sizeof);
+            GlMeshInfo meshInfo;
+            meshInfo.vertexArrayObject = vertexArrayObject;
+            meshInfo.vertexBufferObject = vertexBufferObject;
+            meshInfo.vertexCount = to!int(vertices.length);
+            return meshInfo;
+        }
+
+        private void unloadFromVideoMemory(Entity entity) {
             entity.maybeWithComponent!GlModelInfoComponent((c) {
                 foreach (GlMeshInfo mesh; c.info.meshes) {
                     glDeleteVertexArrays(1, &mesh.vertexArrayObject);
@@ -335,6 +378,17 @@ version (Have_bindbc_opengl) {
                 );
             }
 
+        }
+
+        private Vertex[] getPlaneVertices() {
+            return [
+                Vertex(-1.0, 1.0, 0.0, 1.0, clearColor[0], clearColor[1], clearColor[2], clearColor[3]),
+                Vertex(-1.0, -1.0, 0.0, 1.0, clearColor[0], clearColor[1], clearColor[2], clearColor[3]),
+                Vertex(1.0, 1.0, 0.0, 1.0, clearColor[0], clearColor[1], clearColor[2], clearColor[3]),
+                Vertex(-1.0, -1.0, 0.0, 1.0, clearColor[0], clearColor[1], clearColor[2], clearColor[3]),
+                Vertex(1.0, -1.0, 0.0, 1.0, clearColor[0], clearColor[1], clearColor[2], clearColor[3]),
+                Vertex(1.0, 1.0, 0.0, 1.0, clearColor[0], clearColor[1], clearColor[2], clearColor[3]),
+            ];
         }
     }
 
