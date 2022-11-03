@@ -75,7 +75,7 @@ class RandomFaceColorsComponent : EntityComponent {
  * An entity component containing 3D model data.
  */
 class ModelComponent : EntityComponent {
-    mixin EntityComponentIdentity!"Model";
+    mixin EntityComponentIdentity!"ModelComponent";
 
     public Model model;
 

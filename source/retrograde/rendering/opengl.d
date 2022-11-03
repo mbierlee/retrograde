@@ -424,7 +424,7 @@ version (Have_bindbc_opengl) {
     }
 
     private class GlModelInfoComponent : EntityComponent {
-        mixin EntityComponentIdentity!"GlModelInfo";
+        mixin EntityComponentIdentity!"GlModelInfoComponent";
 
         public GlModelInfo info;
 

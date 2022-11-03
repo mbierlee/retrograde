@@ -18,7 +18,7 @@ import retrograde.core.math : Vector3D, QuaternionD, scalar;
  * An entity component representing three-dimensional position in world space.
  */
 class Position3DComponent : EntityComponent {
-    mixin EntityComponentIdentity!"Position3D";
+    mixin EntityComponentIdentity!"Position3DComponent";
 
     /**
      * A three-dimensional position.
@@ -50,7 +50,7 @@ class Position3DComponent : EntityComponent {
  * An entity component representing three-dimensional orientation in world space.
  */
 class Orientation3DComponent : EntityComponent {
-    mixin EntityComponentIdentity!"Orientation3D";
+    mixin EntityComponentIdentity!"Orientation3DComponent";
 
     /**
      * An orientation in 3D space.
@@ -75,7 +75,7 @@ class Orientation3DComponent : EntityComponent {
  * An entity component representing three-dimensional scale in world space.
  */
 class Scale3DComponent : EntityComponent {
-    mixin EntityComponentIdentity!"Scale3D";
+    mixin EntityComponentIdentity!"Scale3DComponent";
 
     /**
      * A three-dimensional scale.
