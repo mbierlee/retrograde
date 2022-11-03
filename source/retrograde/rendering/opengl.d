@@ -84,7 +84,9 @@ version (Have_bindbc_opengl) {
         override protected void processAcceptedEntity(Entity entity) {
             if (entity.hasComponent!ActiveCameraComponent) {
                 activeCamera = entity;
-            } else if (entity.hasComponent!RenderableComponent) {
+            }
+
+            if (entity.hasComponent!RenderableComponent) {
                 if (entity.hasComponent!OrthoBackgroundComponent) {
                     orthoBackgrounds ~= entity;
                 }
@@ -96,7 +98,9 @@ version (Have_bindbc_opengl) {
         override protected void processRemovedEntity(Entity entity) {
             if (activeCamera == entity) {
                 activeCamera = null;
-            } else if (entity.hasComponent!RenderableComponent) {
+            }
+
+            if (entity.hasComponent!RenderableComponent) {
                 if (entity.hasComponent!OrthoBackgroundComponent) {
                     orthoBackgrounds.remove!(e => e is entity);
                 }
