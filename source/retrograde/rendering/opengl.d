@@ -385,13 +385,30 @@ version (Have_bindbc_opengl) {
         }
 
         private Vertex[] getPlaneVertices() {
+            auto upperLeft = Vertex(
+                -1.0, 1.0, 0.0, 1.0,
+                clearColor[0], clearColor[1], clearColor[2], clearColor[3],
+                0, 1, 0
+            );
+            auto lowerLeft = Vertex(
+                -1.0, -1.0, 0.0, 1.0,
+                clearColor[0], clearColor[1], clearColor[2], clearColor[3],
+                0, 0, 0
+            );
+            auto lowerRight = Vertex(
+                1.0, -1.0, 0.0, 1.0,
+                clearColor[0], clearColor[1], clearColor[2], clearColor[3],
+                1, 0, 0
+            );
+            auto upperRight = Vertex(
+                1.0, 1.0, 0.0, 1.0,
+                clearColor[0], clearColor[1], clearColor[2], clearColor[3],
+                1, 1, 0
+            );
+
             return [
-                Vertex(-1.0, 1.0, 0.0, 1.0, clearColor[0], clearColor[1], clearColor[2], clearColor[3]),
-                Vertex(-1.0, -1.0, 0.0, 1.0, clearColor[0], clearColor[1], clearColor[2], clearColor[3]),
-                Vertex(1.0, 1.0, 0.0, 1.0, clearColor[0], clearColor[1], clearColor[2], clearColor[3]),
-                Vertex(-1.0, -1.0, 0.0, 1.0, clearColor[0], clearColor[1], clearColor[2], clearColor[3]),
-                Vertex(1.0, -1.0, 0.0, 1.0, clearColor[0], clearColor[1], clearColor[2], clearColor[3]),
-                Vertex(1.0, 1.0, 0.0, 1.0, clearColor[0], clearColor[1], clearColor[2], clearColor[3]),
+                upperLeft, lowerLeft, upperRight,
+                lowerLeft, lowerRight, upperRight,
             ];
         }
     }
