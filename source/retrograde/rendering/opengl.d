@@ -17,7 +17,7 @@ module retrograde.rendering.opengl;
 version (Have_bindbc_opengl) {
     import retrograde.core.rendering : RenderSystem, Shader, ShaderProgram, ShaderType, autoAspectRatio,
         CameraConfiguration, ProjectionType;
-    import retrograde.core.entity : Entity, EntityComponent, EntityComponentIdentity;
+    import retrograde.core.entity : Entity, EntityComponent, EntityComponentIdentity, EntityCollection;
     import retrograde.core.platform : Platform, Viewport, platformEventChannel, ViewportResizeEventMessage;
     import retrograde.core.model : Vertex, Mesh;
     import retrograde.core.math : Vector3D, QuaternionD, createViewMatrix, createPerspectiveMatrix,
@@ -58,11 +58,12 @@ version (Have_bindbc_opengl) {
         private Viewport viewport;
         private GLfloat[] clearColor = [0.576f, 0.439f, 0.859f, 1.0f];
         private OpenGlShaderProgram defaultOpenGlShaderProgram;
-        private Entity activeCamera;
         private Matrix4D projectionMatrix;
         private CameraConfiguration cameraConfiguration;
 
-        private Entity[] orthoBackgrounds;
+        private Entity activeCamera;
+        private EntityCollection orthoBackgrounds = new EntityCollection();
+        private EntityCollection models = new EntityCollection();
 
         private static const uint standardPositionAttribLocation = 0;
         private static const uint standardColorAttribLocation = 1;
@@ -88,7 +89,11 @@ version (Have_bindbc_opengl) {
 
             if (entity.hasComponent!RenderableComponent) {
                 if (entity.hasComponent!OrthoBackgroundComponent) {
-                    orthoBackgrounds ~= entity;
+                    orthoBackgrounds.add(entity);
+                }
+
+                if (entity.hasComponent!ModelComponent) {
+                    models.add(entity);
                 }
 
                 loadIntoVideoMemory(entity);
@@ -102,7 +107,11 @@ version (Have_bindbc_opengl) {
 
             if (entity.hasComponent!RenderableComponent) {
                 if (entity.hasComponent!OrthoBackgroundComponent) {
-                    orthoBackgrounds.remove!(e => e is entity);
+                    orthoBackgrounds.remove(entity);
+                }
+
+                if (entity.hasComponent!ModelComponent) {
+                    models.remove(entity);
                 }
 
                 unloadFromVideoMemory(entity);
@@ -166,25 +175,19 @@ version (Have_bindbc_opengl) {
 
             auto viewProjectionMatrix = projectionMatrix * createRenderViewMatrix();
 
-            foreach (Entity entity; _entities) {
-                if (entity.hasComponent!OrthoBackgroundComponent) {
-                    continue;
-                }
+            if (activeCamera) {
+                activeCamera.maybeWithComponent!CameraComponent((c) {
+                    if (cameraConfiguration != c.cameraConfiguration) {
+                        cameraConfiguration = c.cameraConfiguration;
+                        updateProjectionMatrix();
+                    }
+                });
+            }
 
-                if (entity is activeCamera) {
-                    entity.maybeWithComponent!CameraComponent((c) {
-                        if (cameraConfiguration != c.cameraConfiguration) {
-                            cameraConfiguration = c.cameraConfiguration;
-                            updateProjectionMatrix();
-                        }
-                    });
-
-                    continue;
-                }
-
-                entity.maybeWithComponent!GlModelInfoComponent((c) {
-                    useShader(entity);
-                    drawModel(entity, c, viewProjectionMatrix);
+            foreach (Entity model; models) {
+                model.maybeWithComponent!GlModelInfoComponent((c) {
+                    useShader(model);
+                    drawModel(model, c, viewProjectionMatrix);
                 });
             }
         }
@@ -381,7 +384,6 @@ version (Have_bindbc_opengl) {
                     cameraConfiguration.farClippingDistance
                 );
             }
-
         }
 
         private Vertex[] getPlaneVertices() {

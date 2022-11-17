@@ -338,6 +338,10 @@ class EntityCollection {
         return entities[entityId];
     }
 
+    Entity[] opIndex() {
+        return getAll();
+    }
+
     int opApply(int delegate(Entity) op) {
         int result = 0;
         foreach (Entity entity; entities.values) {
@@ -661,8 +665,6 @@ abstract class EntityProcessor {
 
     /**
      * Adds the given entity to this processor, given is is accepted by it.
-     * Throws:
-     *  Exception when an unfinalized entity was added to entity processor
      */
     public void addEntity(Entity entity) {
         if (!acceptsEntity(entity))
@@ -745,7 +747,7 @@ abstract class EntityProcessor {
     }
 }
 
-// Test entitiies, components and processors.
+// Test entities, components and processors.
 version (unittest) {
     class TestEntityComponent : EntityComponent {
         mixin EntityComponentIdentity!"TestEntityComponent";
@@ -1297,5 +1299,45 @@ version (unittest) {
         });
 
         assert(entityRemovedEventWasSent);
+    }
+}
+
+// Enity Collection Test
+version (unittest) {
+    @("Access entity by ID")
+    unittest {
+        auto entity = new Entity("hi");
+        auto collection = new EntityCollection();
+        collection.add(entity);
+        assert(collection[entity.id] is entity);
+    }
+
+    @("Loop over entity collection")
+    unittest {
+        auto entity = new Entity("hi");
+        auto collection = new EntityCollection();
+        collection.add(entity);
+        bool foundEntity = false;
+
+        foreach (Entity e; collection) {
+            foundEntity = e is entity;
+        }
+
+        assert(foundEntity);
+    }
+
+    @("Loop over empty collection")
+    unittest {
+        auto collection = new EntityCollection();
+        foreach (Entity e; collection) {
+        }
+    }
+
+    @("Check collection length")
+    unittest {
+        auto entity = new Entity("hi");
+        auto collection = new EntityCollection();
+        collection.add(entity);
+        assert(collection.length == 1);
     }
 }
