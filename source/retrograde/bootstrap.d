@@ -26,7 +26,7 @@ import poodinis.valueinjector.properd;
 
 import properd;
 
-import std.experimental.logger : Logger, MultiLogger, sharedLog;
+import std.logger : Logger, MultiLogger, sharedLog;
 import std.file : exists;
 
 version (Have_glfw_d) {
@@ -80,14 +80,14 @@ RenderSystemType:
     dependencies.registerProperdProperties(engineProperties);
 
     dependencies.register!Logger.initializedBy({
-        auto logger = new MultiLogger();
+        auto logger = new MultiLogger(); // Cannot be shared, but must be for sharedLog
 
         auto stdoutLogger = new StdoutLogger();
         if (stdoutLogger.stdoutIsAvailable()) {
             logger.insertLogger("stdoutLogger", stdoutLogger);
         }
 
-        sharedLog = logger;
+        // sharedLog = stdoutLogger; //Creating shared loggers is broken. Fix when phobos fixes it.
         return logger;
     });
 
