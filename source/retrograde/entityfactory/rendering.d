@@ -15,7 +15,8 @@ import retrograde.core.entity : Entity, EntityFactory, EntityFactoryParameters, 
 import retrograde.core.storage : StorageSystem;
 
 import retrograde.components.geometry : Position3DComponent, Orientation3DComponent;
-import retrograde.components.rendering : RenderableComponent, DefaultShaderProgramComponent, ModelComponent, TextureComponent;
+import retrograde.components.rendering : RenderableComponent, DefaultShaderProgramComponent, ModelComponent,
+    TextureComponent, OrthoBackgroundComponent;
 
 import retrograde.model : CommonModelLoader;
 import retrograde.image : CommonImageLoader;
@@ -54,5 +55,31 @@ class ModelEntityFactory : EntityFactory {
         entity.maybeAddComponent!DefaultShaderProgramComponent;
         entity.maybeAddComponent!Position3DComponent;
         entity.maybeAddComponent!Orientation3DComponent;
+    }
+}
+
+class BackgroundEntityFactoryParameters : EntityFactoryParameters {
+    string textureFilePath;
+}
+
+/** 
+ * Creates entities that are renderable backgrounds.
+ */
+class BackgroundEntityFactory : EntityFactory {
+    @Autowire CommonImageLoader imageLoader;
+    @Autowire StorageSystem storage;
+
+    public override void addComponents(Entity entity, const EntityFactoryParameters parameters = new BackgroundEntityFactoryParameters()) {
+        auto p = parameters.ofType!BackgroundEntityFactoryParameters;
+
+        if (p.textureFilePath.length > 0) {
+            auto textureFile = storage.readFileRelative(p.textureFilePath);
+            auto texture = imageLoader.load(textureFile);
+            entity.maybeAddComponent(new TextureComponent(texture));
+        }
+
+        entity.maybeAddComponent!RenderableComponent;
+        entity.maybeAddComponent!DefaultShaderProgramComponent;
+        entity.maybeAddComponent!OrthoBackgroundComponent;
     }
 }
