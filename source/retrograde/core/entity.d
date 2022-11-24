@@ -16,6 +16,7 @@ import retrograde.core.messaging : MessageHandler, Message;
 
 import std.exception : enforce;
 import std.string : format;
+import std.conv : to;
 
 import poodinis;
 
@@ -747,6 +748,60 @@ abstract class EntityProcessor {
     }
 }
 
+/** 
+ * Base class for entity factories to defined creation parameters.
+ */
+interface EntityFactoryParameters {
+}
+
+/** 
+ * Entity factories make factory methods available
+ * for creating entities with a specific set of components
+ * or adding those to existing entities.
+ */
+abstract class EntityFactory {
+    /**
+     * Creates a new entity and adds the factory's components to it.
+     *
+     * Params: 
+     *   parameters = Creation parameters. Can be null if the factory does not support any.
+     *
+     * Returns: newly created entity with its components.
+     */
+    public Entity createEntity(const string name, const EntityFactoryParameters parameters = null) {
+        //TODO: Use Option/Maybe monad instead of null
+        auto entity = new Entity(name);
+        addComponents(entity, parameters);
+        return entity;
+    }
+
+    /**
+     * Adds components typically created by this factory to the given entity.
+     *
+     * Params: 
+     *   entity = The entity to which to add components. It will be modified by this method.
+     *   parameters = Creation parameters. Make sure to check for null if required.
+     *
+     * Returns: Entity with the factory's components added to it.
+     */
+    public void addComponents(Entity entity, const EntityFactoryParameters parameters = null);
+}
+
+/** 
+ * Casts EntityFactoryParameters to a specific type.
+
+ * Params:
+ *   params = Factory parameters to be casted.
+ * Throws: Exception when the supplied parameters cannot be casted to the given type.
+ * Returns: The casted factory parameters. Will never be null.
+ */
+T ofType(T : EntityFactoryParameters)(const EntityFactoryParameters params) {
+    auto castedParameters = cast(T) params;
+    enforce(castedParameters !is null, "Supplied entity factory parameters must be of type " ~ to!string(
+            typeid(T)));
+    return castedParameters;
+}
+
 // Test entities, components and processors.
 version (unittest) {
     class TestEntityComponent : EntityComponent {
@@ -1302,7 +1357,7 @@ version (unittest) {
     }
 }
 
-// Enity Collection Test
+// Enity Collection tests
 version (unittest) {
     @("Access entity by ID")
     unittest {
@@ -1339,5 +1394,64 @@ version (unittest) {
         auto collection = new EntityCollection();
         collection.add(entity);
         assert(collection.length == 1);
+    }
+}
+
+// Entity Factory tests
+version (unittest) {
+    import std.exception : assertThrown;
+
+    class TestFactoryComponent : EntityComponent {
+        mixin EntityComponentIdentity!"TestFactoryComponent";
+        string value = "";
+
+        this(const string value) {
+            this.value = value;
+        }
+    }
+
+    class TestEntityFactoryParameters : EntityFactoryParameters {
+        const string testValue;
+
+        this(const string testValue) {
+            this.testValue = testValue;
+        }
+    }
+
+    class WrongEntityFactoryParameters : EntityFactoryParameters {
+    }
+
+    class TestEntityFactory : EntityFactory {
+        public override void addComponents(Entity entity, const EntityFactoryParameters parameters) {
+            auto p = parameters.ofType!TestEntityFactoryParameters;
+            entity.addComponent(new TestFactoryComponent(p.testValue));
+        }
+    }
+
+    @("Create entity")
+    unittest {
+        auto factory = new TestEntityFactory();
+        auto entity = factory.createEntity("ent_hi", new TestEntityFactoryParameters("testtest"));
+
+        assert(entity.name == "ent_hi");
+        assert(entity.hasComponent!TestFactoryComponent);
+        entity.withComponent!TestFactoryComponent(c => assert(c.value == "testtest"));
+    }
+
+    @("Add components")
+    unittest {
+        auto factory = new TestEntityFactory();
+        auto entity = new Entity("ent_hi");
+        factory.addComponents(entity, new TestEntityFactoryParameters("testtest"));
+
+        assert(entity.name == "ent_hi");
+        assert(entity.hasComponent!TestFactoryComponent);
+        entity.withComponent!TestFactoryComponent(c => assert(c.value == "testtest"));
+    }
+
+    @("Provide wrong parameters type")
+    unittest {
+        auto factory = new TestEntityFactory();
+        assertThrown!Exception(factory.createEntity("ent_hi", new WrongEntityFactoryParameters()));
     }
 }

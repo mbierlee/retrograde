@@ -1,8 +1,6 @@
 /**
  * Retrograde Engine
  *
- * This package contains dynamically-sized collections that do not make use of the garbage collector. 
- *
  * Authors:
  *  Mike Bierlee, m.bierlee@lostmoment.com
  * Copyright: 2014-2022 Mike Bierlee
