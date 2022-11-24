@@ -800,7 +800,7 @@ abstract class EntityFactory {
      *
      * Returns: newly created entity with its components.
      */
-    public Entity createEntity(const string name, const EntityFactoryParameters parameters = null) {
+    public Entity createEntity(const string name, const EntityFactoryParameters parameters) {
         //TODO: Use Option/Maybe monad instead of null
         auto entity = new Entity(name);
         addComponents(entity, parameters);
@@ -816,7 +816,7 @@ abstract class EntityFactory {
      *
      * Returns: Entity with the factory's components added to it.
      */
-    public void addComponents(Entity entity, const EntityFactoryParameters parameters = null);
+    public void addComponents(Entity entity, const EntityFactoryParameters parameters);
 }
 
 /** 
