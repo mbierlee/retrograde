@@ -226,14 +226,6 @@ class DroneControllerProcessor : EntityProcessor {
             }
         }
     }
-
-    public static void addExpectedComponents(Entity entity) {
-        entity.addComponent!DroneControllableComponent;
-        entity.addComponent!RotationComponent;
-        entity.addComponent!TranslationComponent;
-        entity.addComponent!Orientation3DComponent;
-        entity.addComponent!Position3DComponent;
-    }
 }
 
 /**
