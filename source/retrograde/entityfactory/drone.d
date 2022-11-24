@@ -18,6 +18,8 @@ import retrograde.components.drone : DroneControllableComponent;
 import retrograde.components.geometry : Position3DComponent, Orientation3DComponent;
 import retrograde.components.animation : RotationComponent, TranslationComponent;
 
+import std.typecons : No;
+
 class DroneEntityFactoryParameters : EntityFactoryParameters {
     public scalar translationSpeedModifier = 1;
     public scalar rotationSpeedModifier = 1;
@@ -30,14 +32,14 @@ class DroneEntityFactory : EntityFactory {
     public override void addComponents(Entity entity, const EntityFactoryParameters parameters = new DroneEntityFactoryParameters()) {
         auto p = parameters.ofType!DroneEntityFactoryParameters;
 
-        entity.addComponent(new DroneControllableComponent(
+        entity.maybeAddComponent(new DroneControllableComponent(
                 p.translationSpeedModifier,
                 p.rotationSpeedModifier
         ));
 
-        entity.addComponent!RotationComponent;
-        entity.addComponent!TranslationComponent;
-        entity.addComponent!Orientation3DComponent;
-        entity.addComponent!Position3DComponent;
+        entity.maybeAddComponent!RotationComponent;
+        entity.maybeAddComponent!TranslationComponent;
+        entity.maybeAddComponent!Orientation3DComponent;
+        entity.maybeAddComponent!Position3DComponent;
     }
 }

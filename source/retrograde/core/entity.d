@@ -17,6 +17,7 @@ import retrograde.core.messaging : MessageHandler, Message;
 import std.exception : enforce;
 import std.string : format;
 import std.conv : to;
+import std.typecons : Flag, Yes, No;
 
 import poodinis;
 
@@ -68,14 +69,26 @@ class Entity {
 
     /**
      * Adds the given entity component to this entity.
+     *
      * Params:
      *  component = Instance of an entity component to be added.
+     *  addIfExists = Whether to add the component even if this entity already has it. 
+     *                If it does, this component will replace it as there can be only one
+     *                of each type.
      * See_Also:
      *  removeComponent
      */
-    public void addComponent(EntityComponent component) {
+    public void addComponent(
+        EntityComponent component,
+        Flag!"addIfExists" addIfExists = Yes.addIfExists
+    ) {
         enforce!Exception(component !is null, "Passed component reference is null.");
         auto typeId = component.getComponentTypeId();
+
+        if (!addIfExists && typeId in _components) {
+            return;
+        }
+
         _components[typeId] = component;
         reconsiderEntity();
     }
@@ -83,18 +96,53 @@ class Entity {
     /**
      * Adds an entity component of the given type to this entity.
      * The entity component of the given type is created and added.
+     *
      * Params:
      *  EntityComponentType = Type of the entity component to be created and added.
+     *  addIfExists = Whether to add the component even if this entity already has it. 
+     *                If it does, this component will replace it as there can be only one
+     *                of each type.
      * See_Also:
      *  removeComponent
      */
-    public void addComponent(EntityComponentType : EntityComponent)() {
+    public void addComponent(EntityComponentType : EntityComponent)(
+        Flag!"addIfExists" addIfExists = Yes.addIfExists
+    ) {
         TypeInfo_Class typeInfo = typeid(EntityComponentType);
         auto component = cast(EntityComponentType) typeInfo.create();
         enforce!Exception(component !is null,
             format("Error creating component of type %s. Does the component have a default constructor?",
                 typeInfo));
-        addComponent(component);
+        addComponent(component, addIfExists);
+    }
+
+    /**
+     * Adds the given entity component to this entity., but only if it doesn't already have it.
+     *
+     * This is a convenience method for using addComponent with the No.addIfExists flag.
+     *
+     * Params:
+     *  component = Instance of an entity component to be added.
+     * See_Also:
+     *  addComponent, removeComponent
+     */
+    public void maybeAddComponent(EntityComponent component) {
+        addComponent(component, No.addIfExists);
+    }
+
+    /**
+     * Adds an entity component of the given type to this entity, but only
+     * if it doesn't already have it.
+     *
+     * This is a convenience method for using addComponent with the No.addIfExists flag.
+     *
+     * Params:
+     *  EntityComponentType = Type of the entity component to be created and added.
+     * See_Also:
+     *  addComponent, removeComponent
+     */
+    public void maybeAddComponent(EntityComponentType : EntityComponent)() {
+        addComponent!EntityComponentType(No.addIfExists);
     }
 
     /**
@@ -791,6 +839,13 @@ version (unittest) {
     class TestEntityComponent : EntityComponent {
         mixin EntityComponentIdentity!"TestEntityComponent";
         public int theAnswer = 42;
+
+        this() {
+        }
+
+        this(int theAnswer) {
+            this.theAnswer = theAnswer;
+        }
     }
 
     class LazySloth : NonlazySloth {
@@ -1064,6 +1119,28 @@ version (unittest) {
         entity.addComponent!ParticularEntityComponent;
         entity.clearComponents();
         assert(!processor.hasEntity(entity));
+    }
+
+    @("Entity components are by default added and overwritten when they already exist")
+    unittest {
+        auto entity = new Entity();
+        entity.maybeAddComponent!TestEntityComponent;
+        entity.maybeAddComponent(new TestEntityComponent(99));
+        entity.addComponent(new TestEntityComponent(180));
+
+        entity.withComponent!TestEntityComponent(c => assert(c.theAnswer == 180));
+    }
+
+    @(
+        "Entity components are not added and overwritten when they already exist and addIfExists is No")
+    unittest {
+        auto entity = new Entity();
+        entity.maybeAddComponent!TestEntityComponent;
+        entity.addComponent!TestEntityComponent(No.addIfExists);
+        entity.maybeAddComponent(new TestEntityComponent(99));
+        entity.addComponent(new TestEntityComponent(180), No.addIfExists);
+
+        entity.withComponent!TestEntityComponent(c => assert(c.theAnswer == 42));
     }
 }
 

@@ -16,6 +16,8 @@ import retrograde.core.rendering : CameraConfiguration;
 
 import retrograde.components.rendering : CameraComponent, ActiveCameraComponent;
 
+import std.typecons : No;
+
 class CameraEntityFactoryParameters : EntityFactoryParameters {
     CameraConfiguration cameraConfiguration;
     bool isActive;
@@ -28,9 +30,9 @@ class CameraEntityFactory : EntityFactory {
     public override void addComponents(Entity entity, const EntityFactoryParameters parameters = new CameraEntityFactoryParameters()) {
         auto p = parameters.ofType!CameraEntityFactoryParameters;
 
-        entity.addComponent(new CameraComponent(p.cameraConfiguration));
+        entity.maybeAddComponent(new CameraComponent(p.cameraConfiguration));
         if (p.isActive) {
-            entity.addComponent!ActiveCameraComponent;
+            entity.maybeAddComponent!ActiveCameraComponent;
         }
     }
 }

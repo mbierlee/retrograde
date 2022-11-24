@@ -17,6 +17,8 @@ import retrograde.core.math : QuaternionD, Vector3D;
 import retrograde.components.geometry : Orientation3DComponent, Position3DComponent;
 import retrograde.components.animation : RotationComponent, TranslationComponent;
 
+import std.typecons : No;
+
 class RotationEntityFactoryParameters : EntityFactoryParameters {
     public QuaternionD rotation;
 }
@@ -28,8 +30,8 @@ class RotationEntityFactory : EntityFactory {
     public override void addComponents(Entity entity, const EntityFactoryParameters parameters = new RotationEntityFactoryParameters()) {
         auto p = parameters.ofType!RotationEntityFactoryParameters;
 
-        entity.addComponent(new RotationComponent(p.rotation));
-        entity.addComponent!Orientation3DComponent;
+        entity.maybeAddComponent(new RotationComponent(p.rotation));
+        entity.maybeAddComponent!Orientation3DComponent;
     }
 }
 
@@ -44,7 +46,7 @@ class TranslationEntityFactory : EntityFactory {
     public override void addComponents(Entity entity, const EntityFactoryParameters parameters = new RotationEntityFactoryParameters()) {
         auto p = parameters.ofType!TranslationEntityFactoryParameters;
 
-        entity.addComponent(new TranslationComponent(p.translation));
-        entity.addComponent!Position3DComponent;
+        entity.maybeAddComponent(new TranslationComponent(p.translation));
+        entity.maybeAddComponent!Position3DComponent;
     }
 }
