@@ -68,11 +68,10 @@ class Entity {
 
     /**
      * Adds the given entity component to this entity.
-     * Adding entity components is not allowed when the entity is finalized.
      * Params:
      *  component = Instance of an entity component to be added.
      * See_Also:
-     *  removeComponent, finalize
+     *  removeComponent
      */
     public void addComponent(EntityComponent component) {
         enforce!Exception(component !is null, "Passed component reference is null.");
@@ -84,11 +83,10 @@ class Entity {
     /**
      * Adds an entity component of the given type to this entity.
      * The entity component of the given type is created and added.
-     * Adding entity components is not allowed when the entity is finalized.
      * Params:
      *  EntityComponentType = Type of the entity component to be created and added.
      * See_Also:
-     *  removeComponent, finalize
+     *  removeComponent
      */
     public void addComponent(EntityComponentType : EntityComponent)() {
         TypeInfo_Class typeInfo = typeid(EntityComponentType);
@@ -101,11 +99,10 @@ class Entity {
 
     /**
      * Removes the given entity component from this entity.
-     * Removing entity components is not allowed when the entity is finalized.
      * Params:
      *  component = Instance of an entity component to be removed.
      * See_Also:
-     *  addComponent, finalize
+     *  addComponent
      */
     public void removeComponent(EntityComponent component) {
         enforce!Exception(component !is null, "Passed component reference is null.");
@@ -115,11 +112,10 @@ class Entity {
 
     /**
      * Removes an entity identified by the given type from this entity.
-     * Removing entity components is not allowed when the entity is finalized.
      * Params:
      *  componentType = Componenty type of the component to be removed.
      * See_Also:
-     *  addComponent, finalize
+     *  addComponent
      */
     public void removeComponent(StringId componentType) {
         _components.remove(componentType);
@@ -128,11 +124,10 @@ class Entity {
 
     /**
      * Removes an entity component of the given type to this entity.
-     * Removing entity components is not allowed when the entity is finalized.
      * Params:
      *  EntityComponentType = Type of the entity component to be created and added.
      * See_Also:
-     *  removeComponent, finalize
+     *  removeComponent
      */
     public void removeComponent(EntityComponentType : EntityComponent)() {
         StringId componentType = EntityComponentType.componentTypeId;
@@ -250,9 +245,6 @@ class Entity {
 
     /**
      * Removes all componments from this entity.
-     * Removing components is not allowed when the entity is finalized.
-     * See_Also:
-     *  finalize
      */
     public void clearComponents() {
         _components.destroy();
@@ -276,13 +268,6 @@ class ComponentNotFoundException : Exception {
     this(StringId componentType, Entity sourceEntity) {
         super(format("Component of type %s not added to entity %s(%s)",
                 componentType, sourceEntity.name, sourceEntity.id));
-    }
-}
-
-class EntityIsFinalizedException : Exception {
-    this(Entity entity, string additionalMessage) {
-        super(format("Entity %s with id %s is finalized. %s", entity.name,
-                entity.id, additionalMessage));
     }
 }
 
@@ -418,8 +403,7 @@ class EntityManager {
 
     /**
      * Adds the given entity to the manager.
-     * Entities will be assigned an ID, are finalized when added
-     * and finally will be assigned to entity processors that accept them.
+     * Entities will be assigned an ID and will be assigned to entity processors that accept them.
      * Params:
      *  entity = Entity to be added.
      */
