@@ -40,7 +40,7 @@ struct CameraConfiguration {
 }
 
 /**
- * An abstraction of a render API that processes entities and
+ * An abstraction of a renderer that processes entities and
  * draws them on the screen.
  */
 abstract class RenderSystem : EntityProcessor {
