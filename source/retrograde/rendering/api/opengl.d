@@ -42,6 +42,7 @@ version (Have_bindbc_opengl) {
 
         private OpenGlShaderProgram defaultOpenGlShaderProgram;
         private GLfloat[] clearColor = [0.0f, 0.0f, 0.0f, 1.0f];
+        private Version glVersion = Version(4, 6, 0);
 
         private static const uint standardPositionAttribLocation = 0;
         private static const uint standardColorAttribLocation = 1;
@@ -59,9 +60,14 @@ version (Have_bindbc_opengl) {
                 return;
             }
 
+            GLint major, minor;
+            glGetIntegerv(GL_MAJOR_VERSION, &major);
+            glGetIntegerv(GL_MINOR_VERSION, &minor);
+            glVersion = Version(major, minor);
+
             if (logInit) {
-                //TODO: Log exact initialized version
-                logger.info("OpenGL graphics API initialized.");
+                auto glVersionString = glGetString(GL_VERSION).fromStringz;
+                logger.info("OpenGL graphics API initialized (" ~ glVersionString ~ ")");
             }
 
             glCullFace(GL_BACK);
@@ -75,7 +81,7 @@ version (Have_bindbc_opengl) {
         }
 
         public Version getVersion() {
-            return Version(4, 6, 0); //TODO: Get exact version from init
+            return glVersion;
         }
 
         public void updateViewport(const ref Viewport viewport) {
