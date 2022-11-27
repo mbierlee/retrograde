@@ -150,6 +150,8 @@ version (customizeableGc) {
 }
 
 version (unittest) {
+    import poodinis.valueinjector.mirage : parseIniConfig;
+
     class TestGame : Game {
         public bool isInitialized;
         public bool isUpdated;
@@ -179,14 +181,12 @@ version (unittest) {
     @("StandardEngineRuntime lifecycle")
     unittest {
         import retrograde.core.platform : NullPlatform;
-        import poodinis.valueinjector.properd : registerProperdProperties;
-        import properd : parseProperties;
         import std.experimental.logger : NullLogger;
         import poodinis : DependencyContainer, initializedBy;
 
         auto dependencies = new shared DependencyContainer();
 
-        dependencies.registerProperdProperties(parseProperties(""));
+        dependencies.parseIniConfig(import("./engine.cfg"));
 
         dependencies.register!(Game, TestGame);
         dependencies.register!(EngineRuntime, StandardEngineRuntime);

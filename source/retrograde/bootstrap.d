@@ -23,10 +23,8 @@ import retrograde.core.storage : StorageSystem, GenericStorageSystem;
 
 import retrograde.rendering.generic : GenericRenderSystem;
 
-import poodinis;
-import poodinis.valueinjector.properd;
-
-import properd;
+import poodinis : Autowire, DependencyContainer, ResolveOption, initializedBy, existingInstance;
+import poodinis.valueinjector.mirage : loadConfig, parseIniConfig;
 
 import std.logger : Logger, MultiLogger, sharedLog;
 import std.file : exists;
@@ -76,16 +74,13 @@ GraphicsApiType:
     dependencies.register!(Platform, PlatformType);
     dependencies.register!(StorageSystem, GenericStorageSystem);
 
-    const propertyFile = "./engine.cfg";
-    string[string] engineProperties;
-    if (exists(propertyFile)) {
-        engineProperties = readProperties(propertyFile);
+    const configPath = "./engine.cfg";
+    if (exists(configPath)) {
+        dependencies.loadConfig(configPath);
     } else {
-        string defaultConfig = import(propertyFile);
-        engineProperties = parseProperties(defaultConfig);
+        string defaultConfig = import(configPath);
+        dependencies.parseIniConfig(defaultConfig);
     }
-
-    dependencies.registerProperdProperties(engineProperties);
 
     dependencies.register!Logger.initializedBy({
         auto logger = new MultiLogger(); // Cannot be shared, but must be for sharedLog
