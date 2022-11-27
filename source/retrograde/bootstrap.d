@@ -74,7 +74,7 @@ GraphicsApiType:
     dependencies.register!(Platform, PlatformType);
     dependencies.register!(StorageSystem, GenericStorageSystem);
 
-    const configPath = "./engine.cfg";
+    const configPath = "./engine.ini";
     if (exists(configPath)) {
         dependencies.loadConfig(configPath);
     } else {

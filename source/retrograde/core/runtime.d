@@ -186,7 +186,7 @@ version (unittest) {
 
         auto dependencies = new shared DependencyContainer();
 
-        dependencies.parseIniConfig(import("./engine.cfg"));
+        dependencies.parseIniConfig(import("./engine.ini"));
 
         dependencies.register!(Game, TestGame);
         dependencies.register!(EngineRuntime, StandardEngineRuntime);
