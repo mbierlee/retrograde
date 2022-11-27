@@ -1,5 +1,3 @@
-module retrograde.entityfactory.animation;
-
 /**
  * Retrograde Engine
  *
@@ -10,6 +8,8 @@ module retrograde.entityfactory.animation;
  *  This software is licensed under the terms of the MIT license.
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
+
+module retrograde.entityfactory.animation;
 
 import retrograde.core.entity : Entity, EntityFactory, EntityFactoryParameters, ofType;
 import retrograde.core.math : QuaternionD, Vector3D;
