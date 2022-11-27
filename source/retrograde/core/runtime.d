@@ -11,18 +11,16 @@
 
 module retrograde.core.runtime;
 
-import retrograde.core.game;
-import retrograde.core.platform;
+import retrograde.core.game : Game;
+import retrograde.core.platform : Platform, PlatformSettings, NullPlatform;
+import retrograde.core.concept : Version;
 
-import poodinis;
+import poodinis : Autowire, Value;
 
 import std.datetime.stopwatch : StopWatch, Duration, dur;
-import std.experimental.logger : Logger, NullLogger;
+import std.experimental.logger : Logger;
 
-enum EngineVersionMajor = 0;
-enum EngineVersionMinor = 0;
-enum EngineVersionPatch = 0;
-enum EngineVersionDescriptor = "-alpha";
+enum EngineVersion = Version(0, 0, 0, "alpha");
 
 /**
  * The Engine Runtime kick-starts the game and runs the game's core loop.
@@ -95,8 +93,13 @@ class StandardEngineRuntime : EngineRuntime {
         assert(this.game !is null, "No Game instance is assigned to this runtime.");
 
         if (logEngineInfo) {
-            logger.infof("Retrograde Engine v%s.%s.%s%s", EngineVersionMajor,
-                    EngineVersionMinor, EngineVersionPatch, EngineVersionDescriptor);
+            logger.infof(
+                "Retrograde Engine v%s.%s.%s-%s",
+                EngineVersion.mayor,
+                EngineVersion.minor,
+                EngineVersion.patch,
+                EngineVersion.descriptor
+            );
         }
 
         this.platform.initialize(platformSettings);
@@ -116,7 +119,7 @@ class StandardEngineRuntime : EngineRuntime {
             const auto elapsedFrameTime = frameTimeStopWatch.peek();
             frameTimeStopWatch.reset();
             lagDuration += elapsedFrameTime;
-            
+
             auto lagCompensationFrames = 0L;
             while (lagDuration >= targetFrameTimeDuration) {
                 lagCompensationFrames++;
@@ -175,8 +178,11 @@ version (unittest) {
 
     @("StandardEngineRuntime lifecycle")
     unittest {
-        import poodinis.valueinjector.properd;
-        import properd;
+        import retrograde.core.platform : NullPlatform;
+        import poodinis.valueinjector.properd : registerProperdProperties;
+        import properd : parseProperties;
+        import std.experimental.logger : NullLogger;
+        import poodinis : DependencyContainer, initializedBy;
 
         auto dependencies = new shared DependencyContainer();
 
