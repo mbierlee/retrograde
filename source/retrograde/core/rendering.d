@@ -12,7 +12,13 @@
 module retrograde.core.rendering;
 
 import retrograde.core.entity : EntityProcessor, Entity;
-import retrograde.core.math : scalar;
+import retrograde.core.math : scalar, Matrix4D;
+import retrograde.core.platform : Viewport;
+import retrograde.core.concept : Version;
+
+import poodinis : Autowire, OptionalDependency;
+
+import std.logger : Logger;
 
 /** 
  * Constant used to indicate that a camera should calculate the aspect ratio based on the viewport.
@@ -44,38 +50,6 @@ struct CameraConfiguration {
  * draws them on the screen.
  */
 abstract class RenderSystem : EntityProcessor {
-    /**
-     * Desired mayor version of the rendering API to be used.
-     *
-     * Typically used by the platform to initialize the render system.
-     * E.g. "4" for OpenGL 4.6
-     */
-    abstract public int getContextHintMayor();
-
-    /**
-     * Desired minor version of the rendering API to be used.
-     *
-     * Typically used by the platform to initialize the render system.
-     * E.g. "6" for OpenGL 4.6
-     */
-    abstract public int getContextHintMinor();
-}
-
-/**
- * A fall-back render system that doesn't actually render anything.
- */
-class NullRenderSystem : RenderSystem {
-    override public bool acceptsEntity(Entity entity) {
-        return false;
-    }
-
-    override public int getContextHintMayor() {
-        return 0;
-    }
-
-    override public int getContextHintMinor() {
-        return 0;
-    }
 }
 
 /**
@@ -210,6 +184,114 @@ enum ShaderType {
     tesselationEvaluation,
     geometry,
     fragment
+}
+
+/** 
+ * A graphics API used by render systems.
+ * These APIs can be platform dependent.
+ * Typically they use third-party APIs such as OpenGL,
+ * Vulkan, DirectX etc.
+ */
+interface GraphicsApi {
+    public void initialize();
+
+    /**
+     * Returns the API's specific version.
+     * It could change after initialization.
+     */
+    public Version getVersion();
+
+    /** 
+     * Update the viewport to the given position and dimensions.
+     */
+    public void updateViewport(const ref Viewport viewport);
+
+    /**
+     * Sets the default clear color for the color buffer.
+     */
+    public void setClearColor(const Color clearColor);
+
+    /** 
+     * If the API has any buffers, such as color, depth or stencil
+     * buffer, clear them to their default state.
+     */
+    public void clearAllBuffers();
+
+    /**
+     * Clears the depth and stencil buffers, if the API supports them.
+     */
+    public void clearDepthStencilBuffers();
+
+    /** 
+     * Loads an entity's model and texture data into memory.
+     */
+    public void loadIntoMemory(Entity entity);
+
+    /** 
+     * Unloads an entity's model and texture data from memory.
+     */
+    public void unloadFromVideoMemory(Entity entity);
+
+    /** 
+     * Draw an entity's model.
+     */
+    public void drawModel(Entity entity, Matrix4D modelViewProjectionMatrix);
+}
+
+/** 
+ * A graphics API that doesn't actually do anything.
+ * Used as fall-back for when there is no suitable default API
+ * available on the target platform.
+ */
+class NullGraphicsApi : GraphicsApi {
+    @Autowire @OptionalDependency Logger logger;
+
+    public void initialize() {
+        if (logger) {
+            logger.warning("Null Graphics API initialized. Nothing will actually be rendered.");
+        }
+    }
+
+    public Version getVersion() {
+        return Version(0, 0, 0, "NULLAPI");
+    }
+
+    public void updateViewport(const ref Viewport viewport) {
+    }
+
+    public void setClearColor(const Color clearColor) {
+    }
+
+    public void clearAllBuffers() {
+    }
+
+    public void clearDepthStencilBuffers() {
+    }
+
+    public void loadIntoMemory(Entity entity) {
+    }
+
+    public void unloadFromVideoMemory(Entity entity) {
+    }
+
+    public void drawModel(Entity entity, Matrix4D modelViewProjectionMatrix) {
+    }
+}
+
+alias Channel = double;
+
+struct Color {
+    /// Red
+    Channel r;
+
+    /// Green
+    Channel g;
+
+    /// Blue
+    Channel b;
+
+    /// Alpha
+    Channel a;
 }
 
 version (unittest) {

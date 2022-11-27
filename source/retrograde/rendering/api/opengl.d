@@ -9,123 +9,45 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.rendering.opengl;
-
-// TODO: split API calls from rendering logic so that migrating to a different rendering API is easier
-// and does not require one to re-implement rendering logic.
+module retrograde.rendering.api.opengl;
 
 version (Have_bindbc_opengl) {
-    import retrograde.core.rendering : RenderSystem, Shader, ShaderProgram, ShaderType, autoAspectRatio,
-        CameraConfiguration, ProjectionType;
-    import retrograde.core.entity : Entity, EntityComponent, EntityComponentIdentity, EntityCollection;
-    import retrograde.core.platform : Platform, Viewport, platformEventChannel, ViewportResizeEventMessage;
+    import retrograde.core.rendering : GraphicsApi, Shader, ShaderProgram, ShaderType, Color;
+    import retrograde.core.platform : Viewport;
+    import retrograde.core.entity : Entity, EntityComponent, EntityComponentIdentity;
     import retrograde.core.model : Vertex, Mesh;
-    import retrograde.core.math : Vector3D, QuaternionD, createViewMatrix, createPerspectiveMatrix,
-        createOrthographicMatrix, Matrix4D, toTranslationMatrix, toScalingMatrix, scalar;
-    import retrograde.core.messaging : MessageHandler;
     import retrograde.core.stringid : sid;
+    import retrograde.core.math : Matrix4D;
+    import retrograde.core.concept : Version;
 
-    import retrograde.components.rendering : RenderableComponent, DefaultShaderProgramComponent, CameraComponent,
-        ActiveCameraComponent, RandomFaceColorsComponent, ModelComponent, OrthoBackgroundComponent;
-    import retrograde.components.geometry : Position3DComponent, Orientation3DComponent,
-        Scale3DComponent;
+    import retrograde.components.rendering : RandomFaceColorsComponent, ModelComponent, DefaultShaderProgramComponent,
+        OrthoBackgroundComponent;
 
-    import std.experimental.logger : Logger;
-    import std.string : fromStringz, format;
+    import poodinis : Autowire, Value, OptionalDependency;
+
+    import std.logger : Logger;
     import std.conv : to;
+    import std.string : fromStringz, format;
     import std.random : Random, uniform01;
-    import std.functional : memoize;
-    import std.algorithm.mutation : remove;
-
-    import poodinis;
 
     import bindbc.opengl;
 
-    /**
-     * An OpenGL implementation of the render system.
-     *
-     * This implementation is compatible up to OpenGL 4.6
-     */
-    class OpenGlRenderSystem : RenderSystem {
+    class OpenGlGraphicsApi : GraphicsApi {
         private @Autowire Logger logger;
-        private @Autowire Platform platform;
-        private @Autowire @OptionalDependency ShaderProgram defaultShaderProgram;
         private @Autowire GLErrorService errorService;
-        private @Autowire MessageHandler messageHandler;
+
+        private @Autowire @OptionalDependency ShaderProgram defaultShaderProgram;
 
         private @Value("logging.logComponentInitialization") bool logInit;
 
-        private Viewport viewport;
-        private GLfloat[] clearColor = [0.576f, 0.439f, 0.859f, 1.0f];
         private OpenGlShaderProgram defaultOpenGlShaderProgram;
-        private Matrix4D projectionMatrix;
-        private CameraConfiguration cameraConfiguration;
-
-        private Entity activeCamera;
-        private EntityCollection orthoBackgrounds = new EntityCollection();
-        private EntityCollection models = new EntityCollection();
+        private GLfloat[] clearColor = [0.0f, 0.0f, 0.0f, 1.0f];
 
         private static const uint standardPositionAttribLocation = 0;
         private static const uint standardColorAttribLocation = 1;
         private static const uint standardMvpUniformLocation = 2;
 
-        override public int getContextHintMayor() {
-            return 4;
-        }
-
-        override public int getContextHintMinor() {
-            return 6;
-        }
-
-        override public bool acceptsEntity(Entity entity) {
-            return entity.hasComponent!RenderableComponent ||
-                (entity.hasComponent!CameraComponent && entity.hasComponent!ActiveCameraComponent);
-        }
-
-        override protected void processAcceptedEntity(Entity entity) {
-            if (entity.hasComponent!ActiveCameraComponent) {
-                activeCamera = entity;
-            }
-
-            if (entity.hasComponent!RenderableComponent) {
-                if (entity.hasComponent!OrthoBackgroundComponent) {
-                    orthoBackgrounds.add(entity);
-                }
-
-                if (entity.hasComponent!ModelComponent) {
-                    models.add(entity);
-                }
-
-                loadIntoVideoMemory(entity);
-            }
-        }
-
-        override protected void processRemovedEntity(Entity entity) {
-            if (activeCamera == entity) {
-                activeCamera = null;
-            }
-
-            if (entity.hasComponent!RenderableComponent) {
-                if (entity.hasComponent!OrthoBackgroundComponent) {
-                    orthoBackgrounds.remove(entity);
-                }
-
-                if (entity.hasComponent!ModelComponent) {
-                    models.remove(entity);
-                }
-
-                unloadFromVideoMemory(entity);
-            }
-        }
-
-        override public void initialize() {
-            static bool isCalled = false;
-            if (isCalled) {
-                return;
-            }
-
-            isCalled = true;
-
+        public void initialize() {
             const GLSupport support = loadOpenGL();
             if (support == GLSupport.badLibrary || support == GLSupport.noLibrary) {
                 logger.error("Failed to load OpenGL Library.");
@@ -133,16 +55,14 @@ version (Have_bindbc_opengl) {
             }
 
             if (support == GLSupport.noContext) {
-                logger.error("No window context was created by the platform. Create it first.");
+                logger.error("No window context was created by the platform. It must be created before the OpenGL API is initialized.");
                 return;
             }
 
-            if (logInit && support.gl46) {
-                logger.info("OpenGL 4.6 render system initialized.");
+            if (logInit) {
+                //TODO: Log exact initialized version
+                logger.info("OpenGL graphics API initialized.");
             }
-
-            viewport = platform.getViewport();
-            updateView();
 
             glCullFace(GL_BACK);
             glEnable(GL_CULL_FACE);
@@ -150,131 +70,37 @@ version (Have_bindbc_opengl) {
             glDepthFunc(GL_LEQUAL);
             glEnable(GL_DEPTH_TEST);
 
-            initializeDefaultShaderProgram();
+            initializeDefaultShaders();
+            clearAllBuffers();
         }
 
-        override public void update() {
-            handleMessages();
+        public Version getVersion() {
+            return Version(4, 6, 0); //TODO: Get exact version from init
         }
 
-        override public void draw() {
+        public void updateViewport(const ref Viewport viewport) {
+            glViewport(viewport.x, viewport.y, viewport.width, viewport.height);
+        }
+
+        public void setClearColor(const Color clearColor) {
+            this.clearColor = [
+                clearColor.r, clearColor.g, clearColor.b, clearColor.a
+            ];
+        }
+
+        public void clearAllBuffers() {
             glClearBufferfv(GL_COLOR, 0, &clearColor[0]);
+            clearDepthStencilBuffers();
+        }
+
+        public void clearDepthStencilBuffers() {
             glClearBufferfi(GL_DEPTH_STENCIL, 0, 1, 0);
-
-            if (orthoBackgrounds.length > 0) {
-                auto orthoProjectionMatrix = createOrthographicMatrix(-1, 1, -1, 1, 0, 1);
-                foreach (Entity orthoBackground; orthoBackgrounds) {
-                    orthoBackground.maybeWithComponent!GlModelInfoComponent((c) {
-                        useShader(orthoBackground);
-                        drawModel(orthoBackground, c, orthoProjectionMatrix);
-                    });
-                }
-
-                glClearBufferfi(GL_DEPTH_STENCIL, 0, 1, 0);
-            }
-
-            auto viewProjectionMatrix = projectionMatrix * createRenderViewMatrix();
-
-            if (activeCamera) {
-                activeCamera.maybeWithComponent!CameraComponent((c) {
-                    if (cameraConfiguration != c.cameraConfiguration) {
-                        cameraConfiguration = c.cameraConfiguration;
-                        updateProjectionMatrix();
-                    }
-                });
-            }
-
-            foreach (Entity model; models) {
-                model.maybeWithComponent!GlModelInfoComponent((c) {
-                    useShader(model);
-                    drawModel(model, c, viewProjectionMatrix);
-                });
-            }
         }
 
-        private void useShader(Entity entity) {
-            if (defaultOpenGlShaderProgram &&
-                entity.hasComponent!DefaultShaderProgramComponent) {
-                glUseProgram(defaultOpenGlShaderProgram.getOpenGlShaderProgram());
-            } //TODO: Else use custom shader program
-        }
-
-        private void drawModel(Entity entity, const GlModelInfoComponent modelInfo, const ref Matrix4D viewProjectionMatrix) {
-            auto modelViewProjectionMatrix =
-                createModelViewProjectionMatrix(entity, viewProjectionMatrix)
-                .getDataArray!float;
-
-            glUniformMatrix4fv(standardMvpUniformLocation, 1, GL_TRUE,
-                modelViewProjectionMatrix.ptr);
-
-            foreach (GlMeshInfo mesh; modelInfo.info.meshes) {
-                glBindVertexArray(mesh.vertexArrayObject);
-                glDrawArrays(GL_TRIANGLES, 0, mesh.vertexCount);
-                glBindVertexArray(0);
-            }
-        }
-
-        private void handleMessages() {
-            messageHandler.receiveMessages(platformEventChannel, (
-                    immutable ViewportResizeEventMessage message) {
-                viewport = message.newViewport;
-                updateView();
-            });
-        }
-
-        private Matrix4D createRenderViewMatrix() {
-            if (!activeCamera) {
-                return Matrix4D.identity;
-            }
-
-            auto position =
-                activeCamera
-                .getFromComponent!Position3DComponent(c => c.position, Vector3D(0));
-
-            auto orientation =
-                activeCamera
-                .getFromComponent!Orientation3DComponent(c => c.orientation, QuaternionD());
-
-            return createViewMatrix(position, orientation);
-        }
-
-        private Matrix4D createModelViewProjectionMatrix(Entity entity, Matrix4D viewProjectionMatrix) {
-            auto position = entity.getFromComponent!Position3DComponent(c => c.position,
-                Vector3D(0));
-            auto orientation = entity.getFromComponent!Orientation3DComponent(c => c.orientation, QuaternionD());
-            auto scale = entity.getFromComponent!Scale3DComponent(c => c.scale,
-                Vector3D(1));
-
-            auto modelMatrix = position.toTranslationMatrix() * orientation.toRotationMatrix() * scale.toScalingMatrix();
-            auto modelViewProjectionMatrix = viewProjectionMatrix * modelMatrix;
-            return modelViewProjectionMatrix;
-        }
-
-        private void initializeDefaultShaderProgram() {
-            if (defaultShaderProgram is null) {
-                logger.warning("No default shader program is injected into the dependency system. Entities using the default shader program will not be rendered.");
-            } else {
-                defaultOpenGlShaderProgram = cast(OpenGlShaderProgram) defaultShaderProgram;
-                if (!defaultOpenGlShaderProgram) {
-                    logger.warning("Default shader program is not an OpenGL shader program. Entities using the default shader program will not be rendered.");
-                } else {
-                    compileAndLinkShaderProgram(defaultOpenGlShaderProgram);
-                }
-            }
-        }
-
-        private void compileAndLinkShaderProgram(OpenGlShaderProgram shaderProgram) {
-            shaderProgram.compileShaders();
-            shaderProgram.linkProgram();
-            if (!shaderProgram.isLinked()) {
-                logger.errorf("Link errors for shader program: \n%s", shaderProgram.getLinkInfo());
-            }
-        }
-
-        private void loadIntoVideoMemory(Entity entity) {
+        public void loadIntoMemory(Entity entity) {
             entity.maybeWithComponent!OrthoBackgroundComponent((c) {
                 GlModelInfo modelInfo;
-                Vertex[] vertices = getPlaneVertices();
+                Vertex[] vertices = createVertexPlane();
                 modelInfo.meshes ~= createMeshInfo(vertices);
                 entity.addComponent(new GlModelInfoComponent(modelInfo));
             });
@@ -314,6 +140,60 @@ version (Have_bindbc_opengl) {
             });
         }
 
+        public void unloadFromVideoMemory(Entity entity) {
+            entity.maybeWithComponent!GlModelInfoComponent((c) {
+                foreach (GlMeshInfo mesh; c.info.meshes) {
+                    glDeleteVertexArrays(1, &mesh.vertexArrayObject);
+                    glDeleteBuffers(1, &mesh.vertexBufferObject);
+                }
+
+                entity.removeComponent!GlModelInfoComponent;
+            });
+        }
+
+        public void drawModel(Entity entity, Matrix4D modelViewProjectionMatrix) {
+            entity.maybeWithComponent!GlModelInfoComponent((modelInfo) {
+                if (defaultOpenGlShaderProgram
+                && entity.hasComponent!DefaultShaderProgramComponent) {
+                    glUseProgram(defaultOpenGlShaderProgram.getOpenGlShaderProgram());
+                }
+
+                //TODO: Else use custom shader program
+
+                auto modelViewProjectionMatrixData = modelViewProjectionMatrix.getDataArray!float;
+
+                glUniformMatrix4fv(standardMvpUniformLocation, 1, GL_TRUE,
+                    modelViewProjectionMatrixData.ptr);
+
+                foreach (GlMeshInfo mesh; modelInfo.info.meshes) {
+                    glBindVertexArray(mesh.vertexArrayObject);
+                    glDrawArrays(GL_TRIANGLES, 0, mesh.vertexCount);
+                    glBindVertexArray(0);
+                }
+            });
+        }
+
+        private void initializeDefaultShaders() {
+            if (defaultShaderProgram is null) {
+                logger.warning("No default shader program is injected into the dependency system. Entities using the default shader program will not be rendered.");
+            } else {
+                defaultOpenGlShaderProgram = cast(OpenGlShaderProgram) defaultShaderProgram;
+                if (!defaultOpenGlShaderProgram) {
+                    logger.warning("Default shader program is not an OpenGL shader program. Entities using the default shader program will not be rendered.");
+                } else {
+                    compileAndLinkShaderProgram(defaultOpenGlShaderProgram);
+                }
+            }
+        }
+
+        private void compileAndLinkShaderProgram(OpenGlShaderProgram shaderProgram) {
+            shaderProgram.compileShaders();
+            shaderProgram.linkProgram();
+            if (!shaderProgram.isLinked()) {
+                logger.errorf("Link errors for shader program: \n%s", shaderProgram.getLinkInfo());
+            }
+        }
+
         private GlMeshInfo createMeshInfo(Vertex[] vertices) {
             GLuint vertexArrayObject;
             GLuint vertexBufferObject;
@@ -341,52 +221,7 @@ version (Have_bindbc_opengl) {
             return meshInfo;
         }
 
-        private void unloadFromVideoMemory(Entity entity) {
-            entity.maybeWithComponent!GlModelInfoComponent((c) {
-                foreach (GlMeshInfo mesh; c.info.meshes) {
-                    glDeleteVertexArrays(1, &mesh.vertexArrayObject);
-                    glDeleteBuffers(1, &mesh.vertexBufferObject);
-                }
-
-                entity.removeComponent!GlModelInfoComponent;
-            });
-        }
-
-        private void updateView() {
-            updateViewport();
-            updateProjectionMatrix();
-        }
-
-        private void updateViewport() {
-            glViewport(viewport.x, viewport.y, viewport.width, viewport.height);
-        }
-
-        private void updateProjectionMatrix() {
-            auto aspectRatio =
-                cameraConfiguration.aspectRatio == autoAspectRatio ?
-                cast(scalar) viewport.width / cast(scalar) viewport.height
-                : cameraConfiguration.aspectRatio;
-
-            if (cameraConfiguration.projectionType == ProjectionType.perspective) {
-                projectionMatrix = createPerspectiveMatrix(
-                    cameraConfiguration.horizontalFieldOfView,
-                    aspectRatio,
-                    cameraConfiguration.nearClippingDistance,
-                    cameraConfiguration.farClippingDistance
-                );
-            } else if (cameraConfiguration.projectionType == ProjectionType.ortographic) {
-                projectionMatrix = createOrthographicMatrix(
-                    -(aspectRatio * cameraConfiguration.orthoScale),
-                    aspectRatio * cameraConfiguration.orthoScale,
-                    -cameraConfiguration.orthoScale,
-                    cameraConfiguration.orthoScale,
-                    cameraConfiguration.nearClippingDistance,
-                    cameraConfiguration.farClippingDistance
-                );
-            }
-        }
-
-        private Vertex[] getPlaneVertices() {
+        private Vertex[] createVertexPlane() {
             auto upperLeft = Vertex(
                 -1.0, 1.0, 0.0, 1.0,
                 clearColor[0], clearColor[1], clearColor[2], clearColor[3],
@@ -412,29 +247,6 @@ version (Have_bindbc_opengl) {
                 upperLeft, lowerLeft, upperRight,
                 lowerLeft, lowerRight, upperRight,
             ];
-        }
-    }
-
-    private struct GlMeshInfo {
-        GLuint vertexArrayObject;
-        GLuint vertexBufferObject;
-        int vertexCount;
-    }
-
-    private struct GlModelInfo {
-        GlMeshInfo[] meshes;
-    }
-
-    private class GlModelInfoComponent : EntityComponent {
-        mixin EntityComponentIdentity!"GlModelInfoComponent";
-
-        public GlModelInfo info;
-
-        this() {
-        }
-
-        this(GlModelInfo info) {
-            this.info = info;
         }
     }
 
@@ -565,7 +377,6 @@ version (Have_bindbc_opengl) {
             }
 
             program = glCreateProgram();
-
             foreach (shader; shaders) {
                 auto glShader = cast(OpenGlShader) shader;
                 if (glShader) {
@@ -627,11 +438,34 @@ version (Have_bindbc_opengl) {
      * generally all sorts of models.
      */
     public ShaderProgram createDefaultOpenGlShaderProgram() {
-        auto vertexShader = new OpenGlShader("vertex",
-            import("standard/vertex.glsl"), ShaderType.vertex);
-        auto fragmentShader = new OpenGlShader("fragment",
-            import("standard/fragment.glsl"), ShaderType.fragment);
+        auto vertexShader = new OpenGlShader("vertex", import("standard/vertex.glsl"),
+            ShaderType.vertex);
+        auto fragmentShader = new OpenGlShader("fragment", import("standard/fragment.glsl"),
+            ShaderType.fragment);
         return new OpenGlShaderProgram(vertexShader, fragmentShader);
+    }
+
+    private struct GlMeshInfo {
+        GLuint vertexArrayObject;
+        GLuint vertexBufferObject;
+        int vertexCount;
+    }
+
+    private struct GlModelInfo {
+        GlMeshInfo[] meshes;
+    }
+
+    private class GlModelInfoComponent : EntityComponent {
+        mixin EntityComponentIdentity!"GlModelInfoComponent";
+
+        public GlModelInfo info;
+
+        this() {
+        }
+
+        this(GlModelInfo info) {
+            this.info = info;
+        }
     }
 
     class GLErrorService {
@@ -663,7 +497,6 @@ version (Have_bindbc_opengl) {
             if (errors.length > 0) {
                 logger.error(format("OpenGL errors were flagged: %s", errors));
             }
-
         }
     }
 }

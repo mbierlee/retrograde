@@ -18,8 +18,10 @@ import retrograde.core.messaging : MessageHandler;
 import retrograde.core.platform : Platform, PlatformSettings, NullPlatform;
 import retrograde.core.logging : StdoutLogger;
 import retrograde.core.input : InputMapper;
-import retrograde.core.rendering : RenderSystem, NullRenderSystem, ShaderProgram;
+import retrograde.core.rendering : RenderSystem, ShaderProgram, GraphicsApi, NullGraphicsApi;
 import retrograde.core.storage : StorageSystem, GenericStorageSystem;
+
+import retrograde.rendering.generic : GenericRenderSystem;
 
 import poodinis;
 import poodinis.valueinjector.properd;
@@ -40,12 +42,13 @@ version (Have_glfw_d) {
 }
 
 version (Have_bindbc_opengl) {
-    import retrograde.rendering.opengl : OpenGlRenderSystem, createDefaultOpenGlShaderProgram;
+    import retrograde.rendering.api.opengl : OpenGlGraphicsApi, createDefaultOpenGlShaderProgram;
 
-    alias DefaultRenderSystem = OpenGlRenderSystem;
+    alias DefaultGraphicsApi = OpenGlGraphicsApi;
     alias createDefaultShaderProgram = createDefaultOpenGlShaderProgram;
 } else {
-    alias DefaultRenderSystem = NullRenderSystem;
+    alias DefaultGraphicsApi = NullGraphicsApi;
+    alias createDefaultShaderProgram = () => new ShaderProgram();
 }
 
 /**
@@ -56,15 +59,20 @@ public void startGame(GameType : Game, EngineRuntimeType:
     EngineRuntime = StandardEngineRuntime, PlatformType:
     Platform = DefaultPlatform,
 RenderSystemType:
-    RenderSystem = DefaultRenderSystem, bool registerDefaultShaderProgram = true)(
+    RenderSystem = GenericRenderSystem,
+GraphicsApiType:
+    GraphicsApi = DefaultGraphicsApi,
+    bool registerDefaultShaderProgram = true)(
     const PlatformSettings platformSettings = new DefaultPlatformSettings(),
     const ShaderProgram defaultShaderProgram = null,
     shared DependencyContainer dependencies = new shared DependencyContainer()) {
+
     dependencies.setPersistentResolveOptions(ResolveOption.registerBeforeResolving);
 
     dependencies.register!(EngineRuntime, EngineRuntimeType);
     dependencies.register!(Game, GameType);
     dependencies.register!(RenderSystem, RenderSystemType);
+    dependencies.register!(GraphicsApi, GraphicsApiType);
     dependencies.register!(Platform, PlatformType);
     dependencies.register!(StorageSystem, GenericStorageSystem);
 
@@ -91,17 +99,15 @@ RenderSystemType:
         return logger;
     });
 
-    static if (!is(RenderSystemType == NullRenderSystem)) {
-        static if (registerDefaultShaderProgram) {
-            auto defaultShaderProgramInstance = defaultShaderProgram ? cast(ShaderProgram) defaultShaderProgram
-                : createDefaultShaderProgram();
-            dependencies.register!ShaderProgram().existingInstance(defaultShaderProgramInstance);
-        }
-
-        auto renderSystem = dependencies.resolve!RenderSystem;
-        auto entityManager = dependencies.resolve!EntityManager;
-        entityManager.addEntityProcessor(renderSystem);
+    static if (registerDefaultShaderProgram) {
+        auto defaultShaderProgramInstance = defaultShaderProgram ? cast(ShaderProgram) defaultShaderProgram
+            : createDefaultShaderProgram();
+        dependencies.register!ShaderProgram().existingInstance(defaultShaderProgramInstance);
     }
+
+    auto renderSystem = dependencies.resolve!RenderSystem;
+    auto entityManager = dependencies.resolve!EntityManager;
+    entityManager.addEntityProcessor(renderSystem);
 
     auto runtime = dependencies.resolve!EngineRuntime;
     runtime.startGame(platformSettings);

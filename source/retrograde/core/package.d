@@ -8,10 +8,12 @@
  *  This software is licensed under the terms of the MIT license.
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
- 
+
 module retrograde.core;
 
+public import retrograde.core.algorithm;
 public import retrograde.core.collections;
+public import retrograde.core.concept;
 public import retrograde.core.entity;
 public import retrograde.core.game;
 public import retrograde.core.image;
