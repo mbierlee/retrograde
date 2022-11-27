@@ -95,7 +95,7 @@ class StandardEngineRuntime : EngineRuntime {
         if (logEngineInfo) {
             logger.infof(
                 "Retrograde Engine v%s.%s.%s-%s",
-                EngineVersion.mayor,
+                EngineVersion.major,
                 EngineVersion.minor,
                 EngineVersion.patch,
                 EngineVersion.descriptor

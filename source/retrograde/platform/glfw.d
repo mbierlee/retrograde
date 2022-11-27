@@ -319,7 +319,7 @@ version (Have_glfw_d) {
 
             if (graphicsApi) {
                 auto apiVersion = graphicsApi.getVersion();
-                glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, apiVersion.mayor);
+                glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, apiVersion.major);
                 glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, apiVersion.minor);
             } else {
                 glfwDefaultWindowHints();

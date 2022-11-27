@@ -12,7 +12,7 @@
 module retrograde.core.concept;
 
 struct Version {
-    uint mayor;
+    uint major;
     uint minor;
     uint patch;
     string descriptor;
