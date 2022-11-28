@@ -20,7 +20,7 @@
   ],
   "dependencies": {
     "poodinis": "~>8.0",
-    "poodinis-mirage-config-injector": "~>1.0.1",
+    "mirage-injector": "~>1.0.2",
     "imageformats": "~>7.0.2",
     "glfw-d": {
       "version": "~>1.1.0",
