@@ -15,7 +15,7 @@ version (Have_bindbc_opengl) {
     import retrograde.core.rendering : GraphicsApi, Shader, ShaderProgram, ShaderType, Color;
     import retrograde.core.platform : Viewport;
     import retrograde.core.entity : Entity, EntityComponent, EntityComponentIdentity;
-    import retrograde.core.model : Vertex, Mesh;
+    import retrograde.core.model : Vertex, Mesh, Face;
     import retrograde.core.stringid : sid;
     import retrograde.core.math : Matrix4D;
     import retrograde.core.concept : Version;
@@ -118,8 +118,10 @@ version (Have_bindbc_opengl) {
                 GlModelInfo modelInfo;
                 foreach (size_t index, const Mesh mesh; c.model.meshes) {
                     Vertex[] vertices;
-                    mesh.forEachFace((size_t index, Vertex vertA, Vertex vertB, Vertex vertC) {
-                        if (assignRandomFaceColors) {
+                    GLuint[] indices;
+
+                    if (assignRandomFaceColors) {
+                        mesh.forEachFace((size_t index, Vertex vertA, Vertex vertB, Vertex vertC) {
                             auto randomR = uniform01(random);
                             auto randomG = uniform01(random);
                             auto randomB = uniform01(random);
@@ -127,14 +129,21 @@ version (Have_bindbc_opengl) {
                             vertA.r = vertB.r = vertC.r = randomR;
                             vertA.g = vertB.g = vertC.g = randomG;
                             vertA.b = vertB.b = vertC.b = randomB;
+
+                            vertices ~= vertA;
+                            vertices ~= vertB;
+                            vertices ~= vertC;
+                        });
+                    } else {
+                        vertices = cast(Vertex[]) mesh.vertices;
+                        foreach (Face face; mesh.faces) {
+                            indices ~= face.vA.to!GLuint;
+                            indices ~= face.vB.to!GLuint;
+                            indices ~= face.vC.to!GLuint;
                         }
+                    }
 
-                        vertices ~= vertA;
-                        vertices ~= vertB;
-                        vertices ~= vertC;
-                    });
-
-                    modelInfo.meshes ~= createMeshInfo(vertices);
+                    modelInfo.meshes ~= createMeshInfo(vertices, indices);
                     errorService.logErrorsIfAny();
                 }
 
@@ -149,8 +158,9 @@ version (Have_bindbc_opengl) {
         public void unloadFromVideoMemory(Entity entity) {
             entity.maybeWithComponent!GlModelInfoComponent((c) {
                 foreach (GlMeshInfo mesh; c.info.meshes) {
-                    glDeleteVertexArrays(1, &mesh.vertexArrayObject);
                     glDeleteBuffers(1, &mesh.vertexBufferObject);
+                    glDeleteBuffers(1, &mesh.elementBufferObject);
+                    glDeleteVertexArrays(1, &mesh.vertexArrayObject);
                 }
 
                 entity.removeComponent!GlModelInfoComponent;
@@ -173,7 +183,12 @@ version (Have_bindbc_opengl) {
 
                 foreach (GlMeshInfo mesh; modelInfo.info.meshes) {
                     glBindVertexArray(mesh.vertexArrayObject);
-                    glDrawArrays(GL_TRIANGLES, 0, mesh.vertexCount);
+                    if (mesh.elementCount > 0) {
+                        glDrawElements(GL_TRIANGLES, mesh.elementCount, GL_UNSIGNED_INT, null);
+                    } else {
+                        glDrawArrays(GL_TRIANGLES, 0, mesh.vertexCount);
+                    }
+
                     glBindVertexArray(0);
                 }
             });
@@ -200,14 +215,19 @@ version (Have_bindbc_opengl) {
             }
         }
 
-        private GlMeshInfo createMeshInfo(Vertex[] vertices) {
-            GLuint vertexArrayObject;
-            GLuint vertexBufferObject;
-            glCreateVertexArrays(1, &vertexArrayObject);
-            glCreateBuffers(1, &vertexBufferObject);
+        private GlMeshInfo createMeshInfo(
+            const Vertex[] vertices,
+            const GLuint[] indices = []
+        ) {
+            GlMeshInfo meshInfo;
+            if (vertices.length == 0) {
+                return meshInfo;
+            }
 
-            ulong verticesByteSize = Vertex.sizeof * vertices.length;
-            glNamedBufferStorage(vertexBufferObject, verticesByteSize, vertices.ptr, 0); // Position attrib
+            GLuint vertexArrayObject;
+            glCreateVertexArrays(1, &vertexArrayObject);
+
+            // Position attrib
             glVertexArrayAttribBinding(vertexArrayObject, standardPositionAttribLocation, 0);
             glVertexArrayAttribFormat(vertexArrayObject, standardPositionAttribLocation, 4, GL_DOUBLE, GL_FALSE, Vertex
                     .x.offsetof);
@@ -219,11 +239,28 @@ version (Have_bindbc_opengl) {
                     .r.offsetof);
             glEnableVertexArrayAttrib(vertexArrayObject, standardColorAttribLocation);
 
+            // Vertex Buffer Object
+            GLuint vertexBufferObject;
+            glCreateBuffers(1, &vertexBufferObject);
+            ulong verticesByteSize = Vertex.sizeof * vertices.length;
+            glNamedBufferStorage(vertexBufferObject, verticesByteSize, vertices.ptr, 0);
             glVertexArrayVertexBuffer(vertexArrayObject, 0, vertexBufferObject, 0, Vertex.sizeof);
-            GlMeshInfo meshInfo;
+
             meshInfo.vertexArrayObject = vertexArrayObject;
             meshInfo.vertexBufferObject = vertexBufferObject;
-            meshInfo.vertexCount = to!int(vertices.length);
+            meshInfo.vertexCount = vertices.length.to!int;
+
+            // Element Buffer Object
+            if (indices.length > 0) {
+                GLuint elementBufferObject;
+                glCreateBuffers(1, &elementBufferObject);
+                auto indicesByteSize = GLuint.sizeof * indices.length;
+                glNamedBufferStorage(elementBufferObject, indicesByteSize, indices.ptr, 0);
+                glVertexArrayElementBuffer(vertexArrayObject, elementBufferObject);
+                meshInfo.elementBufferObject = elementBufferObject;
+                meshInfo.elementCount = indices.length.to!int;
+            }
+
             return meshInfo;
         }
 
@@ -454,7 +491,9 @@ version (Have_bindbc_opengl) {
     private struct GlMeshInfo {
         GLuint vertexArrayObject;
         GLuint vertexBufferObject;
+        GLuint elementBufferObject;
         int vertexCount;
+        int elementCount;
     }
 
     private struct GlModelInfo {
