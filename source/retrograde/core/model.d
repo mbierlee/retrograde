@@ -111,7 +111,7 @@ class Mesh {
         }
     }
 
-    void forEachFace(void delegate(size_t, Vertex, Vertex, Vertex) fn) const {
+    void forEachFaceVertices(void delegate(size_t, Vertex, Vertex, Vertex) fn) const {
         foreach (size_t i, const(Face) _face; _faces) {
             //TODO: remove duplication
             Vertex a = _vertices[_face.vA];
@@ -217,7 +217,7 @@ version (unittest) {
             ]
         ];
 
-        model.meshes[0].forEachFace((size_t index, Vertex vertA, Vertex vertB, Vertex vertC) {
+        model.meshes[0].forEachFaceVertices((size_t index, Vertex vertA, Vertex vertB, Vertex vertC) {
             assert(expectedFaces[index][0] == vertA);
             assert(expectedFaces[index][1] == vertB);
             assert(expectedFaces[index][2] == vertC);

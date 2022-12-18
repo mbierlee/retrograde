@@ -121,7 +121,7 @@ version (Have_bindbc_opengl) {
                     GLuint[] indices;
 
                     if (assignRandomFaceColors) {
-                        mesh.forEachFace((size_t index, Vertex vertA, Vertex vertB, Vertex vertC) {
+                        mesh.forEachFaceVertices((size_t index, Vertex vertA, Vertex vertB, Vertex vertC) {
                             auto randomR = uniform01(random);
                             auto randomG = uniform01(random);
                             auto randomB = uniform01(random);
