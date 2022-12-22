@@ -103,6 +103,12 @@ class GenericRenderSystem : RenderSystem {
             }
 
             graphicsApi.loadIntoMemory(entity);
+
+            entity.maybeWithComponent!ModelComponent((c) {
+                if (c.removeWhenLoadedIntoVideoMemory) {
+                    entity.removeComponent!ModelComponent;
+                }
+            });
         }
     }
 

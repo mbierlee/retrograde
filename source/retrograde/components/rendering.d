@@ -80,10 +80,20 @@ class ModelComponent : EntityComponent {
 
     public Model model;
 
+    /** 
+     * Remove the ModelComponent after it has been loaded in video memory.
+     * It will be unlinked and, if not being reused, eventually collected by
+     * the garbage collector.
+     *
+     * Whether this is actually done is up to the implementation of the RenderSystem.
+     * The GenericRenderSystem honors this option.
+     */
+    public bool removeWhenLoadedIntoVideoMemory;
+
     this() {
     }
 
-    this(Model model) {
+    this(Model model, bool removeWhenLoadedIntoVideoMemory = false) {
         this.model = model;
     }
 }
