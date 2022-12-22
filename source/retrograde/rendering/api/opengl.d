@@ -23,6 +23,8 @@ version (Have_bindbc_opengl) {
     import retrograde.components.rendering : RandomFaceColorsComponent, ModelComponent, DefaultShaderProgramComponent,
         OrthoBackgroundComponent;
 
+    import retrograde.geometryfactory : GeometryFactory;
+
     import poodinis : Autowire, Value, OptionalDependency;
 
     import std.logger : Logger;
@@ -35,6 +37,7 @@ version (Have_bindbc_opengl) {
     class OpenGlGraphicsApi : GraphicsApi {
         private @Autowire Logger logger;
         private @Autowire GLErrorService errorService;
+        private @Autowire GeometryFactory geometryFactory;
 
         private @Autowire @OptionalDependency ShaderProgram defaultShaderProgram;
 
@@ -106,7 +109,13 @@ version (Have_bindbc_opengl) {
         public void loadIntoMemory(Entity entity) {
             entity.maybeWithComponent!OrthoBackgroundComponent((c) {
                 GlModelInfo modelInfo;
-                Vertex[] vertices = createVertexPlane();
+                Vertex[] vertices = geometryFactory.createPlaneVertices(2, 2, Color(
+                    clearColor[0],
+                    clearColor[1],
+                    clearColor[2],
+                    clearColor[3]
+                ));
+
                 modelInfo.meshes ~= createMeshInfo(vertices);
                 entity.addComponent(new GlModelInfoComponent(modelInfo));
             });
@@ -262,34 +271,6 @@ version (Have_bindbc_opengl) {
             }
 
             return meshInfo;
-        }
-
-        private Vertex[] createVertexPlane() {
-            auto upperLeft = Vertex(
-                -1.0, 1.0, 0.0, 1.0,
-                clearColor[0], clearColor[1], clearColor[2], clearColor[3],
-                0, 1, 0
-            );
-            auto lowerLeft = Vertex(
-                -1.0, -1.0, 0.0, 1.0,
-                clearColor[0], clearColor[1], clearColor[2], clearColor[3],
-                0, 0, 0
-            );
-            auto lowerRight = Vertex(
-                1.0, -1.0, 0.0, 1.0,
-                clearColor[0], clearColor[1], clearColor[2], clearColor[3],
-                1, 0, 0
-            );
-            auto upperRight = Vertex(
-                1.0, 1.0, 0.0, 1.0,
-                clearColor[0], clearColor[1], clearColor[2], clearColor[3],
-                1, 1, 0
-            );
-
-            return [
-                upperLeft, lowerLeft, upperRight,
-                lowerLeft, lowerRight, upperRight,
-            ];
         }
     }
 
