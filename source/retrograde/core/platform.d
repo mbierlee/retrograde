@@ -15,7 +15,11 @@ import retrograde.core.storage : StorageSystem, GenericStorageSystem;
 import retrograde.core.stringid : StringId, sid;
 import retrograde.core.messaging : Message;
 
-const StringId platformEventChannel = sid("platform_event_channel");
+/** 
+ * Used by implementations of Platforms to message on platform-specific events,
+ * such as window resized, system-wide pauses, etc.
+ */
+const auto platformEventChannel = sid("platform_event_channel");
 
 /**
  * API for interfacing with the underlying platform.

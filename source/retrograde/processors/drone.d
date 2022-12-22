@@ -23,6 +23,10 @@ import retrograde.components.geometry : Orientation3DComponent, Position3DCompon
 
 import std.math : PI;
 
+/** 
+ * Used by the DroneControllerProcessor to move entities with drone controls.
+ * Typically processed maped input from an InputMapper.
+ */
 const auto droneChannel = sid("drone_channel");
 
 const auto cmdDroneMoveUp = sid("cmd_drone_move_up");

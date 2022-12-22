@@ -411,7 +411,12 @@ class EntityCollection {
     }
 }
 
+/** 
+ * Used by the EntityManager to process messages related to the lifecycle of
+ * entities, such as those being added or removed.
+ */
 const auto entityLifeCycleChannel = sid("entity_life_cycle");
+
 const auto cmdAddEntity = sid("cmd_add_entity");
 const auto cmdRemoveEntity = sid("cmd_remove_entity");
 const auto evEntityAddedToManager = sid("ev_entity_added_to_manager");

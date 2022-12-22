@@ -17,7 +17,10 @@ import retrograde.core.stringid : StringId, sid;
 import retrograde.core.messaging : Message, MessageHandler, MagnitudeMessage;
 import retrograde.core.algorithm : forEach;
 
-const StringId inputEventChannel = sid("input_event_channel");
+/** 
+ * Used by the InputMapper to capture HID input and map them to different channels.
+ */
+const auto inputEventChannel = sid("input_event_channel");
 
 /**
  * An input event of any kind.
