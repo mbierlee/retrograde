@@ -33,19 +33,19 @@ interface EngineRuntime {
     @property bool isTerminatable();
 
     /**
-     * The targeted time a frame has for updating and rendering.
-     * In the StandardEngineRuntime, when exceeded, the engine tries to catch up in the next loop cycle.
+     * The targeted time in milliseconds an update cycle has.
+     * In the StandardEngineRuntime, when exceeded, the engine tries to catch up in the next cycle.
      * Some systems, such as a render system, might use this to dynamically optimize performance.
      */
-    @property long targetFrameTime();
+    @property long targetTickTimeMs();
 
     /**
-     * A limit imposed on the engine for the amount of frames it is allowed to catch up to.
-     * In the StandardEngineRuntime, when the engine goes over the amount of lagged frames, it will take a break to 
-     * render and resume catching up during the next loop cycle.
+     * A limit imposed on the engine for the amount of ticks it is allowed to catch up to.
+     * In the StandardEngineRuntime, when the engine goes over the amount of lagged ticks, it will take a break to 
+     * render and resume catching up during the next cycle.
      * Some systems, such as a render system, might use this to dynamically optimize performance.
      */
-    @property long lagFrameLimit();
+    @property long lagTickLimit();
 
     /**
      * Starts the game.
@@ -81,11 +81,11 @@ class StandardEngineRuntime : EngineRuntime {
         return _isTerminatable;
     }
 
-    public override @property long targetFrameTime() {
+    public override @property long targetTickTimeMs() {
         return 10L;
     }
 
-    public override @property long lagFrameLimit() {
+    public override @property long lagTickLimit() {
         return 100L;
     }
 
@@ -110,29 +110,29 @@ class StandardEngineRuntime : EngineRuntime {
     }
 
     private void loopWithFixedTimeStepVariableRenderRate() {
-        auto frameTimeStopWatch = new StopWatch();
+        auto tickTimeStopWatch = new StopWatch();
         auto lagDuration = Duration.zero;
-        const auto targetFrameTimeDuration = dur!"msecs"(this.targetFrameTime);
-        frameTimeStopWatch.start();
+        const auto targetTickTimeDuration = dur!"msecs"(this.targetTickTimeMs);
+        tickTimeStopWatch.start();
 
         while (!this.isTerminatable) {
-            const auto elapsedFrameTime = frameTimeStopWatch.peek();
-            frameTimeStopWatch.reset();
-            lagDuration += elapsedFrameTime;
+            const auto elapsedTickTime = tickTimeStopWatch.peek();
+            tickTimeStopWatch.reset();
+            lagDuration += elapsedTickTime;
 
-            auto lagCompensationFrames = 0L;
-            while (lagDuration >= targetFrameTimeDuration) {
-                lagCompensationFrames++;
-                if (lagCompensationFrames > this.lagFrameLimit || this.isTerminatable) {
+            auto lagCompensationTicks = 0L;
+            while (lagDuration >= targetTickTimeDuration) {
+                lagCompensationTicks++;
+                if (lagCompensationTicks > this.lagTickLimit || this.isTerminatable) {
                     break;
                 }
 
                 this.platform.update();
                 this.game.update();
-                lagDuration -= targetFrameTimeDuration;
+                lagDuration -= targetTickTimeDuration;
             }
 
-            auto extraPolation = lagDuration / targetFrameTimeDuration;
+            auto extraPolation = lagDuration / targetTickTimeDuration;
             this.platform.render(extraPolation);
             this.game.render(extraPolation);
         }

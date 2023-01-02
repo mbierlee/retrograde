@@ -29,7 +29,7 @@ interface Game {
      * The render loop for rendering.
      *
      * Params:
-     *  extraPolation = Extrapolated amount of time between the previous and next update.
+     *  extraPolation = Extrapolated amount of time between the previous and next update (tick).
      *                  Is typically between 0 and 1.
      */
     void render(double extraPolation);
