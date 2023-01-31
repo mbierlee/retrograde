@@ -481,9 +481,9 @@ version (Have_bindbc_opengl) {
      * generally all sorts of models.
      */
     public ShaderProgram createDefaultOpenGlModelShaderProgram() {
-        auto vertexShader = new OpenGlShader("vertex", import("standard/vertex.glsl"),
+        auto vertexShader = new OpenGlShader("model_vertex", import("standard/model_vertex.glsl"),
             ShaderType.vertex);
-        auto fragmentShader = new OpenGlShader("fragment", import("standard/fragment.glsl"),
+        auto fragmentShader = new OpenGlShader("model_fragment", import("standard/model_fragment.glsl"),
             ShaderType.fragment);
         return new OpenGlShaderProgram(vertexShader, fragmentShader);
     }
