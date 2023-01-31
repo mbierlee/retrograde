@@ -109,10 +109,10 @@ version (Have_bindbc_opengl) {
             entity.maybeWithComponent!OrthoBackgroundComponent((c) {
                 GlModelInfo modelInfo;
                 Vertex[] vertices = geometryFactory.createPlaneVertices(2, 2, Color(
-                    0,
-                    0.4,
-                    0.6,
-                    1
+                    clearColor[0],
+                    clearColor[1],
+                    clearColor[2],
+                    clearColor[3]
                 ));
 
                 modelInfo.meshes ~= createMeshInfo(vertices);
