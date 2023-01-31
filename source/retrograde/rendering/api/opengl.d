@@ -20,8 +20,7 @@ version (Have_bindbc_opengl) {
     import retrograde.core.math : Matrix4D;
     import retrograde.core.concept : Version;
 
-    import retrograde.components.rendering : RandomFaceColorsComponent, ModelComponent, DefaultShaderProgramComponent,
-        OrthoBackgroundComponent;
+    import retrograde.components.rendering : RandomFaceColorsComponent, ModelComponent, OrthoBackgroundComponent;
 
     import retrograde.geometryfactory : GeometryFactory;
 
@@ -178,12 +177,11 @@ version (Have_bindbc_opengl) {
 
         public void drawModel(Entity entity, Matrix4D modelViewProjectionMatrix) {
             entity.maybeWithComponent!GlModelInfoComponent((modelInfo) {
-                if (defaultOpenGlShaderProgram
-                && entity.hasComponent!DefaultShaderProgramComponent) {
+                if (defaultOpenGlShaderProgram) {
                     glUseProgram(defaultOpenGlShaderProgram.getOpenGlShaderProgram());
                 }
 
-                //TODO: Else use custom shader program
+                //TODO: Support use of custom shader program
 
                 auto modelViewProjectionMatrixData = modelViewProjectionMatrix.getDataArray!float;
 

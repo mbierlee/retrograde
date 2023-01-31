@@ -24,13 +24,6 @@ class RenderableComponent : EntityComponent {
 }
 
 /**
- * Entities with the DefaultShaderProgramComponent will use the render system's default shader program if it is available.
- */
-class DefaultShaderProgramComponent : EntityComponent {
-    mixin EntityComponentIdentity!"DefaultShaderProgramComponent";
-}
-
-/**
  * Entities with the CameraComponent are considered cameras.
  *
  * Together with a Position3DComponent and Orientation3DComponent they will determine

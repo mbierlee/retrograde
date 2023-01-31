@@ -15,7 +15,7 @@ import retrograde.core.entity : Entity, EntityFactory, EntityFactoryParameters, 
 import retrograde.core.storage : StorageSystem;
 
 import retrograde.components.geometry : Position3DComponent, Orientation3DComponent;
-import retrograde.components.rendering : RenderableComponent, DefaultShaderProgramComponent, ModelComponent,
+import retrograde.components.rendering : RenderableComponent, ModelComponent,
     TextureComponent, OrthoBackgroundComponent;
 
 import retrograde.model : CommonModelLoader;
@@ -52,7 +52,6 @@ class ModelEntityFactory : EntityFactory {
         }
 
         entity.maybeAddComponent!RenderableComponent;
-        entity.maybeAddComponent!DefaultShaderProgramComponent;
         entity.maybeAddComponent!Position3DComponent;
         entity.maybeAddComponent!Orientation3DComponent;
     }
@@ -79,7 +78,6 @@ class BackgroundEntityFactory : EntityFactory {
         }
 
         entity.maybeAddComponent!RenderableComponent;
-        entity.maybeAddComponent!DefaultShaderProgramComponent;
         entity.maybeAddComponent!OrthoBackgroundComponent;
     }
 }
