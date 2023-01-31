@@ -42,7 +42,7 @@ version (Have_bindbc_opengl) {
 
         private @Value("logging.logComponentInitialization") bool logInit;
 
-        private OpenGlShaderProgram defaultOpenGlShaderProgram;
+        private OpenGlShaderProgram defaultModelShaderProgram;
         private GLfloat[] clearColor = [0.0f, 0.0f, 0.0f, 1.0f];
         private Version glVersion = Version(4, 6, 0);
 
@@ -177,8 +177,8 @@ version (Have_bindbc_opengl) {
 
         public void drawModel(Entity entity, Matrix4D modelViewProjectionMatrix) {
             entity.maybeWithComponent!GlModelInfoComponent((modelInfo) {
-                if (defaultOpenGlShaderProgram) {
-                    glUseProgram(defaultOpenGlShaderProgram.getOpenGlShaderProgram());
+                if (defaultModelShaderProgram) {
+                    glUseProgram(defaultModelShaderProgram.getOpenGlShaderProgram());
                 }
 
                 //TODO: Support use of custom shader program
@@ -205,11 +205,11 @@ version (Have_bindbc_opengl) {
             if (defaultShaderProgram is null) {
                 logger.warning("No default shader program is injected into the dependency system. Entities using the default shader program will not be rendered.");
             } else {
-                defaultOpenGlShaderProgram = cast(OpenGlShaderProgram) defaultShaderProgram;
-                if (!defaultOpenGlShaderProgram) {
+                defaultModelShaderProgram = cast(OpenGlShaderProgram) defaultShaderProgram;
+                if (!defaultModelShaderProgram) {
                     logger.warning("Default shader program is not an OpenGL shader program. Entities using the default shader program will not be rendered.");
                 } else {
-                    compileAndLinkShaderProgram(defaultOpenGlShaderProgram);
+                    compileAndLinkShaderProgram(defaultModelShaderProgram);
                 }
             }
         }
@@ -459,7 +459,7 @@ version (Have_bindbc_opengl) {
      * The default shader program can be reused in a great amount of cases and should support
      * generally all sorts of models.
      */
-    public ShaderProgram createDefaultOpenGlShaderProgram() {
+    public ShaderProgram createDefaultOpenGlModelShaderProgram() {
         auto vertexShader = new OpenGlShader("vertex", import("standard/vertex.glsl"),
             ShaderType.vertex);
         auto fragmentShader = new OpenGlShader("fragment", import("standard/fragment.glsl"),

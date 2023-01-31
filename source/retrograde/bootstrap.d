@@ -40,13 +40,13 @@ version (Have_glfw_d) {
 }
 
 version (Have_bindbc_opengl) {
-    import retrograde.rendering.api.opengl : OpenGlGraphicsApi, createDefaultOpenGlShaderProgram;
+    import retrograde.rendering.api.opengl : OpenGlGraphicsApi, createDefaultOpenGlModelShaderProgram;
 
     alias DefaultGraphicsApi = OpenGlGraphicsApi;
-    alias createDefaultShaderProgram = createDefaultOpenGlShaderProgram;
+    alias createDefaultModelShaderProgram = createDefaultOpenGlModelShaderProgram;
 } else {
     alias DefaultGraphicsApi = NullGraphicsApi;
-    alias createDefaultShaderProgram = () => new ShaderProgram();
+    alias createDefaultModelShaderProgram = () => new ShaderProgram();
 }
 
 /**
@@ -60,9 +60,9 @@ RenderSystemType:
     RenderSystem = GenericRenderSystem,
 GraphicsApiType:
     GraphicsApi = DefaultGraphicsApi,
-    bool registerDefaultShaderProgram = true)(
+    bool registerDefaultShaderPrograms = true)(
     const PlatformSettings platformSettings = new DefaultPlatformSettings(),
-    const ShaderProgram defaultShaderProgram = null,
+    const ShaderProgram defaultModelShaderProgram = null,
     shared DependencyContainer dependencies = new shared DependencyContainer()) {
 
     dependencies.setPersistentResolveOptions(ResolveOption.registerBeforeResolving);
@@ -94,10 +94,9 @@ GraphicsApiType:
         return logger;
     });
 
-    static if (registerDefaultShaderProgram) {
-        auto defaultShaderProgramInstance = defaultShaderProgram ? cast(ShaderProgram) defaultShaderProgram
-            : createDefaultShaderProgram();
-        dependencies.register!ShaderProgram().existingInstance(defaultShaderProgramInstance);
+    static if (registerDefaultShaderPrograms) {
+        auto defaultModelShaderProgramInstance = defaultModelShaderProgram ? cast(ShaderProgram) defaultModelShaderProgram : createDefaultModelShaderProgram();
+        dependencies.register!ShaderProgram().existingInstance(defaultModelShaderProgramInstance);
     }
 
     auto renderSystem = dependencies.resolve!RenderSystem;
