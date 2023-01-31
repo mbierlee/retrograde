@@ -17,7 +17,7 @@ version (Have_bindbc_opengl) {
     import retrograde.core.entity : Entity, EntityComponent, EntityComponentIdentity;
     import retrograde.core.model : Vertex, Mesh, Face;
     import retrograde.core.stringid : sid;
-    import retrograde.core.math : Matrix4D;
+    import retrograde.core.math : Matrix4D, createOrthographicMatrix;
     import retrograde.core.concept : Version;
 
     import retrograde.components.rendering : RandomFaceColorsComponent, ModelComponent, OrthoBackgroundComponent;
@@ -45,6 +45,8 @@ version (Have_bindbc_opengl) {
         private OpenGlShaderProgram defaultModelShaderProgram;
         private GLfloat[] clearColor = [0.0f, 0.0f, 0.0f, 1.0f];
         private Version glVersion = Version(4, 6, 0);
+        private auto orthoProjectionMatrix = createOrthographicMatrix(-1, 1, -1, 1, 0, 1)
+            .getDataArray!float;
 
         private static const uint standardPositionAttribLocation = 0;
         private static const uint standardColorAttribLocation = 1;
@@ -188,17 +190,36 @@ version (Have_bindbc_opengl) {
                 glUniformMatrix4fv(standardMvpUniformLocation, 1, GL_TRUE,
                     modelViewProjectionMatrixData.ptr);
 
-                foreach (GlMeshInfo mesh; modelInfo.info.meshes) {
-                    glBindVertexArray(mesh.vertexArrayObject);
-                    if (mesh.elementCount > 0) {
-                        glDrawElements(GL_TRIANGLES, mesh.elementCount, GL_UNSIGNED_INT, null);
-                    } else {
-                        glDrawArrays(GL_TRIANGLES, 0, mesh.vertexCount);
-                    }
-
-                    glBindVertexArray(0);
-                }
+                drawMeshes(modelInfo);
             });
+        }
+
+        public void drawOrthoBackground(Entity entity) {
+            entity.maybeWithComponent!GlModelInfoComponent((modelInfo) {
+                if (defaultModelShaderProgram) {
+                    glUseProgram(defaultModelShaderProgram.getOpenGlShaderProgram());
+                }
+
+                //TODO: Support use of custom shader program
+
+                glUniformMatrix4fv(standardMvpUniformLocation, 1, GL_TRUE,
+                    orthoProjectionMatrix.ptr);
+
+                drawMeshes(modelInfo);
+            });
+        }
+
+        private void drawMeshes(GlModelInfoComponent modelInfo) {
+            foreach (GlMeshInfo mesh; modelInfo.info.meshes) {
+                glBindVertexArray(mesh.vertexArrayObject);
+                if (mesh.elementCount > 0) {
+                    glDrawElements(GL_TRIANGLES, mesh.elementCount, GL_UNSIGNED_INT, null);
+                } else {
+                    glDrawArrays(GL_TRIANGLES, 0, mesh.vertexCount);
+                }
+
+                glBindVertexArray(0);
+            }
         }
 
         private void initializeDefaultShaders() {

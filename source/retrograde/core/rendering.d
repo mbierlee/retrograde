@@ -236,6 +236,11 @@ interface GraphicsApi {
      * Draw an entity's model.
      */
     public void drawModel(Entity entity, Matrix4D modelViewProjectionMatrix);
+
+    /** 
+     * Draw an entity as an orthographic background.
+     */
+    public void drawOrthoBackground(Entity entity);
 }
 
 /** 
@@ -275,6 +280,9 @@ class NullGraphicsApi : GraphicsApi {
     }
 
     public void drawModel(Entity entity, Matrix4D modelViewProjectionMatrix) {
+    }
+
+    public void drawOrthoBackground(Entity entity) {
     }
 }
 

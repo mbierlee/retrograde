@@ -58,9 +58,8 @@ class GenericRenderSystem : RenderSystem {
         graphicsApi.clearAllBuffers();
 
         if (orthoBackgrounds.length > 0) {
-            auto orthoProjectionMatrix = createOrthographicMatrix(-1, 1, -1, 1, 0, 1);
             foreach (Entity orthoBackground; orthoBackgrounds) {
-                graphicsApi.drawModel(orthoBackground, orthoProjectionMatrix);
+                graphicsApi.drawOrthoBackground(orthoBackground);
             }
 
             graphicsApi.clearDepthStencilBuffers();
