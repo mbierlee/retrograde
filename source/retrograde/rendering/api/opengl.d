@@ -175,14 +175,20 @@ version (Have_bindbc_opengl) {
             });
         }
 
+        public void useDefaultModelShader() {
+            if (defaultModelShaderProgram) {
+                glUseProgram(defaultModelShaderProgram.getOpenGlShaderProgram());
+            }
+        }
+
+        public void useDefaultBackgroundShader() {
+            if (defaultBackgroundShaderProgram) {
+                glUseProgram(defaultBackgroundShaderProgram.getOpenGlShaderProgram());
+            }
+        }
+
         public void drawModel(Entity entity, Matrix4D modelViewProjectionMatrix) {
             entity.maybeWithComponent!GlModelInfoComponent((modelInfo) {
-                if (defaultModelShaderProgram) {
-                    glUseProgram(defaultModelShaderProgram.getOpenGlShaderProgram());
-                }
-
-                //TODO: Support use of custom shader program
-
                 auto modelViewProjectionMatrixData = modelViewProjectionMatrix.getDataArray!float;
 
                 glUniformMatrix4fv(standardMvpUniformLocation, 1, GL_TRUE,
@@ -194,12 +200,6 @@ version (Have_bindbc_opengl) {
 
         public void drawOrthoBackground(Entity entity) {
             entity.maybeWithComponent!GlModelInfoComponent((modelInfo) {
-                if (defaultBackgroundShaderProgram) {
-                    glUseProgram(defaultBackgroundShaderProgram.getOpenGlShaderProgram());
-                }
-
-                //TODO: Support use of custom shader program
-
                 drawMeshes(modelInfo);
             });
         }

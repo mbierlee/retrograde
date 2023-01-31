@@ -58,6 +58,7 @@ class GenericRenderSystem : RenderSystem {
         graphicsApi.clearAllBuffers();
 
         if (orthoBackgrounds.length > 0) {
+            graphicsApi.useDefaultBackgroundShader();
             foreach (Entity orthoBackground; orthoBackgrounds) {
                 graphicsApi.drawOrthoBackground(orthoBackground);
             }
@@ -74,8 +75,8 @@ class GenericRenderSystem : RenderSystem {
             });
         }
 
+        graphicsApi.useDefaultModelShader();
         auto viewProjectionMatrix = projectionMatrix * createRenderViewMatrix();
-
         foreach (Entity model; models) {
             auto modelViewProjectionMatrix = createModelViewProjectionMatrix(model, viewProjectionMatrix);
             graphicsApi.drawModel(model, modelViewProjectionMatrix);

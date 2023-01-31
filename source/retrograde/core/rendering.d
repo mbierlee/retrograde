@@ -232,6 +232,16 @@ interface GraphicsApi {
      */
     public void unloadFromVideoMemory(Entity entity);
 
+    /**
+     * Switches stateful rendering APIs over to use the default model shader in next draw calls.
+     */
+    public void useDefaultModelShader();
+
+    /**
+     * Switches stateful rendering APIs over to use the default background shader in next draw calls.
+     */
+    public void useDefaultBackgroundShader();
+
     /** 
      * Draw an entity's model.
      */
@@ -277,6 +287,12 @@ class NullGraphicsApi : GraphicsApi {
     }
 
     public void unloadFromVideoMemory(Entity entity) {
+    }
+
+    public void useDefaultModelShader() {
+    }
+
+    public void useDefaultBackgroundShader() {
     }
 
     public void drawModel(Entity entity, Matrix4D modelViewProjectionMatrix) {
