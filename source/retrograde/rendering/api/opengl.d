@@ -17,7 +17,7 @@ version (Have_bindbc_opengl) {
     import retrograde.core.entity : Entity, EntityComponent, EntityComponentIdentity;
     import retrograde.core.model : Vertex, Mesh, Face;
     import retrograde.core.stringid : sid;
-    import retrograde.core.math : Matrix4D, createOrthographicMatrix;
+    import retrograde.core.math : Matrix4D;
     import retrograde.core.concept : Version;
 
     import retrograde.components.rendering : RandomFaceColorsComponent, ModelComponent, OrthoBackgroundComponent;
@@ -38,14 +38,13 @@ version (Have_bindbc_opengl) {
         private @Autowire GLErrorService errorService;
         private @Autowire GeometryFactory geometryFactory;
 
+        private OpenGlShaderProgram defaultBackgroundShaderProgram;
         private OpenGlShaderProgram defaultModelShaderProgram;
 
         private @Value("logging.logComponentInitialization") bool logInit;
 
         private GLfloat[] clearColor = [0.0f, 0.0f, 0.0f, 1.0f];
         private Version glVersion = Version(4, 6, 0);
-        private auto orthoProjectionMatrix = createOrthographicMatrix(-1, 1, -1, 1, 0, 1)
-            .getDataArray!float;
 
         private static const uint standardPositionAttribLocation = 0;
         private static const uint standardColorAttribLocation = 1;
@@ -110,10 +109,10 @@ version (Have_bindbc_opengl) {
             entity.maybeWithComponent!OrthoBackgroundComponent((c) {
                 GlModelInfo modelInfo;
                 Vertex[] vertices = geometryFactory.createPlaneVertices(2, 2, Color(
-                    clearColor[0],
-                    clearColor[1],
-                    clearColor[2],
-                    clearColor[3]
+                    0,
+                    0.4,
+                    0.6,
+                    1
                 ));
 
                 modelInfo.meshes ~= createMeshInfo(vertices);
@@ -195,14 +194,11 @@ version (Have_bindbc_opengl) {
 
         public void drawOrthoBackground(Entity entity) {
             entity.maybeWithComponent!GlModelInfoComponent((modelInfo) {
-                if (defaultModelShaderProgram) {
-                    glUseProgram(defaultModelShaderProgram.getOpenGlShaderProgram());
+                if (defaultBackgroundShaderProgram) {
+                    glUseProgram(defaultBackgroundShaderProgram.getOpenGlShaderProgram());
                 }
 
                 //TODO: Support use of custom shader program
-
-                glUniformMatrix4fv(standardMvpUniformLocation, 1, GL_TRUE,
-                    orthoProjectionMatrix.ptr);
 
                 drawMeshes(modelInfo);
             });
@@ -222,8 +218,11 @@ version (Have_bindbc_opengl) {
         }
 
         private void initializeDefaultShaders() {
-            defaultModelShaderProgram = createDefaultOpenGlModelShaderProgram();
+            defaultModelShaderProgram = createModelShaderProgram();
             compileAndLinkShaderProgram(defaultModelShaderProgram);
+
+            defaultBackgroundShaderProgram = createBackgroundShaderProgram();
+            compileAndLinkShaderProgram(defaultBackgroundShaderProgram);
         }
 
         private void compileAndLinkShaderProgram(OpenGlShaderProgram shaderProgram) {
@@ -465,12 +464,19 @@ version (Have_bindbc_opengl) {
         }
     }
 
-    private OpenGlShaderProgram createDefaultOpenGlModelShaderProgram() {
-        auto vertexShader = new OpenGlShader("model_vertex", import("standard/model_vertex.glsl"),
-            ShaderType.vertex);
-        auto fragmentShader = new OpenGlShader("model_fragment", import(
-                "standard/model_fragment.glsl"),
-            ShaderType.fragment);
+    private OpenGlShaderProgram createBackgroundShaderProgram() {
+        return createShaderProgram!("background_vertex", "background_fragment")();
+    }
+
+    private OpenGlShaderProgram createModelShaderProgram() {
+        return createShaderProgram!("model_vertex", "model_fragment")();
+    }
+
+    private OpenGlShaderProgram createShaderProgram(string vertexShaderName, string fragmentShaderName)() {
+        auto vertexShader = new OpenGlShader(vertexShaderName, import(
+                "standard/" ~ vertexShaderName ~ ".glsl"), ShaderType.vertex);
+        auto fragmentShader = new OpenGlShader(fragmentShaderName, import(
+                "standard/" ~ fragmentShaderName ~ ".glsl"), ShaderType.fragment);
         return new OpenGlShaderProgram(vertexShader, fragmentShader);
     }
 

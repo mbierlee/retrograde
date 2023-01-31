@@ -153,7 +153,7 @@ version (unittest) {
     @("Bootstrap of testgame")
     unittest {
         auto dependencies = new shared DependencyContainer();
-        startGame!TestGame(new PlatformSettings(), null, dependencies);
+        startGame!TestGame(new PlatformSettings(), dependencies);
         const game = dependencies.resolve!TestGame;
         assert(game.isInitialized);
     }
