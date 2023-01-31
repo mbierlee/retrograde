@@ -40,13 +40,11 @@ version (Have_glfw_d) {
 }
 
 version (Have_bindbc_opengl) {
-    import retrograde.rendering.api.opengl : OpenGlGraphicsApi, createDefaultOpenGlModelShaderProgram;
+    import retrograde.rendering.api.opengl : OpenGlGraphicsApi;
 
     alias DefaultGraphicsApi = OpenGlGraphicsApi;
-    alias createDefaultModelShaderProgram = createDefaultOpenGlModelShaderProgram;
 } else {
     alias DefaultGraphicsApi = NullGraphicsApi;
-    alias createDefaultModelShaderProgram = () => new ShaderProgram();
 }
 
 /**
@@ -59,10 +57,8 @@ public void startGame(GameType : Game, EngineRuntimeType:
 RenderSystemType:
     RenderSystem = GenericRenderSystem,
 GraphicsApiType:
-    GraphicsApi = DefaultGraphicsApi,
-    bool registerDefaultShaderPrograms = true)(
+    GraphicsApi = DefaultGraphicsApi)(
     const PlatformSettings platformSettings = new DefaultPlatformSettings(),
-    const ShaderProgram defaultModelShaderProgram = null,
     shared DependencyContainer dependencies = new shared DependencyContainer()) {
 
     dependencies.setPersistentResolveOptions(ResolveOption.registerBeforeResolving);
@@ -93,11 +89,6 @@ GraphicsApiType:
         // sharedLog = stdoutLogger; //Creating shared loggers is broken. Fix when phobos fixes it.
         return logger;
     });
-
-    static if (registerDefaultShaderPrograms) {
-        auto defaultModelShaderProgramInstance = defaultModelShaderProgram ? cast(ShaderProgram) defaultModelShaderProgram : createDefaultModelShaderProgram();
-        dependencies.register!ShaderProgram().existingInstance(defaultModelShaderProgramInstance);
-    }
 
     auto renderSystem = dependencies.resolve!RenderSystem;
     auto entityManager = dependencies.resolve!EntityManager;

@@ -38,11 +38,10 @@ version (Have_bindbc_opengl) {
         private @Autowire GLErrorService errorService;
         private @Autowire GeometryFactory geometryFactory;
 
-        private @Autowire @OptionalDependency ShaderProgram defaultShaderProgram;
+        private OpenGlShaderProgram defaultModelShaderProgram;
 
         private @Value("logging.logComponentInitialization") bool logInit;
 
-        private OpenGlShaderProgram defaultModelShaderProgram;
         private GLfloat[] clearColor = [0.0f, 0.0f, 0.0f, 1.0f];
         private Version glVersion = Version(4, 6, 0);
         private auto orthoProjectionMatrix = createOrthographicMatrix(-1, 1, -1, 1, 0, 1)
@@ -223,16 +222,8 @@ version (Have_bindbc_opengl) {
         }
 
         private void initializeDefaultShaders() {
-            if (defaultShaderProgram is null) {
-                logger.warning("No default shader program is injected into the dependency system. Entities using the default shader program will not be rendered.");
-            } else {
-                defaultModelShaderProgram = cast(OpenGlShaderProgram) defaultShaderProgram;
-                if (!defaultModelShaderProgram) {
-                    logger.warning("Default shader program is not an OpenGL shader program. Entities using the default shader program will not be rendered.");
-                } else {
-                    compileAndLinkShaderProgram(defaultModelShaderProgram);
-                }
-            }
+            defaultModelShaderProgram = createDefaultOpenGlModelShaderProgram();
+            compileAndLinkShaderProgram(defaultModelShaderProgram);
         }
 
         private void compileAndLinkShaderProgram(OpenGlShaderProgram shaderProgram) {
@@ -474,16 +465,11 @@ version (Have_bindbc_opengl) {
         }
     }
 
-    /**
-     * Creates a default OpenGL shader program.
-     *
-     * The default shader program can be reused in a great amount of cases and should support
-     * generally all sorts of models.
-     */
-    public ShaderProgram createDefaultOpenGlModelShaderProgram() {
+    private OpenGlShaderProgram createDefaultOpenGlModelShaderProgram() {
         auto vertexShader = new OpenGlShader("model_vertex", import("standard/model_vertex.glsl"),
             ShaderType.vertex);
-        auto fragmentShader = new OpenGlShader("model_fragment", import("standard/model_fragment.glsl"),
+        auto fragmentShader = new OpenGlShader("model_fragment", import(
+                "standard/model_fragment.glsl"),
             ShaderType.fragment);
         return new OpenGlShaderProgram(vertexShader, fragmentShader);
     }
