@@ -145,15 +145,17 @@ version (Have_bindbc_opengl) {
                     Vertex[] vertices;
                     GLuint[] indices;
 
-                    if (assignRandomFaceColors) {
+                    if (assignRandomFaceColors || mesh.textureCoordinates.length > 0) {
                         mesh.forEachFaceVertices((size_t index, Vertex vertA, Vertex vertB, Vertex vertC) {
-                            auto randomR = uniform01(random);
-                            auto randomG = uniform01(random);
-                            auto randomB = uniform01(random);
+                            if (assignRandomFaceColors) {
+                                auto randomR = uniform01(random);
+                                auto randomG = uniform01(random);
+                                auto randomB = uniform01(random);
 
-                            vertA.r = vertB.r = vertC.r = randomR;
-                            vertA.g = vertB.g = vertC.g = randomG;
-                            vertA.b = vertB.b = vertC.b = randomB;
+                                vertA.r = vertB.r = vertC.r = randomR;
+                                vertA.g = vertB.g = vertC.g = randomG;
+                                vertA.b = vertB.b = vertC.b = randomB;
+                            }
 
                             vertices ~= vertA;
                             vertices ~= vertB;
@@ -161,35 +163,10 @@ version (Have_bindbc_opengl) {
                         });
                     } else {
                         vertices = cast(Vertex[]) mesh.vertices;
-
-                        auto textureCoordinates = mesh.textureCoordinates;
-                        if (textureCoordinates.length > 0) {
-                            Vertex[] indexedVertices;
-                            Vertex resolveVert(VertexIndex vi, TextureCoordinateIndex ti) {
-                                auto vert = vertices[vi];
-                                auto texCoords = textureCoordinates[ti];
-                                import std.stdio;
-
-                                writeln(texCoords);
-                                vert.u = texCoords.u;
-                                vert.v = texCoords.v;
-                                vert.w = texCoords.w;
-                                return vert;
-                            }
-
-                            foreach (Face face; mesh.faces) {
-                                indexedVertices ~= resolveVert(face.vA, face.vtA);
-                                indexedVertices ~= resolveVert(face.vB, face.vtB);
-                                indexedVertices ~= resolveVert(face.vC, face.vtC);
-                            }
-
-                            vertices = indexedVertices;
-                        } else {
-                            foreach (Face face; mesh.faces) {
-                                indices ~= face.vA.to!GLuint;
-                                indices ~= face.vB.to!GLuint;
-                                indices ~= face.vC.to!GLuint;
-                            }
+                        foreach (Face face; mesh.faces) {
+                            indices ~= face.vA.to!GLuint;
+                            indices ~= face.vB.to!GLuint;
+                            indices ~= face.vC.to!GLuint;
                         }
                     }
 
@@ -245,6 +222,8 @@ version (Have_bindbc_opengl) {
                 drawMeshes(modelInfo);
             });
         }
+
+        // private Vertex[] 
 
         private void bindTextureData(GlModelInfoComponent modelInfo) {
             bool hasTexture = modelInfo.info.texture != 0;
