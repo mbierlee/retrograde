@@ -11,5 +11,5 @@ in VS_OUT {
 } fs_in;
 
 void main() {
-    color = hasTexture ? texture(albedo, vec2(fs_in.textureCoords.x, -fs_in.textureCoords.y)) : fs_in.color;
+    color = hasTexture ? texture(albedo, vec2(fs_in.textureCoords.x, -fs_in.textureCoords.y)) * fs_in.color : fs_in.color;
 }

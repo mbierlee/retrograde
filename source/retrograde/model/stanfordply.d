@@ -164,7 +164,7 @@ class StanfordPlyLoader : ModelLoader {
         auto u = getComponent("s", parts, state);
         auto v = getComponent("t", parts, state);
 
-        state.vertices ~= Vertex(x, y, z, 1, r, g, b, a, u, v, 0);
+        state.vertices ~= Vertex(x, y, z, 1, r, g, b, a, u, v, 1);
     }
 
     private void parseFace(string[] parts, ParseState state) {

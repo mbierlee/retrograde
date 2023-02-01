@@ -99,7 +99,7 @@ class WavefrontObjLoader : ModelLoader {
 
     private void addVertex(ParseState state, string[] parts) {
         if (parts.length >= 3) {
-            auto vertex = Vertex(to!double(parts[0]), to!double(parts[1]), to!double(parts[2]), 1, 1, 1, 1, 1, 0, 0, 0);
+            auto vertex = Vertex(to!double(parts[0]), to!double(parts[1]), to!double(parts[2]), 1, 1, 1, 1, 1, 0, 0, 1);
             state.vertices ~= vertex;
         }
     }
