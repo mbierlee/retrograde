@@ -141,7 +141,7 @@ version (Have_bindbc_opengl) {
                 auto assignRandomFaceColors = entity.hasComponent!RandomFaceColorsComponent;
                 Random* random = assignRandomFaceColors ? new Random(sid(entity.name)) : null;
 
-                foreach (size_t index, const Mesh mesh; c.model.meshes) {
+                foreach (const Mesh mesh; c.model.meshes) {
                     Vertex[] vertices;
                     GLuint[] indices;
 
