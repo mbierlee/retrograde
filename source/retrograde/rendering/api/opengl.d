@@ -103,8 +103,8 @@ version (Have_bindbc_opengl) {
         }
 
         public void setDefaultTextureFilteringModes(const TextureFilteringMode minificationMode, const TextureFilteringMode magnificationMode) {
-            defaultMinTextureFilteringMode = getGlTextureFilteringMode(minificationMode);
-            defaultMagTextureFilteringMode = getGlTextureFilteringMode(magnificationMode);
+            defaultMinTextureFilteringMode = getGlMinTextureFilteringMode(minificationMode);
+            defaultMagTextureFilteringMode = getGlMagTextureFilteringMode(magnificationMode);
         }
 
         public void clearAllBuffers() {
@@ -132,10 +132,14 @@ version (Have_bindbc_opengl) {
                     getGlTextureFormat(c.texture.channels), GL_UNSIGNED_BYTE, c.texture.data.ptr);
                 modelInfo.texture = texture;
 
-                modelInfo.minFiltering = c.minificationFilteringMode == TextureFilteringMode.globalDefault ? defaultMinTextureFilteringMode : getGlTextureFilteringMode(
+                modelInfo.minFiltering = c.minificationFilteringMode == TextureFilteringMode.globalDefault ? defaultMinTextureFilteringMode : getGlMinTextureFilteringMode(
                     c.minificationFilteringMode);
-                modelInfo.magFiltering = c.magnificationFilteringMode == TextureFilteringMode.globalDefault ? defaultMagTextureFilteringMode : getGlTextureFilteringMode(
+                modelInfo.magFiltering = c.magnificationFilteringMode == TextureFilteringMode.globalDefault ? defaultMagTextureFilteringMode : getGlMagTextureFilteringMode(
                     c.magnificationFilteringMode);
+
+                if (c.generateMipMaps) {
+                    glGenerateTextureMipmap(texture);
+                }
             });
 
             entity.maybeWithComponent!OrthoBackgroundComponent((c) {
@@ -354,7 +358,18 @@ version (Have_bindbc_opengl) {
             }
         }
 
-        private GLenum getGlTextureFilteringMode(TextureFilteringMode textureFilteringMode) {
+        private GLenum getGlMinTextureFilteringMode(TextureFilteringMode textureFilteringMode) {
+            switch (textureFilteringMode) {
+            case TextureFilteringMode.nearestNeighbour:
+                return GL_NEAREST_MIPMAP_NEAREST;
+            case TextureFilteringMode.linear:
+                return GL_LINEAR_MIPMAP_LINEAR;
+            default:
+                return GL_NEAREST_MIPMAP_NEAREST;
+            }
+        }
+
+        private GLenum getGlMagTextureFilteringMode(TextureFilteringMode textureFilteringMode) {
             switch (textureFilteringMode) {
             case TextureFilteringMode.nearestNeighbour:
                 return GL_NEAREST;
@@ -364,6 +379,7 @@ version (Have_bindbc_opengl) {
                 return GL_NEAREST;
             }
         }
+
     }
 
     /**

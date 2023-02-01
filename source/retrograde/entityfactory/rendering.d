@@ -13,6 +13,7 @@ module retrograde.entityfactory.rendering;
 
 import retrograde.core.entity : Entity, EntityFactory, EntityFactoryParameters, ofType;
 import retrograde.core.storage : StorageSystem;
+import retrograde.core.rendering : TextureFilteringMode;
 
 import retrograde.components.geometry : Position3DComponent, Orientation3DComponent;
 import retrograde.components.rendering : RenderableComponent, ModelComponent,
@@ -74,7 +75,11 @@ class BackgroundEntityFactory : EntityFactory {
         if (p.textureFilePath.length > 0) {
             auto textureFile = storage.readFileRelative(p.textureFilePath);
             auto texture = imageLoader.load(textureFile);
-            entity.maybeAddComponent(new TextureComponent(texture));
+            auto component = new TextureComponent(texture);
+            component.minificationFilteringMode = TextureFilteringMode.nearestNeighbour;
+            component.magnificationFilteringMode = TextureFilteringMode.nearestNeighbour;
+            component.generateMipMaps = false;
+            entity.maybeAddComponent(component);
         }
 
         entity.maybeAddComponent!RenderableComponent;

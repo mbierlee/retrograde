@@ -98,17 +98,20 @@ class TextureComponent : EntityComponent {
     mixin EntityComponentIdentity!"TextureComponent";
 
     public Image texture;
-    public TextureFilteringMode minificationFilteringMode;
-    public TextureFilteringMode magnificationFilteringMode;
+    public TextureFilteringMode minificationFilteringMode = TextureFilteringMode.globalDefault;
+    public TextureFilteringMode magnificationFilteringMode = TextureFilteringMode.globalDefault;
+    public bool generateMipMaps = true;
 
     this() {
     }
 
     this(Image texture, TextureFilteringMode minificationFilteringMode = TextureFilteringMode.globalDefault,
-        TextureFilteringMode magnificationFilteringMode = TextureFilteringMode.globalDefault) {
+        TextureFilteringMode magnificationFilteringMode = TextureFilteringMode.globalDefault,
+        bool generateMipMaps = true) {
         this.texture = texture;
         this.minificationFilteringMode = minificationFilteringMode;
         this.magnificationFilteringMode = magnificationFilteringMode;
+        this.generateMipMaps = generateMipMaps;
     }
 }
 
