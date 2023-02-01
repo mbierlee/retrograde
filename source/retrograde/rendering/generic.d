@@ -25,6 +25,9 @@ import retrograde.components.geometry : Position3DComponent, Orientation3DCompon
 
 import poodinis : Autowire;
 
+import std.conv : to;
+import std.math.rounding : ceil;
+
 /** 
  * A general purpose 2D/3D render system suitable for most games.
  *
@@ -35,17 +38,38 @@ class GenericRenderSystem : RenderSystem {
     private @Autowire GraphicsApi graphicsApi;
     private @Autowire MessageHandler messageHandler;
 
-    private Viewport viewport;
+    private Viewport platformViewport;
     private CameraConfiguration cameraConfiguration;
     private Matrix4D projectionMatrix;
-    private Color clearColor = Color(0.576f, 0.439f, 0.859f, 1.0f);
+    private scalar _viewportAspectRatio = autoAspectRatio;
 
     private Entity activeCamera;
     private EntityCollection orthoBackgrounds = new EntityCollection();
     private EntityCollection models = new EntityCollection();
 
+    public Color clearColor = Color(0.576f, 0.439f, 0.859f, 1.0f);
+
+    /**
+     * Get the aspect ratio of the renderer's viewport.
+     */
+    public @property scalar viewportAspectRatio() {
+        return _viewportAspectRatio;
+    }
+
+    /**
+     * Set the aspect ratio of the renderer's viewport.
+     *
+     * The renderer's viewport will automatically be adjusted to maintain aspect ratio when
+     * the platform's viewport is resized. Set to 'autoAspectRatio' or 0 to disable this
+     * autocorrection and use the platform's viewport ascpect ratio instead.
+     */
+    public @property void viewportAspectRatio(scalar newRatio) {
+        _viewportAspectRatio = newRatio;
+        updateView();
+    }
+
     override public void initialize() {
-        viewport = platform.getViewport();
+        platformViewport = platform.getViewport();
         updateView();
         graphicsApi.setClearColor(clearColor);
     }
@@ -70,7 +94,8 @@ class GenericRenderSystem : RenderSystem {
             activeCamera.maybeWithComponent!CameraComponent((c) {
                 if (cameraConfiguration != c.cameraConfiguration) {
                     cameraConfiguration = c.cameraConfiguration;
-                    updateProjectionMatrix();
+                    auto renderViewport = createRenderViewport(platformViewport);
+                    updateProjectionMatrix(renderViewport);
                 }
             });
         }
@@ -135,17 +160,41 @@ class GenericRenderSystem : RenderSystem {
     private void handleMessages() {
         messageHandler.receiveMessages(platformEventChannel, (
                 immutable ViewportResizeEventMessage message) {
-            viewport = message.newViewport;
+            platformViewport = message.newViewport;
             updateView();
         });
     }
 
     private void updateView() {
-        graphicsApi.updateViewport(viewport);
-        updateProjectionMatrix();
+        auto renderViewport = createRenderViewport(platformViewport);
+        graphicsApi.updateViewport(renderViewport);
+        updateProjectionMatrix(renderViewport);
     }
 
-    private void updateProjectionMatrix() {
+    private Viewport createRenderViewport(const Viewport viewport) {
+        auto newViewport = cast(Viewport) viewport;
+
+        if (viewportAspectRatio != autoAspectRatio) {
+            import std.stdio;
+
+            if (viewport.width > viewport.height) {
+                newViewport.width = ceil(viewport.height * viewportAspectRatio).to!int;
+                if (newViewport.width > viewport.width) {
+                    newViewport.height = ceil(viewport.width / viewportAspectRatio).to!int;
+                    newViewport.width = ceil(newViewport.height * viewportAspectRatio).to!int;
+                }
+            } else if (viewport.height > viewport.width) {
+                newViewport.height = ceil(viewport.width / viewportAspectRatio).to!int;
+            }
+
+            newViewport.x = ceil((viewport.width - newViewport.width) / 2.0).to!int;
+            newViewport.y = ceil((viewport.height - newViewport.height) / 2.0).to!int;
+        }
+
+        return newViewport;
+    }
+
+    private void updateProjectionMatrix(Viewport viewport) {
         auto aspectRatio =
             cameraConfiguration.aspectRatio == autoAspectRatio ?
             cast(scalar) viewport.width / cast(scalar) viewport.height

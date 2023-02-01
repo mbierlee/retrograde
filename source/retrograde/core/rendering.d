@@ -21,7 +21,7 @@ import poodinis : Autowire, OptionalDependency;
 import std.logger : Logger;
 
 /** 
- * Constant used to indicate that a camera should calculate the aspect ratio based on the viewport.
+ * Constant used to indicate that a camera or render viewport should calculate the aspect ratio based on the platform's viewport.
  */
 public static const scalar autoAspectRatio = 0;
 
