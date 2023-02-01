@@ -109,6 +109,8 @@ class GenericRenderSystem : RenderSystem {
                     entity.removeComponent!ModelComponent;
                 }
             });
+
+            //TODO: Remove textures when loaded in memory
         }
     }
 

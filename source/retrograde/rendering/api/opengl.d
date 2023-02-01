@@ -20,7 +20,8 @@ version (Have_bindbc_opengl) {
     import retrograde.core.math : Matrix4D;
     import retrograde.core.concept : Version;
 
-    import retrograde.components.rendering : RandomFaceColorsComponent, ModelComponent, OrthoBackgroundComponent;
+    import retrograde.components.rendering : RandomFaceColorsComponent, ModelComponent, OrthoBackgroundComponent,
+        TextureComponent;
 
     import retrograde.geometryfactory : GeometryFactory;
 
@@ -49,6 +50,8 @@ version (Have_bindbc_opengl) {
         private static const uint standardPositionAttribLocation = 0;
         private static const uint standardColorAttribLocation = 1;
         private static const uint standardMvpUniformLocation = 2;
+        private static const uint standardHasTextureUniformLocation = 3;
+        private static const uint standardAlbedoSamplerUniformLocation = 4;
 
         public void initialize() {
             const GLSupport support = loadOpenGL();
@@ -106,8 +109,21 @@ version (Have_bindbc_opengl) {
         }
 
         public void loadIntoMemory(Entity entity) {
+            //TODO: Prevent re-loading already loaded entities.
+
+            GlModelInfo modelInfo;
+
+            entity.maybeWithComponent!TextureComponent((c) {
+                GLuint texture;
+                glCreateTextures(GL_TEXTURE_2D, 1, &texture);
+                glTextureStorage2D(texture, 1, getGlInternalFormat(c.texture.channels), c.texture.width,
+                    c.texture.height);
+                glTextureSubImage2D(texture, 0, 0, 0, c.texture.width, c.texture.height,
+                    getGlTextureFormat(c.texture.channels), GL_UNSIGNED_BYTE, c.texture.data.ptr);
+                modelInfo.texture = texture;
+            });
+
             entity.maybeWithComponent!OrthoBackgroundComponent((c) {
-                GlModelInfo modelInfo;
                 Vertex[] vertices = geometryFactory.createPlaneVertices(2, 2, Color(
                     clearColor[0],
                     clearColor[1],
@@ -116,14 +132,12 @@ version (Have_bindbc_opengl) {
                 ));
 
                 modelInfo.meshes ~= createMeshInfo(vertices);
-                entity.addComponent(new GlModelInfoComponent(modelInfo));
             });
 
             entity.maybeWithComponent!ModelComponent((c) {
                 auto assignRandomFaceColors = entity.hasComponent!RandomFaceColorsComponent;
                 Random* random = assignRandomFaceColors ? new Random(sid(entity.name)) : null;
 
-                GlModelInfo modelInfo;
                 foreach (size_t index, const Mesh mesh; c.model.meshes) {
                     Vertex[] vertices;
                     GLuint[] indices;
@@ -155,12 +169,12 @@ version (Have_bindbc_opengl) {
                     errorService.logErrorsIfAny();
                 }
 
-                entity.addComponent(new GlModelInfoComponent(modelInfo));
-
                 if (random) {
                     random.destroy();
                 }
             });
+
+            entity.addComponent(new GlModelInfoComponent(modelInfo));
         }
 
         public void unloadFromVideoMemory(Entity entity) {
@@ -190,16 +204,18 @@ version (Have_bindbc_opengl) {
         public void drawModel(Entity entity, Matrix4D modelViewProjectionMatrix) {
             entity.maybeWithComponent!GlModelInfoComponent((modelInfo) {
                 auto modelViewProjectionMatrixData = modelViewProjectionMatrix.getDataArray!float;
-
                 glUniformMatrix4fv(standardMvpUniformLocation, 1, GL_TRUE,
                     modelViewProjectionMatrixData.ptr);
-
                 drawMeshes(modelInfo);
             });
         }
 
         public void drawOrthoBackground(Entity entity) {
             entity.maybeWithComponent!GlModelInfoComponent((modelInfo) {
+                bool hasTexture = modelInfo.info.texture != 0;
+                glUniform1i(standardHasTextureUniformLocation, hasTexture);
+                glUniform1i(standardAlbedoSamplerUniformLocation, 0);
+                glBindTextureUnit(0, modelInfo.info.texture);
                 drawMeshes(modelInfo);
             });
         }
@@ -280,6 +296,32 @@ version (Have_bindbc_opengl) {
             }
 
             return meshInfo;
+        }
+
+        private GLenum getGlInternalFormat(uint channels) {
+            switch (channels) {
+            case 1:
+                return GL_R8;
+            case 2:
+                return GL_RG8;
+            case 3:
+                return GL_RGB8;
+            default:
+                return GL_RGBA8;
+            }
+        }
+
+        private GLenum getGlTextureFormat(uint channels) {
+            switch (channels) {
+            case 1:
+                return GL_RED;
+            case 2:
+                return GL_RG;
+            case 3:
+                return GL_RGB;
+            default:
+                return GL_RGBA;
+            }
         }
     }
 
@@ -489,6 +531,7 @@ version (Have_bindbc_opengl) {
     }
 
     private struct GlModelInfo {
+        GLuint texture;
         GlMeshInfo[] meshes;
     }
 
