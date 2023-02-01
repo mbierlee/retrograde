@@ -109,7 +109,9 @@ version (Have_bindbc_opengl) {
         }
 
         public void loadIntoMemory(Entity entity) {
-            //TODO: Prevent re-loading already loaded entities.
+            if (entity.hasComponent!GlModelInfoComponent) {
+                return;
+            }
 
             GlModelInfo modelInfo;
 
