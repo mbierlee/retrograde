@@ -7,9 +7,9 @@ layout(location = 4) uniform sampler2D albedo;
 
 in VS_OUT {
     vec4 color;
-    vec2 textureCoordinates;
+    vec2 textureCoords;
 } fs_in;
 
 void main() {
-    color = hasTexture ? texture(albedo, vec2(fs_in.textureCoordinates.x - 1, -fs_in.textureCoordinates.y - 1) / 2, 0) : fs_in.color;
+    color = hasTexture ? texture(albedo, vec2(fs_in.textureCoords.x - 1, -fs_in.textureCoords.y - 1) / 2, 0) : fs_in.color;
 }

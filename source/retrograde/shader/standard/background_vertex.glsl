@@ -5,11 +5,11 @@ layout(location = 1) in vec4 color;
 
 out VS_OUT {
     vec4 color;
-    vec2 textureCoordinates;
+    vec2 textureCoords;
 } vs_out;
 
 void main() {
     gl_Position = position;
     vs_out.color = color;
-    vs_out.textureCoordinates = position.xy;
+    vs_out.textureCoords = position.xy;
 }

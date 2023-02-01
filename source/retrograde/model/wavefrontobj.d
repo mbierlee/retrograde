@@ -106,7 +106,7 @@ class WavefrontObjLoader : ModelLoader {
 
     private void addTextureCoordinate(ParseState state, string[] parts) {
         if (parts.length >= 2) {
-            auto textureCoordinate = TextureCoordinate(to!double(parts[0]), to!double(parts[1]));
+            auto textureCoordinate = TextureCoordinate(to!double(parts[0]), to!double(parts[1]), 1);
             state.textureCoordinates ~= textureCoordinate;
         }
     }

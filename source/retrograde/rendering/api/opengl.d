@@ -15,7 +15,7 @@ version (Have_bindbc_opengl) {
     import retrograde.core.rendering : GraphicsApi, Shader, ShaderProgram, ShaderType, Color;
     import retrograde.core.platform : Viewport;
     import retrograde.core.entity : Entity, EntityComponent, EntityComponentIdentity;
-    import retrograde.core.model : Vertex, Mesh, Face;
+    import retrograde.core.model : Vertex, Mesh, Face, VertexIndex, TextureCoordinateIndex;
     import retrograde.core.stringid : sid;
     import retrograde.core.math : Matrix4D;
     import retrograde.core.concept : Version;
@@ -52,6 +52,7 @@ version (Have_bindbc_opengl) {
         private static const uint standardMvpUniformLocation = 2;
         private static const uint standardHasTextureUniformLocation = 3;
         private static const uint standardAlbedoSamplerUniformLocation = 4;
+        private static const uint standardTextureCoordsAttribLocation = 5;
 
         public void initialize() {
             const GLSupport support = loadOpenGL();
@@ -160,10 +161,35 @@ version (Have_bindbc_opengl) {
                         });
                     } else {
                         vertices = cast(Vertex[]) mesh.vertices;
-                        foreach (Face face; mesh.faces) {
-                            indices ~= face.vA.to!GLuint;
-                            indices ~= face.vB.to!GLuint;
-                            indices ~= face.vC.to!GLuint;
+
+                        auto textureCoordinates = mesh.textureCoordinates;
+                        if (textureCoordinates.length > 0) {
+                            Vertex[] indexedVertices;
+                            Vertex resolveVert(VertexIndex vi, TextureCoordinateIndex ti) {
+                                auto vert = vertices[vi];
+                                auto texCoords = textureCoordinates[ti];
+                                import std.stdio;
+
+                                writeln(texCoords);
+                                vert.u = texCoords.u;
+                                vert.v = texCoords.v;
+                                vert.w = texCoords.w;
+                                return vert;
+                            }
+
+                            foreach (Face face; mesh.faces) {
+                                indexedVertices ~= resolveVert(face.vA, face.vtA);
+                                indexedVertices ~= resolveVert(face.vB, face.vtB);
+                                indexedVertices ~= resolveVert(face.vC, face.vtC);
+                            }
+
+                            vertices = indexedVertices;
+                        } else {
+                            foreach (Face face; mesh.faces) {
+                                indices ~= face.vA.to!GLuint;
+                                indices ~= face.vB.to!GLuint;
+                                indices ~= face.vC.to!GLuint;
+                            }
                         }
                     }
 
@@ -208,18 +234,23 @@ version (Have_bindbc_opengl) {
                 auto modelViewProjectionMatrixData = modelViewProjectionMatrix.getDataArray!float;
                 glUniformMatrix4fv(standardMvpUniformLocation, 1, GL_TRUE,
                     modelViewProjectionMatrixData.ptr);
+                bindTextureData(modelInfo);
                 drawMeshes(modelInfo);
             });
         }
 
         public void drawOrthoBackground(Entity entity) {
             entity.maybeWithComponent!GlModelInfoComponent((modelInfo) {
-                bool hasTexture = modelInfo.info.texture != 0;
-                glUniform1i(standardHasTextureUniformLocation, hasTexture);
-                glUniform1i(standardAlbedoSamplerUniformLocation, 0);
-                glBindTextureUnit(0, modelInfo.info.texture);
+                bindTextureData(modelInfo);
                 drawMeshes(modelInfo);
             });
+        }
+
+        private void bindTextureData(GlModelInfoComponent modelInfo) {
+            bool hasTexture = modelInfo.info.texture != 0;
+            glUniform1i(standardHasTextureUniformLocation, hasTexture);
+            glUniform1i(standardAlbedoSamplerUniformLocation, 0);
+            glBindTextureUnit(0, modelInfo.info.texture);
         }
 
         private void drawMeshes(GlModelInfoComponent modelInfo) {
@@ -274,6 +305,12 @@ version (Have_bindbc_opengl) {
             glVertexArrayAttribFormat(vertexArrayObject, standardColorAttribLocation, 4, GL_DOUBLE, GL_FALSE, Vertex
                     .r.offsetof);
             glEnableVertexArrayAttrib(vertexArrayObject, standardColorAttribLocation);
+
+            // Texture coordinates attrib
+            glVertexArrayAttribBinding(vertexArrayObject, standardTextureCoordsAttribLocation, 0);
+            glVertexArrayAttribFormat(vertexArrayObject, standardTextureCoordsAttribLocation, 3, GL_DOUBLE, GL_FALSE,
+                Vertex.u.offsetof);
+            glEnableVertexArrayAttrib(vertexArrayObject, standardTextureCoordsAttribLocation);
 
             // Vertex Buffer Object
             GLuint vertexBufferObject;
