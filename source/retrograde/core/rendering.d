@@ -45,6 +45,28 @@ struct CameraConfiguration {
     scalar orthoScale = 1;
 }
 
+/** 
+ * Filtering mode assigned to textures.
+ */
+enum TextureFilteringMode {
+    /**
+     * Selects exact texel color on the texture coordinate.
+     * Also known as point filtering.
+     */
+    nearestNeighbour,
+
+    /** 
+     * Interpolates between neighboring texels to select a blended color.
+     * Also known as bilinear filtering.
+     */
+    linear,
+
+    /** 
+     * When assigned to a texture, the renderer's default will be used.
+     */
+    globalDefault
+}
+
 /**
  * An abstraction of a renderer that processes entities and
  * draws them on the screen.
@@ -211,6 +233,17 @@ interface GraphicsApi {
      */
     public void setClearColor(const Color clearColor);
 
+    /**
+     * Sets the default texture filtering modes.
+     * If TextureFilteringMode.globalDefault is set it is up to the graphics API to 
+     * decide what is considered as default.
+     *
+     * Params: 
+     * minificationMode = Mode used when textures are shown smaller than they are.
+     * magnificationMode = Mode used when textures are shown bigger than they are.
+     */
+    public void setDefaultTextureFilteringModes(const TextureFilteringMode minificationMode, const TextureFilteringMode magnificationMode);
+
     /** 
      * If the API has any buffers, such as color, depth or stencil
      * buffer, clear them to their default state.
@@ -275,6 +308,9 @@ class NullGraphicsApi : GraphicsApi {
     }
 
     public void setClearColor(const Color clearColor) {
+    }
+
+    public void setDefaultTextureFilteringModes(const TextureFilteringMode minificationMode, const TextureFilteringMode magnificationMode) {
     }
 
     public void clearAllBuffers() {

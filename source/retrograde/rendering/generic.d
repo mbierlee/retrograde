@@ -12,7 +12,7 @@
 module retrograde.rendering.generic;
 
 import retrograde.core.rendering : RenderSystem, GraphicsApi, autoAspectRatio, CameraConfiguration, ProjectionType,
-    Color;
+    Color, TextureFilteringMode;
 import retrograde.core.entity : Entity, EntityCollection;
 import retrograde.core.platform : Platform, Viewport, platformEventChannel, ViewportResizeEventMessage;
 import retrograde.core.math : Matrix4D, scalar, createPerspectiveMatrix, createOrthographicMatrix, createViewMatrix,
@@ -42,6 +42,8 @@ class GenericRenderSystem : RenderSystem {
     private CameraConfiguration cameraConfiguration;
     private Matrix4D projectionMatrix;
     private scalar _viewportAspectRatio = autoAspectRatio;
+    private TextureFilteringMode _defaultMinificationTextureFilteringMode;
+    private TextureFilteringMode _defaultMagnificationTextureFilteringMode;
 
     private Entity activeCamera;
     private EntityCollection orthoBackgrounds = new EntityCollection();
@@ -68,7 +70,45 @@ class GenericRenderSystem : RenderSystem {
         updateView();
     }
 
+    /** 
+     * Gets the default minification texture filtering mode.
+     */
+    public @property TextureFilteringMode defaultMinificationTextureFilteringMode() {
+        return _defaultMinificationTextureFilteringMode;
+    }
+
+    /** 
+     * Sets the default minification texture filtering mode.
+     * If TextureFilteringMode.globalDefault is set it is up to the graphics API to 
+     * decide what is considered as default.
+     */
+    public @property void defaultMinificationTextureFilteringMode(
+        TextureFilteringMode textureFilteringMode) {
+        _defaultMinificationTextureFilteringMode = textureFilteringMode;
+        graphicsApi.setDefaultTextureFilteringModes(textureFilteringMode, _defaultMagnificationTextureFilteringMode);
+    }
+
+    /** 
+     * Gets the default magnification texture filtering mode.
+     */
+    public @property TextureFilteringMode defaultMagnificationTextureFilteringMode() {
+        return _defaultMagnificationTextureFilteringMode;
+    }
+
+    /** 
+     * Sets the default magnification texture filtering mode.
+     * If TextureFilteringMode.globalDefault is set it is up to the graphics API to 
+     * decide what is considered as default.
+     */
+    public @property void defaultMagnificationTextureFilteringMode(
+        TextureFilteringMode textureFilteringMode) {
+        _defaultMagnificationTextureFilteringMode = textureFilteringMode;
+        graphicsApi.setDefaultTextureFilteringModes(_defaultMinificationTextureFilteringMode, textureFilteringMode);
+    }
+
     override public void initialize() {
+        defaultMinificationTextureFilteringMode = TextureFilteringMode.globalDefault;
+        defaultMagnificationTextureFilteringMode = TextureFilteringMode.globalDefault;
         platformViewport = platform.getViewport();
         updateView();
         graphicsApi.setClearColor(clearColor);

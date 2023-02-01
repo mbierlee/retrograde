@@ -12,7 +12,7 @@
 module retrograde.rendering.api.opengl;
 
 version (Have_bindbc_opengl) {
-    import retrograde.core.rendering : GraphicsApi, Shader, ShaderProgram, ShaderType, Color;
+    import retrograde.core.rendering : GraphicsApi, Shader, ShaderProgram, ShaderType, Color, TextureFilteringMode;
     import retrograde.core.platform : Viewport;
     import retrograde.core.entity : Entity, EntityComponent, EntityComponentIdentity;
     import retrograde.core.model : Vertex, Mesh, Face, VertexIndex, TextureCoordinateIndex;
@@ -45,6 +45,8 @@ version (Have_bindbc_opengl) {
         private @Value("logging.logComponentInitialization") bool logInit;
 
         private GLfloat[] clearColor = [0.0f, 0.0f, 0.0f, 1.0f];
+        private GLenum defaultMinTextureFilteringMode = GL_LINEAR;
+        private GLenum defaultMagTextureFilteringMode = GL_LINEAR;
         private Version glVersion = Version(4, 6, 0);
 
         private static const uint standardPositionAttribLocation = 0;
@@ -100,6 +102,11 @@ version (Have_bindbc_opengl) {
             ];
         }
 
+        public void setDefaultTextureFilteringModes(const TextureFilteringMode minificationMode, const TextureFilteringMode magnificationMode) {
+            defaultMinTextureFilteringMode = getGlTextureFilteringMode(minificationMode);
+            defaultMagTextureFilteringMode = getGlTextureFilteringMode(magnificationMode);
+        }
+
         public void clearAllBuffers() {
             glClearBufferfv(GL_COLOR, 0, &clearColor[0]);
             clearDepthStencilBuffers();
@@ -124,6 +131,11 @@ version (Have_bindbc_opengl) {
                 glTextureSubImage2D(texture, 0, 0, 0, c.texture.width, c.texture.height,
                     getGlTextureFormat(c.texture.channels), GL_UNSIGNED_BYTE, c.texture.data.ptr);
                 modelInfo.texture = texture;
+
+                modelInfo.minFiltering = c.minificationFilteringMode == TextureFilteringMode.globalDefault ? defaultMinTextureFilteringMode : getGlTextureFilteringMode(
+                    c.minificationFilteringMode);
+                modelInfo.magFiltering = c.magnificationFilteringMode == TextureFilteringMode.globalDefault ? defaultMagTextureFilteringMode : getGlTextureFilteringMode(
+                    c.magnificationFilteringMode);
             });
 
             entity.maybeWithComponent!OrthoBackgroundComponent((c) {
@@ -211,25 +223,25 @@ version (Have_bindbc_opengl) {
                 auto modelViewProjectionMatrixData = modelViewProjectionMatrix.getDataArray!float;
                 glUniformMatrix4fv(standardMvpUniformLocation, 1, GL_TRUE,
                     modelViewProjectionMatrixData.ptr);
-                bindTextureData(modelInfo);
+                bindTextureData(modelInfo.info);
                 drawMeshes(modelInfo);
             });
         }
 
         public void drawOrthoBackground(Entity entity) {
             entity.maybeWithComponent!GlModelInfoComponent((modelInfo) {
-                bindTextureData(modelInfo);
+                bindTextureData(modelInfo.info);
                 drawMeshes(modelInfo);
             });
         }
 
-        // private Vertex[] 
-
-        private void bindTextureData(GlModelInfoComponent modelInfo) {
-            bool hasTexture = modelInfo.info.texture != 0;
+        private void bindTextureData(const ref GlModelInfo modelInfo) {
+            bool hasTexture = modelInfo.texture != 0;
             glUniform1i(standardHasTextureUniformLocation, hasTexture);
             glUniform1i(standardAlbedoSamplerUniformLocation, 0);
-            glBindTextureUnit(0, modelInfo.info.texture);
+            glBindTextureUnit(0, modelInfo.texture);
+            glTextureParameteri(modelInfo.texture, GL_TEXTURE_MIN_FILTER, modelInfo.minFiltering);
+            glTextureParameteri(modelInfo.texture, GL_TEXTURE_MAG_FILTER, modelInfo.magFiltering);
         }
 
         private void drawMeshes(GlModelInfoComponent modelInfo) {
@@ -339,6 +351,17 @@ version (Have_bindbc_opengl) {
                 return GL_RGB;
             default:
                 return GL_RGBA;
+            }
+        }
+
+        private GLenum getGlTextureFilteringMode(TextureFilteringMode textureFilteringMode) {
+            switch (textureFilteringMode) {
+            case TextureFilteringMode.nearestNeighbour:
+                return GL_NEAREST;
+            case TextureFilteringMode.linear:
+                return GL_LINEAR;
+            default:
+                return GL_NEAREST;
             }
         }
     }
@@ -550,6 +573,8 @@ version (Have_bindbc_opengl) {
 
     private struct GlModelInfo {
         GLuint texture;
+        GLenum minFiltering;
+        GLenum magFiltering;
         GlMeshInfo[] meshes;
     }
 

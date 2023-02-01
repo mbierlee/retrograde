@@ -12,7 +12,7 @@
 module retrograde.components.rendering;
 
 import retrograde.core.entity : EntityComponent, EntityComponentIdentity;
-import retrograde.core.rendering : CameraConfiguration;
+import retrograde.core.rendering : CameraConfiguration, TextureFilteringMode;
 import retrograde.core.model : Model;
 import retrograde.core.image : Image;
 
@@ -98,12 +98,17 @@ class TextureComponent : EntityComponent {
     mixin EntityComponentIdentity!"TextureComponent";
 
     public Image texture;
+    public TextureFilteringMode minificationFilteringMode;
+    public TextureFilteringMode magnificationFilteringMode;
 
     this() {
     }
 
-    this(Image texture) {
+    this(Image texture, TextureFilteringMode minificationFilteringMode = TextureFilteringMode.globalDefault,
+        TextureFilteringMode magnificationFilteringMode = TextureFilteringMode.globalDefault) {
         this.texture = texture;
+        this.minificationFilteringMode = minificationFilteringMode;
+        this.magnificationFilteringMode = magnificationFilteringMode;
     }
 }
 
