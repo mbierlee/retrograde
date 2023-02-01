@@ -47,7 +47,7 @@ class GenericRenderSystem : RenderSystem {
     private EntityCollection orthoBackgrounds = new EntityCollection();
     private EntityCollection models = new EntityCollection();
 
-    public Color clearColor = Color(0.576f, 0.439f, 0.859f, 1.0f);
+    public Color clearColor = Color(0f, 0f, 0f, 1.0f);
 
     /**
      * Get the aspect ratio of the renderer's viewport.
