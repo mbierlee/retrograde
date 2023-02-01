@@ -107,8 +107,8 @@ class GenericRenderSystem : RenderSystem {
     }
 
     override public void initialize() {
-        defaultMinificationTextureFilteringMode = TextureFilteringMode.globalDefault;
-        defaultMagnificationTextureFilteringMode = TextureFilteringMode.globalDefault;
+        defaultMinificationTextureFilteringMode = TextureFilteringMode.linear;
+        defaultMagnificationTextureFilteringMode = TextureFilteringMode.linear;
         platformViewport = platform.getViewport();
         updateView();
         graphicsApi.setClearColor(clearColor);
