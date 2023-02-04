@@ -45,13 +45,16 @@ struct CameraConfiguration {
 
     /**
      * Near clipping plane. 
-     * Should be higher than 0.
+     * Should be higher than 0 in perspective cameras.
+     * Use setOrthographicProjectionDefaults to set sensible defaults for ortho projection.
      */
     scalar nearClippingDistance = 0.1;
 
     /**
      * Far clipping plane. 
      * If 0, it is considered infinite.
+     * Note that infinite clipping planes only work in perspective cameras,
+     * not orthographic. Use setOrthographicProjectionDefaults to set sensible defaults.
      */
     scalar farClippingDistance = 0;
 
@@ -60,6 +63,12 @@ struct CameraConfiguration {
 
     /// Scaling applied when the projection type is orthographic.
     scalar orthoScale = 1;
+
+    void setOrthographicProjectionDefaults() {
+        nearClippingDistance = 0;
+        farClippingDistance = 1000;
+        projectionType = ProjectionType.ortographic;
+    }
 }
 
 /** 

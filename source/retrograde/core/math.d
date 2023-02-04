@@ -1143,20 +1143,17 @@ public Matrix4D createPerspectiveMatrix(scalar yfovRadian, scalar aspectRatio,
  * Returns: Orthographic Matrix
  */
 public Matrix4D createOrthographicMatrix(scalar left, scalar right, scalar bottom, scalar top, scalar near, scalar far) {
-    auto scaleX = 2 / (right - left);
-    auto scaleY = 2 / (top - bottom);
-    auto scaleZ = -2 / (far - near);
-
-    auto xTranslate = -(right + left) / (right - left);
-    auto yTranslate = -(top + bottom) / (top - bottom);
-    auto zTranslate = -(far + near) / (far - near);
+    const scalar A = 1 / ((right - left) / 2);
+    const scalar B = 1 / ((top - bottom) / 2);
+    const scalar C = 2 / (near - far);
+    const scalar D = (far + near) / (near - far);
 
     // dfmt off
     return Matrix4D(
-        scaleX, 0      , 0                , xTranslate,
-        0     , scaleY , 0                , yTranslate,
-        0     , 0      , scaleZ           , zTranslate,
-        0     , 0      , 0                , 1
+        A, 0 , 0, 0,
+        0, B , 0, 0,
+        0, 0 , C, D,
+        0, 0 , 0, 1
     );
     // dfmt on
 }
@@ -2378,7 +2375,7 @@ version (unittest) {
 
     @("Create orthographic matrix")
     unittest {
-        auto const expectedMatrix = "Matrix!(double, 4u, 4u)([0.2, 0, 0, -0, 0, 0.2, 0, -0, 0, 0, -0.2, -0, 0, 0, 0, 1])";
+        auto const expectedMatrix = "Matrix!(double, 4u, 4u)([0.2, 0, 0, 0, 0, 0.2, 0, 0, 0, 0, -0.2, -0, 0, 0, 0, 1])";
         auto actualMatrix = createOrthographicMatrix(-5, 5, -5, 5, -5, 5);
         assert(expectedMatrix == to!string(actualMatrix));
     }
