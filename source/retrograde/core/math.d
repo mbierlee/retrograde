@@ -1143,8 +1143,22 @@ public Matrix4D createPerspectiveMatrix(scalar yfovRadian, scalar aspectRatio,
  * Returns: Orthographic Matrix
  */
 public Matrix4D createOrthographicMatrix(scalar left, scalar right, scalar bottom, scalar top, scalar near, scalar far) {
-    const scalar A = 1 / ((right - left) / 2);
-    const scalar B = 1 / ((top - bottom) / 2);
+    return createOrthographicMatrix(right - left, top - bottom, near, far);
+}
+
+/** 
+ * Creates an orthographic projection matrix.
+ *
+ * Params:
+ *   halfWidth = Half the orthographic width
+ *   halfHeight = Half the orthographic height
+ *   near = Distance to the near clipping plane along the -Z axis
+ *   far = Distance to the far clipping plane along the -Z axis
+ * Returns: Orthographic Matrix
+ */
+public Matrix4D createOrthographicMatrix(scalar halfWidth, scalar halfHeight, scalar near, scalar far) {
+    const scalar A = 1 / (halfWidth / 2);
+    const scalar B = 1 / (halfHeight / 2);
     const scalar C = 2 / (near - far);
     const scalar D = (far + near) / (near - far);
 
