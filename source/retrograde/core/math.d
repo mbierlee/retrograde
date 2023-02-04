@@ -1110,21 +1110,21 @@ public Matrix4D createViewMatrix(Vector3D eyePosition, QuaternionD eyeOrientatio
  *   yfovRadian = Field of view in radian.
  *   aspectRatio = Aspect ratio of the viewing window, pre-divided (e.g. the result of 4 / 3)
  *   near = Near clipping plane.
- *   far = Far clipping plane.
+ *   far = Far clipping plane. If 0, it is considered infinite.
  * Returns: Perspective Matrix
  */
 public Matrix4D createPerspectiveMatrix(scalar yfovRadian, scalar aspectRatio,
     scalar near, scalar far) {
-    const scalar q = 1.0 / tan(0.5 * yfovRadian);
-    const scalar A = q / aspectRatio;
-    const scalar B = (near + far) / (near - far);
-    const scalar C = (2.0 * near * far) / (near - far);
+    const scalar A = 1.0 / (aspectRatio * tan(0.5 * yfovRadian));
+    const scalar B = 1.0 / (tan(0.5 * yfovRadian));
+    const scalar C = far == 0 ? -1 : (far + near) / (near - far);
+    const scalar D = far == 0 ? (-2 * near) : (2.0 * far * near) / (near - far);
 
     // dfmt off
     return Matrix4D(
         A, 0,  0, 0,
-        0, q,  0, 0,
-        0, 0,  B, C,
+        0, B,  0, 0,
+        0, 0,  C, D,
         0, 0, -1, 0
     );
     // dfmt on

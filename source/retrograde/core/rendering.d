@@ -39,10 +39,26 @@ enum ProjectionType {
 struct CameraConfiguration {
     /// Y FOV in radians
     scalar horizontalFieldOfView = degreesToRadians(45);
+
+    /// Aspect ratio (width over height).
     scalar aspectRatio = autoAspectRatio;
+
+    /**
+     * Near clipping plane. 
+     * Should be higher than 0.
+     */
     scalar nearClippingDistance = 0.1;
-    scalar farClippingDistance = 1000;
+
+    /**
+     * Far clipping plane. 
+     * If 0, it is considered infinite.
+     */
+    scalar farClippingDistance = 0;
+
+    /// Type of project of camera
     ProjectionType projectionType = ProjectionType.perspective;
+
+    /// Scaling applied when the projection type is orthographic.
     scalar orthoScale = 1;
 }
 
