@@ -12,7 +12,7 @@
 module retrograde.core.rendering;
 
 import retrograde.core.entity : EntityProcessor, Entity;
-import retrograde.core.math : scalar, Matrix4D;
+import retrograde.core.math : scalar, Matrix4D, degreesToRadians;
 import retrograde.core.platform : Viewport;
 import retrograde.core.concept : Version;
 
@@ -37,7 +37,8 @@ enum ProjectionType {
  * Configuration of as 3D camera
  */
 struct CameraConfiguration {
-    scalar horizontalFieldOfView = 45;
+    /// Y FOV in radians
+    scalar horizontalFieldOfView = degreesToRadians(45);
     scalar aspectRatio = autoAspectRatio;
     scalar nearClippingDistance = 0.1;
     scalar farClippingDistance = 1000;

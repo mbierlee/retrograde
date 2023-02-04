@@ -1107,15 +1107,15 @@ public Matrix4D createViewMatrix(Vector3D eyePosition, QuaternionD eyeOrientatio
  * Creates a perspective projection matrix.
  * 
  * Params:
- *   fovyDegrees = Field of view in degrees.
+ *   yfovRadian = Field of view in radian.
  *   aspectRatio = Aspect ratio of the viewing window, pre-divided (e.g. the result of 4 / 3)
  *   near = Near clipping plane.
  *   far = Far clipping plane.
  * Returns: Perspective Matrix
  */
-public Matrix4D createPerspectiveMatrix(scalar fovyDegrees, scalar aspectRatio,
+public Matrix4D createPerspectiveMatrix(scalar yfovRadian, scalar aspectRatio,
     scalar near, scalar far) {
-    const scalar q = 1.0 / tan(degreesToRadians(0.5 * fovyDegrees));
+    const scalar q = 1.0 / tan(0.5 * yfovRadian);
     const scalar A = q / aspectRatio;
     const scalar B = (near + far) / (near - far);
     const scalar C = (2.0 * near * far) / (near - far);
@@ -2372,7 +2372,7 @@ version (unittest) {
     @("Create perspective matrix")
     unittest {
         auto const expectedMatrix = "Matrix!(double, 4u, 4u)([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1.0002, -0.20002, 0, 0, -1, 0])";
-        auto actualMatrix = createPerspectiveMatrix(90, 1920 / 1080, 0.1, 1000);
+        auto actualMatrix = createPerspectiveMatrix(degreesToRadians(90), 1920 / 1080, 0.1, 1000);
         assert(expectedMatrix == to!string(actualMatrix));
     }
 
