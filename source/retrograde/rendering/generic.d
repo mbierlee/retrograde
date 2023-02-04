@@ -41,6 +41,7 @@ class GenericRenderSystem : RenderSystem {
     private Viewport platformViewport;
     private CameraConfiguration cameraConfiguration;
     private Matrix4D projectionMatrix;
+    private Color _clearColor = Color(0f, 0f, 0f, 1.0f);
     private scalar _viewportAspectRatio = autoAspectRatio;
     private TextureFilteringMode _defaultMinificationTextureFilteringMode;
     private TextureFilteringMode _defaultMagnificationTextureFilteringMode;
@@ -49,7 +50,20 @@ class GenericRenderSystem : RenderSystem {
     private EntityCollection orthoBackgrounds = new EntityCollection();
     private EntityCollection models = new EntityCollection();
 
-    public Color clearColor = Color(0f, 0f, 0f, 1.0f);
+    /** 
+     * Get the background's clearing color.
+     */
+    public @property Color clearColor() {
+        return _clearColor;
+    }
+
+    /** 
+     * Set the background's clearing color.
+     */
+    public @property void clearColor(Color color) {
+        _clearColor = color;
+        graphicsApi.setClearColor(color);
+    }
 
     /**
      * Get the aspect ratio of the renderer's viewport.
@@ -111,7 +125,7 @@ class GenericRenderSystem : RenderSystem {
         defaultMagnificationTextureFilteringMode = TextureFilteringMode.linear;
         platformViewport = platform.getViewport();
         updateView();
-        graphicsApi.setClearColor(clearColor);
+        graphicsApi.setClearColor(_clearColor);
     }
 
     override public void update() {
