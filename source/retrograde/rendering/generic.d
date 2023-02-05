@@ -229,8 +229,6 @@ class GenericRenderSystem : RenderSystem {
         auto newViewport = cast(Viewport) viewport;
 
         if (viewportAspectRatio != autoAspectRatio) {
-            import std.stdio;
-
             if (viewport.width > viewport.height) {
                 newViewport.width = ceil(viewport.height * viewportAspectRatio).to!int;
                 if (newViewport.width > viewport.width) {
