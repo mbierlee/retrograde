@@ -109,10 +109,6 @@ version (Have_bindbc_opengl) {
 
         public void clearAllBuffers() {
             glClearBufferfv(GL_COLOR, 0, &clearColor[0]);
-            clearDepthStencilBuffers();
-        }
-
-        public void clearDepthStencilBuffers() {
             glClearBufferfi(GL_DEPTH_STENCIL, 0, 1, 0);
         }
 

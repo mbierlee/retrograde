@@ -276,11 +276,6 @@ interface GraphicsApi {
      */
     public void clearAllBuffers();
 
-    /**
-     * Clears the depth and stencil buffers, if the API supports them.
-     */
-    public void clearDepthStencilBuffers();
-
     /** 
      * Loads an entity's model and texture data into memory.
      */
@@ -340,9 +335,6 @@ class NullGraphicsApi : GraphicsApi {
     }
 
     public void clearAllBuffers() {
-    }
-
-    public void clearDepthStencilBuffers() {
     }
 
     public void loadIntoMemory(Entity entity) {

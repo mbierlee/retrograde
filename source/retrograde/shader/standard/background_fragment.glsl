@@ -11,5 +11,6 @@ in VS_OUT {
 } fs_in;
 
 void main() {
+    gl_FragDepth = 1.0; // TODO: Blend or set from map.
     color = hasTexture ? texture(albedo, vec2(fs_in.textureCoords.x - 1, -fs_in.textureCoords.y - 1) / 2, 0) : fs_in.color;
 }

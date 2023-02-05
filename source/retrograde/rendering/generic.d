@@ -140,8 +140,6 @@ class GenericRenderSystem : RenderSystem {
             foreach (Entity orthoBackground; orthoBackgrounds) {
                 graphicsApi.drawOrthoBackground(orthoBackground);
             }
-
-            graphicsApi.clearDepthStencilBuffers();
         }
 
         if (activeCamera) {
