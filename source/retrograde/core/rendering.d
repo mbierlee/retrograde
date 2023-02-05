@@ -34,6 +34,17 @@ enum ProjectionType {
 }
 
 /** 
+ * Render output modes used by render systems / APIs.
+ */
+enum RenderOutput {
+    /// The regular rendering output that outputs all render passes combined.
+    composite,
+
+    /// Only render the depth buffers.
+    depthBuffer
+}
+
+/** 
  * Configuration of as 3D camera
  */
 struct CameraConfiguration {
@@ -270,11 +281,10 @@ interface GraphicsApi {
      */
     public void setDefaultTextureFilteringModes(const TextureFilteringMode minificationMode, const TextureFilteringMode magnificationMode);
 
-    /** 
-     * If the API has any buffers, such as color, depth or stencil
-     * buffer, clear them to their default state.
+    /**
+     * Prepare for a new frame to be rendered.
      */
-    public void clearAllBuffers();
+    public void startFrame();
 
     /** 
      * Loads an entity's model and texture data into memory.
@@ -305,6 +315,11 @@ interface GraphicsApi {
      * Draw an entity as an orthographic background.
      */
     public void drawOrthoBackground(Entity entity);
+
+    /** 
+     * Sets the API's render output mode.
+     */
+    public void setRenderOutput(RenderOutput renderOutput);
 }
 
 /** 
@@ -334,7 +349,7 @@ class NullGraphicsApi : GraphicsApi {
     public void setDefaultTextureFilteringModes(const TextureFilteringMode minificationMode, const TextureFilteringMode magnificationMode) {
     }
 
-    public void clearAllBuffers() {
+    public void startFrame() {
     }
 
     public void loadIntoMemory(Entity entity) {
@@ -353,6 +368,9 @@ class NullGraphicsApi : GraphicsApi {
     }
 
     public void drawOrthoBackground(Entity entity) {
+    }
+
+    public void setRenderOutput(RenderOutput renderOutput) {
     }
 }
 

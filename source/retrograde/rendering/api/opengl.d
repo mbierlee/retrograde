@@ -12,7 +12,8 @@
 module retrograde.rendering.api.opengl;
 
 version (Have_bindbc_opengl) {
-    import retrograde.core.rendering : GraphicsApi, Shader, ShaderProgram, ShaderType, Color, TextureFilteringMode;
+    import retrograde.core.rendering : GraphicsApi, Shader, ShaderProgram, ShaderType, Color, TextureFilteringMode,
+        RenderOutput;
     import retrograde.core.platform : Viewport;
     import retrograde.core.entity : Entity, EntityComponent, EntityComponentIdentity;
     import retrograde.core.model : Vertex, Mesh, Face, VertexIndex, TextureCoordinateIndex;
@@ -48,6 +49,7 @@ version (Have_bindbc_opengl) {
         private GLenum defaultMinTextureFilteringMode = GL_LINEAR;
         private GLenum defaultMagTextureFilteringMode = GL_LINEAR;
         private Version glVersion = Version(4, 6, 0);
+        private RenderOutput renderOutput;
 
         private static const uint standardPositionAttribLocation = 0;
         private static const uint standardColorAttribLocation = 1;
@@ -55,6 +57,7 @@ version (Have_bindbc_opengl) {
         private static const uint standardHasTextureUniformLocation = 3;
         private static const uint standardAlbedoSamplerUniformLocation = 4;
         private static const uint standardTextureCoordsAttribLocation = 5;
+        private static const uint standardRenderDepthBufferAttribLocation = 6;
 
         public void initialize() {
             const GLSupport support = loadOpenGL();
@@ -107,9 +110,8 @@ version (Have_bindbc_opengl) {
             defaultMagTextureFilteringMode = getGlMagTextureFilteringMode(magnificationMode);
         }
 
-        public void clearAllBuffers() {
-            glClearBufferfv(GL_COLOR, 0, &clearColor[0]);
-            glClearBufferfi(GL_DEPTH_STENCIL, 0, 1, 0);
+        public void startFrame() {
+            clearAllBuffers();
         }
 
         public void loadIntoMemory(Entity entity) {
@@ -223,6 +225,8 @@ version (Have_bindbc_opengl) {
                 auto modelViewProjectionMatrixData = modelViewProjectionMatrix.getDataArray!float;
                 glUniformMatrix4fv(standardMvpUniformLocation, 1, GL_TRUE,
                     modelViewProjectionMatrixData.ptr);
+                glUniform1i(standardRenderDepthBufferAttribLocation,
+                    renderOutput == RenderOutput.depthBuffer); //TODO: Set at frame start only (needs uniform blocks).
                 bindTextureData(modelInfo.info);
                 drawMeshes(modelInfo);
             });
@@ -230,9 +234,20 @@ version (Have_bindbc_opengl) {
 
         public void drawOrthoBackground(Entity entity) {
             entity.maybeWithComponent!GlModelInfoComponent((modelInfo) {
+                glUniform1i(standardRenderDepthBufferAttribLocation,
+                    renderOutput == RenderOutput.depthBuffer); //TODO: Set at frame start only (needs uniform blocks).
                 bindTextureData(modelInfo.info);
                 drawMeshes(modelInfo);
             });
+        }
+
+        public void setRenderOutput(RenderOutput renderOutput) {
+            this.renderOutput = renderOutput;
+        }
+
+        private void clearAllBuffers() {
+            glClearBufferfv(GL_COLOR, 0, &clearColor[0]);
+            glClearBufferfi(GL_DEPTH_STENCIL, 0, 1, 0);
         }
 
         private void bindTextureData(const ref GlModelInfo modelInfo) {

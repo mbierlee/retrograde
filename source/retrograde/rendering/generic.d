@@ -12,7 +12,7 @@
 module retrograde.rendering.generic;
 
 import retrograde.core.rendering : RenderSystem, GraphicsApi, autoAspectRatio, CameraConfiguration, ProjectionType,
-    Color, TextureFilteringMode;
+    Color, TextureFilteringMode, RenderOutput;
 import retrograde.core.entity : Entity, EntityCollection;
 import retrograde.core.platform : Platform, Viewport, platformEventChannel, ViewportResizeEventMessage;
 import retrograde.core.math : Matrix4D, scalar, createPerspectiveMatrix, createOrthographicMatrix, createViewMatrix,
@@ -45,6 +45,7 @@ class GenericRenderSystem : RenderSystem {
     private scalar _viewportAspectRatio = autoAspectRatio;
     private TextureFilteringMode _defaultMinificationTextureFilteringMode;
     private TextureFilteringMode _defaultMagnificationTextureFilteringMode;
+    private RenderOutput _renderOutput;
 
     private Entity activeCamera;
     private EntityCollection orthoBackgrounds = new EntityCollection();
@@ -120,6 +121,21 @@ class GenericRenderSystem : RenderSystem {
         graphicsApi.setDefaultTextureFilteringModes(_defaultMinificationTextureFilteringMode, textureFilteringMode);
     }
 
+    /**
+     * Gets the renderer's output mode.
+     */
+    public @property RenderOutput renderOutput() {
+        return _renderOutput;
+    }
+
+    /** 
+     * Sets the renderer's output mode.
+     */
+    public @property void renderOutput(RenderOutput renderOutput) {
+        _renderOutput = renderOutput;
+        graphicsApi.setRenderOutput(renderOutput);
+    }
+
     override public void initialize() {
         defaultMinificationTextureFilteringMode = TextureFilteringMode.linear;
         defaultMagnificationTextureFilteringMode = TextureFilteringMode.linear;
@@ -133,7 +149,7 @@ class GenericRenderSystem : RenderSystem {
     }
 
     override public void draw() {
-        graphicsApi.clearAllBuffers();
+        graphicsApi.startFrame();
 
         if (orthoBackgrounds.length > 0) {
             graphicsApi.useDefaultBackgroundShader();
