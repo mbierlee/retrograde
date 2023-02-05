@@ -69,6 +69,14 @@ class Orientation3DComponent : EntityComponent {
     this(const QuaternionD orientation) {
         this.orientation = orientation;
     }
+
+    /** 
+     * Create an orientation with the given rotation.
+     * The parameters correspond to those or a QuaternionD.
+     */
+    this(const scalar w, const scalar x, const scalar y, const scalar z) {
+        this.orientation = QuaternionD(w, x, y, z);
+    }
 }
 
 /**
@@ -113,8 +121,6 @@ class Scale3DComponent : EntityComponent {
         this.scale = Vector3D(xScale, yScale, zScale);
     }
 }
-
-
 
 // Position3DComponent tests
 version (unittest) {
