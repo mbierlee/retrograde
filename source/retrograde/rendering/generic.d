@@ -41,7 +41,7 @@ class GenericRenderSystem : RenderSystem {
     private Viewport platformViewport;
     private CameraConfiguration cameraConfiguration;
     private Matrix4D projectionMatrix;
-    private Color _clearColor = Color(0f, 0f, 0f, 1.0f);
+    private Color _clearColor;
     private scalar _viewportAspectRatio = autoAspectRatio;
     private TextureFilteringMode _defaultMinificationTextureFilteringMode;
     private TextureFilteringMode _defaultMagnificationTextureFilteringMode;
@@ -123,9 +123,9 @@ class GenericRenderSystem : RenderSystem {
     override public void initialize() {
         defaultMinificationTextureFilteringMode = TextureFilteringMode.linear;
         defaultMagnificationTextureFilteringMode = TextureFilteringMode.linear;
+        clearColor = Color(0f, 0f, 0f, 1.0f);
         platformViewport = platform.getViewport();
         updateView();
-        graphicsApi.setClearColor(_clearColor);
     }
 
     override public void update() {
