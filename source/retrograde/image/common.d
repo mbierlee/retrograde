@@ -11,7 +11,7 @@
 
 module retrograde.image.common;
 
-import retrograde.core.image : ImageLoader, Image;
+import retrograde.core.image : ImageLoader, Image, ColorFormat;
 import retrograde.core.storage : File;
 
 import retrograde.image.png : PngImageLoader;
@@ -26,10 +26,10 @@ import poodinis : Autowire;
 class CommonImageLoader : ImageLoader {
     @Autowire public PngImageLoader pngImageLoader;
 
-    public Image load(File imageFile) {
+    public Image load(File imageFile, ColorFormat colorFormat = ColorFormat.rgba) {
         switch (imageFile.extension) {
         case ".png":
-            return pngImageLoader.load(imageFile);
+            return pngImageLoader.load(imageFile, colorFormat);
 
         default:
             throw new Exception(
@@ -46,7 +46,7 @@ version (unittest) {
         public bool loadWasCalled = false;
         public Image image;
 
-        public override Image load(File imageFile) {
+        public override Image load(File imageFile, ColorFormat colorFormat = ColorFormat.rgba) {
             loadWasCalled = true;
             return image;
         }

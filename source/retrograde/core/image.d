@@ -13,6 +13,13 @@ module retrograde.core.image;
 
 import retrograde.core.storage : File;
 
+enum ColorFormat {
+    grayscale,
+    grayscaleAlpha,
+    rgb,
+    rgba
+}
+
 /** 
  * Generic image data.
  */
@@ -31,5 +38,5 @@ class Image {
  * Base interface for image loaders.
  */
 interface ImageLoader {
-    public Image load(File imageFile);
+    public Image load(File imageFile, ColorFormat colorFormat);
 }

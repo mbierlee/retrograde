@@ -22,7 +22,7 @@ version (Have_bindbc_opengl) {
     import retrograde.core.concept : Version;
 
     import retrograde.components.rendering : RandomFaceColorsComponent, ModelComponent, OrthoBackgroundComponent,
-        TextureComponent;
+        TextureComponent, DepthMapComponent;
 
     import retrograde.geometryfactory : GeometryFactory;
 
@@ -51,6 +51,7 @@ version (Have_bindbc_opengl) {
         private Version glVersion = Version(4, 6, 0);
         private RenderOutput renderOutput;
 
+        //TODO: reorder these. It's a mess. Also find a more refined way.
         private static const uint standardPositionAttribLocation = 0;
         private static const uint standardColorAttribLocation = 1;
         private static const uint standardMvpUniformLocation = 2;
@@ -58,6 +59,11 @@ version (Have_bindbc_opengl) {
         private static const uint standardAlbedoSamplerUniformLocation = 4;
         private static const uint standardTextureCoordsAttribLocation = 5;
         private static const uint standardRenderDepthBufferAttribLocation = 6;
+        private static const uint standardHasDepthMapUniformLocation = 7;
+        private static const uint standardDepthMapSamplerUniformLocation = 8;
+
+        private static const uint standardAlbedoTextureUnit = 0;
+        private static const uint standardDepthMapTextureUnit = 1;
 
         public void initialize() {
             const GLSupport support = loadOpenGL();
@@ -140,6 +146,16 @@ version (Have_bindbc_opengl) {
                 }
             });
 
+            entity.maybeWithComponent!DepthMapComponent((c) {
+                GLuint depthMap;
+                glCreateTextures(GL_TEXTURE_2D, 1, &depthMap);
+                glTextureStorage2D(depthMap, 1, getGlInternalFormat(c.depthMap.channels), c.depthMap.width,
+                    c.depthMap.height);
+                glTextureSubImage2D(depthMap, 0, 0, 0, c.depthMap.width, c.depthMap.height,
+                    getGlTextureFormat(c.depthMap.channels), GL_UNSIGNED_BYTE, c.depthMap.data.ptr);
+                modelInfo.depthMap = depthMap;
+            });
+
             entity.maybeWithComponent!OrthoBackgroundComponent((c) {
                 Vertex[] vertices = geometryFactory.createPlaneVertices(2, 2, Color(
                     clearColor[0],
@@ -204,6 +220,9 @@ version (Have_bindbc_opengl) {
                     glDeleteVertexArrays(1, &mesh.vertexArrayObject);
                 }
 
+                glDeleteTextures(1, &c.info.texture);
+                glDeleteTextures(1, &c.info.depthMap);
+
                 entity.removeComponent!GlModelInfoComponent;
             });
         }
@@ -237,6 +256,7 @@ version (Have_bindbc_opengl) {
                 glUniform1i(standardRenderDepthBufferAttribLocation,
                     renderOutput == RenderOutput.depthBuffer); //TODO: Set at frame start only (needs uniform blocks).
                 bindTextureData(modelInfo.info);
+                bindDepthMapData(modelInfo.info);
                 drawMeshes(modelInfo);
             });
         }
@@ -253,10 +273,17 @@ version (Have_bindbc_opengl) {
         private void bindTextureData(const ref GlModelInfo modelInfo) {
             bool hasTexture = modelInfo.texture != 0;
             glUniform1i(standardHasTextureUniformLocation, hasTexture);
-            glUniform1i(standardAlbedoSamplerUniformLocation, 0);
-            glBindTextureUnit(0, modelInfo.texture);
+            glUniform1i(standardAlbedoSamplerUniformLocation, standardAlbedoTextureUnit);
+            glBindTextureUnit(standardAlbedoTextureUnit, modelInfo.texture);
             glTextureParameteri(modelInfo.texture, GL_TEXTURE_MIN_FILTER, modelInfo.minFiltering);
             glTextureParameteri(modelInfo.texture, GL_TEXTURE_MAG_FILTER, modelInfo.magFiltering);
+        }
+
+        private void bindDepthMapData(const ref GlModelInfo modelInfo) {
+            bool hasDepthMap = modelInfo.depthMap != 0;
+            glUniform1i(standardHasDepthMapUniformLocation, hasDepthMap);
+            glUniform1i(standardDepthMapSamplerUniformLocation, standardDepthMapTextureUnit);
+            glBindTextureUnit(standardDepthMapTextureUnit, modelInfo.depthMap);
         }
 
         private void drawMeshes(GlModelInfoComponent modelInfo) {
@@ -600,6 +627,7 @@ version (Have_bindbc_opengl) {
 
     private struct GlModelInfo {
         GLuint texture;
+        GLuint depthMap;
         GLenum minFiltering;
         GLenum magFiltering;
         GlMeshInfo[] meshes;

@@ -116,6 +116,22 @@ class TextureComponent : EntityComponent {
 }
 
 /** 
+ * An entity component containing a depth map typically used in shaders.
+ */
+class DepthMapComponent : EntityComponent {
+    mixin EntityComponentIdentity!"DepthMapComponent";
+
+    public Image depthMap;
+
+    this() {
+    }
+
+    this(Image texture) {
+        this.depthMap = texture;
+    }
+}
+
+/** 
  * Renders the entity's TextureComponent as background using an orthographic
  * projections.
  * Backgrounds do not move based on the position of the camera, but can be

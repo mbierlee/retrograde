@@ -11,7 +11,7 @@
 
 module retrograde.image.png;
 
-import retrograde.core.image : Image, ImageLoader;
+import retrograde.core.image : Image, ImageLoader, ColorFormat;
 import retrograde.core.storage : File;
 
 import imageformats : IFImage, read_image_from_mem, ColFmt;
@@ -20,13 +20,26 @@ import imageformats : IFImage, read_image_from_mem, ColFmt;
  * Loads PNG image data.
  */
 class PngImageLoader : ImageLoader {
-    public Image load(File imageFile) {
-        auto imageData = read_image_from_mem(imageFile.data, ColFmt.RGBA);
+    public Image load(File imageFile, ColorFormat colorFormat = ColorFormat.rgba) {
+        auto imageData = read_image_from_mem(imageFile.data, convertColorFormat(colorFormat));
         auto image = new Image();
         image.width = imageData.w;
         image.height = imageData.h;
         image.channels = imageData.c;
         image.data = imageData.pixels;
         return image;
+    }
+
+    private ColFmt convertColorFormat(ColorFormat colorFormat) {
+        switch (colorFormat) {
+        case ColorFormat.grayscale:
+            return ColFmt.Y;
+        case ColorFormat.grayscaleAlpha:
+            return ColFmt.YA;
+        case ColorFormat.rgb:
+            return ColFmt.RGB;
+        default:
+            return ColFmt.RGBA;
+        }
     }
 }
