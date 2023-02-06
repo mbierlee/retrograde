@@ -13,7 +13,7 @@ module retrograde.rendering.api.opengl;
 
 version (Have_bindbc_opengl) {
     import retrograde.core.rendering : GraphicsApi, Shader, ShaderProgram, ShaderType, Color, TextureFilteringMode,
-        RenderOutput;
+        RenderOutput, CameraConfiguration;
     import retrograde.core.platform : Viewport;
     import retrograde.core.entity : Entity, EntityComponent, EntityComponentIdentity;
     import retrograde.core.model : Vertex, Mesh, Face, VertexIndex, TextureCoordinateIndex;
@@ -61,6 +61,8 @@ version (Have_bindbc_opengl) {
         private static const uint standardRenderDepthBufferAttribLocation = 6;
         private static const uint standardHasDepthMapUniformLocation = 7;
         private static const uint standardDepthMapSamplerUniformLocation = 8;
+        private static const uint standardNearClippingUniformLocation = 9;
+        private static const uint standardFarClippingUniformLocation = 10;
 
         private static const uint standardAlbedoTextureUnit = 0;
         private static const uint standardDepthMapTextureUnit = 1;
@@ -239,13 +241,25 @@ version (Have_bindbc_opengl) {
             }
         }
 
-        public void drawModel(Entity entity, Matrix4D modelViewProjectionMatrix) {
+        public void drawModel(
+            Entity entity,
+            const ref Matrix4D modelViewProjectionMatrix,
+            const ref CameraConfiguration cameraConfiguration
+        ) {
             entity.maybeWithComponent!GlModelInfoComponent((modelInfo) {
                 auto modelViewProjectionMatrixData = modelViewProjectionMatrix.getDataArray!float;
                 glUniformMatrix4fv(standardMvpUniformLocation, 1, GL_TRUE,
                     modelViewProjectionMatrixData.ptr);
+
+                //TODO: Set at frame start only (needs uniform blocks).
                 glUniform1i(standardRenderDepthBufferAttribLocation,
-                    renderOutput == RenderOutput.depthBuffer); //TODO: Set at frame start only (needs uniform blocks).
+                    renderOutput == RenderOutput.depthBuffer);
+                glUniform1f(standardNearClippingUniformLocation,
+                    cameraConfiguration.nearClippingDistance);
+                glUniform1f(standardFarClippingUniformLocation,
+                    cameraConfiguration.farClippingDistance);
+                ////
+
                 bindTextureData(modelInfo.info);
                 drawMeshes(modelInfo);
             });

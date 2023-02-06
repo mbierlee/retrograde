@@ -66,6 +66,8 @@ struct CameraConfiguration {
      * If 0, it is considered infinite.
      * Note that infinite clipping planes only work in perspective cameras,
      * not orthographic. Use setOrthographicProjectionDefaults to set sensible defaults.
+     * Infinite clipping planes will disable the ability to blend with backgrounds, since
+     * that feature needs a finite clipping range.
      */
     scalar farClippingDistance = 0;
 
@@ -309,7 +311,7 @@ interface GraphicsApi {
     /** 
      * Draw an entity's model.
      */
-    public void drawModel(Entity entity, Matrix4D modelViewProjectionMatrix);
+    public void drawModel(Entity entity, const ref Matrix4D modelViewProjectionMatrix, const ref CameraConfiguration cameraConfiguration);
 
     /** 
      * Draw an entity as an orthographic background.
@@ -364,7 +366,7 @@ class NullGraphicsApi : GraphicsApi {
     public void useDefaultBackgroundShader() {
     }
 
-    public void drawModel(Entity entity, Matrix4D modelViewProjectionMatrix) {
+    public void drawModel(Entity entity, const ref Matrix4D modelViewProjectionMatrix, const ref CameraConfiguration cameraConfiguration) {
     }
 
     public void drawOrthoBackground(Entity entity) {

@@ -172,7 +172,7 @@ class GenericRenderSystem : RenderSystem {
         auto viewProjectionMatrix = projectionMatrix * createRenderViewMatrix();
         foreach (Entity model; models) {
             auto modelViewProjectionMatrix = createModelViewProjectionMatrix(model, viewProjectionMatrix);
-            graphicsApi.drawModel(model, modelViewProjectionMatrix);
+            graphicsApi.drawModel(model, modelViewProjectionMatrix, cameraConfiguration);
         }
     }
 
