@@ -19,17 +19,14 @@ float linearizeDepth(float depth) {
 }
 
 void main() {
-    float fragDepth;
     if(far == 0) {
-        fragDepth = gl_FragCoord.z;
+        gl_FragDepth = gl_FragCoord.z; //TODO: don't write to when not needed by importing from lib. For pre-Z optimization.
     } else {
-        fragDepth = linearizeDepth(gl_FragCoord.z) / far;
+        gl_FragDepth = linearizeDepth(gl_FragCoord.z) / far;
     }
 
-    gl_FragDepth = fragDepth;
-
     if(renderDepthBuffer) {
-        color = vec4(vec3(fragDepth), 1.0);
+        color = vec4(vec3(gl_FragDepth), 1.0);
     } else if(hasTexture) {
         color = texture(albedo, vec2(fs_in.textureCoords.x, -fs_in.textureCoords.y)) * fs_in.color;
     } else {
