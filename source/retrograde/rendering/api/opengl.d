@@ -667,7 +667,6 @@ version (Have_bindbc_opengl) {
 
     private string replaceIncludes(const string shaderSource, ShaderLib[string] shaderLibs) {
         string modifiedShaderSource = shaderSource;
-        import std.stdio;
 
         bool foundIncludes = false;
         long includeStart = -1;

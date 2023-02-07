@@ -262,8 +262,6 @@ version (unittest) {
             Vertex(-1.000000, -1.000000, 1.000000, 1, 0.537255, 0.733333, 1, 1, 0, 1.000000, 1)
         ];
 
-        import std.stdio;
-
         foreach (index, vertex; mesh.vertices) {
             assert(isClose(vertex.x, expectedVertices[index].x, 1e-3));
             assert(isClose(vertex.y, expectedVertices[index].y, 1e-3));

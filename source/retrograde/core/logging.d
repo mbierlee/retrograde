@@ -11,8 +11,8 @@
 
 module retrograde.core.logging;
 
-import std.experimental.logger;
-import std.stdio;
+import std.experimental.logger : Logger, LogLevel;
+import std.stdio : stdout, stderr, File;
 
 class StdoutLogger : Logger {
 
