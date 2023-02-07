@@ -12,8 +12,8 @@
 module retrograde.rendering.api.opengl;
 
 version (Have_bindbc_opengl) {
-    import retrograde.core.rendering : GraphicsApi, Shader, ShaderProgram, ShaderType, Color, TextureFilteringMode,
-        RenderOutput, CameraConfiguration;
+    import retrograde.core.rendering : GraphicsApi, Shader, ShaderLib, ShaderProgram, ShaderType, Color,
+        TextureFilteringMode, RenderOutput, CameraConfiguration;
     import retrograde.core.platform : Viewport;
     import retrograde.core.entity : Entity, EntityComponent, EntityComponentIdentity;
     import retrograde.core.model : Vertex, Mesh, Face, VertexIndex, TextureCoordinateIndex;
@@ -30,7 +30,7 @@ version (Have_bindbc_opengl) {
 
     import std.logger : Logger;
     import std.conv : to;
-    import std.string : fromStringz, format;
+    import std.string : fromStringz, format, indexOf, replaceInPlace;
     import std.random : Random, uniform01;
 
     import bindbc.opengl;
@@ -159,13 +159,7 @@ version (Have_bindbc_opengl) {
             });
 
             entity.maybeWithComponent!OrthoBackgroundComponent((c) {
-                Vertex[] vertices = geometryFactory.createPlaneVertices(2, 2, Color(
-                    clearColor[0],
-                    clearColor[1],
-                    clearColor[2],
-                    clearColor[3]
-                ));
-
+                Vertex[] vertices = geometryFactory.createPlaneVertices(2, 2, Color(1.0, 1.0, 1.0, 1.0));
                 modelInfo.meshes ~= createMeshInfo(vertices);
             });
 
@@ -314,17 +308,42 @@ version (Have_bindbc_opengl) {
         }
 
         private void initializeDefaultShaders() {
-            defaultModelShaderProgram = createModelShaderProgram();
-            compileAndLinkShaderProgram(defaultModelShaderProgram);
+            auto shaderLibs = [
+                createShaderLib!"common_fragment"
+            ];
 
-            defaultBackgroundShaderProgram = createBackgroundShaderProgram();
-            compileAndLinkShaderProgram(defaultBackgroundShaderProgram);
+            defaultModelShaderProgram = createShaderProgram!"model";
+            defaultModelShaderProgram.addShaderLibs(shaderLibs);
+            buildShaderProgram(defaultModelShaderProgram);
+
+            defaultBackgroundShaderProgram = createShaderProgram!"background";
+            defaultBackgroundShaderProgram.addShaderLibs(shaderLibs);
+            buildShaderProgram(defaultBackgroundShaderProgram);
         }
 
-        private void compileAndLinkShaderProgram(OpenGlShaderProgram shaderProgram) {
+        private ShaderLib createShaderLib(string shaderLibName)() {
+            return new OpenGlShaderLib(shaderLibName ~ ".glsl", import(
+                    "standard/lib/" ~ shaderLibName ~ ".glsl"));
+        }
+
+        private OpenGlShaderProgram createShaderProgram(string shaderName)() {
+            auto vertexShader = new OpenGlShader(shaderName ~ "_vertex", import(
+                    "standard/" ~ shaderName ~ "_vertex.glsl"), ShaderType.vertex);
+            auto fragmentShader = new OpenGlShader(shaderName ~ "_fragment", import(
+                    "standard/" ~ shaderName ~ "_fragment.glsl"), ShaderType.fragment);
+            return new OpenGlShaderProgram(vertexShader, fragmentShader);
+        }
+
+        private void buildShaderProgram(OpenGlShaderProgram shaderProgram) {
+            shaderProgram.preProcessShaders();
+            if (!shaderProgram.isPreProcessed) {
+                logger.errorf("Failed to pre-process shader program: \n%s", shaderProgram.getPreProcessInfo());
+                return;
+            }
+
             shaderProgram.compileShaders();
             shaderProgram.linkProgram();
-            if (!shaderProgram.isLinked()) {
+            if (!shaderProgram.isLinked) {
                 logger.errorf("Link errors for shader program: \n%s", shaderProgram.getLinkInfo());
             }
         }
@@ -435,18 +454,16 @@ version (Have_bindbc_opengl) {
     }
 
     /**
-     * OpenGL shader.
-     *
-     * The shader source should be GLSL code.
+     * OpenGL GLSL shader.
      */
     class OpenGlShader : Shader {
         private static const GLenum[ShaderType] shaderTypeMapping;
 
-        private const string shaderSource;
+        private string shaderSource;
         private GLuint shader;
         private bool _isCompiled;
 
-        this(immutable string name, immutable string shaderSource, const ShaderType shaderType) {
+        this(const string name, const string shaderSource, const ShaderType shaderType) {
             super(name, shaderType);
             this.shaderSource = shaderSource;
         }
@@ -479,6 +496,10 @@ version (Have_bindbc_opengl) {
             }
 
             this.shaderTypeMapping = shaderTypeMapping;
+        }
+
+        override public void preProcess(ShaderLib[string] shaderLibs) {
+            shaderSource = replaceIncludes(shaderSource, shaderLibs);
         }
 
         override public void compile() {
@@ -535,12 +556,23 @@ version (Have_bindbc_opengl) {
         }
     }
 
+    class OpenGlShaderLib : ShaderLib {
+        private string shaderSource;
+
+        this(const string name, const string shaderSource) {
+            super(name);
+            this.shaderSource = shaderSource;
+        }
+    }
+
     /**
      * OpenGL shader program.
      */
     class OpenGlShaderProgram : ShaderProgram {
         private GLuint program;
+        private bool _isPreProcessed;
         private bool _isLinked;
+        private string preProcessInfo = "";
 
         this() {
         }
@@ -553,6 +585,24 @@ version (Have_bindbc_opengl) {
             if (program) {
                 glDeleteProgram(program);
             }
+        }
+
+        override public void preProcessShaders() {
+            try {
+                super.preProcessShaders();
+                _isPreProcessed = true;
+            } catch (Exception e) {
+                preProcessInfo = e.msg;
+                _isPreProcessed = false;
+            }
+        }
+
+        override public bool isPreProcessed() {
+            return _isPreProcessed;
+        }
+
+        override public string getPreProcessInfo() {
+            return preProcessInfo;
         }
 
         override public void linkProgram() {
@@ -615,20 +665,43 @@ version (Have_bindbc_opengl) {
         }
     }
 
-    private OpenGlShaderProgram createBackgroundShaderProgram() {
-        return createShaderProgram!("background_vertex", "background_fragment")();
-    }
+    private string replaceIncludes(const string shaderSource, ShaderLib[string] shaderLibs) {
+        string modifiedShaderSource = shaderSource;
+        import std.stdio;
 
-    private OpenGlShaderProgram createModelShaderProgram() {
-        return createShaderProgram!("model_vertex", "model_fragment")();
-    }
+        long includeStart = -1;
+        while (true) {
+            includeStart = modifiedShaderSource.indexOf("#include", includeStart + 1);
+            if (includeStart == -1) {
+                break;
+            }
 
-    private OpenGlShaderProgram createShaderProgram(string vertexShaderName, string fragmentShaderName)() {
-        auto vertexShader = new OpenGlShader(vertexShaderName, import(
-                "standard/" ~ vertexShaderName ~ ".glsl"), ShaderType.vertex);
-        auto fragmentShader = new OpenGlShader(fragmentShaderName, import(
-                "standard/" ~ fragmentShaderName ~ ".glsl"), ShaderType.fragment);
-        return new OpenGlShaderProgram(vertexShader, fragmentShader);
+            long quoteStart = modifiedShaderSource.indexOf('"', includeStart);
+            if (quoteStart == -1) {
+                break;
+            }
+
+            long quoteEnd = modifiedShaderSource.indexOf('"', quoteStart + 1);
+            if (quoteStart == -1) {
+                break;
+            }
+
+            string includeName = modifiedShaderSource[quoteStart + 1 .. quoteEnd];
+            auto shaderLib = includeName in shaderLibs;
+            if (shaderLib is null) {
+                throw new Exception(
+                    "Failed to include shader '" ~ includeName ~ "'. The shader was not pre-loaded as shader library.");
+            }
+
+            OpenGlShaderLib glShaderLib = cast(OpenGlShaderLib)*shaderLib;
+            if (glShaderLib is null) {
+                throw new Exception("Shaderlib '" ~ includeName ~ "' is not an OpenGL GLSL shader.");
+            }
+
+            modifiedShaderSource.replaceInPlace(includeStart, quoteEnd + 1, glShaderLib.shaderSource ~ "\n");
+        }
+
+        return modifiedShaderSource;
     }
 
     private struct GlMeshInfo {

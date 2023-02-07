@@ -1,4 +1,7 @@
 #version 460 core
+// Fragment Shader
+
+#include "common_fragment.glsl"
 
 out vec4 color;
 
@@ -17,11 +20,6 @@ void main() {
     float fragDepth = hasDepthMap ? texture(depthMap, vec3(fs_in.textureCoords.x - 1, -fs_in.textureCoords.y - 1, 1) / 2, 0) : 1.0;
     gl_FragDepth = fragDepth;
 
-    if(renderDepthBuffer) {
-        color = vec4(vec3(fragDepth), 1.0);
-    } else if(hasTexture) {
-        color = texture(albedo, vec2(fs_in.textureCoords.x - 1, -fs_in.textureCoords.y - 1) / 2, 0);
-    } else {
-        color = fs_in.color;
-    }
+    vec2 texCoords = vec2(fs_in.textureCoords.x - 1, -fs_in.textureCoords.y - 1) / 2;
+    color = createOutputColor(renderDepthBuffer, hasTexture, gl_FragDepth, albedo, texCoords, fs_in.color);
 }

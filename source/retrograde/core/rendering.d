@@ -126,6 +126,12 @@ abstract class Shader {
     }
 
     /**
+     * Preprocess the shader if the API supports it.
+     * This step typically includes shader libraries.
+     */
+    abstract public void preProcess(ShaderLib[string] shaderLibs);
+
+    /**
      * Compiles the shader if the API allows for such a thing.
      * When a shader is already compiled it might not be recompiled again.
      */
@@ -154,6 +160,18 @@ abstract class Shader {
     }
 }
 
+/** 
+ * A shader library that can be included in other shaders via the
+ * shader pre-processor.
+ */
+abstract class ShaderLib {
+    protected const string name;
+
+    this(const string name) {
+        this.name = name;
+    }
+}
+
 /**
  * A complete multi-stage shader program.
  *
@@ -161,12 +179,13 @@ abstract class Shader {
  */
 class ShaderProgram {
     protected Shader[] shaders;
+    protected ShaderLib[string] shaderLibs;
 
     this() {
     }
 
     this(Shader[] shaders...) {
-        addShaders(shaders);
+        this.shaders ~= shaders;
     }
 
     /**
@@ -188,6 +207,47 @@ class ShaderProgram {
      */
     public void addShaders(Shader[] shaders...) {
         this.shaders ~= shaders;
+    }
+
+    /** 
+     * Adds a single shader lib to this program.
+     * The lib can be shared and included in multiple shaders.
+     */
+    public void addShaderLib(ShaderLib shaderLib) {
+        shaderLibs[shaderLib.name] = shaderLib;
+    }
+
+    /** 
+     * Adds multiple shader libs to this program.
+     * The libs can be shared and included in multiple shaders.
+     */
+    public void addShaderLibs(ShaderLib[] shaderLibs...) {
+        foreach (ShaderLib shaderLib; shaderLibs) {
+            this.shaderLibs[shaderLib.name] = shaderLib;
+        }
+    }
+
+    /** 
+     * Pre-processes all shaders contained in this shader program
+     */
+    public void preProcessShaders() {
+        foreach (Shader shader; shaders) {
+            shader.preProcess(shaderLibs);
+        }
+    }
+
+    /** 
+     * Whether all shaders are successfully pre-processed.
+     */
+    public bool isPreProcessed() {
+        return false;
+    }
+
+    /** 
+     * Returns info regarding the pre-processing phase.
+     */
+    public string getPreProcessInfo() {
+        return "";
     }
 
     /**
@@ -395,9 +455,16 @@ struct Color {
 version (unittest) {
     class TestShader : Shader {
         public bool _isCompiled = false;
+        public bool _isPreProcessed = false;
+        public bool _hasTestShaderLib = false;
 
         this() {
             super("testshader", ShaderType.unknown);
+        }
+
+        override public void preProcess(ShaderLib[string] shaderLibs) {
+            _isPreProcessed = true;
+            _hasTestShaderLib = ("testshaderlib" in shaderLibs) !is null;
         }
 
         override public void compile() {
@@ -412,6 +479,12 @@ version (unittest) {
         }
     }
 
+    class TestShaderLib : ShaderLib {
+        this() {
+            super("testshaderlib");
+        }
+    }
+
     @("ShaderProgram compiles shaders")
     unittest {
         auto shader = new TestShader();
@@ -419,6 +492,18 @@ version (unittest) {
         program.compileShaders();
 
         assert(program.shaders.length == 1);
-        assert(shader.isCompiled());
+        assert(shader.isCompiled);
+    }
+
+    @("ShaderProgram pre-processes shaders")
+    unittest {
+        auto shader = new TestShader();
+        auto shaderLib = new TestShaderLib();
+        auto program = new ShaderProgram(shader);
+        program.addShaderLib(shaderLib);
+        program.preProcessShaders();
+
+        assert(shader._isPreProcessed);
+        assert(shader._hasTestShaderLib);
     }
 }
