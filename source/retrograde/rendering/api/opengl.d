@@ -669,6 +669,7 @@ version (Have_bindbc_opengl) {
         string modifiedShaderSource = shaderSource;
         import std.stdio;
 
+        bool foundIncludes = false;
         long includeStart = -1;
         while (true) {
             includeStart = modifiedShaderSource.indexOf("#include", includeStart + 1);
@@ -698,10 +699,15 @@ version (Have_bindbc_opengl) {
                 throw new Exception("Shaderlib '" ~ includeName ~ "' is not an OpenGL GLSL shader.");
             }
 
+            foundIncludes = true;
             modifiedShaderSource.replaceInPlace(includeStart, quoteEnd + 1, glShaderLib.shaderSource ~ "\n");
         }
 
-        return modifiedShaderSource;
+        if (foundIncludes) {
+            return replaceIncludes(modifiedShaderSource, shaderLibs);
+        } else {
+            return modifiedShaderSource;
+        }
     }
 
     private struct GlMeshInfo {
