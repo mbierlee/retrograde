@@ -129,7 +129,7 @@ abstract class Shader {
      * Preprocess the shader if the API supports it.
      * This step typically includes shader libraries.
      */
-    abstract public void preProcess(ShaderLib[string] shaderLibs);
+    abstract public void preProcess(const PreProcessor preProcessor, const ref BuildContext buildContext);
 
     /**
      * Compiles the shader if the API allows for such a thing.
@@ -170,6 +170,13 @@ abstract class ShaderLib {
     this(const string name) {
         this.name = name;
     }
+}
+
+/** 
+ * A context used when pre-processing shaders.
+ */
+struct BuildContext {
+    ShaderLib[string] shaderLibs;
 }
 
 /**
@@ -230,9 +237,12 @@ class ShaderProgram {
     /** 
      * Pre-processes all shaders contained in this shader program
      */
-    public void preProcessShaders() {
+    public void preProcessShaders(PreProcessor preProcessor) {
+        BuildContext context;
+        context.shaderLibs = shaderLibs;
+
         foreach (Shader shader; shaders) {
-            shader.preProcess(shaderLibs);
+            shader.preProcess(preProcessor, context);
         }
     }
 
@@ -290,6 +300,12 @@ class ShaderProgram {
      */
     public void clean() {
     }
+}
+
+/** 
+ * Super-type for implementing shading language pre-processors.
+ */
+interface PreProcessor {
 }
 
 /**
@@ -462,9 +478,9 @@ version (unittest) {
             super("testshader", ShaderType.unknown);
         }
 
-        override public void preProcess(ShaderLib[string] shaderLibs) {
+        override public void preProcess(const PreProcessor preProcessor, const ref BuildContext buildContext) {
             _isPreProcessed = true;
-            _hasTestShaderLib = ("testshaderlib" in shaderLibs) !is null;
+            _hasTestShaderLib = ("testshaderlib" in buildContext.shaderLibs) !is null;
         }
 
         override public void compile() {
@@ -485,6 +501,9 @@ version (unittest) {
         }
     }
 
+    class TestPreProcessor : PreProcessor {
+    }
+
     @("ShaderProgram compiles shaders")
     unittest {
         auto shader = new TestShader();
@@ -501,7 +520,7 @@ version (unittest) {
         auto shaderLib = new TestShaderLib();
         auto program = new ShaderProgram(shader);
         program.addShaderLib(shaderLib);
-        program.preProcessShaders();
+        program.preProcessShaders(new TestPreProcessor());
 
         assert(shader._isPreProcessed);
         assert(shader._hasTestShaderLib);

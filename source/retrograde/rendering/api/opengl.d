@@ -13,7 +13,7 @@ module retrograde.rendering.api.opengl;
 
 version (Have_bindbc_opengl) {
     import retrograde.core.rendering : GraphicsApi, Shader, ShaderLib, ShaderProgram, ShaderType, Color,
-        TextureFilteringMode, RenderOutput, CameraConfiguration;
+        TextureFilteringMode, RenderOutput, CameraConfiguration, PreProcessor, BuildContext;
     import retrograde.core.platform : Viewport;
     import retrograde.core.entity : Entity, EntityComponent, EntityComponentIdentity;
     import retrograde.core.model : Vertex, Mesh, Face, VertexIndex, TextureCoordinateIndex;
@@ -26,11 +26,13 @@ version (Have_bindbc_opengl) {
 
     import retrograde.geometryfactory : GeometryFactory;
 
+    import retrograde.rendering.shadinglang.glsl : GlslShaderLib, GlslPreProcessor;
+
     import poodinis : Autowire, Value, OptionalDependency;
 
     import std.logger : Logger;
     import std.conv : to;
-    import std.string : fromStringz, format, indexOf, replaceInPlace;
+    import std.string : fromStringz, format;
     import std.random : Random, uniform01;
 
     import bindbc.opengl;
@@ -39,6 +41,7 @@ version (Have_bindbc_opengl) {
         private @Autowire Logger logger;
         private @Autowire GLErrorService errorService;
         private @Autowire GeometryFactory geometryFactory;
+        private @Autowire GlslPreProcessor glslPreProcessor;
 
         private OpenGlShaderProgram defaultBackgroundShaderProgram;
         private OpenGlShaderProgram defaultModelShaderProgram;
@@ -322,7 +325,7 @@ version (Have_bindbc_opengl) {
         }
 
         private ShaderLib createShaderLib(string shaderLibName)() {
-            return new OpenGlShaderLib(shaderLibName ~ ".glsl", import(
+            return new GlslShaderLib(shaderLibName ~ ".glsl", import(
                     "standard/lib/" ~ shaderLibName ~ ".glsl"));
         }
 
@@ -335,7 +338,7 @@ version (Have_bindbc_opengl) {
         }
 
         private void buildShaderProgram(OpenGlShaderProgram shaderProgram) {
-            shaderProgram.preProcessShaders();
+            shaderProgram.preProcessShaders(glslPreProcessor);
             if (!shaderProgram.isPreProcessed) {
                 logger.errorf("Failed to pre-process shader program: \n%s", shaderProgram.getPreProcessInfo());
                 return;
@@ -498,8 +501,13 @@ version (Have_bindbc_opengl) {
             this.shaderTypeMapping = shaderTypeMapping;
         }
 
-        override public void preProcess(ShaderLib[string] shaderLibs) {
-            shaderSource = replaceIncludes(shaderSource, shaderLibs);
+        override public void preProcess(const PreProcessor preProcessor, const ref BuildContext buildContext) {
+            GlslPreProcessor glslPreProcessor = cast(GlslPreProcessor) preProcessor;
+            if (glslPreProcessor is null) {
+                throw new Exception("Given pre-processor is not a GLSL pre-processor.");
+            }
+
+            shaderSource = glslPreProcessor.preProcess(shaderSource, buildContext);
         }
 
         override public void compile() {
@@ -587,9 +595,9 @@ version (Have_bindbc_opengl) {
             }
         }
 
-        override public void preProcessShaders() {
+        override public void preProcessShaders(PreProcessor preProcessor) {
             try {
-                super.preProcessShaders();
+                super.preProcessShaders(preProcessor);
                 _isPreProcessed = true;
             } catch (Exception e) {
                 preProcessInfo = e.msg;
@@ -662,50 +670,6 @@ version (Have_bindbc_opengl) {
 
         public GLuint getOpenGlShaderProgram() {
             return program;
-        }
-    }
-
-    private string replaceIncludes(const string shaderSource, ShaderLib[string] shaderLibs) {
-        string modifiedShaderSource = shaderSource;
-
-        bool foundIncludes = false;
-        long includeStart = -1;
-        while (true) {
-            includeStart = modifiedShaderSource.indexOf("#include", includeStart + 1);
-            if (includeStart == -1) {
-                break;
-            }
-
-            long quoteStart = modifiedShaderSource.indexOf('"', includeStart);
-            if (quoteStart == -1) {
-                break;
-            }
-
-            long quoteEnd = modifiedShaderSource.indexOf('"', quoteStart + 1);
-            if (quoteStart == -1) {
-                break;
-            }
-
-            string includeName = modifiedShaderSource[quoteStart + 1 .. quoteEnd];
-            auto shaderLib = includeName in shaderLibs;
-            if (shaderLib is null) {
-                throw new Exception(
-                    "Failed to include shader '" ~ includeName ~ "'. The shader was not pre-loaded as shader library.");
-            }
-
-            OpenGlShaderLib glShaderLib = cast(OpenGlShaderLib)*shaderLib;
-            if (glShaderLib is null) {
-                throw new Exception("Shaderlib '" ~ includeName ~ "' is not an OpenGL GLSL shader.");
-            }
-
-            foundIncludes = true;
-            modifiedShaderSource.replaceInPlace(includeStart, quoteEnd + 1, glShaderLib.shaderSource ~ "\n");
-        }
-
-        if (foundIncludes) {
-            return replaceIncludes(modifiedShaderSource, shaderLibs);
-        } else {
-            return modifiedShaderSource;
         }
     }
 
