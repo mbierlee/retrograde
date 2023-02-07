@@ -22,8 +22,9 @@ float linearizeDepth(float depth) {
 }
 
 void main() {
+    //TODO: make it possible to use the default depth algorithm (quadratic). Do not write gl_FragDepth at all when that is the case
     if(far == 0) {
-        gl_FragDepth = gl_FragCoord.z; //TODO: don't write to when not needed by importing from lib. For pre-Z optimization.
+        gl_FragDepth = gl_FragCoord.z;
     } else {
         gl_FragDepth = linearizeDepth(gl_FragCoord.z) / far;
     }

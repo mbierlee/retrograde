@@ -88,3 +88,46 @@ class GlslPreProcessor : PreProcessor {
         }
     }
 }
+
+version (unittest) {
+    import std.string : strip;
+
+    @("Include shader libs in shader source")
+    unittest {
+        auto preProcessor = new GlslPreProcessor();
+        auto shaderSource = "
+            #version 460 core
+            #include \"actual_shader.glsl\"
+        ";
+
+        auto libs = [
+            "actual_shader.glsl": cast(ShaderLib) new GlslShaderLib("actual_shader.glsl", "in vec3 stuff;")
+        ];
+
+        auto context = BuildContext(libs);
+        auto expectedShaderSource = "
+            #version 460 core
+            in vec3 stuff;
+        ".strip;
+
+        auto actualShaderSource = preProcessor.preProcess(shaderSource, context).strip;
+        assert(actualShaderSource == expectedShaderSource);
+    }
+
+    @("Include includes in includes")
+    unittest {
+        auto preProcessor = new GlslPreProcessor();
+        auto shaderSource = "#include \"one.glsl\"";
+
+        auto libs = [
+            "one.glsl": cast(ShaderLib) new GlslShaderLib("one.glsl", "#include \"two.glsl\""),
+            "two.glsl": cast(ShaderLib) new GlslShaderLib("one.glsl", "hi!")
+        ];
+
+        auto context = BuildContext(libs);
+        auto expectedShaderSource = "hi!";
+
+        auto actualShaderSource = preProcessor.preProcess(shaderSource, context).strip;
+        assert(actualShaderSource == expectedShaderSource);
+    }
+}
