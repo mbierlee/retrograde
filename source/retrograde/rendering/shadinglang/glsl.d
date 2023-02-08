@@ -14,6 +14,17 @@ module retrograde.rendering.shadinglang.glsl;
 import retrograde.core.rendering : ShaderLib, PreProcessor, BuildContext;
 
 import std.string : indexOf, replaceInPlace;
+import std.typecons : Tuple, tuple;
+import std.range : repeat;
+import std.array : join;
+
+private enum Include = "#include";
+private enum Define = "#define";
+private enum IfDef = "#ifdef";
+private enum EndIf = "#endif";
+
+private alias DefinitionTuple = Tuple!(long, "startPos", long, "endPos", string, "value");
+private alias DefinitionMap = DefinitionTuple[string];
 
 /** 
  * A GLSL shader library.
@@ -40,31 +51,33 @@ class GlslPreProcessor : PreProcessor {
      * Returns: A possibly modified GLSL shader.
      */
     public string preProcess(const string shaderSource, const ref BuildContext buildContext) {
-        return replaceIncludes(shaderSource, buildContext);
+        string modifiedShaderSource = shaderSource;
+        replaceIncludes(modifiedShaderSource, buildContext);
+        auto definitions = findDefines(modifiedShaderSource);
+        evaluateIfDefs(modifiedShaderSource, definitions);
+        return modifiedShaderSource;
     }
 
-    private string replaceIncludes(const string shaderSource, const ref BuildContext buildContext) {
-        string modifiedShaderSource = shaderSource;
-
+    private void replaceIncludes(ref string shaderSource, const ref BuildContext buildContext) {
         bool foundIncludes = false;
         long includeStart = -1;
         while (true) {
-            includeStart = modifiedShaderSource.indexOf("#include", includeStart + 1);
+            includeStart = shaderSource.indexOf(Include, includeStart + 1);
             if (includeStart == -1) {
                 break;
             }
 
-            long quoteStart = modifiedShaderSource.indexOf('"', includeStart);
+            long quoteStart = shaderSource.indexOf('"', includeStart);
             if (quoteStart == -1) {
                 break;
             }
 
-            long quoteEnd = modifiedShaderSource.indexOf('"', quoteStart + 1);
+            long quoteEnd = shaderSource.indexOf('"', quoteStart + 1);
             if (quoteStart == -1) {
                 break;
             }
 
-            string includeName = modifiedShaderSource[quoteStart + 1 .. quoteEnd];
+            string includeName = shaderSource[quoteStart + 1 .. quoteEnd];
             auto shaderLib = includeName in buildContext.shaderLibs;
             if (shaderLib is null) {
                 throw new Exception(
@@ -78,14 +91,92 @@ class GlslPreProcessor : PreProcessor {
             }
 
             foundIncludes = true;
-            modifiedShaderSource.replaceInPlace(includeStart, quoteEnd + 1, glslShaderLib.shaderSource ~ "\n");
+            shaderSource.replaceInPlace(includeStart, quoteEnd + 1, glslShaderLib.shaderSource ~ "\n");
         }
 
         if (foundIncludes) {
-            return replaceIncludes(modifiedShaderSource, buildContext);
-        } else {
-            return modifiedShaderSource;
+            return replaceIncludes(shaderSource, buildContext);
         }
+    }
+
+    private DefinitionMap findDefines(ref string shaderSource) {
+        DefinitionMap definitions;
+        long defineStart = -1;
+        while (true) {
+            defineStart = shaderSource.indexOf(Define, defineStart + 1);
+            if (defineStart == -1) {
+                break;
+            }
+
+            long codePos = defineStart + Define.length;
+            bool hitNewLine = false;
+            string name = parseToken(shaderSource, codePos, hitNewLine);
+            string value = hitNewLine ? "" : parseToken(shaderSource, codePos);
+            definitions[name] = DefinitionTuple(defineStart, codePos, value);
+            long definitionLength = codePos - defineStart;
+            shaderSource.replaceInPlace(defineStart, codePos, " ".repeat(definitionLength).join);
+        }
+
+        return definitions;
+    }
+
+    private void evaluateIfDefs(
+        ref string shaderSource,
+        const ref DefinitionMap definitions
+    ) {
+        long ifDefStart = -1;
+        while (true) {
+            ifDefStart = shaderSource.indexOf(IfDef, ifDefStart + 1);
+            if (ifDefStart == -1) {
+                break;
+            }
+
+            long codePos = ifDefStart + IfDef.length;
+            string name = parseToken(shaderSource, codePos);
+
+            long endIfStart = shaderSource.indexOf(EndIf, ifDefStart + 1);
+            if (endIfStart == -1) {
+                throw new Exception("Unclosed #ifdef block for token'" ~ name ~ "'");
+            }
+
+            auto conditionalBody = shaderSource[codePos .. endIfStart];
+
+            //TODO: support else
+
+            //TODO: get from constants in build context
+
+            auto definition = name in definitions;
+            bool isDefined = definition !is null && (*definition).startPos < ifDefStart;
+            string replacedBody = isDefined ? conditionalBody : "";
+
+            shaderSource.replaceInPlace(ifDefStart, (endIfStart + EndIf.length), replacedBody);
+        }
+    }
+
+    private string parseToken(const string shaderSource, ref long codePos) {
+        bool dontCare;
+        return parseToken(shaderSource, codePos, dontCare);
+    }
+
+    private string parseToken(const string shaderSource, ref long codePos, out bool hitNewLine) {
+        string token = "";
+        while (codePos < shaderSource.length) {
+            char chr = shaderSource[codePos++];
+            bool isSpace = chr == ' ';
+            bool isNewLine = chr == '\n' || chr == '\r';
+            if (isSpace || isNewLine) {
+                hitNewLine = hitNewLine || isNewLine;
+                if (token.length > 0) {
+                    break;
+                } else {
+                    continue;
+                }
+            }
+
+            token ~= chr;
+        }
+
+        return token;
     }
 }
 
@@ -114,6 +205,8 @@ version (unittest) {
         assert(actualShaderSource == expectedShaderSource);
     }
 
+    //TODO: add test for when lib does not exist
+
     @("Include includes in includes")
     unittest {
         auto preProcessor = new GlslPreProcessor();
@@ -126,8 +219,28 @@ version (unittest) {
 
         auto context = BuildContext(libs);
         auto expectedShaderSource = "hi!";
-
         auto actualShaderSource = preProcessor.preProcess(shaderSource, context).strip;
         assert(actualShaderSource == expectedShaderSource);
     }
+
+    @("Conditional compilation with ifdef")
+    unittest {
+        auto preProcessor = new GlslPreProcessor();
+        auto shaderSource = "
+            #define OH_HI
+            #ifdef OH_HI
+            hi!
+            #endif
+            #ifdef BYE
+            bye!
+            #endif
+        ";
+
+        auto context = BuildContext();
+        auto expectedShaderSource = "hi!";
+        auto actualShaderSource = preProcessor.preProcess(shaderSource, context).strip;
+        assert(actualShaderSource == expectedShaderSource);
+    }
+
+    // TODO: Add test with unclosed ifdef
 }
