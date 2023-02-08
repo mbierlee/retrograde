@@ -86,7 +86,7 @@ class BackgroundEntityFactory : EntityFactory {
 
         if (p.depthMapFilePath.length > 0) {
             auto depthMapFile = storage.readFileRelative(p.depthMapFilePath);
-            auto depthMap = imageLoader.load(depthMapFile, ColorFormat.grayscale, ColorDepth.bit16);
+            auto depthMap = imageLoader.load(depthMapFile);
             auto component = new DepthMapComponent(depthMap);
             entity.maybeAddComponent(component);
         }

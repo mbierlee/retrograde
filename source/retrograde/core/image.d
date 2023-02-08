@@ -45,5 +45,5 @@ class Image {
  * Base interface for image loaders.
  */
 interface ImageLoader {
-    public Image load(File imageFile, ColorFormat colorFormat, ColorDepth colorDepth);
+    public Image load(File imageFile);
 }

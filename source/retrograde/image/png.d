@@ -14,45 +14,47 @@ module retrograde.image.png;
 import retrograde.core.image : Image, ImageLoader, ColorFormat, ColorDepth;
 import retrograde.core.storage : File;
 
-import imageformats : IFImage, read_image_from_mem, ColFmt;
-import imageformats.png : read_png_from_mem, read_png16_from_mem;
+import imageformats : ColFmt;
+import imageformats.png : PNG_Header, read_png_header_from_mem, read_png_from_mem, read_png16_from_mem,
+    read_png_info_from_mem;
 
 /** 
  * Loads PNG image data.
  */
 class PngImageLoader : ImageLoader {
-    public Image load(
-        File imageFile,
-        ColorFormat colorFormat = ColorFormat.rgba,
-        ColorDepth colorDepth = ColorDepth.bit8
-    ) {
-        switch (colorDepth) {
-        case ColorDepth.bit16:
-            return load16BitImage(imageFile, colorFormat);
-        default:
-            return load8BitImage(imageFile, colorFormat);
+    public Image load(File imageFile) {
+        PNG_Header header = read_png_header_from_mem(imageFile.data);
+        int channels, irrelevant;
+        read_png_info_from_mem(imageFile.data, irrelevant, irrelevant, channels);
+
+        if (header.bit_depth == 8) {
+            return load8BitImage(imageFile, channels);
+        } else if (header.bit_depth == 16) {
+            return load16BitImage(imageFile, channels);
+        } else {
+            throw new Exception("Unsupported PNG image color bit depth: " ~ header.bit_depth);
         }
     }
 
-    private Image load8BitImage(File imageFile, ColorFormat colorFormat = ColorFormat.rgba) {
+    private Image load8BitImage(const File imageFile, const int channels) {
         auto image = new Image();
-        auto imageData = read_png_from_mem(imageFile.data, convertColorFormat(colorFormat));
+        auto imageData = read_png_from_mem(imageFile.data, channels);
         image.width = imageData.w;
         image.height = imageData.h;
         image.channels = imageData.c;
         image.data = imageData.pixels;
-        image.colorFormat = colorFormat;
+        image.colorFormat = getColorFormat(channels);
         image.colorDepth = ColorDepth.bit8;
         return image;
     }
 
-    private Image load16BitImage(File imageFile, ColorFormat colorFormat = ColorFormat.rgba) {
+    private Image load16BitImage(const File imageFile, const int channels) {
         auto image = new Image();
-        auto imageData = read_png16_from_mem(imageFile.data, convertColorFormat(colorFormat));
+        auto imageData = read_png16_from_mem(imageFile.data, channels);
         image.width = imageData.w;
         image.height = imageData.h;
         image.channels = imageData.c;
-        image.colorFormat = colorFormat;
+        image.colorFormat = getColorFormat(channels);
         image.colorDepth = ColorDepth.bit16;
         foreach (ushort pixel; imageData.pixels) {
             image.data ~= cast(ubyte) pixel & 0x00FF;
@@ -62,16 +64,18 @@ class PngImageLoader : ImageLoader {
         return image;
     }
 
-    private ColFmt convertColorFormat(ColorFormat colorFormat) {
-        switch (colorFormat) {
-        case ColorFormat.grayscale:
-            return ColFmt.Y;
-        case ColorFormat.grayscaleAlpha:
-            return ColFmt.YA;
-        case ColorFormat.rgb:
-            return ColFmt.RGB;
+    private ColorFormat getColorFormat(const int channels) {
+        switch (channels) {
+        case 1:
+            return ColorFormat.grayscale;
+        case 2:
+            return ColorFormat.grayscaleAlpha;
+        case 3:
+            return ColorFormat.rgb;
+        case 4:
+            return ColorFormat.rgba;
         default:
-            return ColFmt.RGBA;
+            return ColorFormat.rgba;
         }
     }
 }

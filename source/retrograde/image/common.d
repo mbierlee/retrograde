@@ -26,14 +26,10 @@ import poodinis : Autowire;
 class CommonImageLoader : ImageLoader {
     @Autowire public PngImageLoader pngImageLoader;
 
-    public Image load(
-        File imageFile,
-        ColorFormat colorFormat = ColorFormat.rgba,
-        ColorDepth colorDepth = ColorDepth.bit8
-    ) {
+    public Image load(File imageFile) {
         switch (imageFile.extension) {
         case ".png":
-            return pngImageLoader.load(imageFile, colorFormat, colorDepth);
+            return pngImageLoader.load(imageFile);
 
         default:
             throw new Exception(
@@ -50,11 +46,7 @@ version (unittest) {
         public bool loadWasCalled = false;
         public Image image;
 
-        public override Image load(
-            File imageFile,
-            ColorFormat colorFormat = ColorFormat.rgba,
-            ColorDepth colorDepth = ColorDepth.bit8
-        ) {
+        public override Image load(File imageFile) {
             loadWasCalled = true;
             return image;
         }
