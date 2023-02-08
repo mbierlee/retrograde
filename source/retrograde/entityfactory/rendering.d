@@ -14,7 +14,7 @@ module retrograde.entityfactory.rendering;
 import retrograde.core.entity : Entity, EntityFactory, EntityFactoryParameters, ofType;
 import retrograde.core.storage : StorageSystem;
 import retrograde.core.rendering : TextureFilteringMode;
-import retrograde.core.image : ColorFormat;
+import retrograde.core.image : ColorFormat, ColorDepth;
 
 import retrograde.components.geometry : Position3DComponent, Orientation3DComponent;
 import retrograde.components.rendering : RenderableComponent, ModelComponent,
@@ -86,7 +86,7 @@ class BackgroundEntityFactory : EntityFactory {
 
         if (p.depthMapFilePath.length > 0) {
             auto depthMapFile = storage.readFileRelative(p.depthMapFilePath);
-            auto depthMap = imageLoader.load(depthMapFile, ColorFormat.grayscale);
+            auto depthMap = imageLoader.load(depthMapFile, ColorFormat.grayscale, ColorDepth.bit16);
             auto component = new DepthMapComponent(depthMap);
             entity.maybeAddComponent(component);
         }

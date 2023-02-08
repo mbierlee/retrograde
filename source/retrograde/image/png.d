@@ -42,6 +42,7 @@ class PngImageLoader : ImageLoader {
         image.channels = imageData.c;
         image.data = imageData.pixels;
         image.colorFormat = colorFormat;
+        image.colorDepth = ColorDepth.bit8;
         return image;
     }
 
@@ -52,10 +53,10 @@ class PngImageLoader : ImageLoader {
         image.height = imageData.h;
         image.channels = imageData.c;
         image.colorFormat = colorFormat;
-
+        image.colorDepth = ColorDepth.bit16;
         foreach (ushort pixel; imageData.pixels) {
-            image.data ~= cast(ubyte)((pixel & 0xFF00) >> 8);
             image.data ~= cast(ubyte) pixel & 0x00FF;
+            image.data ~= cast(ubyte)((pixel & 0xFF00) >> 8);
         }
 
         return image;

@@ -20,6 +20,7 @@ version (Have_bindbc_opengl) {
     import retrograde.core.stringid : sid;
     import retrograde.core.math : Matrix4D;
     import retrograde.core.concept : Version;
+    import retrograde.core.image : Image, ColorDepth;
 
     import retrograde.components.rendering : RandomFaceColorsComponent, ModelComponent, OrthoBackgroundComponent,
         TextureComponent, DepthMapComponent;
@@ -135,10 +136,7 @@ version (Have_bindbc_opengl) {
             entity.maybeWithComponent!TextureComponent((c) {
                 GLuint texture;
                 glCreateTextures(GL_TEXTURE_2D, 1, &texture);
-                glTextureStorage2D(texture, 1, getGlInternalFormat(c.texture.channels), c.texture.width,
-                    c.texture.height);
-                glTextureSubImage2D(texture, 0, 0, 0, c.texture.width, c.texture.height,
-                    getGlTextureFormat(c.texture.channels), GL_UNSIGNED_BYTE, c.texture.data.ptr);
+                createTextureStorage(texture, c.texture);
                 modelInfo.texture = texture;
 
                 modelInfo.minFiltering = c.minificationFilteringMode == TextureFilteringMode.globalDefault ? defaultMinTextureFilteringMode : getGlMinTextureFilteringMode(
@@ -154,10 +152,7 @@ version (Have_bindbc_opengl) {
             entity.maybeWithComponent!DepthMapComponent((c) {
                 GLuint depthMap;
                 glCreateTextures(GL_TEXTURE_2D, 1, &depthMap);
-                glTextureStorage2D(depthMap, 1, getGlInternalFormat(c.depthMap.channels), c.depthMap.width,
-                    c.depthMap.height);
-                glTextureSubImage2D(depthMap, 0, 0, 0, c.depthMap.width, c.depthMap.height,
-                    getGlTextureFormat(c.depthMap.channels), GL_UNSIGNED_BYTE, c.depthMap.data.ptr);
+                createTextureStorage(depthMap, c.depthMap);
                 modelInfo.depthMap = depthMap;
             });
 
@@ -274,6 +269,27 @@ version (Have_bindbc_opengl) {
 
         public void setRenderOutput(RenderOutput renderOutput) {
             this.renderOutput = renderOutput;
+        }
+
+        private void createTextureStorage(const ref GLuint textureName, const ref Image texture) {
+            GLenum delegate(uint) internalFormatFunc;
+            GLenum pixelFormat;
+
+            if (texture.colorDepth == ColorDepth.bit8) {
+                internalFormatFunc = &get8bitGlInternalFormat;
+                pixelFormat = GL_UNSIGNED_BYTE;
+            } else if (texture.colorDepth == ColorDepth.bit16) {
+                internalFormatFunc = &get16bitGlInternalFormat;
+                pixelFormat = GL_UNSIGNED_SHORT;
+            } else {
+                throw new Exception(
+                    "Unsupported color depth for texture: " ~ texture.colorDepth.to!string);
+            }
+
+            glTextureStorage2D(textureName, 1, internalFormatFunc(texture.channels), texture.width,
+                texture.height);
+            glTextureSubImage2D(textureName, 0, 0, 0, texture.width, texture.height,
+                getGlTextureFormat(texture.channels), pixelFormat, texture.data.ptr);
         }
 
         private void clearAllBuffers() {
@@ -406,7 +422,7 @@ version (Have_bindbc_opengl) {
             return meshInfo;
         }
 
-        private GLenum getGlInternalFormat(uint channels) {
+        private GLenum get8bitGlInternalFormat(uint channels) {
             switch (channels) {
             case 1:
                 return GL_R8;
@@ -416,6 +432,19 @@ version (Have_bindbc_opengl) {
                 return GL_RGB8;
             default:
                 return GL_RGBA8;
+            }
+        }
+
+        private GLenum get16bitGlInternalFormat(uint channels) {
+            switch (channels) {
+            case 1:
+                return GL_R16;
+            case 2:
+                return GL_RG16;
+            case 3:
+                return GL_RGB16;
+            default:
+                return GL_RGBA16;
             }
         }
 
