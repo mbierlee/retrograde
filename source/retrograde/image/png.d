@@ -54,8 +54,8 @@ class PngImageLoader : ImageLoader {
         image.colorFormat = colorFormat;
 
         foreach (ushort pixel; imageData.pixels) {
-            image.data ~= (pixel & 0xF0) >> 8;
-            image.data ~= pixel & 0x0F;
+            image.data ~= cast(ubyte)((pixel & 0xFF00) >> 8);
+            image.data ~= cast(ubyte) pixel & 0x00FF;
         }
 
         return image;
