@@ -20,6 +20,11 @@ enum ColorFormat {
     rgba
 }
 
+enum ColorDepth {
+    bit8,
+    bit16
+}
+
 /** 
  * Generic image data.
  */
@@ -27,6 +32,8 @@ class Image {
     public uint width;
     public uint height;
     public uint channels;
+    public ColorFormat colorFormat;
+    public ColorDepth colorDepth;
 
     /** 
      * Raw image data.
@@ -38,5 +45,5 @@ class Image {
  * Base interface for image loaders.
  */
 interface ImageLoader {
-    public Image load(File imageFile, ColorFormat colorFormat);
+    public Image load(File imageFile, ColorFormat colorFormat, ColorDepth colorDepth);
 }
