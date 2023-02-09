@@ -21,6 +21,7 @@ import std.array : join;
 private enum Include = "#include";
 private enum Define = "#define";
 private enum IfDef = "#ifdef";
+private enum IfNDef = "#ifndef";
 private enum EndIf = "#endif";
 
 private alias DefinitionTuple = Tuple!(long, "startPos", long, "endPos", string, "value");
@@ -55,10 +56,13 @@ class GlslPreProcessor : PreProcessor {
         replaceIncludes(modifiedShaderSource, buildContext);
         auto definitions = findDefines(modifiedShaderSource);
         evaluateIfDefs(modifiedShaderSource, definitions);
+        evaluateIfNDefs(modifiedShaderSource, definitions);
         return modifiedShaderSource;
     }
 
     private void replaceIncludes(ref string shaderSource, const ref BuildContext buildContext) {
+        //TODO: support pragma once
+
         bool foundIncludes = false;
         long includeStart = -1;
         while (true) {
@@ -122,19 +126,21 @@ class GlslPreProcessor : PreProcessor {
 
     private void evaluateIfDefs(
         ref string shaderSource,
-        const ref DefinitionMap definitions
+        const ref DefinitionMap definitions,
+        const bool negate = false
     ) {
-        long ifDefStart = -1;
+        string defCheckToken = negate ? IfNDef : IfDef;
+        long checkStart = -1;
         while (true) {
-            ifDefStart = shaderSource.indexOf(IfDef, ifDefStart + 1);
-            if (ifDefStart == -1) {
+            checkStart = shaderSource.indexOf(defCheckToken, checkStart + 1);
+            if (checkStart == -1) {
                 break;
             }
 
-            long codePos = ifDefStart + IfDef.length;
+            long codePos = checkStart + defCheckToken.length;
             string name = parseToken(shaderSource, codePos);
 
-            long endIfStart = shaderSource.indexOf(EndIf, ifDefStart + 1);
+            long endIfStart = shaderSource.indexOf(EndIf, checkStart + 1);
             if (endIfStart == -1) {
                 throw new Exception("Unclosed #ifdef block for token'" ~ name ~ "'");
             }
@@ -146,11 +152,21 @@ class GlslPreProcessor : PreProcessor {
             //TODO: get from constants in build context
 
             auto definition = name in definitions;
-            bool isDefined = definition !is null && (*definition).startPos < ifDefStart;
-            string replacedBody = isDefined ? conditionalBody : "";
+            bool conditionIsTrue = definition !is null && (*definition).startPos < checkStart;
+            if (negate) {
+                conditionIsTrue = !conditionIsTrue;
+            }
 
-            shaderSource.replaceInPlace(ifDefStart, (endIfStart + EndIf.length), replacedBody);
+            string replacedBody = conditionIsTrue ? conditionalBody : "";
+            shaderSource.replaceInPlace(checkStart, (endIfStart + EndIf.length), replacedBody);
         }
+    }
+
+    private void evaluateIfNDefs(
+        ref string shaderSource,
+        const ref DefinitionMap definitions
+    ) {
+        evaluateIfDefs(shaderSource, definitions, true);
     }
 
     private string parseToken(const string shaderSource, ref long codePos) {
@@ -243,4 +259,23 @@ version (unittest) {
     }
 
     // TODO: Add test with unclosed ifdef
+
+    @("Conditional compilation with ifndef")
+    unittest {
+        auto preProcessor = new GlslPreProcessor();
+        auto shaderSource = "
+            #define OH_HI
+            #ifndef OH_HI
+            hi!
+            #endif
+            #ifndef BYE
+            bye!
+            #endif
+        ";
+
+        auto context = BuildContext();
+        auto expectedShaderSource = "bye!";
+        auto actualShaderSource = preProcessor.preProcess(shaderSource, context).strip;
+        assert(actualShaderSource == expectedShaderSource);
+    }
 }
