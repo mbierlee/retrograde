@@ -454,8 +454,6 @@ struct Color {
 }
 
 version (unittest) {
-    import retrograde.core.preprocessing : SourceMap;
-
     class TestShader : Shader {
         public bool _isCompiled = false;
         public bool _isPreProcessed = false;
@@ -491,7 +489,7 @@ version (unittest) {
     }
 
     class TestPreprocessor : Preprocessor {
-        string preprocess(const string source, const SourceMap libraries) {
+        string preprocess(const string source, const string[string] libraries) {
             return "hi!";
         }
     }

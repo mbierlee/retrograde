@@ -12,6 +12,11 @@
 module retrograde.rendering.api.opengl;
 
 version (Have_bindbc_opengl) {
+    version (Have_preprocessor) {
+    } else {
+        static assert(0, "OpenGlGraphicsApi depends on dependency 'preprocessor'. Please include it. See https://code.dlang.org/packages/preprocessor");
+    }
+
     import retrograde.core.rendering : GraphicsApi, Shader, ShaderLib, ShaderProgram, ShaderType, Color,
         TextureFilteringMode, RenderOutput, CameraConfiguration;
     import retrograde.core.platform : Viewport;
@@ -238,7 +243,8 @@ version (Have_bindbc_opengl) {
             const ref CameraConfiguration cameraConfiguration
         ) {
             entity.maybeWithComponent!GlModelInfoComponent((modelInfo) {
-                auto modelViewProjectionMatrixData = modelViewProjectionMatrix.getDataArray!float;
+                auto modelViewProjectionMatrixData = modelViewProjectionMatrix
+                    .getDataArray!float;
                 glUniformMatrix4fv(standardMvpUniformLocation, 1, GL_TRUE,
                     modelViewProjectionMatrixData.ptr);
 
@@ -301,8 +307,10 @@ version (Have_bindbc_opengl) {
             glUniform1i(standardHasTextureUniformLocation, hasTexture);
             glUniform1i(standardAlbedoSamplerUniformLocation, standardAlbedoTextureUnit);
             glBindTextureUnit(standardAlbedoTextureUnit, modelInfo.texture);
-            glTextureParameteri(modelInfo.texture, GL_TEXTURE_MIN_FILTER, modelInfo.minFiltering);
-            glTextureParameteri(modelInfo.texture, GL_TEXTURE_MAG_FILTER, modelInfo.magFiltering);
+            glTextureParameteri(modelInfo.texture, GL_TEXTURE_MIN_FILTER, modelInfo
+                    .minFiltering);
+            glTextureParameteri(modelInfo.texture, GL_TEXTURE_MAG_FILTER, modelInfo
+                    .magFiltering);
         }
 
         private void bindDepthMapData(const ref GlModelInfo modelInfo) {
@@ -401,7 +409,8 @@ version (Have_bindbc_opengl) {
             glCreateBuffers(1, &vertexBufferObject);
             ulong verticesByteSize = Vertex.sizeof * vertices.length;
             glNamedBufferStorage(vertexBufferObject, verticesByteSize, vertices.ptr, 0);
-            glVertexArrayVertexBuffer(vertexArrayObject, 0, vertexBufferObject, 0, Vertex.sizeof);
+            glVertexArrayVertexBuffer(vertexArrayObject, 0, vertexBufferObject, 0, Vertex
+                    .sizeof);
 
             meshInfo.vertexArrayObject = vertexArrayObject;
             meshInfo.vertexBufferObject = vertexBufferObject;
@@ -778,4 +787,5 @@ version (Have_bindbc_opengl) {
             }
         }
     }
+
 }
