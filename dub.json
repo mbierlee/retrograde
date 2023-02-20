@@ -22,7 +22,7 @@
     "poodinis": "~>8.0",
     "mirage-injector": "~>1.0.2",
     "imageformats": "~>7.0.2",
-    "preprocessor": "~>1.0.0",
+    "preprocessor": "~>1.1.0",
     "glfw-d": {
       "version": "~>1.1.0",
       "optional": true
