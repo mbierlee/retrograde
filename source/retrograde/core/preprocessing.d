@@ -11,9 +11,9 @@
 
 module retrograde.core.preprocessing;
 
-public import preprocessor : SourceMap;
+public import preprocessor : SourceMap, BuildContext;
 
-import preprocessor : _preprocess = preprocess, BuildContext, ProcessingResult;
+import preprocessor : _preprocess = preprocess, ProcessingResult;
 
 /** 
  * Super-type for implementing language preprocessors.
@@ -27,14 +27,17 @@ interface Preprocessor {
  * A C-like preprocessor.
  */
 class CPreprocessor : Preprocessor {
-    string preprocess(const string source, const SourceMap libraries) {
-        BuildContext ctx;
-        ctx.sources = cast(SourceMap) libraries;
-        ctx.mainSources = [
+    string preprocess(const string source, BuildContext buildCtx) {
+        buildCtx.mainSources = [
             "main": source
         ];
-
-        ProcessingResult result = _preprocess(ctx);
+        ProcessingResult result = _preprocess(buildCtx);
         return result.sources["main"];
+    }
+
+    string preprocess(const string source, const SourceMap libraries) {
+        BuildContext buildCtx;
+        buildCtx.sources = cast(SourceMap) libraries;
+        return preprocess(source, buildCtx);
     }
 }

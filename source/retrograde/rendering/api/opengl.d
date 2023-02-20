@@ -21,7 +21,7 @@ version (Have_bindbc_opengl) {
     import retrograde.core.math : Matrix4D;
     import retrograde.core.concept : Version;
     import retrograde.core.image : Image, ColorDepth;
-    import retrograde.core.preprocessing : Preprocessor, CPreprocessor;
+    import retrograde.core.preprocessing : Preprocessor, CPreprocessor, BuildContext, SourceMap;
 
     import retrograde.components.rendering : RandomFaceColorsComponent, ModelComponent, OrthoBackgroundComponent,
         TextureComponent, DepthMapComponent;
@@ -530,7 +530,16 @@ version (Have_bindbc_opengl) {
         }
 
         override public void preprocess(Preprocessor preprocessor, const ShaderLib[] shaderLibs) {
-            string[string] libs;
+            auto cPreProcessor = cast(CPreprocessor) preprocessor;
+            if (cPreProcessor is null) {
+                throw new Exception("Expected a C-preprocessor for GLSL shaders.");
+            }
+
+            BuildContext buildCtx;
+            buildCtx.disableAllDirectives();
+            buildCtx.enableIncludeDirectives = true;
+
+            SourceMap libs;
             foreach (shaderLib; shaderLibs) {
                 OpenGlShaderLib glShaderLib = cast(OpenGlShaderLib) shaderLib;
                 if (glShaderLib is null) {
@@ -542,7 +551,8 @@ version (Have_bindbc_opengl) {
                 libs[shaderLib.name] = glShaderLib.shaderSource;
             }
 
-            shaderSource = preprocessor.preprocess(shaderSource, libs);
+            buildCtx.sources = libs;
+            shaderSource = cPreProcessor.preprocess(shaderSource, buildCtx);
         }
 
         override public void compile() {
