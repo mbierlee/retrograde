@@ -25,8 +25,8 @@ version (Have_preprocessor) {
     import preprocessor : _preprocess = preprocess, ProcessingResult;
 
     /**
- * A C-like preprocessor.
- */
+     * A C-like preprocessor.
+     */
     class CPreprocessor : Preprocessor {
         string preprocess(const string source, BuildContext buildCtx) {
             buildCtx.mainSources = [
