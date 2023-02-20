@@ -15,6 +15,7 @@ import retrograde.core.entity : EntityProcessor, Entity;
 import retrograde.core.math : scalar, Matrix4D, degreesToRadians;
 import retrograde.core.platform : Viewport;
 import retrograde.core.concept : Version;
+import retrograde.core.preprocessing : Preprocessor;
 
 import poodinis : Autowire, OptionalDependency;
 
@@ -129,7 +130,7 @@ abstract class Shader {
      * Preprocess the shader if the API supports it.
      * This step typically includes shader libraries.
      */
-    abstract public void preProcess(const PreProcessor preProcessor, const ref BuildContext buildContext);
+    abstract public void preprocess(Preprocessor preprocessor, const ShaderLib[] shaderLibs);
 
     /**
      * Compiles the shader if the API allows for such a thing.
@@ -165,18 +166,11 @@ abstract class Shader {
  * shader pre-processor.
  */
 abstract class ShaderLib {
-    protected const string name;
+    const string name;
 
     this(const string name) {
         this.name = name;
     }
-}
-
-/** 
- * A context used when pre-processing shaders.
- */
-struct BuildContext {
-    ShaderLib[string] shaderLibs;
 }
 
 /**
@@ -186,7 +180,7 @@ struct BuildContext {
  */
 class ShaderProgram {
     protected Shader[] shaders;
-    protected ShaderLib[string] shaderLibs;
+    protected ShaderLib[] shaderLibs;
 
     this() {
     }
@@ -221,7 +215,7 @@ class ShaderProgram {
      * The lib can be shared and included in multiple shaders.
      */
     public void addShaderLib(ShaderLib shaderLib) {
-        shaderLibs[shaderLib.name] = shaderLib;
+        this.shaderLibs ~= shaderLib;
     }
 
     /** 
@@ -230,19 +224,16 @@ class ShaderProgram {
      */
     public void addShaderLibs(ShaderLib[] shaderLibs...) {
         foreach (ShaderLib shaderLib; shaderLibs) {
-            this.shaderLibs[shaderLib.name] = shaderLib;
+            addShaderLib(shaderLib);
         }
     }
 
     /** 
-     * Pre-processes all shaders contained in this shader program
+     * Preprocesses all shaders contained in this shader program
      */
-    public void preProcessShaders(PreProcessor preProcessor) {
-        BuildContext context;
-        context.shaderLibs = shaderLibs;
-
+    public void preprocessShaders(Preprocessor preprocessor) {
         foreach (Shader shader; shaders) {
-            shader.preProcess(preProcessor, context);
+            shader.preprocess(preprocessor, shaderLibs);
         }
     }
 
@@ -300,12 +291,6 @@ class ShaderProgram {
      */
     public void clean() {
     }
-}
-
-/** 
- * Super-type for implementing shading language pre-processors.
- */
-interface PreProcessor {
 }
 
 /**
@@ -469,6 +454,8 @@ struct Color {
 }
 
 version (unittest) {
+    import retrograde.core.preprocessing : SourceMap;
+
     class TestShader : Shader {
         public bool _isCompiled = false;
         public bool _isPreProcessed = false;
@@ -478,9 +465,11 @@ version (unittest) {
             super("testshader", ShaderType.unknown);
         }
 
-        override public void preProcess(const PreProcessor preProcessor, const ref BuildContext buildContext) {
+        override public void preprocess(Preprocessor preprocessor, const ShaderLib[] shaderLibs) {
             _isPreProcessed = true;
-            _hasTestShaderLib = ("testshaderlib" in buildContext.shaderLibs) !is null;
+            foreach (const ShaderLib lib; shaderLibs) {
+                _hasTestShaderLib = _hasTestShaderLib || lib.name == "testshaderlib";
+            }
         }
 
         override public void compile() {
@@ -501,7 +490,10 @@ version (unittest) {
         }
     }
 
-    class TestPreProcessor : PreProcessor {
+    class TestPreprocessor : Preprocessor {
+        string preprocess(const string source, const SourceMap libraries) {
+            return "hi!";
+        }
     }
 
     @("ShaderProgram compiles shaders")
@@ -520,7 +512,7 @@ version (unittest) {
         auto shaderLib = new TestShaderLib();
         auto program = new ShaderProgram(shader);
         program.addShaderLib(shaderLib);
-        program.preProcessShaders(new TestPreProcessor());
+        program.preprocessShaders(new TestPreprocessor());
 
         assert(shader._isPreProcessed);
         assert(shader._hasTestShaderLib);

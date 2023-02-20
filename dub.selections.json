@@ -4,6 +4,7 @@
 		"imageformats": "7.0.2",
 		"mirage-config": "1.0.0",
 		"mirage-injector": "1.0.2",
-		"poodinis": "8.1.3"
+		"poodinis": "8.1.3",
+		"preprocessor": "1.0.0"
 	}
 }

@@ -13,7 +13,7 @@ module retrograde.rendering.api.opengl;
 
 version (Have_bindbc_opengl) {
     import retrograde.core.rendering : GraphicsApi, Shader, ShaderLib, ShaderProgram, ShaderType, Color,
-        TextureFilteringMode, RenderOutput, CameraConfiguration, PreProcessor, BuildContext;
+        TextureFilteringMode, RenderOutput, CameraConfiguration;
     import retrograde.core.platform : Viewport;
     import retrograde.core.entity : Entity, EntityComponent, EntityComponentIdentity;
     import retrograde.core.model : Vertex, Mesh, Face, VertexIndex, TextureCoordinateIndex;
@@ -21,13 +21,12 @@ version (Have_bindbc_opengl) {
     import retrograde.core.math : Matrix4D;
     import retrograde.core.concept : Version;
     import retrograde.core.image : Image, ColorDepth;
+    import retrograde.core.preprocessing : Preprocessor, CPreprocessor;
 
     import retrograde.components.rendering : RandomFaceColorsComponent, ModelComponent, OrthoBackgroundComponent,
         TextureComponent, DepthMapComponent;
 
     import retrograde.geometryfactory : GeometryFactory;
-
-    import retrograde.rendering.shadinglang.glsl : GlslShaderLib, GlslPreProcessor;
 
     import poodinis : Autowire, Value, OptionalDependency;
 
@@ -42,7 +41,7 @@ version (Have_bindbc_opengl) {
         private @Autowire Logger logger;
         private @Autowire GLErrorService errorService;
         private @Autowire GeometryFactory geometryFactory;
-        private @Autowire GlslPreProcessor glslPreProcessor;
+        private @Autowire CPreprocessor preprocessor;
 
         private OpenGlShaderProgram defaultBackgroundShaderProgram;
         private OpenGlShaderProgram defaultModelShaderProgram;
@@ -341,7 +340,7 @@ version (Have_bindbc_opengl) {
         }
 
         private ShaderLib createShaderLib(string shaderLibName)() {
-            return new GlslShaderLib(shaderLibName ~ ".glsl", import(
+            return new OpenGlShaderLib(shaderLibName ~ ".glsl", import(
                     "standard/lib/" ~ shaderLibName ~ ".glsl"));
         }
 
@@ -354,7 +353,7 @@ version (Have_bindbc_opengl) {
         }
 
         private void buildShaderProgram(OpenGlShaderProgram shaderProgram) {
-            shaderProgram.preProcessShaders(glslPreProcessor);
+            shaderProgram.preprocessShaders(preprocessor);
             if (!shaderProgram.isPreProcessed) {
                 logger.errorf("Failed to pre-process shader program: \n%s", shaderProgram.getPreProcessInfo());
                 return;
@@ -530,13 +529,20 @@ version (Have_bindbc_opengl) {
             this.shaderTypeMapping = shaderTypeMapping;
         }
 
-        override public void preProcess(const PreProcessor preProcessor, const ref BuildContext buildContext) {
-            GlslPreProcessor glslPreProcessor = cast(GlslPreProcessor) preProcessor;
-            if (glslPreProcessor is null) {
-                throw new Exception("Given pre-processor is not a GLSL pre-processor.");
+        override public void preprocess(Preprocessor preprocessor, const ShaderLib[] shaderLibs) {
+            string[string] libs;
+            foreach (shaderLib; shaderLibs) {
+                OpenGlShaderLib glShaderLib = cast(OpenGlShaderLib) shaderLib;
+                if (glShaderLib is null) {
+                    throw new Exception(
+                        "Shaderlib " ~ shaderLib.name ~ " is not an OpenGL shader lib."
+                    );
+                }
+
+                libs[shaderLib.name] = glShaderLib.shaderSource;
             }
 
-            shaderSource = glslPreProcessor.preProcess(shaderSource, buildContext);
+            shaderSource = preprocessor.preprocess(shaderSource, libs);
         }
 
         override public void compile() {
@@ -594,7 +600,7 @@ version (Have_bindbc_opengl) {
     }
 
     class OpenGlShaderLib : ShaderLib {
-        private string shaderSource;
+        const string shaderSource;
 
         this(const string name, const string shaderSource) {
             super(name);
@@ -624,9 +630,9 @@ version (Have_bindbc_opengl) {
             }
         }
 
-        override public void preProcessShaders(PreProcessor preProcessor) {
+        override public void preprocessShaders(Preprocessor preprocessor) {
             try {
-                super.preProcessShaders(preProcessor);
+                super.preprocessShaders(preprocessor);
                 _isPreProcessed = true;
             } catch (Exception e) {
                 preProcessInfo = e.msg;
