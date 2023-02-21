@@ -41,30 +41,11 @@ class GenericRenderSystem : RenderSystem {
     private Viewport platformViewport;
     private CameraConfiguration cameraConfiguration;
     private Matrix4D projectionMatrix;
-    private Color _clearColor;
     private scalar _viewportAspectRatio = autoAspectRatio;
-    private TextureFilteringMode _defaultMinificationTextureFilteringMode;
-    private TextureFilteringMode _defaultMagnificationTextureFilteringMode;
-    private RenderOutput _renderOutput;
 
     private Entity activeCamera;
     private EntityCollection orthoBackgrounds = new EntityCollection();
     private EntityCollection models = new EntityCollection();
-
-    /** 
-     * Get the background's clearing color.
-     */
-    public @property Color clearColor() {
-        return _clearColor;
-    }
-
-    /** 
-     * Set the background's clearing color.
-     */
-    public @property void clearColor(Color color) {
-        _clearColor = color;
-        graphicsApi.setClearColor(color);
-    }
 
     /**
      * Get the aspect ratio of the renderer's viewport.
@@ -85,61 +66,10 @@ class GenericRenderSystem : RenderSystem {
         updateView();
     }
 
-    /** 
-     * Gets the default minification texture filtering mode.
-     */
-    public @property TextureFilteringMode defaultMinificationTextureFilteringMode() {
-        return _defaultMinificationTextureFilteringMode;
-    }
-
-    /** 
-     * Sets the default minification texture filtering mode.
-     * If TextureFilteringMode.globalDefault is set it is up to the graphics API to 
-     * decide what is considered as default.
-     */
-    public @property void defaultMinificationTextureFilteringMode(
-        TextureFilteringMode textureFilteringMode) {
-        _defaultMinificationTextureFilteringMode = textureFilteringMode;
-        graphicsApi.setDefaultTextureFilteringModes(textureFilteringMode, _defaultMagnificationTextureFilteringMode);
-    }
-
-    /** 
-     * Gets the default magnification texture filtering mode.
-     */
-    public @property TextureFilteringMode defaultMagnificationTextureFilteringMode() {
-        return _defaultMagnificationTextureFilteringMode;
-    }
-
-    /** 
-     * Sets the default magnification texture filtering mode.
-     * If TextureFilteringMode.globalDefault is set it is up to the graphics API to 
-     * decide what is considered as default.
-     */
-    public @property void defaultMagnificationTextureFilteringMode(
-        TextureFilteringMode textureFilteringMode) {
-        _defaultMagnificationTextureFilteringMode = textureFilteringMode;
-        graphicsApi.setDefaultTextureFilteringModes(_defaultMinificationTextureFilteringMode, textureFilteringMode);
-    }
-
-    /**
-     * Gets the renderer's output mode.
-     */
-    public @property RenderOutput renderOutput() {
-        return _renderOutput;
-    }
-
-    /** 
-     * Sets the renderer's output mode.
-     */
-    public @property void renderOutput(RenderOutput renderOutput) {
-        _renderOutput = renderOutput;
-        graphicsApi.setRenderOutput(renderOutput);
-    }
-
     override public void initialize() {
-        defaultMinificationTextureFilteringMode = TextureFilteringMode.linear;
-        defaultMagnificationTextureFilteringMode = TextureFilteringMode.linear;
-        clearColor = Color(0f, 0f, 0f, 1.0f);
+        graphicsApi.setClearColor(Color(0f, 0f, 0f, 1.0f));
+        graphicsApi.setDefaultTextureFilteringModes(TextureFilteringMode.linear,
+            TextureFilteringMode.linear);
         platformViewport = platform.getViewport();
         updateView();
     }
