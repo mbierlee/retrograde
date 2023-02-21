@@ -105,10 +105,15 @@ version (Have_bindbc_opengl) {
 
             glCullFace(GL_BACK);
             glEnable(GL_CULL_FACE);
+
             glDepthFunc(GL_LEQUAL);
             glEnable(GL_DEPTH_TEST);
-            glEnable(GL_STENCIL_TEST);
+
             glStencilFunc(GL_EQUAL, 1, 0xFF);
+            glEnable(GL_STENCIL_TEST);
+            
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); 
+            glEnable(GL_BLEND);
 
             compileDefaultShaders();
             clearAllBuffers();

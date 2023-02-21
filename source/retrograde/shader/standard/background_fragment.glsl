@@ -3,7 +3,7 @@
 
 #include "common_fragment.glsl"
 
-out vec4 color;
+out vec4 fragColor;
 
 layout(location = 3) uniform bool hasTexture;
 layout(location = 4) uniform sampler2D albedo;
@@ -22,5 +22,10 @@ void main() {
     gl_FragDepth = fragDepth;
 
     vec2 texCoords = vec2(fs_in.textureCoords.x - 1, -fs_in.textureCoords.y - 1) / 2;
-    color = createOutputColor(renderDepthBuffer, hasTexture, gl_FragDepth, albedo, texCoords, fs_in.color);
+    vec4 color = createOutputColor(renderDepthBuffer, hasTexture, gl_FragDepth, albedo, texCoords, fs_in.color);
+    if (color.a == 0) {
+        discard;
+    }
+
+    fragColor = color;
 }
