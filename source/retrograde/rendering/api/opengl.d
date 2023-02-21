@@ -546,6 +546,7 @@ version (Have_bindbc_opengl) {
 
             BuildContext buildCtx;
             buildCtx.disableAllDirectives();
+            buildCtx.enableMacroExpansion = false;
             buildCtx.enableIncludeDirectives = true;
 
             SourceMap libs;
