@@ -133,11 +133,18 @@ class DepthMapComponent : EntityComponent {
 
 /** 
  * Renders the entity's TextureComponent as background using an orthographic
- * projections.
- * Backgrounds do not move based on the position of the camera, but can be
- * moved themselves using Position2DComponents. The origin of a background is in
- * the top-left.
+ * projection.
+ * Backgrounds do not move based on the position of the camera.
  */
 class OrthoBackgroundComponent : EntityComponent {
     mixin EntityComponentIdentity!"OrthoBackgroundComponent";
+}
+
+/** 
+ * Renders the entity's TextureComponent as foreground using an orthographic
+ * projection.
+ * Foregrounds do not move based on the position of the camera.
+ */
+class OrthoForegroundComponent : EntityComponent {
+    mixin EntityComponentIdentity!"OrthoForegroundComponent";
 }

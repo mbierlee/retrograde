@@ -20,7 +20,7 @@ import retrograde.core.math : Matrix4D, scalar, createPerspectiveMatrix, createO
 import retrograde.core.messaging : MessageHandler;
 
 import retrograde.components.rendering : RenderableComponent, CameraComponent, ActiveCameraComponent,
-    ModelComponent, OrthoBackgroundComponent;
+    ModelComponent, OrthoBackgroundComponent, OrthoForegroundComponent;
 import retrograde.components.geometry : Position3DComponent, Orientation3DComponent, Scale3DComponent;
 
 import poodinis : Autowire;
@@ -43,9 +43,11 @@ class GenericRenderSystem : RenderSystem {
     private Matrix4D projectionMatrix;
     private scalar _viewportAspectRatio = autoAspectRatio;
     private bool _clearDepthStencilBuffersBeforePrincipalPass = false;
+    private bool _clearDepthStencilBuffersBeforeForegroundPass = false;
 
     private Entity activeCamera;
     private EntityCollection orthoBackgrounds = new EntityCollection();
+    private EntityCollection orthoForegrounds = new EntityCollection();
     private EntityCollection models = new EntityCollection();
 
     /**
@@ -82,6 +84,24 @@ class GenericRenderSystem : RenderSystem {
         _clearDepthStencilBuffersBeforePrincipalPass = clearDepthStencilBuffersBeforePrincipalPass;
     }
 
+    /** 
+     * Whether the depth and stencil buffers are cleared before the foreground render pass begins.
+     *
+     * When true, depth maps of foregrounds are separated from the depth buffer result of previous passes.
+     * This might help with z-fighting between objects very close to the camera. Among foregrounds depth 
+     * maps are still used to blend between images.
+     */
+    public @property clearDepthStencilBuffersBeforeForegroundPass() {
+        return _clearDepthStencilBuffersBeforeForegroundPass;
+    }
+
+    /// ditto
+    public @property void clearDepthStencilBuffersBeforeForegroundPass(
+        bool clearDepthStencilBuffersBeforeForegroundPass
+    ) {
+        _clearDepthStencilBuffersBeforeForegroundPass = clearDepthStencilBuffersBeforeForegroundPass;
+    }
+
     override public void initialize() {
         graphicsApi.setClearColor(Color(0f, 0f, 0f, 1.0f));
         graphicsApi.setDefaultTextureFilteringModes(TextureFilteringMode.linear,
@@ -98,6 +118,7 @@ class GenericRenderSystem : RenderSystem {
         graphicsApi.startFrame();
         drawOrthoBackgroundPass();
         drawPrincipalPass();
+        drawOrthoForegroundPass();
     }
 
     override public bool acceptsEntity(Entity entity) {
@@ -115,6 +136,10 @@ class GenericRenderSystem : RenderSystem {
                 orthoBackgrounds.add(entity);
             }
 
+            if (entity.hasComponent!OrthoForegroundComponent) {
+                orthoForegrounds.add(entity);
+            }
+
             if (entity.hasComponent!ModelComponent) {
                 models.add(entity);
             }
@@ -127,7 +152,7 @@ class GenericRenderSystem : RenderSystem {
                 }
             });
 
-            //TODO: Remove textures when loaded in memory
+            //TODO: Remove textures and depth maps when loaded in memory
         }
     }
 
@@ -178,6 +203,19 @@ class GenericRenderSystem : RenderSystem {
         foreach (Entity model; models) {
             auto modelViewProjectionMatrix = createModelViewProjectionMatrix(model, viewProjectionMatrix);
             graphicsApi.drawModel(model, modelViewProjectionMatrix, cameraConfiguration);
+        }
+    }
+
+    private void drawOrthoForegroundPass() {
+        if (_clearDepthStencilBuffersBeforeForegroundPass) {
+            graphicsApi.clearDepthStencilBuffers();
+        }
+
+        if (orthoForegrounds.length > 0) {
+            graphicsApi.useDefaultForegroundShader();
+            foreach (Entity orthoForeground; orthoForegrounds) {
+                graphicsApi.drawOrthoForeground(orthoForeground);
+            }
         }
     }
 

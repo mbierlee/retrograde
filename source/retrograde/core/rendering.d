@@ -386,6 +386,11 @@ interface GraphicsApi {
      */
     public void useDefaultBackgroundShader();
 
+    /**
+     * Switches stateful rendering APIs over to use the default foreground shader in next draw calls.
+     */
+    public void useDefaultForegroundShader();
+
     /** 
      * Draw an entity's model.
      */
@@ -395,6 +400,11 @@ interface GraphicsApi {
      * Draw an entity as an orthographic background.
      */
     public void drawOrthoBackground(Entity entity);
+
+    /** 
+     * Draw an entity as an orthographic foreground.
+     */
+    public void drawOrthoForeground(Entity entity);
 
     /** 
      * Sets the API's render output mode.
@@ -456,10 +466,16 @@ class NullGraphicsApi : GraphicsApi {
     public void useDefaultBackgroundShader() {
     }
 
+    public void useDefaultForegroundShader() {
+    }
+
     public void drawModel(Entity entity, const ref Matrix4D modelViewProjectionMatrix, const ref CameraConfiguration cameraConfiguration) {
     }
 
     public void drawOrthoBackground(Entity entity) {
+    }
+
+    public void drawOrthoForeground(Entity entity) {
     }
 
     public void setRenderOutput(RenderOutput renderOutput) {

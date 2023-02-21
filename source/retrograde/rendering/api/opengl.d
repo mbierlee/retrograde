@@ -29,7 +29,7 @@ version (Have_bindbc_opengl) {
     import retrograde.core.preprocessing : Preprocessor, CPreprocessor, BuildContext, SourceMap;
 
     import retrograde.components.rendering : RandomFaceColorsComponent, ModelComponent, OrthoBackgroundComponent,
-        TextureComponent, DepthMapComponent;
+        OrthoForegroundComponent, TextureComponent, DepthMapComponent;
 
     import retrograde.geometryfactory : GeometryFactory;
 
@@ -64,17 +64,19 @@ version (Have_bindbc_opengl) {
         private DepthTestingMode depthTestingMode = DepthTestingMode.apiDefault;
 
         //TODO: reorder these. It's a mess. Also find a more refined way.
+        //TODO: split up per shader. Not all shaders need the same.
         private static const uint standardPositionAttribLocation = 0;
         private static const uint standardColorAttribLocation = 1;
         private static const uint standardMvpUniformLocation = 2;
         private static const uint standardHasTextureUniformLocation = 3;
         private static const uint standardAlbedoSamplerUniformLocation = 4;
         private static const uint standardTextureCoordsAttribLocation = 5;
-        private static const uint standardRenderDepthBufferAttribLocation = 6;
+        private static const uint standardRenderDepthBufferUniformLocation = 6;
         private static const uint standardHasDepthMapUniformLocation = 7;
         private static const uint standardDepthMapSamplerUniformLocation = 8;
         private static const uint standardNearClippingUniformLocation = 9;
         private static const uint standardFarClippingUniformLocation = 10;
+        private static const uint standardDefaultFragDepthUniformLocation = 11;
 
         private static const uint standardAlbedoTextureUnit = 0;
         private static const uint standardDepthMapTextureUnit = 1;
@@ -171,6 +173,11 @@ version (Have_bindbc_opengl) {
                 modelInfo.meshes ~= createMeshInfo(vertices);
             });
 
+            entity.maybeWithComponent!OrthoForegroundComponent((c) {
+                Vertex[] vertices = geometryFactory.createPlaneVertices(2, 2, Color(1.0, 1.0, 1.0, 1.0));
+                modelInfo.meshes ~= createMeshInfo(vertices);
+            });
+
             entity.maybeWithComponent!ModelComponent((c) {
                 auto assignRandomFaceColors = entity.hasComponent!RandomFaceColorsComponent;
                 Random* random = assignRandomFaceColors ? new Random(sid(entity.name)) : null;
@@ -243,6 +250,12 @@ version (Have_bindbc_opengl) {
             }
         }
 
+        public void useDefaultForegroundShader() {
+            if (defaultBackgroundShaderProgram) {
+                glUseProgram(defaultBackgroundShaderProgram.getOpenGlShaderProgram());
+            }
+        }
+
         public void drawModel(
             Entity entity,
             const ref Matrix4D modelViewProjectionMatrix,
@@ -255,7 +268,7 @@ version (Have_bindbc_opengl) {
                     modelViewProjectionMatrixData.ptr);
 
                 //TODO: Set at frame start only (needs uniform blocks).
-                glUniform1i(standardRenderDepthBufferAttribLocation,
+                glUniform1i(standardRenderDepthBufferUniformLocation,
                     renderOutput == RenderOutput.depthBuffer);
                 glUniform1f(standardNearClippingUniformLocation,
                     cameraConfiguration.nearClippingDistance);
@@ -269,13 +282,11 @@ version (Have_bindbc_opengl) {
         }
 
         public void drawOrthoBackground(Entity entity) {
-            entity.maybeWithComponent!GlModelInfoComponent((modelInfo) {
-                glUniform1i(standardRenderDepthBufferAttribLocation,
-                    renderOutput == RenderOutput.depthBuffer); //TODO: Set at frame start only (needs uniform blocks).
-                bindTextureData(modelInfo.info);
-                bindDepthMapData(modelInfo.info);
-                drawMeshes(modelInfo);
-            });
+            drawOrthoScreenImage(entity, 1.0);
+        }
+
+        public void drawOrthoForeground(Entity entity) {
+            drawOrthoScreenImage(entity, 0.0);
         }
 
         public void setRenderOutput(RenderOutput renderOutput) {
@@ -292,6 +303,20 @@ version (Have_bindbc_opengl) {
 
         public void clearDepthStencilBuffers() {
             glClearBufferfi(GL_DEPTH_STENCIL, 0, 1, 0);
+        }
+
+        private void drawOrthoScreenImage(Entity entity, float defaultFragDepth) {
+            entity.maybeWithComponent!GlModelInfoComponent((modelInfo) {
+                //TODO: Set at frame start only (needs uniform blocks).
+                glUniform1i(standardRenderDepthBufferUniformLocation,
+                    renderOutput == RenderOutput.depthBuffer);
+                glUniform1f(standardDefaultFragDepthUniformLocation, defaultFragDepth);
+                ////
+
+                bindTextureData(modelInfo.info);
+                bindDepthMapData(modelInfo.info);
+                drawMeshes(modelInfo);
+            });
         }
 
         private void createTextureStorage(const ref GLuint textureName, const ref Image texture) {
@@ -372,10 +397,6 @@ version (Have_bindbc_opengl) {
             ",
                 depthTestingMode == DepthTestingMode.linear ? "1" : "0"
             );
-
-            import std.stdio;
-
-            writeln(depthTestingMode.to!string);
 
             return new OpenGlShaderLib("globals.glsl", shaderSource);
         }

@@ -18,7 +18,7 @@ import retrograde.core.image : ColorFormat, ColorDepth;
 
 import retrograde.components.geometry : Position3DComponent, Orientation3DComponent;
 import retrograde.components.rendering : RenderableComponent, ModelComponent,
-    TextureComponent, OrthoBackgroundComponent, DepthMapComponent;
+    TextureComponent, OrthoBackgroundComponent, OrthoForegroundComponent, DepthMapComponent;
 
 import retrograde.model : CommonModelLoader;
 import retrograde.image : CommonImageLoader;
@@ -67,12 +67,31 @@ class BackgroundEntityFactoryParameters : EntityFactoryParameters {
 /** 
  * Creates entities that are renderable backgrounds.
  */
-class BackgroundEntityFactory : EntityFactory {
-    @Autowire CommonImageLoader imageLoader;
-    @Autowire StorageSystem storage;
-
+class BackgroundEntityFactory : SomegroundEntityFactory!BackgroundEntityFactoryParameters {
     public override void addComponents(Entity entity, const EntityFactoryParameters parameters = new BackgroundEntityFactoryParameters()) {
-        auto p = parameters.ofType!BackgroundEntityFactoryParameters;
+        super.addComponents(entity, parameters);
+        entity.maybeAddComponent!OrthoBackgroundComponent;
+    }
+}
+
+alias ForegroundEntityFactoryParameters = BackgroundEntityFactoryParameters;
+
+/** 
+ * Creates entities that are renderable foregrounds.
+ */
+class ForegroundEntityFactory : SomegroundEntityFactory!ForegroundEntityFactoryParameters {
+    public override void addComponents(Entity entity, const EntityFactoryParameters parameters = new ForegroundEntityFactoryParameters()) {
+        super.addComponents(entity, parameters);
+        entity.maybeAddComponent!OrthoForegroundComponent;
+    }
+}
+
+private class SomegroundEntityFactory(FactoryParamsT : EntityFactoryParameters) : EntityFactory {
+    private @Autowire CommonImageLoader imageLoader;
+    private @Autowire StorageSystem storage;
+
+    public override void addComponents(Entity entity, const EntityFactoryParameters parameters = new FactoryParamsT()) {
+        auto p = parameters.ofType!FactoryParamsT;
 
         if (p.textureFilePath.length > 0) {
             auto textureFile = storage.readFileRelative(p.textureFilePath);
@@ -92,6 +111,5 @@ class BackgroundEntityFactory : EntityFactory {
         }
 
         entity.maybeAddComponent!RenderableComponent;
-        entity.maybeAddComponent!OrthoBackgroundComponent;
     }
 }
