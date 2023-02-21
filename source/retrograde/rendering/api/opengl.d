@@ -105,9 +105,10 @@ version (Have_bindbc_opengl) {
 
             glCullFace(GL_BACK);
             glEnable(GL_CULL_FACE);
-
             glDepthFunc(GL_LEQUAL);
             glEnable(GL_DEPTH_TEST);
+            glEnable(GL_STENCIL_TEST);
+            glStencilFunc(GL_EQUAL, 1, 0xFF);
 
             compileDefaultShaders();
             clearAllBuffers();
@@ -302,7 +303,7 @@ version (Have_bindbc_opengl) {
         }
 
         public void clearDepthStencilBuffers() {
-            glClearBufferfi(GL_DEPTH_STENCIL, 0, 1, 0);
+            glClearBufferfi(GL_DEPTH_STENCIL, 0, 1, 1);
         }
 
         private void drawOrthoScreenImage(Entity entity, float defaultFragDepth) {
