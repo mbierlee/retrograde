@@ -18,7 +18,7 @@ import retrograde.core.messaging : MessageHandler;
 import retrograde.core.platform : Platform, PlatformSettings, NullPlatform;
 import retrograde.core.logging : StdoutLogger;
 import retrograde.core.input : InputMapper;
-import retrograde.core.rendering : RenderSystem, ShaderProgram, GraphicsApi, NullGraphicsApi;
+import retrograde.core.rendering : RenderSystem, ShaderProgram, GraphicsApi, NullGraphicsApi, DepthTestingMode;
 import retrograde.core.storage : StorageSystem, GenericStorageSystem;
 
 import retrograde.rendering.generic : GenericRenderSystem;
@@ -28,6 +28,16 @@ import poodinis.valueinjector.mirage : loadConfig, parseIniConfig;
 
 import std.logger : Logger, MultiLogger, sharedLog;
 import std.file : exists;
+
+struct GraphicsApiSettings {
+    /*
+     * Set the initial depth testing mode.
+     * Setting it up in the bootstrap prevents unnecesary recompilation of shaders.
+     */
+    DepthTestingMode initialDepthTestingMode = DepthTestingMode.apiDefault;
+
+    //TODO: Add more settings?
+}
 
 version (Have_glfw_d) {
     import retrograde.platform.glfw : GlfwPlatform, GlfwPlatformSettings;
@@ -59,7 +69,9 @@ RenderSystemType:
 GraphicsApiType:
     GraphicsApi = DefaultGraphicsApi)(
     const PlatformSettings platformSettings = new DefaultPlatformSettings(),
-    shared DependencyContainer dependencies = new shared DependencyContainer()) {
+    const GraphicsApiSettings graphicsApiSettings = GraphicsApiSettings(),
+    shared DependencyContainer dependencies = new shared DependencyContainer()
+) {
 
     dependencies.setPersistentResolveOptions(ResolveOption.registerBeforeResolving);
 
@@ -89,6 +101,9 @@ GraphicsApiType:
         // sharedLog = stdoutLogger; //Creating shared loggers is broken. Fix when phobos fixes it.
         return logger;
     });
+
+    auto graphicsApi = dependencies.resolve!GraphicsApi;
+    graphicsApi.setDepthTestingMode(graphicsApiSettings.initialDepthTestingMode);
 
     auto renderSystem = dependencies.resolve!RenderSystem;
     auto entityManager = dependencies.resolve!EntityManager;
@@ -153,7 +168,7 @@ version (unittest) {
     @("Bootstrap of testgame")
     unittest {
         auto dependencies = new shared DependencyContainer();
-        startGame!TestGame(new PlatformSettings(), dependencies);
+        startGame!TestGame(new PlatformSettings(), GraphicsApiSettings(), dependencies);
         const game = dependencies.resolve!TestGame;
         assert(game.isInitialized);
     }

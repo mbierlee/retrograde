@@ -46,6 +46,23 @@ enum RenderOutput {
 }
 
 /** 
+ * Types of depth testing methods.
+ */
+enum DepthTestingMode {
+    /*
+     * The API's default mode.
+     * In OpenGL for example this would be quadratic.
+     */
+    apiDefault,
+
+    /// Depth is equal from the near plane to the far plane.
+    linear,
+
+    /// Objects near the near plane are more percisely tested for depth than those further away.
+    quadratic
+}
+
+/** 
  * Configuration of as 3D camera
  */
 struct CameraConfiguration {
@@ -383,6 +400,13 @@ interface GraphicsApi {
      * Sets the API's render output mode.
      */
     public void setRenderOutput(RenderOutput renderOutput);
+
+    /** 
+     * Set the depth testing mode used in the API.
+     * In some APIs this might be done in shaders and determined while compiling
+     * them, so changing this may cause shaders to recompile.
+     */
+    public void setDepthTestingMode(DepthTestingMode depthTestingMode);
 }
 
 /** 
@@ -434,6 +458,9 @@ class NullGraphicsApi : GraphicsApi {
     }
 
     public void setRenderOutput(RenderOutput renderOutput) {
+    }
+
+    public void setDepthTestingMode(DepthTestingMode depthTestingMode) {
     }
 }
 

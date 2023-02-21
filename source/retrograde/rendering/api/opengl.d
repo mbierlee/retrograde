@@ -18,7 +18,7 @@ version (Have_bindbc_opengl) {
     }
 
     import retrograde.core.rendering : GraphicsApi, Shader, ShaderLib, ShaderProgram, ShaderType, Color,
-        TextureFilteringMode, RenderOutput, CameraConfiguration;
+        TextureFilteringMode, RenderOutput, CameraConfiguration, DepthTestingMode;
     import retrograde.core.platform : Viewport;
     import retrograde.core.entity : Entity, EntityComponent, EntityComponentIdentity;
     import retrograde.core.model : Vertex, Mesh, Face, VertexIndex, TextureCoordinateIndex;
@@ -39,6 +39,7 @@ version (Have_bindbc_opengl) {
     import std.conv : to;
     import std.string : fromStringz, format;
     import std.random : Random, uniform01;
+    import std.format : format;
 
     import bindbc.opengl;
 
@@ -47,6 +48,8 @@ version (Have_bindbc_opengl) {
         private @Autowire GLErrorService errorService;
         private @Autowire GeometryFactory geometryFactory;
         private @Autowire CPreprocessor preprocessor;
+
+        private bool isInitialized = false;
 
         private OpenGlShaderProgram defaultBackgroundShaderProgram;
         private OpenGlShaderProgram defaultModelShaderProgram;
@@ -58,6 +61,7 @@ version (Have_bindbc_opengl) {
         private GLenum defaultMagTextureFilteringMode = GL_LINEAR;
         private Version glVersion = Version(4, 6, 0);
         private RenderOutput renderOutput;
+        private DepthTestingMode depthTestingMode = DepthTestingMode.apiDefault;
 
         //TODO: reorder these. It's a mess. Also find a more refined way.
         private static const uint standardPositionAttribLocation = 0;
@@ -103,8 +107,10 @@ version (Have_bindbc_opengl) {
             glDepthFunc(GL_LEQUAL);
             glEnable(GL_DEPTH_TEST);
 
-            initializeDefaultShaders();
+            compileDefaultShaders();
             clearAllBuffers();
+
+            isInitialized = true;
         }
 
         public Version getVersion() {
@@ -276,6 +282,14 @@ version (Have_bindbc_opengl) {
             this.renderOutput = renderOutput;
         }
 
+        public void setDepthTestingMode(DepthTestingMode depthTestingMode) {
+            this.depthTestingMode = depthTestingMode;
+            if (isInitialized) {
+                //TODO: Clean-up previous shaders?
+                compileDefaultShaders();
+            }
+        }
+
         private void createTextureStorage(const ref GLuint textureName, const ref Image texture) {
             GLenum delegate(uint) internalFormatFunc;
             GLenum pixelFormat;
@@ -333,8 +347,9 @@ version (Have_bindbc_opengl) {
             }
         }
 
-        private void initializeDefaultShaders() {
+        private void compileDefaultShaders() {
             auto shaderLibs = [
+                createGlobalsShaderLib,
                 createShaderLib!"common_fragment"
             ];
 
@@ -345,6 +360,20 @@ version (Have_bindbc_opengl) {
             defaultBackgroundShaderProgram = createShaderProgram!"background";
             defaultBackgroundShaderProgram.addShaderLibs(shaderLibs);
             buildShaderProgram(defaultBackgroundShaderProgram);
+        }
+
+        private ShaderLib createGlobalsShaderLib() {
+            auto shaderSource = format("
+                #define USE_LINEAR_DEPTH_TESTING %s
+            ",
+                depthTestingMode == DepthTestingMode.linear ? "1" : "0"
+            );
+
+            import std.stdio;
+
+            writeln(depthTestingMode.to!string);
+
+            return new OpenGlShaderLib("globals.glsl", shaderSource);
         }
 
         private ShaderLib createShaderLib(string shaderLibName)() {
