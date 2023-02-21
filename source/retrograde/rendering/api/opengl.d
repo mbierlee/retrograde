@@ -290,6 +290,10 @@ version (Have_bindbc_opengl) {
             }
         }
 
+        public void clearDepthStencilBuffers() {
+            glClearBufferfi(GL_DEPTH_STENCIL, 0, 1, 0);
+        }
+
         private void createTextureStorage(const ref GLuint textureName, const ref Image texture) {
             GLenum delegate(uint) internalFormatFunc;
             GLenum pixelFormat;
@@ -313,7 +317,7 @@ version (Have_bindbc_opengl) {
 
         private void clearAllBuffers() {
             glClearBufferfv(GL_COLOR, 0, &clearColor[0]);
-            glClearBufferfi(GL_DEPTH_STENCIL, 0, 1, 0);
+            clearDepthStencilBuffers();
         }
 
         private void bindTextureData(const ref GlModelInfo modelInfo) {

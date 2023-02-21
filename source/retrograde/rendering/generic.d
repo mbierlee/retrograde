@@ -42,28 +42,44 @@ class GenericRenderSystem : RenderSystem {
     private CameraConfiguration cameraConfiguration;
     private Matrix4D projectionMatrix;
     private scalar _viewportAspectRatio = autoAspectRatio;
+    private bool _clearDepthStencilBuffersBeforePrincipalPass = false;
 
     private Entity activeCamera;
     private EntityCollection orthoBackgrounds = new EntityCollection();
     private EntityCollection models = new EntityCollection();
 
     /**
-     * Get the aspect ratio of the renderer's viewport.
-     */
-    public @property scalar viewportAspectRatio() {
-        return _viewportAspectRatio;
-    }
-
-    /**
-     * Set the aspect ratio of the renderer's viewport.
+     * The aspect ratio of the renderer's viewport.
      *
      * The renderer's viewport will automatically be adjusted to maintain aspect ratio when
      * the platform's viewport is resized. Set to 'autoAspectRatio' or 0 to disable this
      * autocorrection and use the platform's viewport ascpect ratio instead.
      */
+    public @property viewportAspectRatio() {
+        return _viewportAspectRatio;
+    }
+
+    /// ditto
     public @property void viewportAspectRatio(scalar newRatio) {
         _viewportAspectRatio = newRatio;
         updateView();
+    }
+
+    /** 
+     * Whether the depth and stencil buffers are cleared before the principal render pass begins.
+     *
+     * When true, the depth buffers of backgrounds are ignored and models in the principal
+     * pass will always render in front of backgrounds.
+     */
+    public @property clearDepthStencilBuffersBeforePrincipalPass() {
+        return _clearDepthStencilBuffersBeforePrincipalPass;
+    }
+
+    /// ditto
+    public @property void clearDepthStencilBuffersBeforePrincipalPass(
+        bool clearDepthStencilBuffersBeforePrincipalPass
+    ) {
+        _clearDepthStencilBuffersBeforePrincipalPass = clearDepthStencilBuffersBeforePrincipalPass;
     }
 
     override public void initialize() {
@@ -143,6 +159,10 @@ class GenericRenderSystem : RenderSystem {
     }
 
     private void drawPrincipalPass() {
+        if (_clearDepthStencilBuffersBeforePrincipalPass) {
+            graphicsApi.clearDepthStencilBuffers();
+        }
+
         if (activeCamera) {
             activeCamera.maybeWithComponent!CameraComponent((c) {
                 if (cameraConfiguration != c.cameraConfiguration) {

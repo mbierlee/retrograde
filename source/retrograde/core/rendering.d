@@ -356,8 +356,8 @@ interface GraphicsApi {
      * decide what is considered as default.
      *
      * Params: 
-     * minificationMode = Mode used when textures are shown smaller than they are.
-     * magnificationMode = Mode used when textures are shown bigger than they are.
+     *  minificationMode = Mode used when textures are shown smaller than they are.
+     *  magnificationMode = Mode used when textures are shown bigger than they are.
      */
     public void setDefaultTextureFilteringModes(const TextureFilteringMode minificationMode, const TextureFilteringMode magnificationMode);
 
@@ -407,6 +407,11 @@ interface GraphicsApi {
      * them, so changing this may cause shaders to recompile.
      */
     public void setDepthTestingMode(DepthTestingMode depthTestingMode);
+
+    /** 
+     * Clears the depth and stencil buffers.
+     */
+    public void clearDepthStencilBuffers();
 }
 
 /** 
@@ -461,6 +466,9 @@ class NullGraphicsApi : GraphicsApi {
     }
 
     public void setDepthTestingMode(DepthTestingMode depthTestingMode) {
+    }
+
+    public void clearDepthStencilBuffers() {
     }
 }
 
