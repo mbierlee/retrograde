@@ -2,7 +2,7 @@
   "name": "retrograde",
   "description": "The Retrograde Game Engine",
   "copyright": "Copyright Mike Bierlee 2014-2023",
-  "homepage": "https://github.com/mbierlee/retrograde/",
+  "homepage": "http://retrograde-engine.com/",
   "license": "MIT",
   "authors": ["Mike Bierlee", "Lostmoment"],
   "configurations": [
