@@ -80,30 +80,8 @@ class GenericRenderSystem : RenderSystem {
 
     override public void draw() {
         graphicsApi.startFrame();
-
-        if (orthoBackgrounds.length > 0) {
-            graphicsApi.useDefaultBackgroundShader();
-            foreach (Entity orthoBackground; orthoBackgrounds) {
-                graphicsApi.drawOrthoBackground(orthoBackground);
-            }
-        }
-
-        if (activeCamera) {
-            activeCamera.maybeWithComponent!CameraComponent((c) {
-                if (cameraConfiguration != c.cameraConfiguration) {
-                    cameraConfiguration = c.cameraConfiguration;
-                    auto renderViewport = createRenderViewport(platformViewport);
-                    updateProjectionMatrix(renderViewport);
-                }
-            });
-        }
-
-        graphicsApi.useDefaultModelShader();
-        auto viewProjectionMatrix = projectionMatrix * createRenderViewMatrix();
-        foreach (Entity model; models) {
-            auto modelViewProjectionMatrix = createModelViewProjectionMatrix(model, viewProjectionMatrix);
-            graphicsApi.drawModel(model, modelViewProjectionMatrix, cameraConfiguration);
-        }
+        drawOrthoBackgroundPass();
+        drawPrincipalPass();
     }
 
     override public bool acceptsEntity(Entity entity) {
@@ -152,6 +130,34 @@ class GenericRenderSystem : RenderSystem {
             }
 
             graphicsApi.unloadFromVideoMemory(entity);
+        }
+    }
+
+    private void drawOrthoBackgroundPass() {
+        if (orthoBackgrounds.length > 0) {
+            graphicsApi.useDefaultBackgroundShader();
+            foreach (Entity orthoBackground; orthoBackgrounds) {
+                graphicsApi.drawOrthoBackground(orthoBackground);
+            }
+        }
+    }
+
+    private void drawPrincipalPass() {
+        if (activeCamera) {
+            activeCamera.maybeWithComponent!CameraComponent((c) {
+                if (cameraConfiguration != c.cameraConfiguration) {
+                    cameraConfiguration = c.cameraConfiguration;
+                    auto renderViewport = createRenderViewport(platformViewport);
+                    updateProjectionMatrix(renderViewport);
+                }
+            });
+        }
+
+        graphicsApi.useDefaultModelShader();
+        auto viewProjectionMatrix = projectionMatrix * createRenderViewMatrix();
+        foreach (Entity model; models) {
+            auto modelViewProjectionMatrix = createModelViewProjectionMatrix(model, viewProjectionMatrix);
+            graphicsApi.drawModel(model, modelViewProjectionMatrix, cameraConfiguration);
         }
     }
 
