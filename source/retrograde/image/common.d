@@ -16,7 +16,7 @@ import retrograde.core.storage : File;
 
 import retrograde.image.png : PngImageLoader;
 
-import poodinis : Autowire;
+import poodinis : Inject;
 
 /** 
  * Loads images based on their extension.
@@ -24,7 +24,7 @@ import poodinis : Autowire;
  * Throws: Exception when extension is not recognized.
  */
 class CommonImageLoader : ImageLoader {
-    @Autowire public PngImageLoader pngImageLoader;
+    @Inject public PngImageLoader pngImageLoader;
 
     public Image load(File imageFile) {
         switch (imageFile.extension) {

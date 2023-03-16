@@ -16,7 +16,7 @@ import retrograde.core.storage : File;
 import retrograde.model.stanfordply : StanfordPlyLoader;
 import retrograde.model.wavefrontobj : WavefrontObjLoader;
 
-import poodinis : Autowire;
+import poodinis : Inject;
 
 /** 
  * Loads models based on their file extension.
@@ -24,8 +24,8 @@ import poodinis : Autowire;
  * Throws: Exception when extension is not recognized.
  */
 class CommonModelLoader : ModelLoader {
-    @Autowire private StanfordPlyLoader stanfordPlyLoader;
-    @Autowire private WavefrontObjLoader wavefrontObjLoader;
+    @Inject private StanfordPlyLoader stanfordPlyLoader;
+    @Inject private WavefrontObjLoader wavefrontObjLoader;
 
     public Model load(File modelFile) {
         switch (modelFile.extension) {

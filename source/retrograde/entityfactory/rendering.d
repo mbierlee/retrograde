@@ -23,7 +23,7 @@ import retrograde.components.rendering : RenderableComponent, ModelComponent,
 import retrograde.model : CommonModelLoader;
 import retrograde.image : CommonImageLoader;
 
-import poodinis : Autowire;
+import poodinis : Inject;
 
 class ModelEntityFactoryParameters : EntityFactoryParameters {
     string modelFilePath;
@@ -34,9 +34,9 @@ class ModelEntityFactoryParameters : EntityFactoryParameters {
  * Creates entities that are renderable models.
  */
 class ModelEntityFactory : EntityFactory {
-    @Autowire CommonModelLoader modelLoader;
-    @Autowire CommonImageLoader imageLoader;
-    @Autowire StorageSystem storage;
+    @Inject CommonModelLoader modelLoader;
+    @Inject CommonImageLoader imageLoader;
+    @Inject StorageSystem storage;
 
     public override void addComponents(Entity entity, const EntityFactoryParameters parameters = new ModelEntityFactoryParameters()) {
         auto p = parameters.ofType!ModelEntityFactoryParameters;
@@ -87,8 +87,8 @@ class ForegroundEntityFactory : SomegroundEntityFactory!ForegroundEntityFactoryP
 }
 
 private class SomegroundEntityFactory(FactoryParamsT : EntityFactoryParameters) : EntityFactory {
-    private @Autowire CommonImageLoader imageLoader;
-    private @Autowire StorageSystem storage;
+    private @Inject CommonImageLoader imageLoader;
+    private @Inject StorageSystem storage;
 
     public override void addComponents(Entity entity, const EntityFactoryParameters parameters = new FactoryParamsT()) {
         auto p = parameters.ofType!FactoryParamsT;

@@ -19,7 +19,7 @@ version (Have_glfw_d) {
 
     import glfw3.api;
 
-    import poodinis;
+    import poodinis : Inject, Value;
 
     import retrograde.core.platform : Platform, PlatformSettings, Viewport, platformEventChannel, ViewportResizeEventMessage;
     import retrograde.core.runtime : EngineRuntime;
@@ -126,12 +126,12 @@ version (Have_glfw_d) {
     * To use, dependency glfw-d must be included in your project's dub project.
     */
     class GlfwPlatform : Platform {
-        private @Autowire EngineRuntime runtime;
-        private @Autowire Logger logger;
-        private @Autowire MessageHandler messageHandler;
-        private @Autowire RenderSystem renderSystem;
-        private @Autowire GraphicsApi graphicsApi;
-        private @Autowire StorageSystem _storage;
+        private @Inject EngineRuntime runtime;
+        private @Inject Logger logger;
+        private @Inject MessageHandler messageHandler;
+        private @Inject RenderSystem renderSystem;
+        private @Inject GraphicsApi graphicsApi;
+        private @Inject StorageSystem _storage;
 
         private @Value("logging.logComponentInitialization") bool logInit;
 

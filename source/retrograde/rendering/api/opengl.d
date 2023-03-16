@@ -33,7 +33,7 @@ version (Have_bindbc_opengl) {
 
     import retrograde.geometryfactory : GeometryFactory;
 
-    import poodinis : Autowire, Value, OptionalDependency;
+    import poodinis : Inject, Value, OptionalDependency;
 
     import std.logger : Logger;
     import std.conv : to;
@@ -44,10 +44,10 @@ version (Have_bindbc_opengl) {
     import bindbc.opengl;
 
     class OpenGlGraphicsApi : GraphicsApi {
-        private @Autowire Logger logger;
-        private @Autowire GLErrorService errorService;
-        private @Autowire GeometryFactory geometryFactory;
-        private @Autowire CPreprocessor preprocessor;
+        private @Inject Logger logger;
+        private @Inject GLErrorService errorService;
+        private @Inject GeometryFactory geometryFactory;
+        private @Inject CPreprocessor preprocessor;
 
         private bool isInitialized = false;
 
@@ -818,7 +818,7 @@ version (Have_bindbc_opengl) {
     }
 
     class GLErrorService {
-        private @Autowire Logger logger;
+        private @Inject Logger logger;
 
         public GLenum[] getAllErrors() {
             GLenum[] errors;

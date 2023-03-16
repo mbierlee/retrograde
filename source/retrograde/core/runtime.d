@@ -15,7 +15,7 @@ import retrograde.core.game : Game;
 import retrograde.core.platform : Platform, PlatformSettings, NullPlatform;
 import retrograde.core.concept : Version;
 
-import poodinis : Autowire, Value;
+import poodinis : Inject, Value;
 
 import std.datetime.stopwatch : StopWatch, Duration, dur;
 import std.experimental.logger : Logger;
@@ -69,9 +69,9 @@ interface EngineRuntime {
  * This implementation has a gameloop with a fixed-step update time and variable render rate.
  */
 class StandardEngineRuntime : EngineRuntime {
-    @Autowire private Game game;
-    @Autowire private Platform platform;
-    @Autowire private Logger logger;
+    @Inject private Game game;
+    @Inject private Platform platform;
+    @Inject private Logger logger;
 
     private @Value("logging.logEngineInfo") bool logEngineInfo;
 
@@ -158,7 +158,7 @@ version (unittest) {
         public bool isRendered;
         public bool isCleanedUp;
 
-        @Autowire private EngineRuntime runtime;
+        @Inject private EngineRuntime runtime;
 
         public override void initialize() {
             isInitialized = true;

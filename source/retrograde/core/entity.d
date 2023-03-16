@@ -19,7 +19,7 @@ import std.string : format;
 import std.conv : to;
 import std.typecons : Flag, Yes, No;
 
-import poodinis;
+import poodinis : Inject, DependencyContainer;
 
 alias EntityIdType = ulong;
 
@@ -444,7 +444,7 @@ class EntityManager {
     private EntityProcessor[] _processors;
     private EntityIdType nextAvailableId = 1;
 
-    private @Autowire MessageHandler messageHandler;
+    private @Inject MessageHandler messageHandler;
 
     public @property entities() {
         return _entities.getAll();

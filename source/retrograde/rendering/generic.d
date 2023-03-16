@@ -23,7 +23,7 @@ import retrograde.components.rendering : RenderableComponent, CameraComponent, A
     ModelComponent, OrthoBackgroundComponent, OrthoForegroundComponent;
 import retrograde.components.geometry : Position3DComponent, Orientation3DComponent, Scale3DComponent;
 
-import poodinis : Autowire;
+import poodinis : Inject;
 
 import std.conv : to;
 import std.math.rounding : ceil;
@@ -34,9 +34,9 @@ import std.math.rounding : ceil;
  * It uses an injected GraphicsApi to render graphics.
  */
 class GenericRenderSystem : RenderSystem {
-    private @Autowire Platform platform;
-    private @Autowire GraphicsApi graphicsApi;
-    private @Autowire MessageHandler messageHandler;
+    private @Inject Platform platform;
+    private @Inject GraphicsApi graphicsApi;
+    private @Inject MessageHandler messageHandler;
 
     private Viewport platformViewport;
     private CameraConfiguration cameraConfiguration;

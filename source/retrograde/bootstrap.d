@@ -23,7 +23,7 @@ import retrograde.core.storage : StorageSystem, GenericStorageSystem;
 
 import retrograde.rendering.generic : GenericRenderSystem;
 
-import poodinis : Autowire, DependencyContainer, ResolveOption, initializedBy, existingInstance;
+import poodinis : Inject, DependencyContainer, ResolveOption, initializedBy, existingInstance;
 import poodinis.valueinjector.mirage : loadConfig, parseIniConfig;
 
 import std.logger : Logger, MultiLogger, sharedLog;
@@ -121,9 +121,9 @@ GraphicsApiType:
  * interface methods.
  */
 class BootstrapGame : Game {
-    protected @Autowire EntityManager entityManager;
-    protected @Autowire MessageHandler messageHandler;
-    protected @Autowire InputMapper inputMapper;
+    protected @Inject EntityManager entityManager;
+    protected @Inject MessageHandler messageHandler;
+    protected @Inject InputMapper inputMapper;
 
     public void initialize() {
     }
@@ -146,9 +146,9 @@ version (unittest) {
     class TestGame : Game {
         public bool isInitialized;
 
-        @Autowire private EngineRuntime runtime;
-        @Autowire EntityManager entityManager;
-        @Autowire MessageHandler messageHandler;
+        @Inject private EngineRuntime runtime;
+        @Inject EntityManager entityManager;
+        @Inject MessageHandler messageHandler;
 
         public override void initialize() {
             isInitialized = true;

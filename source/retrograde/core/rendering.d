@@ -17,7 +17,7 @@ import retrograde.core.platform : Viewport;
 import retrograde.core.concept : Version;
 import retrograde.core.preprocessing : Preprocessor;
 
-import poodinis : Autowire, OptionalDependency;
+import poodinis : Inject, OptionalDependency;
 
 import std.logger : Logger;
 
@@ -430,7 +430,7 @@ interface GraphicsApi {
  * available on the target platform.
  */
 class NullGraphicsApi : GraphicsApi {
-    @Autowire @OptionalDependency Logger logger;
+    @Inject @OptionalDependency Logger logger;
 
     public void initialize() {
         if (logger) {
