@@ -13,7 +13,6 @@ module retrograde.core;
 
 public import retrograde.core.algorithm;
 public import retrograde.core.collections;
-public import retrograde.core.concept;
 public import retrograde.core.entity;
 public import retrograde.core.game;
 public import retrograde.core.image;

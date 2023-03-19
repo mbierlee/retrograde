@@ -24,7 +24,7 @@ version (Have_bindbc_opengl) {
     import retrograde.core.model : Vertex, Mesh, Face, VertexIndex, TextureCoordinateIndex;
     import retrograde.core.stringid : sid;
     import retrograde.core.math : Matrix4D;
-    import retrograde.core.concept : Version;
+    import retrograde.core.versioning : Version;
     import retrograde.core.image : Image, ColorDepth;
     import retrograde.core.preprocessing : Preprocessor, CPreprocessor, BuildContext, SourceMap;
 
@@ -111,8 +111,8 @@ version (Have_bindbc_opengl) {
 
             glStencilFunc(GL_EQUAL, 1, 0xFF);
             glEnable(GL_STENCIL_TEST);
-            
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); 
+
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glEnable(GL_BLEND);
 
             compileDefaultShaders();

@@ -14,7 +14,7 @@ module retrograde.core.rendering;
 import retrograde.core.entity : EntityProcessor, Entity;
 import retrograde.core.math : scalar, Matrix4D, degreesToRadians;
 import retrograde.core.platform : Viewport;
-import retrograde.core.concept : Version;
+import retrograde.core.versioning : Version;
 import retrograde.core.preprocessing : Preprocessor;
 
 import poodinis : Inject, OptionalDependency;

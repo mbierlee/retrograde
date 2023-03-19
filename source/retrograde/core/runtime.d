@@ -13,7 +13,7 @@ module retrograde.core.runtime;
 
 import retrograde.core.game : Game;
 import retrograde.core.platform : Platform, PlatformSettings, NullPlatform;
-import retrograde.core.concept : Version;
+import retrograde.core.versioning : Version;
 
 import poodinis : Inject, Value;
 
@@ -93,13 +93,7 @@ class StandardEngineRuntime : EngineRuntime {
         assert(this.game !is null, "No Game instance is assigned to this runtime.");
 
         if (logEngineInfo) {
-            logger.infof(
-                "Retrograde Engine v%s.%s.%s-%s",
-                EngineVersion.major,
-                EngineVersion.minor,
-                EngineVersion.patch,
-                EngineVersion.descriptor
-            );
+            logger.infof("Retrograde Engine v%s", EngineVersion);
         }
 
         this.platform.initialize(platformSettings);
