@@ -53,7 +53,7 @@ Version parseVersion(string versionString) {
     auto match = matchFirst(versionString, pattern);
 
     if (match.empty) {
-        throw new Exception("Invalid version string: " ~ versionString);
+        throw new Exception("Version \"" ~ versionString ~ "\" is not a valid semantic version string. It should be according to the semantic versioning specification: https://semver.org/");
     }
 
     return Version(
@@ -66,6 +66,8 @@ Version parseVersion(string versionString) {
 }
 
 version (unittest) {
+    import retrograde.test.util : assertThrownMsg;
+
     @("Test version parsing")
     unittest {
         auto semVersion = parseVersion("1.2.3");
@@ -110,5 +112,16 @@ version (unittest) {
 
         semVersion = Version(1, 2, 3, null, "build");
         assert(semVersion.toString() == "1.2.3+build");
+    }
+
+    @("Test invalid version strings")
+    unittest {
+        auto incompleteSemanticVersion = "1.2";
+        assertThrownMsg("Version \"" ~ incompleteSemanticVersion ~ "\" is not a valid semantic version string. It should be according to the semantic versioning specification: https://semver.org/",
+            parseVersion(incompleteSemanticVersion));
+
+        auto dogBreed = "Labrador";
+        assertThrownMsg("Version \"" ~ dogBreed ~ "\" is not a valid semantic version string. It should be according to the semantic versioning specification: https://semver.org/",
+            parseVersion(dogBreed));
     }
 }
