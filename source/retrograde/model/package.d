@@ -12,5 +12,6 @@
 module retrograde.model;
 
 public import retrograde.model.common;
+public import retrograde.model.gltf;
 public import retrograde.model.stanfordply;
 public import retrograde.model.wavefrontobj;

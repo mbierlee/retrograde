@@ -15,7 +15,8 @@
       "targetType": "library",
 
       "sourcePaths": ["source"],
-      "importPaths": ["source"]
+      "importPaths": ["source"],
+      "stringImportPaths": ["testfiles/"]
     }
   ],
   "dependencies": {
