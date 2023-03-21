@@ -70,7 +70,8 @@ GraphicsApiType:
     GraphicsApi = DefaultGraphicsApi)(
     const PlatformSettings platformSettings = new DefaultPlatformSettings(),
     const GraphicsApiSettings graphicsApiSettings = GraphicsApiSettings(),
-    shared DependencyContainer dependencies = new shared DependencyContainer()
+    shared DependencyContainer dependencies = new shared DependencyContainer(),
+    const bool suppressBootstrapWarnings = false
 ) {
 
     dependencies.setPersistentResolveOptions(ResolveOption.registerBeforeResolving);
@@ -101,6 +102,22 @@ GraphicsApiType:
         // sharedLog = stdoutLogger; //Creating shared loggers is broken. Fix when phobos fixes it.
         return logger;
     });
+
+    static if (is(DefaultPlatform == NullPlatform)) {
+        if (!suppressBootstrapWarnings) {
+            dependencies.resolve!Logger.warning(
+                "No platform implementation available. Using NullPlatform. Add a suitable platform library to your project to get rid of this warning."
+            );
+        }
+    }
+
+    static if (is(DefaultGraphicsApi == NullGraphicsApi)) {
+        if (!suppressBootstrapWarnings) {
+            dependencies.resolve!Logger.warning(
+                "No graphics api implementation available. Using NullGraphicsApi. Add a suitable graphics api library to your project to get rid of this warning."
+            );
+        }
+    }
 
     auto graphicsApi = dependencies.resolve!GraphicsApi;
     graphicsApi.setDepthTestingMode(graphicsApiSettings.initialDepthTestingMode);
@@ -168,7 +185,7 @@ version (unittest) {
     @("Bootstrap of testgame")
     unittest {
         auto dependencies = new shared DependencyContainer();
-        startGame!TestGame(new PlatformSettings(), GraphicsApiSettings(), dependencies);
+        startGame!TestGame(new PlatformSettings(), GraphicsApiSettings(), dependencies, true);
         const game = dependencies.resolve!TestGame;
         assert(game.isInitialized);
     }
