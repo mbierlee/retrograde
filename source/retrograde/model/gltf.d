@@ -69,7 +69,7 @@ version (unittest) {
 
     import poodinis : DependencyContainer;
 
-    private class GltfModelLoaderFixture {
+    private class TestFixture {
         private shared DependencyContainer container;
 
         this() {
@@ -85,7 +85,7 @@ version (unittest) {
 
     @("Parsing a glTF JSON file that has no or incorrect versions should fail")
     unittest {
-        auto f = new GltfModelLoaderFixture();
+        auto f = new TestFixture();
         void loadJson(string json) {
             auto modelFile = new File("empty.gltf", json);
             auto modelLoader = f.getLoader();
