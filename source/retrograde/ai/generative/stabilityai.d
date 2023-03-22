@@ -9,11 +9,11 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.ai.stabilityai;
+module retrograde.ai.generative.stabilityai;
 
 import retrograde.core.image : Image;
 
-import retrograde.ai.image : AiImageFactory, AiImageGeneratorParameters;
+import retrograde.ai.generative.texttoimage : TextToImageFactory, TextToImageParameters;
 
 import std.exception : enforce;
 
@@ -33,7 +33,7 @@ struct ApiResponse {
 }
 
 interface StabilityAiApi {
-    ApiResponse postTextToImage(string prompt, StabilityAiImageGeneratorParameters parameters);
+    ApiResponse textToImage(string prompt, StabilityTextToImageParameters parameters);
 }
 
 version (Have_vibe_d_http) {
@@ -43,7 +43,7 @@ version (Have_vibe_d_http) {
     import std.string : representation;
 
     class VibeStabilityAiApi : StabilityAiApi {
-        ApiResponse postTextToImage(string prompt, StabilityAiImageGeneratorParameters parameters) {
+        ApiResponse textToImage(string prompt, StabilityTextToImageParameters parameters) {
             import std.stdio : writeln; //TEMP
             auto requestJson = createRequestJson(prompt, parameters);
 
@@ -77,7 +77,7 @@ version (Have_vibe_d_http) {
             throw new Exception("Not implemented");
         }
 
-        private string createRequestJson(string prompt, StabilityAiImageGeneratorParameters parameters) {
+        private string createRequestJson(string prompt, StabilityTextToImageParameters parameters) {
             JSONValue json;
 
             JSONValue[] textPrompts;
@@ -110,7 +110,7 @@ version (Have_vibe_d_http) {
             throw new Exception(requiresLibraryExceptionMessage);
         }
 
-        ApiResponse postTextToImage(string prompt, StabilityAiImageGeneratorParameters parameters) {
+        ApiResponse textToImage(string prompt, StabilityTextToImageParameters parameters) {
             throw new Exception(requiresLibraryExceptionMessage);
         }
     }
@@ -157,9 +157,9 @@ enum Sampler : string {
 }
 
 /** 
- * Parameters for the stability AI image generator.
+ * Parameters for the stability AI image factory.
  */
-class StabilityAiImageGeneratorParameters : AiImageGeneratorParameters {
+class StabilityTextToImageParameters : TextToImageParameters {
     /** 
      * The API URL to use for Stability AI API.
      * Default: https://api.stability.ai
@@ -227,13 +227,13 @@ class StabilityAiImageGeneratorParameters : AiImageGeneratorParameters {
 }
 
 /**
- * Stability AI image generator.
+ * Creates images using the Stability AI API.
  */
-class StabilityAiImageGenerator : AiImageFactory {
+class StabilityAiTextToImageFactory : TextToImageFactory {
     @Inject
     private StabilityAiApi api;
 
-    private AiImageGeneratorParameters _defaultParameters;
+    private TextToImageParameters _defaultParameters;
 
     /** 
      * Generate an image using the Stability AI API.
@@ -244,14 +244,14 @@ class StabilityAiImageGenerator : AiImageFactory {
      * Throws: Exception if the parameters are of an invalid type.
      * Returns: The generated image.
      */
-    Image create(string prompt, AiImageGeneratorParameters parameters) {
-        StabilityAiImageGeneratorParameters stabilityParameters =
-            cast(StabilityAiImageGeneratorParameters) parameters;
+    Image create(string prompt, TextToImageParameters parameters) {
+        StabilityTextToImageParameters stabilityParameters =
+            cast(StabilityTextToImageParameters) parameters;
 
-        enforce(stabilityParameters !is null, "Invalid parameters passed to StabilityAiImageGenerator, expected type StabilityAiImageGeneratorParameters.");
+        enforce(stabilityParameters !is null, "Invalid parameters passed to StabilityAiTextToImageFactory, expected type StabilityTextToImageParameters.");
         enforce(stabilityParameters.apiKey !is null, "No API key provided for Stability AI API.");
 
-        auto response = api.postTextToImage(prompt, stabilityParameters);
+        auto response = api.textToImage(prompt, stabilityParameters);
         enforce(response.finishReason != ApiFinishReason.error, "Stability AI API returned an error.");
 
         throw new Exception("Not implemented");
@@ -273,14 +273,14 @@ class StabilityAiImageGenerator : AiImageFactory {
     /** 
      * The default parameters to use for the image generation.
      */
-    AiImageGeneratorParameters defaultParameters() {
+    TextToImageParameters defaultParameters() {
         return _defaultParameters;
     }
 
     /** 
      * Set the default parameters to use for the image generation.
      */
-    void defaultParameters(AiImageGeneratorParameters parameters) {
+    void defaultParameters(TextToImageParameters parameters) {
         _defaultParameters = parameters;
     }
 }
@@ -288,15 +288,15 @@ class StabilityAiImageGenerator : AiImageFactory {
 version (unittest) {
     import retrograde.test.util : assertThrownMsg;
 
-    class BogusStabilityAiImageGeneratorParameters : AiImageGeneratorParameters {
+    class BogusStabilityTextToImageParameters : TextToImageParameters {
     }
 
     class StabilityAiApiMock : StabilityAiApi {
         ApiResponse mockResponse;
         string expectedPrompt;
-        StabilityAiImageGeneratorParameters expectedParameters;
+        StabilityTextToImageParameters expectedParameters;
 
-        ApiResponse postTextToImage(string prompt, StabilityAiImageGeneratorParameters parameters) {
+        ApiResponse textToImage(string prompt, StabilityTextToImageParameters parameters) {
             assert(prompt == expectedPrompt);
             assert(parameters is expectedParameters);
 
@@ -305,36 +305,36 @@ version (unittest) {
     }
 
     class TestFixture {
-        StabilityAiImageGenerator generator;
+        StabilityAiTextToImageFactory generator;
         StabilityAiApiMock api;
 
         this() {
             api = new StabilityAiApiMock();
-            generator = new StabilityAiImageGenerator();
+            generator = new StabilityAiTextToImageFactory();
             generator.api = api;
         }
     }
 
-    @("Test stability AI image generation with invalid parameters")
+    @("Test stability AI image factory with invalid parameters")
     unittest {
-        StabilityAiImageGenerator generator = new StabilityAiImageGenerator();
-        assertThrownMsg("Invalid parameters passed to StabilityAiImageGenerator, expected type StabilityAiImageGeneratorParameters.", generator
-                .create("test", new BogusStabilityAiImageGeneratorParameters()));
+        StabilityAiTextToImageFactory generator = new StabilityAiTextToImageFactory();
+        assertThrownMsg("Invalid parameters passed to StabilityAiTextToImageFactory, expected type StabilityTextToImageParameters.", generator
+                .create("test", new BogusStabilityTextToImageParameters()));
     }
 
-    @("Test stability AI image generation with missing API key")
+    @("Test stability AI image factory with missing API key")
     unittest {
-        StabilityAiImageGenerator generator = new StabilityAiImageGenerator();
-        auto parameters = new StabilityAiImageGeneratorParameters();
+        StabilityAiTextToImageFactory generator = new StabilityAiTextToImageFactory();
+        auto parameters = new StabilityTextToImageParameters();
         parameters.apiKey = null;
         assertThrownMsg("No API key provided for Stability AI API.", generator.create("test", parameters));
     }
 
-    @("Test image generation with error as api finish reason")
+    @("Test stability AI image factory with error as api finish reason")
     unittest {
         TestFixture f = new TestFixture();
 
-        auto parameters = new StabilityAiImageGeneratorParameters();
+        auto parameters = new StabilityTextToImageParameters();
         parameters.apiKey = "test";
 
         ApiResponse response = ApiResponse();

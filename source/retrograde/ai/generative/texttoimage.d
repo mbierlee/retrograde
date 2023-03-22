@@ -9,20 +9,20 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.ai.image;
+module retrograde.ai.generative.texttoimage;
 
 import retrograde.core.image : Image;
 
 /** 
  * Parameters for generating images using AI.
  */
-interface AiImageGeneratorParameters {
+interface TextToImageParameters {
 }
 
 /** 
  * A factory for creating images using AI.
  */
-interface AiImageFactory {
+interface TextToImageFactory {
     /**
      * Create an image using AI.
      *
@@ -33,7 +33,7 @@ interface AiImageFactory {
      * Returns:
      *  The generated image.
      */
-    Image create(string prompt, AiImageGeneratorParameters parameters);
+    Image create(string prompt, TextToImageParameters parameters);
 
     /**
      * Create an image using AI.
@@ -50,10 +50,10 @@ interface AiImageFactory {
     /** 
      * Get the default generator parameters.
      */
-    AiImageGeneratorParameters defaultParameters();
+    TextToImageParameters defaultParameters();
 
     /** 
      * Set the default generator parameters.
      */
-    void defaultParameters(AiImageGeneratorParameters parameters);
+    void defaultParameters(TextToImageParameters parameters);
 }
