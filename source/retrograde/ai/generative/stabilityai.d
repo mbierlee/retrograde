@@ -304,7 +304,7 @@ version (unittest) {
         }
     }
 
-    class TestFixture {
+    private class TestFixture {
         StabilityAiTextToImageFactory generator;
         StabilityAiApiMock api;
 
