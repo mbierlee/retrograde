@@ -249,8 +249,7 @@ class StabilityAiTextToImageFactory : TextToImageFactory {
         StabilityTextToImageParameters stabilityParameters =
             cast(StabilityTextToImageParameters) parameters;
 
-        enforce(stabilityParameters !is null, "Invalid parameters passed to StabilityAiTextToImageFactory, expected type StabilityTextToImageParameters.");
-        enforce(stabilityParameters.apiKey !is null, "No API key provided for Stability AI API.");
+        checkParams(stabilityParameters);
 
         auto response = api.textToImage(prompt, stabilityParameters);
         enforce(response.finishReason != ApiFinishReason.error, "Stability AI API returned an error.");
@@ -284,6 +283,25 @@ class StabilityAiTextToImageFactory : TextToImageFactory {
     void defaultParameters(TextToImageParameters parameters) {
         _defaultParameters = parameters;
     }
+
+    private void checkParams(const StabilityTextToImageParameters params) const {
+        enforce(params !is null, "Invalid parameters passed to StabilityAiTextToImageFactory. Must not be null and of type StabilityTextToImageParameters.");
+        enforce(params.apiKey !is null, "No API key provided for Stability AI API.");
+        enforce(params.width >= 128 && params.height >= 128, "Width and height must be equal or higher than 128");
+
+        const uint area = params.width * params.height;
+        if (params.engine == StabilityAiApiEngine.stableDiffusion768V20 ||
+            params.engine == StabilityAiApiEngine.stableDiffusion768V21) {
+            enforce(area >= 589_824 && area <= 1_048_576,
+                "Area must be between 589,824 and 1,048,576 for engine " ~ params.engine);
+        } else {
+            enforce(area >= 262_144 && area <= 1_048_576,
+                "Area must be between 262,144 and 1,048,576 for engine " ~ params.engine);
+        }
+
+        enforce(params.width % 64 == 0 && params.height % 64 == 0, "Height and width must be increments of 64");
+    }
+
 }
 
 version (unittest) {
@@ -306,29 +324,92 @@ version (unittest) {
     }
 
     private class TestFixture {
-        StabilityAiTextToImageFactory generator;
+        StabilityAiTextToImageFactory factory;
         StabilityAiApiMock api;
 
         this() {
             api = new StabilityAiApiMock();
-            generator = new StabilityAiTextToImageFactory();
-            generator.api = api;
+            factory = new StabilityAiTextToImageFactory();
+            factory.api = api;
         }
     }
 
     @("Test stability AI image factory with invalid parameters")
     unittest {
-        StabilityAiTextToImageFactory generator = new StabilityAiTextToImageFactory();
-        assertThrownMsg("Invalid parameters passed to StabilityAiTextToImageFactory, expected type StabilityTextToImageParameters.", generator
-                .create("test", new BogusStabilityTextToImageParameters()));
+        TestFixture f = new TestFixture();
+        assertThrownMsg("Invalid parameters passed to StabilityAiTextToImageFactory. Must not be null and of type StabilityTextToImageParameters.",
+            f.factory.create("test", new BogusStabilityTextToImageParameters()));
     }
 
     @("Test stability AI image factory with missing API key")
     unittest {
-        StabilityAiTextToImageFactory generator = new StabilityAiTextToImageFactory();
+        TestFixture f = new TestFixture();
         auto parameters = new StabilityTextToImageParameters();
         parameters.apiKey = null;
-        assertThrownMsg("No API key provided for Stability AI API.", generator.create("test", parameters));
+        assertThrownMsg("No API key provided for Stability AI API.", f.factory.create("test", parameters));
+    }
+
+    @("Test stability AI image factory with invalid area")
+    unittest {
+        TestFixture f = new TestFixture();
+        StabilityTextToImageParameters parameters = new StabilityTextToImageParameters();
+        parameters.width = 128;
+        parameters.height = 128;
+        parameters.apiKey = "test";
+        assertThrownMsg("Area must be between 262,144 and 1,048,576 for engine stable-diffusion-512-v2-1",
+            f.factory.create("test", parameters));
+    }
+
+    @("Test stability AI image factory with invalid area with a 768 engine")
+    unittest {
+        TestFixture f = new TestFixture();
+        StabilityTextToImageParameters parameters = new StabilityTextToImageParameters();
+        parameters.width = 512;
+        parameters.height = 512;
+        parameters.apiKey = "test";
+        parameters.engine = StabilityAiApiEngine.stableDiffusion768V20;
+        assertThrownMsg("Area must be between 589,824 and 1,048,576 for engine stable-diffusion-768-v2-0",
+            f.factory.create("test", parameters));
+    }
+
+    @("Test stability AI image factory with height that is not a multiple of 64")
+    unittest {
+        TestFixture f = new TestFixture();
+        StabilityTextToImageParameters parameters = new StabilityTextToImageParameters();
+        parameters.width = 512;
+        parameters.height = 520;
+        parameters.apiKey = "test";
+        assertThrownMsg("Height and width must be increments of 64", f.factory.create("test", parameters));
+    }
+
+    @("Test stability AI image factory with width that is not a multiple of 64")
+    unittest {
+        TestFixture f = new TestFixture();
+        StabilityTextToImageParameters parameters = new StabilityTextToImageParameters();
+        parameters.width = 520;
+        parameters.height = 512;
+        parameters.apiKey = "test";
+        assertThrownMsg("Height and width must be increments of 64", f.factory.create("test", parameters));
+    }
+
+    @("Test stability AI image factory with height that is too small")
+    unittest {
+        TestFixture f = new TestFixture();
+        StabilityTextToImageParameters parameters = new StabilityTextToImageParameters();
+        parameters.width = 9216;
+        parameters.height = 64;
+        parameters.apiKey = "test";
+        assertThrownMsg("Width and height must be equal or higher than 128", f.factory.create("test", parameters));
+    }
+
+    @("Test stability AI image factory with width that is too small")
+    unittest {
+        TestFixture f = new TestFixture();
+        StabilityTextToImageParameters parameters = new StabilityTextToImageParameters();
+        parameters.width = 64;
+        parameters.height = 9216;
+        parameters.apiKey = "test";
+        assertThrownMsg("Width and height must be equal or higher than 128", f.factory.create("test", parameters));
     }
 
     @("Test stability AI image factory with error as api finish reason")
@@ -343,7 +424,6 @@ version (unittest) {
         f.api.mockResponse = response;
         f.api.expectedPrompt = "test";
         f.api.expectedParameters = parameters;
-
-        assertThrownMsg("Stability AI API returned an error.", f.generator.create("test", parameters));
+        assertThrownMsg("Stability AI API returned an error.", f.factory.create("test", parameters));
     }
 }
