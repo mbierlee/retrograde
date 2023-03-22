@@ -78,7 +78,7 @@ version (unittest) {
             container.register!GltfModelLoader;
         }
 
-        public GltfModelLoader getLoader() {
+        public GltfModelLoader modelLoader() {
             return container.resolve!GltfModelLoader;
         }
     }
@@ -88,8 +88,7 @@ version (unittest) {
         auto f = new TestFixture();
         void loadJson(string json) {
             auto modelFile = new File("empty.gltf", json);
-            auto modelLoader = f.getLoader();
-            modelLoader.load(modelFile);
+            f.modelLoader.load(modelFile);
         }
 
         assertThrownMsg!ModelParseException(
@@ -113,7 +112,6 @@ version (unittest) {
     // unittest {
     //     enum fileName = "triangle.gltf";
     //     auto modelFile = new File(fileName, import(fileName));
-    //     auto modelLoader = new GltfModelLoader();
-    //     auto model = modelLoader.load(modelFile);
+    //     auto model = f.modelLoader.load(modelFile);
     // }
 }
