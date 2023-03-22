@@ -118,7 +118,8 @@ version (Have_vibe_d_http) {
 
 enum StabilityAiApiVersion : string {
     v1alpha = "v1alpha",
-    v1beta = "v1beta"
+    v1beta = "v1beta",
+    v1 = "v1"
 }
 
 enum StabilityAiApiEngine : string {
@@ -173,9 +174,9 @@ class StabilityTextToImageParameters : TextToImageParameters {
 
     /** 
      * The API version to use for Stability AI API.
-     * Default: v1beta
+     * Default: v1
      */
-    StabilityAiApiVersion apiVersion = StabilityAiApiVersion.v1beta;
+    StabilityAiApiVersion apiVersion = StabilityAiApiVersion.v1;
 
     /** 
      * The engine to use for the image generation.
