@@ -236,13 +236,13 @@ class StabilityAiTextToImageFactory : TextToImageFactory {
 
     private TextToImageParameters _defaultParameters;
 
-    /** 
+    /**
      * Generate an image using the Stability AI API.
      *
      * Params:
-     *   prompt = The prompt text to use for the image generation.
+     *   prompt = The prompt text to use for the image generation. It must not be empty.
      *   parameters = The parameters to use for the image generation.
-     * Throws: Exception if the parameters are of an invalid type.
+     * Throws: Exception if the parameters are invalid or the prompt is empty.
      * Returns: The generated image.
      */
     Image create(string prompt, TextToImageParameters parameters) {
