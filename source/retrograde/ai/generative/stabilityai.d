@@ -246,9 +246,9 @@ class StabilityAiTextToImageFactory : TextToImageFactory {
      * Returns: The generated image.
      */
     Image create(string prompt, TextToImageParameters parameters) {
-        StabilityTextToImageParameters stabilityParameters =
-            cast(StabilityTextToImageParameters) parameters;
+        enforce(prompt.length > 0, "The prompt must not be empty.");
 
+        StabilityTextToImageParameters stabilityParameters = cast(StabilityTextToImageParameters) parameters;
         checkParams(stabilityParameters);
 
         auto response = api.textToImage(prompt, stabilityParameters);
@@ -332,6 +332,12 @@ version (unittest) {
             factory = new StabilityAiTextToImageFactory();
             factory.api = api;
         }
+    }
+
+    @("Test stability AI image factory with empty prompt")
+    unittest {
+        TestFixture f = new TestFixture();
+        assertThrownMsg("The prompt must not be empty.", f.factory.create(""));
     }
 
     @("Test stability AI image factory with invalid parameters")
