@@ -21,8 +21,7 @@ import std.json : parseJSON, JSONValue, JSONType;
 import std.exception : enforce;
 
 class GltfModelLoader : ModelLoader {
-    @Inject
-    private GltfJsonParser jsonParser;
+    @Inject private GltfJsonParser jsonParser;
 
     public Model load(File modelFile) {
         switch (modelFile.extension) {

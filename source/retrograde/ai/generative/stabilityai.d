@@ -11,11 +11,14 @@
 
 module retrograde.ai.generative.stabilityai;
 
-import retrograde.core.image : Image;
-
+import retrograde.core.image : Image, ImageLoader;
+import retrograde.core.storage : File;
+import retrograde.image.png : PngImageLoader;
 import retrograde.ai.generative.texttoimage : TextToImageFactory, TextToImageParameters;
 
 import std.exception : enforce;
+import std.conv : to;
+import std.random : Random, uniform;
 
 import poodinis : Inject;
 
@@ -26,10 +29,10 @@ enum ApiFinishReason : string {
 }
 
 struct ApiResponse {
-    uint contentLength;
-    string contentType;
-    ApiFinishReason finishReason;
+    bool isSuccessful;
     ubyte[] data;
+    ApiFinishReason finishReason;
+    int seed;
 }
 
 interface StabilityAiApi {
@@ -38,14 +41,18 @@ interface StabilityAiApi {
 
 version (Have_vibe_d_http) {
     import vibe.http.client : requestHTTP, HTTPClientRequest, HTTPClientResponse, HTTPMethod;
+    import vibe.data.json : Json;
+
     import std.conv : to;
     import std.json : JSONValue;
     import std.string : representation;
+    import std.base64 : Base64;
 
     class VibeStabilityAiApi : StabilityAiApi {
         ApiResponse textToImage(string prompt, StabilityTextToImageParameters parameters) {
-            import std.stdio : writeln; //TEMP
             auto requestJson = createRequestJson(prompt, parameters);
+            auto response = ApiResponse();
+            response.isSuccessful = false;
 
             scope void requester(scope HTTPClientRequest req) {
                 req.method = HTTPMethod.POST;
@@ -57,7 +64,7 @@ version (Have_vibe_d_http) {
 
             scope void responder(scope HTTPClientResponse res) {
                 if (res.statusCode == 200) {
-                    //TODO: handle response
+                    response = createApiResponse(res.readJson());
                 } else {
                     throw new Exception(
                         "POST request to " ~ parameters.apiUrl ~ " failed with status code " ~ res.statusCode
@@ -74,7 +81,7 @@ version (Have_vibe_d_http) {
                 &responder
             );
 
-            throw new Exception("Not implemented");
+            return response;
         }
 
         private string createRequestJson(string prompt, StabilityTextToImageParameters parameters) {
@@ -100,6 +107,31 @@ version (Have_vibe_d_http) {
             }
 
             return json.toString();
+        }
+
+        private ApiResponse createApiResponse(Json json) {
+            ApiResponse response;
+            response.isSuccessful = true;
+
+            auto artifact = json["artifacts"][0];
+            response.finishReason = parseFinishReason(artifact["finishReason"].get!string);
+            response.seed = artifact["seed"].get!uint;
+            response.data = Base64.decode(artifact["base64"].get!string);
+
+            return response;
+        }
+
+        private ApiFinishReason parseFinishReason(string reason) {
+            switch (reason) {
+            case "SUCCESS":
+                return ApiFinishReason.success;
+            case "ERROR":
+                return ApiFinishReason.error;
+            case "CONTENT_FILTERED":
+                return ApiFinishReason.contentFiltered;
+            default:
+                throw new Exception("Unknown finish reason: " ~ reason);
+            }
         }
     }
 } else {
@@ -231,8 +263,8 @@ class StabilityTextToImageParameters : TextToImageParameters {
  * Creates images using the Stability AI API.
  */
 class StabilityAiTextToImageFactory : TextToImageFactory {
-    @Inject
-    private StabilityAiApi api;
+    private @Inject StabilityAiApi api;
+    private @Inject!PngImageLoader ImageLoader imageLoader;
 
     private TextToImageParameters _defaultParameters;
 
@@ -250,11 +282,13 @@ class StabilityAiTextToImageFactory : TextToImageFactory {
 
         StabilityTextToImageParameters stabilityParameters = cast(StabilityTextToImageParameters) parameters;
         checkParams(stabilityParameters);
-
         auto response = api.textToImage(prompt, stabilityParameters);
         enforce(response.finishReason != ApiFinishReason.error, "Stability AI API returned an error.");
-
-        throw new Exception("Not implemented");
+        enforce(response.isSuccessful, "Stability AI API returned an unsuccessful response.");
+        Random random;
+        auto fileName = "stability-ai-" ~ uniform(0, 1_000_000, random).to!string ~ ".png";
+        auto imageFile = new File(fileName, response.data);
+        return imageLoader.load(imageFile);
     }
 
     /** 
@@ -323,14 +357,25 @@ version (unittest) {
         }
     }
 
+    class ImageLoaderMock : ImageLoader {
+        Image mockImage;
+
+        Image load(File file) {
+            return mockImage;
+        }
+    }
+
     private class TestFixture {
         StabilityAiTextToImageFactory factory;
         StabilityAiApiMock api;
+        ImageLoaderMock imageLoader;
 
         this() {
             api = new StabilityAiApiMock();
             factory = new StabilityAiTextToImageFactory();
+            imageLoader = new ImageLoaderMock();
             factory.api = api;
+            factory.imageLoader = imageLoader;
         }
     }
 
@@ -431,5 +476,48 @@ version (unittest) {
         f.api.expectedPrompt = "test";
         f.api.expectedParameters = parameters;
         assertThrownMsg("Stability AI API returned an error.", f.factory.create("test", parameters));
+    }
+
+    @("Test stability AI image factory with unsuccessful response")
+    unittest {
+        TestFixture f = new TestFixture();
+
+        auto parameters = new StabilityTextToImageParameters();
+        parameters.apiKey = "test";
+
+        ApiResponse response = ApiResponse();
+        response.isSuccessful = false;
+        f.api.mockResponse = response;
+        f.api.expectedPrompt = "test";
+        f.api.expectedParameters = parameters;
+
+        assertThrownMsg("Stability AI API returned an unsuccessful response.", f.factory.create("test", parameters));
+    }
+
+    @("Test stability AI image factory with successful response")
+    unittest {
+        TestFixture f = new TestFixture();
+
+        ubyte[] imageData = [1, 2, 3, 4];
+        auto expectedImage = new Image();
+        expectedImage.data = imageData;
+        f.imageLoader.mockImage = expectedImage;
+
+        auto parameters = new StabilityTextToImageParameters();
+        parameters.apiKey = "test";
+
+        ApiResponse response = ApiResponse();
+        response.isSuccessful = true;
+        response.data = imageData;
+        response.finishReason = ApiFinishReason.success;
+        response.seed = 1234;
+
+        f.api.mockResponse = response;
+        f.api.expectedPrompt = "test";
+        f.api.expectedParameters = parameters;
+
+        auto actualImage = f.factory.create("test", parameters);
+        assert(actualImage !is null);
+        assert(actualImage.data == response.data);
     }
 }
