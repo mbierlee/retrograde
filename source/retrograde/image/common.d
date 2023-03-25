@@ -19,13 +19,19 @@ import retrograde.image.png : PngImageLoader;
 import poodinis : Inject;
 
 /** 
- * Loads images based on their extension.
- *
- * Throws: Exception when extension is not recognized.
+ * Load images based on their extension.
  */
 class CommonImageLoader : ImageLoader {
     @Inject public PngImageLoader pngImageLoader;
 
+    /** 
+     * Load  images based on their extension.
+     *
+     * Params:
+     *  imageFile = The file to load the image from.
+     *
+     * Throws: Exception when extension is not recognized.
+     */
     public Image load(File imageFile) {
         switch (imageFile.extension) {
         case ".png":
@@ -36,10 +42,27 @@ class CommonImageLoader : ImageLoader {
                 "Model with extension " ~ imageFile.extension ~ " is unknown. Try to use a specific loader instead.");
         }
     }
+
+    /** 
+     * Load images from raw data.
+     * This is not supported by the common image loader,
+     * it will always throw an exception.
+     * Please use a specific loader instead.
+     *
+     * Params:
+     *  data = The raw data to load the image from. Not used.
+     *
+     * Throws: Exception when called.
+     */
+    public Image load(const ubyte[] data) {
+        throw new Exception(
+            "The common image loader cannot determine what kind of image to load from raw data. Please use a specific loader instead.");
+    }
 }
 
 version (unittest) {
-    import std.exception : assertThrown;
+    import retrograde.test.util : assertThrownMsg;
+
     import poodinis : DependencyContainer, existingInstance;
 
     private class StubLoader(T : ImageLoader) : T {
@@ -79,7 +102,8 @@ version (unittest) {
     unittest {
         auto loader = new CommonImageLoader();
         auto file = new File("cube.notanimage");
-        assertThrown!Exception(loader.load(file));
+        assertThrownMsg("Model with extension .notanimage is unknown. Try to use a specific loader instead.", loader
+                .load(file));
     }
 
     @("Load PNG image")
@@ -90,5 +114,12 @@ version (unittest) {
 
         assert(f.commonImageLoader.load(new File("cat.png")) is image);
         assert(f.pngImageLoader.stub.loadWasCalled);
+    }
+
+    @("Load PNG image from raw data")
+    unittest {
+        auto f = new Fixture();
+        assertThrownMsg("The common image loader cannot determine what kind of image to load from raw data. Please use a specific loader instead.", f
+                .commonImageLoader.load(new ubyte[0]));
     }
 }

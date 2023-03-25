@@ -42,8 +42,28 @@ class Image {
 }
 
 /** 
- * Base interface for image loaders.
+ * Interface for image loaders.
  */
 interface ImageLoader {
+    /** 
+     * Load an image from a file.
+     *
+     * Params:
+     *  imageFile = The file to load the image from.
+     *
+     * Returns:
+     *  The loaded image.
+     */
     public Image load(File imageFile);
+
+    /** 
+     * Load an image from raw data.
+     *
+     * Params:
+     *  data = The raw image data.
+     *
+     * Returns:
+     *  The loaded image.
+     */
+    public Image load(const ubyte[] data);
 }

@@ -41,8 +41,8 @@ version (unittest) {
     }
 
     /**
-     * Asserts that the given expression throws an exception of the given type
-     * and that the exception message is equal to the given message.
+     * Asserts that the given expression throws an exception and that the exception
+     * message is equal to the given message.
      *
      * Params:
      *  ExpressionT = The expression that is expected to throw an exception.

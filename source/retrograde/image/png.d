@@ -18,27 +18,43 @@ import imageformats : ColFmt;
 import imageformats.png : PNG_Header, read_png_header_from_mem, read_png_from_mem, read_png16_from_mem,
     read_png_info_from_mem;
 
-/** 
- * Loads PNG image data.
+/**
+ * Loads PNG images.
  */
 class PngImageLoader : ImageLoader {
+    /**
+     * Load an image from a file.
+     *
+     * @param imageFile The file to load the image from.
+     * @return The loaded image.
+     */
     public Image load(File imageFile) {
-        PNG_Header header = read_png_header_from_mem(imageFile.data);
+        return load(imageFile.data);
+    }
+
+    /** 
+     * Load an image from raw data.
+     *
+     * @param data The raw data to load the image from.
+     * @return The loaded image.
+     */
+    public Image load(const ubyte[] data) {
+        PNG_Header header = read_png_header_from_mem(data);
         int channels, irrelevant;
-        read_png_info_from_mem(imageFile.data, irrelevant, irrelevant, channels);
+        read_png_info_from_mem(data, irrelevant, irrelevant, channels);
 
         if (header.bit_depth == 8) {
-            return load8BitImage(imageFile, channels);
+            return load8BitImage(data, channels);
         } else if (header.bit_depth == 16) {
-            return load16BitImage(imageFile, channels);
+            return load16BitImage(data, channels);
         } else {
             throw new Exception("Unsupported PNG image color bit depth: " ~ header.bit_depth);
         }
     }
 
-    private Image load8BitImage(const File imageFile, const int channels) {
+    private Image load8BitImage(const ubyte[] data, const int channels) {
         auto image = new Image();
-        auto imageData = read_png_from_mem(imageFile.data, channels);
+        auto imageData = read_png_from_mem(data, channels);
         image.width = imageData.w;
         image.height = imageData.h;
         image.channels = imageData.c;
@@ -48,9 +64,9 @@ class PngImageLoader : ImageLoader {
         return image;
     }
 
-    private Image load16BitImage(const File imageFile, const int channels) {
+    private Image load16BitImage(const ubyte[] data, const int channels) {
         auto image = new Image();
-        auto imageData = read_png16_from_mem(imageFile.data, channels);
+        auto imageData = read_png16_from_mem(data, channels);
         image.width = imageData.w;
         image.height = imageData.h;
         image.channels = imageData.c;

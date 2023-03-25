@@ -18,7 +18,6 @@ import retrograde.ai.generative.texttoimage : TextToImageFactory, TextToImagePar
 
 import std.exception : enforce;
 import std.conv : to;
-import std.random : Random, uniform;
 
 import poodinis : Inject;
 
@@ -285,10 +284,7 @@ class StabilityAiTextToImageFactory : TextToImageFactory {
         auto response = api.textToImage(prompt, stabilityParameters);
         enforce(response.finishReason != ApiFinishReason.error, "Stability AI API returned an error.");
         enforce(response.isSuccessful, "Stability AI API returned an unsuccessful response.");
-        Random random;
-        auto fileName = "stability-ai-" ~ uniform(0, 1_000_000, random).to!string ~ ".png";
-        auto imageFile = new File(fileName, response.data);
-        return imageLoader.load(imageFile);
+        return imageLoader.load(response.data);
     }
 
     /** 
@@ -361,6 +357,10 @@ version (unittest) {
         Image mockImage;
 
         Image load(File file) {
+            return mockImage;
+        }
+
+        public Image load(const ubyte[] data) {
             return mockImage;
         }
     }
