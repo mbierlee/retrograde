@@ -14,6 +14,7 @@ module retrograde.ai.generative.stabilityai;
 import retrograde.core.image : Image, ImageLoader;
 import retrograde.core.storage : File;
 import retrograde.image.png : PngImageLoader;
+
 import retrograde.ai.generative.texttoimage : TextToImageFactory, TextToImageParameters;
 
 import std.exception : enforce;
@@ -34,8 +35,41 @@ struct ApiResponse {
     int seed;
 }
 
+struct StabilityAiApiConfig {
+    /** 
+     * The API URL to use for Stability AI API.
+     * Default: https://api.stability.ai
+     */
+    string apiUrl = "https://api.stability.ai";
+
+    /** 
+     * The API key to use for Stability AI API.
+     * Default: empty string.
+     */
+    string apiKey;
+
+    /** 
+     * The API version to use for Stability AI API.
+     * Default: v1
+     */
+    StabilityAiApiVersion apiVersion = StabilityAiApiVersion.v1;
+}
+
 interface StabilityAiApi {
+    /**
+     * Generate an image from a prompt.
+     */
     ApiResponse textToImage(string prompt, StabilityTextToImageParameters parameters);
+
+    /** 
+     * Set the configuration for the API.
+     */
+    void apiConfig(StabilityAiApiConfig config);
+
+    /** 
+     * Get the configuration for the API.
+     */
+    StabilityAiApiConfig apiConfig();
 }
 
 version (Have_vibe_d_http) {
@@ -48,7 +82,11 @@ version (Have_vibe_d_http) {
     import std.base64 : Base64;
 
     class VibeStabilityAiApi : StabilityAiApi {
+        private StabilityAiApiConfig _config;
+
         ApiResponse textToImage(string prompt, StabilityTextToImageParameters parameters) {
+            validateApiConfig();
+
             auto requestJson = createRequestJson(prompt, parameters);
             auto response = ApiResponse();
             response.isSuccessful = false;
@@ -57,7 +95,7 @@ version (Have_vibe_d_http) {
                 req.method = HTTPMethod.POST;
                 req.headers["Accept"] = "application/json";
                 req.headers["Content-Type"] = "application/json";
-                req.headers["Authorization"] = "Bearer " ~ parameters.apiKey;
+                req.headers["Authorization"] = "Bearer " ~ _config.apiKey;
                 req.writeBody(requestJson.representation, "application/json");
             }
 
@@ -66,14 +104,14 @@ version (Have_vibe_d_http) {
                     response = createApiResponse(res.readJson());
                 } else {
                     throw new Exception(
-                        "POST request to " ~ parameters.apiUrl ~ " failed with status code " ~ res.statusCode
-                            .to!string ~ ". Response body: " ~ res.readJson().toString()
+                        "POST request to " ~ _config.apiUrl ~ " failed with status code " ~ res.statusCode.to!string ~
+                            ". Response body: " ~ res.readJson().toString()
                     );
 
                 }
             }
 
-            auto url = parameters.apiUrl ~ "/" ~ parameters.apiVersion ~ "/generation/" ~ parameters.engine ~ "/text-to-image";
+            auto url = _config.apiUrl ~ "/" ~ _config.apiVersion ~ "/generation/" ~ parameters.engine ~ "/text-to-image";
             requestHTTP(
                 url,
                 &requester,
@@ -81,6 +119,20 @@ version (Have_vibe_d_http) {
             );
 
             return response;
+        }
+
+        /** 
+         * Set the configuration for the API.
+         */
+        void apiConfig(StabilityAiApiConfig config) {
+            _config = config;
+        }
+
+        /** 
+         * Get the configuration for the API.
+         */
+        StabilityAiApiConfig apiConfig() {
+            return _config;
         }
 
         private string createRequestJson(string prompt, StabilityTextToImageParameters parameters) {
@@ -132,6 +184,12 @@ version (Have_vibe_d_http) {
                 throw new Exception("Unknown finish reason: " ~ reason);
             }
         }
+
+        private void validateApiConfig() {
+            enforce!Exception(_config.apiKey.length > 0, "The Stability AI API key must be set.");
+            enforce!Exception(_config.apiUrl.length > 0, "The Stability AI API URL must be set.");
+            enforce!Exception(_config.apiVersion.length > 0, "The Stability AI API version must be set.");
+        }
     }
 } else {
     class VibeStabilityAiApi : StabilityAiApi {
@@ -142,6 +200,14 @@ version (Have_vibe_d_http) {
         }
 
         ApiResponse textToImage(string prompt, StabilityTextToImageParameters parameters) {
+            throw new Exception(requiresLibraryExceptionMessage);
+        }
+
+        void apiConfig(StabilityAiApiConfig config) {
+            throw new Exception(requiresLibraryExceptionMessage);
+        }
+
+        StabilityAiApiConfig apiConfig() {
             throw new Exception(requiresLibraryExceptionMessage);
         }
     }
@@ -192,23 +258,6 @@ enum Sampler : string {
  * Parameters for the stability AI image factory.
  */
 class StabilityTextToImageParameters : TextToImageParameters {
-    /** 
-     * The API URL to use for Stability AI API.
-     * Default: https://api.stability.ai
-     */
-    string apiUrl = "https://api.stability.ai";
-
-    /** 
-     * The API key to use for Stability AI API.
-     */
-    string apiKey;
-
-    /** 
-     * The API version to use for Stability AI API.
-     * Default: v1
-     */
-    StabilityAiApiVersion apiVersion = StabilityAiApiVersion.v1;
-
     /** 
      * The engine to use for the image generation.
      * Not all engines might be available to all users.
@@ -265,7 +314,7 @@ class StabilityAiTextToImageFactory : TextToImageFactory {
     private @Inject StabilityAiApi api;
     private @Inject!PngImageLoader ImageLoader imageLoader;
 
-    private TextToImageParameters _defaultParameters;
+    private TextToImageParameters _defaultParameters = new StabilityTextToImageParameters();
 
     /**
      * Generate an image using the Stability AI API.
@@ -316,7 +365,6 @@ class StabilityAiTextToImageFactory : TextToImageFactory {
 
     private void checkParams(const StabilityTextToImageParameters params) const {
         enforce(params !is null, "Invalid parameters passed to StabilityAiTextToImageFactory. Must not be null and of type StabilityTextToImageParameters.");
-        enforce(params.apiKey !is null, "No API key provided for Stability AI API.");
         enforce(params.width >= 128 && params.height >= 128, "Width and height must be equal or higher than 128");
 
         const uint area = params.width * params.height;
@@ -344,12 +392,21 @@ version (unittest) {
         ApiResponse mockResponse;
         string expectedPrompt;
         StabilityTextToImageParameters expectedParameters;
+        StabilityAiApiConfig config;
 
         ApiResponse textToImage(string prompt, StabilityTextToImageParameters parameters) {
             assert(prompt == expectedPrompt);
             assert(parameters is expectedParameters);
 
             return mockResponse;
+        }
+
+        StabilityAiApiConfig apiConfig() {
+            return config;
+        }
+
+        void apiConfig(StabilityAiApiConfig config) {
+            this.config = config;
         }
     }
 
@@ -392,21 +449,12 @@ version (unittest) {
             f.factory.create("test", new BogusStabilityTextToImageParameters()));
     }
 
-    @("Test stability AI image factory with missing API key")
-    unittest {
-        TestFixture f = new TestFixture();
-        auto parameters = new StabilityTextToImageParameters();
-        parameters.apiKey = null;
-        assertThrownMsg("No API key provided for Stability AI API.", f.factory.create("test", parameters));
-    }
-
     @("Test stability AI image factory with invalid area")
     unittest {
         TestFixture f = new TestFixture();
         StabilityTextToImageParameters parameters = new StabilityTextToImageParameters();
         parameters.width = 128;
         parameters.height = 128;
-        parameters.apiKey = "test";
         assertThrownMsg("Area must be between 262,144 and 1,048,576 for engine stable-diffusion-512-v2-1",
             f.factory.create("test", parameters));
     }
@@ -417,7 +465,6 @@ version (unittest) {
         StabilityTextToImageParameters parameters = new StabilityTextToImageParameters();
         parameters.width = 512;
         parameters.height = 512;
-        parameters.apiKey = "test";
         parameters.engine = StabilityAiApiEngine.stableDiffusion768V20;
         assertThrownMsg("Area must be between 589,824 and 1,048,576 for engine stable-diffusion-768-v2-0",
             f.factory.create("test", parameters));
@@ -429,7 +476,6 @@ version (unittest) {
         StabilityTextToImageParameters parameters = new StabilityTextToImageParameters();
         parameters.width = 512;
         parameters.height = 520;
-        parameters.apiKey = "test";
         assertThrownMsg("Height and width must be increments of 64", f.factory.create("test", parameters));
     }
 
@@ -439,7 +485,6 @@ version (unittest) {
         StabilityTextToImageParameters parameters = new StabilityTextToImageParameters();
         parameters.width = 520;
         parameters.height = 512;
-        parameters.apiKey = "test";
         assertThrownMsg("Height and width must be increments of 64", f.factory.create("test", parameters));
     }
 
@@ -449,7 +494,6 @@ version (unittest) {
         StabilityTextToImageParameters parameters = new StabilityTextToImageParameters();
         parameters.width = 9216;
         parameters.height = 64;
-        parameters.apiKey = "test";
         assertThrownMsg("Width and height must be equal or higher than 128", f.factory.create("test", parameters));
     }
 
@@ -459,16 +503,13 @@ version (unittest) {
         StabilityTextToImageParameters parameters = new StabilityTextToImageParameters();
         parameters.width = 64;
         parameters.height = 9216;
-        parameters.apiKey = "test";
         assertThrownMsg("Width and height must be equal or higher than 128", f.factory.create("test", parameters));
     }
 
     @("Test stability AI image factory with error as api finish reason")
     unittest {
         TestFixture f = new TestFixture();
-
         auto parameters = new StabilityTextToImageParameters();
-        parameters.apiKey = "test";
 
         ApiResponse response = ApiResponse();
         response.finishReason = ApiFinishReason.error;
@@ -481,9 +522,7 @@ version (unittest) {
     @("Test stability AI image factory with unsuccessful response")
     unittest {
         TestFixture f = new TestFixture();
-
         auto parameters = new StabilityTextToImageParameters();
-        parameters.apiKey = "test";
 
         ApiResponse response = ApiResponse();
         response.isSuccessful = false;
@@ -502,9 +541,7 @@ version (unittest) {
         auto expectedImage = new Image();
         expectedImage.data = imageData;
         f.imageLoader.mockImage = expectedImage;
-
         auto parameters = new StabilityTextToImageParameters();
-        parameters.apiKey = "test";
 
         ApiResponse response = ApiResponse();
         response.isSuccessful = true;
