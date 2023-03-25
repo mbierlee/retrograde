@@ -13,12 +13,18 @@ module retrograde.ai.generative.stabilityai;
 
 import retrograde.core.image : Image, ImageLoader;
 import retrograde.core.storage : File;
+
 import retrograde.image.png : PngImageLoader;
 
 import retrograde.ai.generative.texttoimage : TextToImageFactory, TextToImageParameters;
 
+import retrograde.http.client.vibe : HttpRequest, post, bearerToken, header, response, perform, MediaType, HttpResponse,
+    HttpStatusCode, toString;
+
 import std.exception : enforce;
 import std.conv : to;
+import std.json : parseJSON, JSONValue;
+import std.base64 : Base64;
 
 import poodinis : Inject;
 
@@ -55,6 +61,9 @@ struct StabilityAiApiConfig {
     StabilityAiApiVersion apiVersion = StabilityAiApiVersion.v1;
 }
 
+/** 
+ * Interface for the Stability AI API to allow for mocking.
+ */
 interface StabilityAiApi {
     /**
      * Generate an image from a prompt.
@@ -72,144 +81,109 @@ interface StabilityAiApi {
     StabilityAiApiConfig apiConfig();
 }
 
-version (Have_vibe_d_http) {
-    import vibe.http.client : requestHTTP, HTTPClientRequest, HTTPClientResponse, HTTPMethod;
-    import vibe.data.json : Json;
+class StabilityAiApiImpl : StabilityAiApi {
+    private StabilityAiApiConfig _config;
 
-    import std.conv : to;
-    import std.json : JSONValue;
-    import std.string : representation;
-    import std.base64 : Base64;
+    ApiResponse textToImage(string prompt, StabilityTextToImageParameters parameters) {
+        validateApiConfig();
+        auto url = _config.apiUrl ~ "/" ~ _config.apiVersion ~ "/generation/" ~ parameters.engine ~ "/text-to-image";
+        auto requestJson = createRequestJson(prompt, parameters);
 
-    class VibeStabilityAiApi : StabilityAiApi {
-        private StabilityAiApiConfig _config;
+        auto apiResponse = ApiResponse();
+        apiResponse.isSuccessful = false;
 
-        ApiResponse textToImage(string prompt, StabilityTextToImageParameters parameters) {
-            validateApiConfig();
-
-            auto requestJson = createRequestJson(prompt, parameters);
-            auto response = ApiResponse();
-            response.isSuccessful = false;
-
-            scope void requester(scope HTTPClientRequest req) {
-                req.method = HTTPMethod.POST;
-                req.headers["Accept"] = "application/json";
-                req.headers["Content-Type"] = "application/json";
-                req.headers["Authorization"] = "Bearer " ~ _config.apiKey;
-                req.writeBody(requestJson.representation, "application/json");
-            }
-
-            scope void responder(scope HTTPClientResponse res) {
-                if (res.statusCode == 200) {
-                    response = createApiResponse(res.readJson());
+        new HttpRequest()
+            .post(
+                url,
+                requestJson,
+                MediaType.applicationJson,
+            )
+            .bearerToken(_config.apiKey)
+            .header("Accept", "application/json")
+            .response((HttpResponse response) {
+                if (response.statusCode == HttpStatusCode.ok) {
+                    apiResponse = createApiResponse(response.bodyContent);
                 } else {
                     throw new Exception(
-                        "POST request to " ~ _config.apiUrl ~ " failed with status code " ~ res.statusCode.to!string ~
-                            ". Response body: " ~ res.readJson().toString()
+                        "POST request to " ~ _config.apiUrl ~ " failed with status code " ~
+                        response.statusCode.toString ~ ". Response body: " ~ response.bodyContent
                     );
-
                 }
-            }
+            })
+            .perform();
 
-            auto url = _config.apiUrl ~ "/" ~ _config.apiVersion ~ "/generation/" ~ parameters.engine ~ "/text-to-image";
-            requestHTTP(
-                url,
-                &requester,
-                &responder
-            );
+        return apiResponse;
+    }
 
-            return response;
-        }
-
-        /** 
+    /** 
          * Set the configuration for the API.
          */
-        void apiConfig(StabilityAiApiConfig config) {
-            _config = config;
-        }
+    void apiConfig(StabilityAiApiConfig config) {
+        _config = config;
+    }
 
-        /** 
+    /** 
          * Get the configuration for the API.
          */
-        StabilityAiApiConfig apiConfig() {
-            return _config;
+    StabilityAiApiConfig apiConfig() {
+        return _config;
+    }
+
+    private string createRequestJson(string prompt, StabilityTextToImageParameters parameters) {
+        JSONValue json;
+
+        JSONValue[] textPrompts;
+        JSONValue promptObj;
+        promptObj["text"] = prompt;
+        promptObj["weight"] = 1.0;
+        textPrompts ~= promptObj;
+
+        json["text_prompts"] = textPrompts;
+        json["cfg_scale"] = parameters.cfgScale;
+        json["clip_guidance_preset"] = parameters.clipGuidancePreset;
+        json["height"] = parameters.height;
+        json["width"] = parameters.width;
+        json["samples"] = 1;
+        json["seed"] = parameters.seed;
+        json["steps"] = parameters.steps;
+
+        if (parameters.sampler !is null) {
+            json["sampler"] = parameters.sampler;
         }
 
-        private string createRequestJson(string prompt, StabilityTextToImageParameters parameters) {
-            JSONValue json;
+        return json.toString();
+    }
 
-            JSONValue[] textPrompts;
-            JSONValue promptObj;
-            promptObj["text"] = prompt;
-            promptObj["weight"] = 1.0;
-            textPrompts ~= promptObj;
+    private ApiResponse createApiResponse(string jsonString) {
+        ApiResponse response;
+        response.isSuccessful = true;
 
-            json["text_prompts"] = textPrompts;
-            json["cfg_scale"] = parameters.cfgScale;
-            json["clip_guidance_preset"] = parameters.clipGuidancePreset;
-            json["height"] = parameters.height;
-            json["width"] = parameters.width;
-            json["samples"] = 1;
-            json["seed"] = parameters.seed;
-            json["steps"] = parameters.steps;
+        auto json = jsonString.parseJSON();
+        auto artifact = json["artifacts"][0];
+        response.finishReason = parseFinishReason(artifact["finishReason"].get!string);
+        response.seed = artifact["seed"].get!uint;
+        response.data = Base64.decode(artifact["base64"].get!string);
 
-            if (parameters.sampler !is null) {
-                json["sampler"] = parameters.sampler;
-            }
+        return response;
+    }
 
-            return json.toString();
-        }
-
-        private ApiResponse createApiResponse(Json json) {
-            ApiResponse response;
-            response.isSuccessful = true;
-
-            auto artifact = json["artifacts"][0];
-            response.finishReason = parseFinishReason(artifact["finishReason"].get!string);
-            response.seed = artifact["seed"].get!uint;
-            response.data = Base64.decode(artifact["base64"].get!string);
-
-            return response;
-        }
-
-        private ApiFinishReason parseFinishReason(string reason) {
-            switch (reason) {
-            case "SUCCESS":
-                return ApiFinishReason.success;
-            case "ERROR":
-                return ApiFinishReason.error;
-            case "CONTENT_FILTERED":
-                return ApiFinishReason.contentFiltered;
-            default:
-                throw new Exception("Unknown finish reason: " ~ reason);
-            }
-        }
-
-        private void validateApiConfig() {
-            enforce!Exception(_config.apiKey.length > 0, "The Stability AI API key must be set.");
-            enforce!Exception(_config.apiUrl.length > 0, "The Stability AI API URL must be set.");
-            enforce!Exception(_config.apiVersion.length > 0, "The Stability AI API version must be set.");
+    private ApiFinishReason parseFinishReason(string reason) {
+        switch (reason) {
+        case "SUCCESS":
+            return ApiFinishReason.success;
+        case "ERROR":
+            return ApiFinishReason.error;
+        case "CONTENT_FILTERED":
+            return ApiFinishReason.contentFiltered;
+        default:
+            throw new Exception("Unknown finish reason: " ~ reason);
         }
     }
-} else {
-    class VibeStabilityAiApi : StabilityAiApi {
-        private enum requiresLibraryExceptionMessage = "The StabilityAiApi requires the vibe-d:http dependency. Please add it to your dub file. See https://code.dlang.org/packages/vibe-d for more information.";
 
-        this() {
-            throw new Exception(requiresLibraryExceptionMessage);
-        }
-
-        ApiResponse textToImage(string prompt, StabilityTextToImageParameters parameters) {
-            throw new Exception(requiresLibraryExceptionMessage);
-        }
-
-        void apiConfig(StabilityAiApiConfig config) {
-            throw new Exception(requiresLibraryExceptionMessage);
-        }
-
-        StabilityAiApiConfig apiConfig() {
-            throw new Exception(requiresLibraryExceptionMessage);
-        }
+    private void validateApiConfig() {
+        enforce!Exception(_config.apiKey.length > 0, "The Stability AI API key must be set.");
+        enforce!Exception(_config.apiUrl.length > 0, "The Stability AI API URL must be set.");
+        enforce!Exception(_config.apiVersion.length > 0, "The Stability AI API version must be set.");
     }
 }
 

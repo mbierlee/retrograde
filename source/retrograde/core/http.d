@@ -14,8 +14,9 @@ module retrograde.core.http;
 import std.base64 : Base64;
 import std.conv : to;
 import std.uri : encode;
+import std.string : split, strip, startsWith, endsWith;
 
-alias ResponseHandler = void delegate(HttpStatusCode statusCode, string bodyContent, MediaType contentType, string[string] headers);
+alias ResponseHandler = void delegate(HttpResponse response);
 
 /** 
  * A context for performing an HTTP request.
@@ -26,6 +27,13 @@ class HttpRequest {
     string[string] headers;
     string bodyContent;
     ResponseHandler responseHandler;
+}
+
+class HttpResponse {
+    HttpStatusCode statusCode;
+    string bodyContent;
+    MediaType contentType;
+    string[string] headers;
 }
 
 enum RequestMethod : string {
@@ -86,9 +94,32 @@ enum MediaType : string {
     videoXMsWmv = "video/x-ms-wmv"
 }
 
+MediaType toMediaType(string input) {
+    auto parts = input.split("/");
+    if (parts.length != 2) {
+        throw new Exception("Invalid media type: " ~ input);
+    }
+
+    auto type = parts[0].strip();
+    auto subtype = parts[1].strip();
+    foreach (member; __traits(allMembers, MediaType)) {
+        string mediaTypeValue = mixin("MediaType." ~ member);
+        if (mediaTypeValue == input || (mediaTypeValue.startsWith(type ~ "/")
+                && mediaTypeValue.endsWith("/" ~ subtype))) {
+            return mixin("MediaType." ~ member);
+        }
+    }
+
+    throw new Exception("Unknown media type: " ~ input);
+}
+
 struct StatusCode {
     uint code;
     string message;
+}
+
+string toString(StatusCode status) {
+    return status.code.to!string ~ " " ~ status.message;
 }
 
 enum HttpStatusCode : StatusCode {
@@ -165,135 +196,14 @@ enum HttpStatusCode : StatusCode {
     networkAuthenticationRequired = StatusCode(511, "Network Authentication Required")
 }
 
-HttpStatusCode getHttpStatusCode(uint code) {
-    switch (code) {
-    case 100:
-        return HttpStatusCode.continue_;
-    case 101:
-        return HttpStatusCode.switchingProtocols;
-    case 102:
-        return HttpStatusCode.processing;
-    case 103:
-        return HttpStatusCode.earlyHints;
-    case 200:
-        return HttpStatusCode.ok;
-    case 201:
-        return HttpStatusCode.created;
-    case 202:
-        return HttpStatusCode.accepted;
-    case 203:
-        return HttpStatusCode.nonAuthoritativeInformation;
-    case 204:
-        return HttpStatusCode.noContent;
-    case 205:
-        return HttpStatusCode.resetContent;
-    case 206:
-        return HttpStatusCode.partialContent;
-    case 207:
-        return HttpStatusCode.multiStatus;
-    case 208:
-        return HttpStatusCode.alreadyReported;
-    case 226:
-        return HttpStatusCode.imUsed;
-    case 300:
-        return HttpStatusCode.multipleChoices;
-    case 301:
-        return HttpStatusCode.movedPermanently;
-    case 302:
-        return HttpStatusCode.found;
-    case 303:
-        return HttpStatusCode.seeOther;
-    case 304:
-        return HttpStatusCode.notModified;
-    case 305:
-        return HttpStatusCode.useProxy;
-    case 307:
-        return HttpStatusCode.temporaryRedirect;
-    case 308:
-        return HttpStatusCode.permanentRedirect;
-    case 400:
-        return HttpStatusCode.badRequest;
-    case 401:
-        return HttpStatusCode.unauthorized;
-    case 402:
-        return HttpStatusCode.paymentRequired;
-    case 403:
-        return HttpStatusCode.forbidden;
-    case 404:
-        return HttpStatusCode.notFound;
-    case 405:
-        return HttpStatusCode.methodNotAllowed;
-    case 406:
-        return HttpStatusCode.notAcceptable;
-    case 407:
-        return HttpStatusCode.proxyAuthenticationRequired;
-    case 408:
-        return HttpStatusCode.requestTimeout;
-    case 409:
-        return HttpStatusCode.conflict;
-    case 410:
-        return HttpStatusCode.gone;
-    case 411:
-        return HttpStatusCode.lengthRequired;
-    case 412:
-        return HttpStatusCode.preconditionFailed;
-    case 413:
-        return HttpStatusCode.payloadTooLarge;
-    case 414:
-        return HttpStatusCode.uriTooLong;
-    case 415:
-        return HttpStatusCode.unsupportedMediaType;
-    case 416:
-        return HttpStatusCode.rangeNotSatisfiable;
-    case 417:
-        return HttpStatusCode.expectationFailed;
-    case 418:
-        return HttpStatusCode.imATeapot;
-    case 421:
-        return HttpStatusCode.misdirectedRequest;
-    case 422:
-        return HttpStatusCode.unprocessableEntity;
-    case 423:
-        return HttpStatusCode.locked;
-    case 424:
-        return HttpStatusCode.failedDependency;
-    case 425:
-        return HttpStatusCode.tooEarly;
-    case 426:
-        return HttpStatusCode.upgradeRequired;
-    case 428:
-        return HttpStatusCode.preconditionRequired;
-    case 429:
-        return HttpStatusCode.tooManyRequests;
-    case 431:
-        return HttpStatusCode.requestHeaderFieldsTooLarge;
-    case 451:
-        return HttpStatusCode.unavailableForLegalReasons;
-    case 500:
-        return HttpStatusCode.internalServerError;
-    case 501:
-        return HttpStatusCode.notImplemented;
-    case 502:
-        return HttpStatusCode.badGateway;
-    case 503:
-        return HttpStatusCode.serviceUnavailable;
-    case 504:
-        return HttpStatusCode.gatewayTimeout;
-    case 505:
-        return HttpStatusCode.httpVersionNotSupported;
-    case 506:
-        return HttpStatusCode.variantAlsoNegotiates;
-    case 507:
-        return HttpStatusCode.insufficientStorage;
-    case 508:
-        return HttpStatusCode.loopDetected;
-    case 510:
-        return HttpStatusCode.notExtended;
-    case 511:
-        return HttpStatusCode.networkAuthenticationRequired;
-    default:
-        throw new Exception("Invalid HTTP status code");
+HttpStatusCode toHttpStatusCode(uint code) {
+    static foreach (member; __traits(allMembers, HttpStatusCode)) {
+        if (code == mixin("HttpStatusCode." ~ member ~ ".code")) {
+            return mixin("HttpStatusCode." ~ member);
+        }
     }
+
+    throw new Exception("Unknown HTTP status code: " ~ code.to!string);
 }
 
 /**
@@ -311,7 +221,8 @@ HttpRequest get(HttpRequest request, string url) {
 
 HttpRequest post(
     HttpRequest request,
-    string url, string body = "",
+    string url,
+    string body = "",
     MediaType contentType = MediaType.textPlain
 ) {
     request.method = RequestMethod.post;
@@ -323,7 +234,8 @@ HttpRequest post(
 
 HttpRequest put(
     HttpRequest request,
-    string url, string body = "",
+    string url,
+    string body = "",
     MediaType contentType = MediaType.textPlain
 ) {
     request.method = RequestMethod.put;
@@ -373,29 +285,26 @@ HttpRequest response(
 
 version (unittest) {
     HttpRequest perform(HttpRequest request) {
-        auto response = request.bodyContent.length > 0 ? request.bodyContent : "Hello World!";
-        request.responseHandler(
-            HttpStatusCode.ok,
-            response,
-            MediaType.textPlain,
-            [
-                "Content-Type": MediaType.textPlain
-            ]
-        );
-
+        auto responseBody = request.bodyContent.length > 0 ? request.bodyContent : "Hello World!";
+        auto response = new HttpResponse();
+        response.statusCode = HttpStatusCode.ok;
+        response.bodyContent = responseBody;
+        response.contentType = MediaType.textPlain;
+        response.headers["Content-Type"] = MediaType.textPlain;
+        request.responseHandler(response);
         return request;
     }
 
     @("Simple GET request") unittest {
         bool handlerWasCalled = false;
 
-        void handler(HttpStatusCode statusCode, string bodyContent, MediaType contentType, string[string] headers) {
-            assert(statusCode == HttpStatusCode.ok);
-            assert(bodyContent == "Hello World!");
-            assert(contentType == MediaType.textPlain);
-            assert(headers.length > 0);
-            assert(headers["Content-Type"] == MediaType.textPlain);
-            assert(!statusCode.isHttpError);
+        void handler(HttpResponse response) {
+            assert(response.statusCode == HttpStatusCode.ok);
+            assert(response.bodyContent == "Hello World!");
+            assert(response.contentType == MediaType.textPlain);
+            assert(response.headers.length > 0);
+            assert(response.headers["Content-Type"] == MediaType.textPlain);
+            assert(!response.statusCode.isHttpError);
             handlerWasCalled = true;
         }
 
@@ -416,13 +325,13 @@ version (unittest) {
     unittest {
         bool handlerWasCalled = false;
 
-        void handler(HttpStatusCode statusCode, string bodyContent, MediaType contentType, string[string] headers) {
-            assert(statusCode == HttpStatusCode.ok);
-            assert(bodyContent == "I am a postman!");
-            assert(contentType == MediaType.textPlain);
-            assert(headers.length > 0);
-            assert(headers["Content-Type"] == MediaType.textPlain);
-            assert(!statusCode.isHttpError);
+        void handler(HttpResponse response) {
+            assert(response.statusCode == HttpStatusCode.ok);
+            assert(response.bodyContent == "I am a postman!");
+            assert(response.contentType == MediaType.textPlain);
+            assert(response.headers.length > 0);
+            assert(response.headers["Content-Type"] == MediaType.textPlain);
+            assert(!response.statusCode.isHttpError);
             handlerWasCalled = true;
         }
 
@@ -444,13 +353,13 @@ version (unittest) {
     unittest {
         bool handlerWasCalled = false;
 
-        void handler(HttpStatusCode statusCode, string bodyContent, MediaType contentType, string[string] headers) {
-            assert(statusCode == HttpStatusCode.ok);
-            assert(bodyContent == "I am a putter!");
-            assert(contentType == MediaType.textPlain);
-            assert(headers.length > 0);
-            assert(headers["Content-Type"] == MediaType.textPlain);
-            assert(!statusCode.isHttpError);
+        void handler(HttpResponse response) {
+            assert(response.statusCode == HttpStatusCode.ok);
+            assert(response.bodyContent == "I am a putter!");
+            assert(response.contentType == MediaType.textPlain);
+            assert(response.headers.length > 0);
+            assert(response.headers["Content-Type"] == MediaType.textPlain);
+            assert(!response.statusCode.isHttpError);
             handlerWasCalled = true;
         }
 
@@ -472,13 +381,13 @@ version (unittest) {
     unittest {
         bool handlerWasCalled = false;
 
-        void handler(HttpStatusCode statusCode, string bodyContent, MediaType contentType, string[string] headers) {
-            assert(statusCode == HttpStatusCode.ok);
-            assert(bodyContent == "Hello World!");
-            assert(contentType == MediaType.textPlain);
-            assert(headers.length > 0);
-            assert(headers["Content-Type"] == MediaType.textPlain);
-            assert(!statusCode.isHttpError);
+        void handler(HttpResponse response) {
+            assert(response.statusCode == HttpStatusCode.ok);
+            assert(response.bodyContent == "Hello World!");
+            assert(response.contentType == MediaType.textPlain);
+            assert(response.headers.length > 0);
+            assert(response.headers["Content-Type"] == MediaType.textPlain);
+            assert(!response.statusCode.isHttpError);
             handlerWasCalled = true;
         }
 
@@ -493,5 +402,68 @@ version (unittest) {
         assert(request.bodyContent == "");
         assert(request.responseHandler is &handler);
         assert(handlerWasCalled);
+    }
+
+    @("To HTTP status code using toHttpStatusCode")
+    unittest {
+        assert(toHttpStatusCode(200) == HttpStatusCode.ok);
+        assert(toHttpStatusCode(201) == HttpStatusCode.created);
+        assert(toHttpStatusCode(202) == HttpStatusCode.accepted);
+        assert(toHttpStatusCode(203) == HttpStatusCode.nonAuthoritativeInformation);
+        assert(toHttpStatusCode(204) == HttpStatusCode.noContent);
+        assert(toHttpStatusCode(205) == HttpStatusCode.resetContent);
+        assert(toHttpStatusCode(206) == HttpStatusCode.partialContent);
+        assert(toHttpStatusCode(300) == HttpStatusCode.multipleChoices);
+        assert(toHttpStatusCode(301) == HttpStatusCode.movedPermanently);
+        assert(toHttpStatusCode(302) == HttpStatusCode.found);
+        assert(toHttpStatusCode(303) == HttpStatusCode.seeOther);
+        assert(toHttpStatusCode(304) == HttpStatusCode.notModified);
+        assert(toHttpStatusCode(305) == HttpStatusCode.useProxy);
+        assert(toHttpStatusCode(307) == HttpStatusCode.temporaryRedirect);
+        assert(toHttpStatusCode(400) == HttpStatusCode.badRequest);
+        assert(toHttpStatusCode(401) == HttpStatusCode.unauthorized);
+        assert(toHttpStatusCode(402) == HttpStatusCode.paymentRequired);
+        assert(toHttpStatusCode(403) == HttpStatusCode.forbidden);
+        assert(toHttpStatusCode(404) == HttpStatusCode.notFound);
+        assert(toHttpStatusCode(405) == HttpStatusCode.methodNotAllowed);
+        assert(toHttpStatusCode(406) == HttpStatusCode.notAcceptable);
+        assert(toHttpStatusCode(407) == HttpStatusCode.proxyAuthenticationRequired);
+        assert(toHttpStatusCode(408) == HttpStatusCode.requestTimeout);
+        assert(toHttpStatusCode(409) == HttpStatusCode.conflict);
+        assert(toHttpStatusCode(410) == HttpStatusCode.gone);
+        assert(toHttpStatusCode(411) == HttpStatusCode.lengthRequired);
+        assert(toHttpStatusCode(412) == HttpStatusCode.preconditionFailed);
+        assert(toHttpStatusCode(413) == HttpStatusCode.payloadTooLarge);
+        assert(toHttpStatusCode(414) == HttpStatusCode.uriTooLong);
+        assert(toHttpStatusCode(415) == HttpStatusCode.unsupportedMediaType);
+        assert(toHttpStatusCode(416) == HttpStatusCode.rangeNotSatisfiable);
+        assert(toHttpStatusCode(417) == HttpStatusCode.expectationFailed);
+        assert(toHttpStatusCode(500) == HttpStatusCode.internalServerError);
+        assert(toHttpStatusCode(501) == HttpStatusCode.notImplemented);
+        assert(toHttpStatusCode(502) == HttpStatusCode.badGateway);
+        assert(toHttpStatusCode(503) == HttpStatusCode.serviceUnavailable);
+        assert(toHttpStatusCode(504) == HttpStatusCode.gatewayTimeout);
+    }
+
+    @("To MediaType using toMediaType")
+    unittest {
+        assert(toMediaType("text/plain") == MediaType.textPlain);
+        assert(toMediaType("text/html") == MediaType.textHtml);
+        assert(toMediaType("text/css") == MediaType.textCss);
+        assert(toMediaType("text/javascript") == MediaType.textJavascript);
+        assert(toMediaType("application/json") == MediaType.applicationJson);
+        assert(toMediaType("application/xml") == MediaType.applicationXml);
+        assert(toMediaType("application/x-www-form-urlencoded") == MediaType.applicationForm);
+        assert(toMediaType("multipart/form-data") == MediaType.multipartForm);
+        assert(toMediaType("image/png") == MediaType.imagePng);
+        assert(toMediaType("image/jpeg") == MediaType.imageJpeg);
+        assert(toMediaType("image/gif") == MediaType.imageGif);
+        assert(toMediaType("image/svg+xml") == MediaType.imageSvg);
+        assert(toMediaType("audio/mpeg") == MediaType.audioMpeg);
+        assert(toMediaType("audio/ogg") == MediaType.audioOgg);
+        assert(toMediaType("audio/wav") == MediaType.audioWav);
+        assert(toMediaType("video/mp4") == MediaType.videoMp4);
+        assert(toMediaType("video/ogg") == MediaType.videoOgg);
+        assert(toMediaType("video/webm") == MediaType.videoWebm);
     }
 }
