@@ -135,7 +135,7 @@ version (Have_vibe_d_http) {
     }
 } else {
     class VibeStabilityAiApi : StabilityAiApi {
-        private enum requiresLibraryExceptionMessage = "The StabilityAiApi requires the requests library. Please install it with 'dub add requests'. See https://code.dlang.org/packages/requests for more information.";
+        private enum requiresLibraryExceptionMessage = "The StabilityAiApi requires the vibe-d:http dependency. Please add it to your dub file. See https://code.dlang.org/packages/vibe-d for more information.";
 
         this() {
             throw new Exception(requiresLibraryExceptionMessage);
