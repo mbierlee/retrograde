@@ -18,7 +18,7 @@ import retrograde.image.png : PngImageLoader;
 
 import retrograde.ai.generative.texttoimage : TextToImageFactory, TextToImageParameters;
 
-import retrograde.http.client.vibe : HttpRequest, post, bearerToken, header, response, perform, MediaType, HttpResponse,
+import retrograde.http.client.vibe : HttpRequest, post, bearerToken, header, perform, MediaType, HttpResponse,
     HttpStatusCode, toString;
 
 import std.exception : enforce;
@@ -89,10 +89,8 @@ class StabilityAiApiImpl : StabilityAiApi {
         auto url = _config.apiUrl ~ "/" ~ _config.apiVersion ~ "/generation/" ~ parameters.engine ~ "/text-to-image";
         auto requestJson = createRequestJson(prompt, parameters);
 
-        auto apiResponse = ApiResponse();
-        apiResponse.isSuccessful = false;
-
-        new HttpRequest()
+        auto response =
+            new HttpRequest()
             .post(
                 url,
                 requestJson,
@@ -100,19 +98,16 @@ class StabilityAiApiImpl : StabilityAiApi {
             )
             .bearerToken(_config.apiKey)
             .header("Accept", "application/json")
-            .response((HttpResponse response) {
-                if (response.statusCode == HttpStatusCode.ok) {
-                    apiResponse = createApiResponse(response.bodyContent);
-                } else {
-                    throw new Exception(
-                        "POST request to " ~ _config.apiUrl ~ " failed with status code " ~
-                        response.statusCode.toString ~ ". Response body: " ~ response.bodyContent
-                    );
-                }
-            })
             .perform();
 
-        return apiResponse;
+        if (response.statusCode == HttpStatusCode.ok) {
+            return createApiResponse(response.bodyContent);
+        } else {
+            throw new Exception(
+                "POST request to " ~ _config.apiUrl ~ " failed with status code " ~
+                    response.statusCode.toString ~ ". Response body: " ~ response.bodyContent
+            );
+        }
     }
 
     /** 

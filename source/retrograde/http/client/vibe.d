@@ -23,7 +23,7 @@ version (Have_vibe_d_http) {
     import std.string : representation;
     import std.exception : enforce;
 
-    HttpRequest perform(HttpRequest request) {
+    HttpResponse perform(HttpRequest request) {
         scope void requester(scope HTTPClientRequest vibeRequest) {
             vibeRequest.method = request.method.toVibe;
 
@@ -37,19 +37,17 @@ version (Have_vibe_d_http) {
             }
         }
 
+        auto response = new HttpResponse();
         scope void responder(scope HTTPClientResponse vibeResponse) {
             string[string] headers;
             foreach (string name, string value; vibeResponse.headers.byKeyValue) {
                 headers[name] = value;
             }
 
-            enforce(request.responseHandler !is null, "No response handler set for request");
-            auto response = new HttpResponse();
             response.statusCode = vibeResponse.statusCode.toHttpStatusCode;
             response.bodyContent = vibeResponse.bodyReader.readAllUTF8();
             response.contentType = vibeResponse.contentType.toMediaType;
             response.headers = headers;
-            request.responseHandler(response);
         }
 
         requestHTTP(
@@ -58,7 +56,7 @@ version (Have_vibe_d_http) {
             &responder
         );
 
-        return request;
+        return response;
     }
 
     private HTTPMethod toVibe(RequestMethod method) {
@@ -87,7 +85,7 @@ version (Have_vibe_d_http) {
     }
 
 } else {
-    HttpRequest perform(HttpRequest request) {
+    HttpResponse perform(HttpRequest request) {
         throw new Exception("vibe.d http client not available. Please add dependency 'vibe-d:http' to your dub.json file. See https://code.dlang.org/packages/vibe-d for more information.");
     }
 }

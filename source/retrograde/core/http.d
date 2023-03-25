@@ -16,8 +16,6 @@ import std.conv : to;
 import std.uri : encode;
 import std.string : split, strip, startsWith, endsWith;
 
-alias ResponseHandler = void delegate(HttpResponse response);
-
 /** 
  * A context for performing an HTTP request.
  */
@@ -26,7 +24,6 @@ class HttpRequest {
     string url;
     string[string] headers;
     string bodyContent;
-    ResponseHandler responseHandler;
 }
 
 class HttpResponse {
@@ -275,133 +272,88 @@ HttpRequest bearerToken(HttpRequest request, string token) {
     return request;
 }
 
-HttpRequest response(
-    HttpRequest request,
-    ResponseHandler handler
-) {
-    request.responseHandler = handler;
-    return request;
-}
-
 version (unittest) {
-    HttpRequest perform(HttpRequest request) {
+    HttpResponse perform(HttpRequest request) {
         auto responseBody = request.bodyContent.length > 0 ? request.bodyContent : "Hello World!";
         auto response = new HttpResponse();
         response.statusCode = HttpStatusCode.ok;
         response.bodyContent = responseBody;
         response.contentType = MediaType.textPlain;
         response.headers["Content-Type"] = MediaType.textPlain;
-        request.responseHandler(response);
-        return request;
+        return response;
     }
 
     @("Simple GET request") unittest {
-        bool handlerWasCalled = false;
-
-        void handler(HttpResponse response) {
-            assert(response.statusCode == HttpStatusCode.ok);
-            assert(response.bodyContent == "Hello World!");
-            assert(response.contentType == MediaType.textPlain);
-            assert(response.headers.length > 0);
-            assert(response.headers["Content-Type"] == MediaType.textPlain);
-            assert(!response.statusCode.isHttpError);
-            handlerWasCalled = true;
-        }
-
-        auto request = new HttpRequest()
-            .get("http://example.com")
-            .response(&handler)
-            .perform();
+        auto request = new HttpRequest().get("http://example.com");
+        auto response = request.perform();
 
         assert(request.method == RequestMethod.get);
         assert(request.url == "http://example.com");
         assert(request.headers.length == 0);
         assert(request.bodyContent == "");
-        assert(request.responseHandler is &handler);
-        assert(handlerWasCalled);
+
+        assert(response.statusCode == HttpStatusCode.ok);
+        assert(response.bodyContent == "Hello World!");
+        assert(response.contentType == MediaType.textPlain);
+        assert(response.headers.length > 0);
+        assert(response.headers["Content-Type"] == MediaType.textPlain);
+        assert(!response.statusCode.isHttpError);
     }
 
     @("A POST request")
     unittest {
-        bool handlerWasCalled = false;
-
-        void handler(HttpResponse response) {
-            assert(response.statusCode == HttpStatusCode.ok);
-            assert(response.bodyContent == "I am a postman!");
-            assert(response.contentType == MediaType.textPlain);
-            assert(response.headers.length > 0);
-            assert(response.headers["Content-Type"] == MediaType.textPlain);
-            assert(!response.statusCode.isHttpError);
-            handlerWasCalled = true;
-        }
-
-        auto request = new HttpRequest()
-            .post("http://example.com", "I am a postman!")
-            .response(&handler)
-            .perform();
+        auto request = new HttpRequest().post("http://example.com", "I am a postman!");
+        auto response = request.perform();
 
         assert(request.method == RequestMethod.post);
         assert(request.url == "http://example.com");
         assert(request.headers.length == 1);
         assert(request.headers["Content-Type"] == MediaType.textPlain);
         assert(request.bodyContent == "I am a postman!");
-        assert(request.responseHandler is &handler);
-        assert(handlerWasCalled);
+
+        assert(response.statusCode == HttpStatusCode.ok);
+        assert(response.bodyContent == "I am a postman!");
+        assert(response.contentType == MediaType.textPlain);
+        assert(response.headers.length > 0);
+        assert(response.headers["Content-Type"] == MediaType.textPlain);
+        assert(!response.statusCode.isHttpError);
     }
 
     @("A PUT request")
     unittest {
-        bool handlerWasCalled = false;
-
-        void handler(HttpResponse response) {
-            assert(response.statusCode == HttpStatusCode.ok);
-            assert(response.bodyContent == "I am a putter!");
-            assert(response.contentType == MediaType.textPlain);
-            assert(response.headers.length > 0);
-            assert(response.headers["Content-Type"] == MediaType.textPlain);
-            assert(!response.statusCode.isHttpError);
-            handlerWasCalled = true;
-        }
-
-        auto request = new HttpRequest()
-            .put("http://example.com", "I am a putter!")
-            .response(&handler)
-            .perform();
+        auto request = new HttpRequest().put("http://example.com", "I am a putter!");
+        auto response = request.perform();
 
         assert(request.method == RequestMethod.put);
         assert(request.url == "http://example.com");
         assert(request.headers.length == 1);
         assert(request.headers["Content-Type"] == MediaType.textPlain);
         assert(request.bodyContent == "I am a putter!");
-        assert(request.responseHandler is &handler);
-        assert(handlerWasCalled);
+
+        assert(response.statusCode == HttpStatusCode.ok);
+        assert(response.bodyContent == "I am a putter!");
+        assert(response.contentType == MediaType.textPlain);
+        assert(response.headers.length > 0);
+        assert(response.headers["Content-Type"] == MediaType.textPlain);
+        assert(!response.statusCode.isHttpError);
     }
 
     @("A DELETE request")
     unittest {
-        bool handlerWasCalled = false;
-
-        void handler(HttpResponse response) {
-            assert(response.statusCode == HttpStatusCode.ok);
-            assert(response.bodyContent == "Hello World!");
-            assert(response.contentType == MediaType.textPlain);
-            assert(response.headers.length > 0);
-            assert(response.headers["Content-Type"] == MediaType.textPlain);
-            assert(!response.statusCode.isHttpError);
-            handlerWasCalled = true;
-        }
-
-        auto request = new HttpRequest()
-            .del("http://example.com")
-            .response(&handler)
-            .perform();
+        auto request = new HttpRequest().del("http://example.com");
+        auto response = request.perform();
 
         assert(request.method == RequestMethod.del);
         assert(request.url == "http://example.com");
         assert(request.headers.length == 0);
         assert(request.bodyContent == "");
-        assert(request.responseHandler is &handler);
-        assert(handlerWasCalled);
+
+        assert(response.statusCode == HttpStatusCode.ok);
+        assert(response.bodyContent == "Hello World!");
+        assert(response.contentType == MediaType.textPlain);
+        assert(response.headers.length > 0);
+        assert(response.headers["Content-Type"] == MediaType.textPlain);
+        assert(!response.statusCode.isHttpError);
     }
 
     @("To HTTP status code using toHttpStatusCode")
