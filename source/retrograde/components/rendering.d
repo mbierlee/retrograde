@@ -57,12 +57,24 @@ class ActiveCameraComponent : EntityComponent {
  * Entities with a RandomFaceColorsComponent will be rendered with their faces given pseudo-random colors.
  *
  * It makes use of vertex colors. The way vertex colors are rendered depends on the used shaders.
- * Some shaders may blend the colors into textures. The entity's name will be used as seed for the random colors,
- * so entities with the same name will produce the same color pattern. This component is particularly handy for 
+ * Some shaders may blend the colors into textures. This component is particularly handy for 
  * debugging purposes.
  */
 class RandomFaceColorsComponent : EntityComponent {
     mixin EntityComponentIdentity!"RandomFaceColorsComponent";
+
+    /** 
+     * Use the entity's name as seed for the random colors.
+     * If false, a random seed will be used.
+     */
+    bool useEntityNameAsSeed = true;
+
+    this() {
+    }
+
+    this(bool useEntityNameAsSeed) {
+        this.useEntityNameAsSeed = useEntityNameAsSeed;
+    }
 }
 
 /**

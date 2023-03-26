@@ -38,7 +38,7 @@ version (Have_bindbc_opengl) {
     import std.logger : Logger;
     import std.conv : to;
     import std.string : fromStringz, format;
-    import std.random : Random, uniform01;
+    import std.random : Random, uniform01, unpredictableSeed;
     import std.format : format;
 
     import bindbc.opengl;
@@ -186,7 +186,14 @@ version (Have_bindbc_opengl) {
 
             entity.maybeWithComponent!ModelComponent((c) {
                 auto assignRandomFaceColors = entity.hasComponent!RandomFaceColorsComponent;
-                Random* random = assignRandomFaceColors ? new Random(sid(entity.name)) : null;
+                Random* random = null;
+                if (assignRandomFaceColors) {
+                    if (entity.getFromComponent!RandomFaceColorsComponent(c => c.useEntityNameAsSeed)) {
+                        random = new Random(sid(entity.name));
+                    } else {
+                        random = new Random(unpredictableSeed);
+                    }
+                }
 
                 foreach (const Mesh mesh; c.model.meshes) {
                     Vertex[] vertices;
