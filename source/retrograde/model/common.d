@@ -24,8 +24,8 @@ import poodinis : Inject;
  * Throws: Exception when extension is not recognized.
  */
 class CommonModelLoader : ModelLoader {
-    @Inject private StanfordPlyLoader stanfordPlyLoader;
-    @Inject private WavefrontObjLoader wavefrontObjLoader;
+    private @Inject StanfordPlyLoader stanfordPlyLoader;
+    private @Inject WavefrontObjLoader wavefrontObjLoader;
 
     public Model load(File modelFile) {
         switch (modelFile.extension) {

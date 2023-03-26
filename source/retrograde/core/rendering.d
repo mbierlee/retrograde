@@ -430,7 +430,7 @@ interface GraphicsApi {
  * available on the target platform.
  */
 class NullGraphicsApi : GraphicsApi {
-    @Inject @OptionalDependency Logger logger;
+    private @Inject @OptionalDependency Logger logger;
 
     public void initialize() {
         if (logger) {

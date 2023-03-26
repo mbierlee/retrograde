@@ -23,6 +23,8 @@ import retrograde.components.geometry : Orientation3DComponent, Position3DCompon
 
 import std.math : PI;
 
+import poodinis : Inject;
+
 /** 
  * Used by the DroneControllerProcessor to move entities with drone controls.
  * Typically processed maped input from an InputMapper.
@@ -58,12 +60,8 @@ const auto cmdDroneBankRight = sid("cmd_drone_bank_right");
  * And the aforementioned processors need to be active.
  */
 class DroneControllerProcessor : EntityProcessor {
-    private MessageHandler messageHandler;
+    private @Inject MessageHandler messageHandler;
     private const defaultRotationSpeedFactor = (2 * PI) / 100;
-
-    this(MessageHandler messageHandler) {
-        this.messageHandler = messageHandler;
-    }
 
     public override bool acceptsEntity(Entity entity) {
         return entity.hasComponent!DroneControllableComponent;

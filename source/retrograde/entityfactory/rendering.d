@@ -34,9 +34,9 @@ class ModelEntityFactoryParameters : EntityFactoryParameters {
  * Creates entities that are renderable models.
  */
 class ModelEntityFactory : EntityFactory {
-    @Inject CommonModelLoader modelLoader;
-    @Inject CommonImageLoader imageLoader;
-    @Inject StorageSystem storage;
+    private @Inject CommonModelLoader modelLoader;
+    private @Inject CommonImageLoader imageLoader;
+    private @Inject StorageSystem storage;
 
     public override void addComponents(Entity entity, const EntityFactoryParameters parameters = new ModelEntityFactoryParameters()) {
         auto p = parameters.ofType!ModelEntityFactoryParameters;

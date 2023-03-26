@@ -22,7 +22,7 @@ import poodinis : Inject;
  * Load images based on their extension.
  */
 class CommonImageLoader : ImageLoader {
-    @Inject public PngImageLoader pngImageLoader;
+    private @Inject PngImageLoader pngImageLoader;
 
     /** 
      * Load  images based on their extension.

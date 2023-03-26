@@ -69,9 +69,9 @@ interface EngineRuntime {
  * This implementation has a gameloop with a fixed-step update time and variable render rate.
  */
 class StandardEngineRuntime : EngineRuntime {
-    @Inject private Game game;
-    @Inject private Platform platform;
-    @Inject private Logger logger;
+    private @Inject Game game;
+    private @Inject Platform platform;
+    private @Inject Logger logger;
 
     private @Value("logging.logEngineInfo") bool logEngineInfo;
 
@@ -152,7 +152,7 @@ version (unittest) {
         public bool isRendered;
         public bool isCleanedUp;
 
-        @Inject private EngineRuntime runtime;
+        private @Inject EngineRuntime runtime;
 
         public override void initialize() {
             isInitialized = true;
