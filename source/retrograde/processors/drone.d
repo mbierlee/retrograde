@@ -240,7 +240,7 @@ class DroneControllerProcessor : EntityProcessor {
  * R/F:  Move up/down.
  * Arrow keys: rotate up, down, left, right.
  */
-void mapStandardKeyboardControls(InputMapper inputMapper) {
+void mapStandardDroneKeyboardControls(InputMapper inputMapper) {
     inputMapper.addKeyMapping(KeyboardKeyCode.r, MappingTarget(droneChannel, cmdDroneMoveUp));
     inputMapper.addKeyMapping(KeyboardKeyCode.f, MappingTarget(droneChannel, cmdDroneMoveDown));
     inputMapper.addKeyMapping(KeyboardKeyCode.a, MappingTarget(droneChannel, cmdDroneMoveLeft));
