@@ -15,7 +15,6 @@ import std.typecons : Nullable, nullable;
 
 import retrograde.core.stringid : StringId, sid;
 import retrograde.core.messaging : Message, MessageHandler, MagnitudeMessage;
-import retrograde.core.algorithm : forEach;
 
 /** 
  * Used by the InputMapper to capture HID input and map them to different channels.
@@ -382,10 +381,17 @@ class InputMapper {
      *  mappingTarget = Target properties of the mapping.
      */
     void addKeyMapping(KeyboardKeyCode keyCode, InputEventAction[] actions, MappingTarget mappingTarget) {
-        actions.forEach((InputEventAction action) {
-            addMapping(MappingKey(KeyInputEventMessage.msgId, (cast(int) keyCode)
-                .nullable, (cast(int) action).nullable), mappingTarget);
-        });
+        foreach (InputEventAction action; actions) {
+            addMapping(
+                MappingKey(
+                    KeyInputEventMessage.msgId,
+                    (cast(int) keyCode)
+                    .nullable,
+                    (cast(int) action).nullable
+            ),
+            mappingTarget
+            );
+        }
     }
 
     /**
@@ -407,8 +413,10 @@ class InputMapper {
                         .nullable, (cast(int) keyInputMessage.action).nullable);
                     auto mapping = key in mappings;
                     if (mapping) {
-                        messageHandler.sendMessage(mapping.channel,
-                            MagnitudeMessage.create(mapping.messageId, keyInputMessage.magnitude));
+                        messageHandler.sendMessage(
+                            mapping.channel,
+                            MagnitudeMessage.create(mapping.messageId, keyInputMessage.magnitude)
+                        );
                     }
                 }
             }
