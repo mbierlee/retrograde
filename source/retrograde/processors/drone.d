@@ -23,8 +23,6 @@ import retrograde.components.geometry : Orientation3DComponent, Position3DCompon
 
 import std.math : PI;
 
-import poodinis : Inject;
-
 /** 
  * Used by the DroneControllerProcessor to move entities with drone controls.
  * Typically processed maped input from an InputMapper.
@@ -60,8 +58,12 @@ const auto cmdDroneBankRight = sid("cmd_drone_bank_right");
  * And the aforementioned processors need to be active.
  */
 class DroneControllerProcessor : EntityProcessor {
-    private @Inject MessageHandler messageHandler;
+    private MessageHandler messageHandler;
     private const defaultRotationSpeedFactor = (2 * PI) / 100;
+
+    this(MessageHandler messageHandler) {
+        this.messageHandler = messageHandler;
+    }
 
     public override bool acceptsEntity(Entity entity) {
         return entity.hasComponent!DroneControllableComponent;
@@ -241,10 +243,10 @@ class DroneControllerProcessor : EntityProcessor {
 void mapStandardDroneKeyboardControls(InputMapper inputMapper) {
     inputMapper.addKeyMapping(KeyboardKeyCode.r, MappingTarget(droneChannel, cmdDroneMoveUp));
     inputMapper.addKeyMapping(KeyboardKeyCode.f, MappingTarget(droneChannel, cmdDroneMoveDown));
-    inputMapper.addKeyMapping(KeyboardKeyCode.a, MappingTarget(droneChannel, cmdDroneMoveLeft));
-    inputMapper.addKeyMapping(KeyboardKeyCode.d, MappingTarget(droneChannel, cmdDroneMoveRight));
     inputMapper.addKeyMapping(KeyboardKeyCode.w, MappingTarget(droneChannel, cmdDroneMoveForwards));
+    inputMapper.addKeyMapping(KeyboardKeyCode.a, MappingTarget(droneChannel, cmdDroneMoveLeft));
     inputMapper.addKeyMapping(KeyboardKeyCode.s, MappingTarget(droneChannel, cmdDroneMoveBackwards));
+    inputMapper.addKeyMapping(KeyboardKeyCode.d, MappingTarget(droneChannel, cmdDroneMoveRight));
     inputMapper.addKeyMapping(KeyboardKeyCode.left, MappingTarget(droneChannel, cmdDroneYawLeft));
     inputMapper.addKeyMapping(KeyboardKeyCode.right, MappingTarget(droneChannel, cmdDroneYawRight));
     inputMapper.addKeyMapping(KeyboardKeyCode.down, MappingTarget(droneChannel, cmdDronePitchUp));
