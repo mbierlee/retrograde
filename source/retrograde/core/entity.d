@@ -440,18 +440,22 @@ class EntityLifeCycleMessage : Message {
  * Manages the lifecycle of entity processors and their entities.
  */
 class EntityManager {
-    private EntityCollection _entities = new EntityCollection();
+    private EntityCollection _entities;
     private EntityProcessor[] _processors;
     private EntityIdType nextAvailableId = 1;
 
     private @Inject MessageHandler messageHandler;
 
-    public @property entities() {
+    public Entity[] entities() {
         return _entities.getAll();
     }
 
-    public @property processors() {
+    public EntityProcessor[] processors() {
         return _processors;
+    }
+
+    this() {
+        _entities = new EntityCollection();
     }
 
     /**
@@ -469,6 +473,17 @@ class EntityManager {
         _entities.add(entity);
         foreach (processor; _processors) {
             processor.addEntity(entity);
+        }
+    }
+
+    /**
+     * Adds the given entities to the manager.
+     * Params:
+     *  entities: Entities to be added.
+     */
+    public void addEntities(Entity[] entities) {
+        foreach (entity; entities) {
+            addEntity(entity);
         }
     }
 
@@ -573,6 +588,17 @@ class EntityManager {
      */
     public void removeEntity(Entity entity) {
         removeEntity(entity.id);
+    }
+
+    /**
+     * Removes the given entities from the manager.
+     * Params:
+     *  entities = Entities to be removed.
+     */
+    public void removeEntities(Entity[] entities) {
+        foreach (entity; entities) {
+            removeEntity(entity);
+        }
     }
 
     /** 
@@ -822,6 +848,16 @@ abstract class EntityFactory {
      * Returns: Entity with the factory's components added to it.
      */
     public void addComponents(Entity entity, const EntityFactoryParameters parameters);
+}
+
+interface EntityHierarchyFactory {
+    /**
+     * Creates multiple entities that are related to each other in a hierarchy.
+     * Typically one entity is created that is the root entity in the hierarchy.
+     *
+     * Returns: A map of entity names to entities.
+     */
+    public Entity[string] createEntities(const string parentName, const EntityFactoryParameters parameters);
 }
 
 /** 
@@ -1220,6 +1256,15 @@ version (unittest) {
         auto manager = new EntityManager();
         auto entity = new Entity();
         manager.addEntity(entity);
+        assert(1 == manager.entities.length);
+    }
+
+    @("Add multiple entities to entity manager using addEntities")
+    unittest {
+        auto manager = new EntityManager();
+        auto entities = [new Entity(), new Entity(), new Entity()];
+        manager.addEntities(entities);
+        assert(3 == manager.entities.length);
     }
 
     @("Adding an entity to entity manager sets entity's ID")

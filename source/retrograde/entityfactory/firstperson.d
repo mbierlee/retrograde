@@ -11,7 +11,7 @@
 
 module retrograde.entityfactory.firstperson;
 
-import retrograde.core.entity : Entity, EntityFactory, EntityFactoryParameters, ofType;
+import retrograde.core.entity : Entity, EntityFactory, EntityFactoryParameters, ofType, EntityHierarchyFactory;
 import retrograde.core.math : scalar, Vector3D;
 
 import retrograde.components.firstperson : FirstPersonControllableComponent;
@@ -23,6 +23,24 @@ import poodinis : Inject;
 class FirstPersonControllableFactoryParameters : EntityFactoryParameters {
     public scalar translationSpeedModifier = 1;
     public scalar rotationSpeedModifier = 1;
+}
+
+class FirstPersonControllableFactory : EntityHierarchyFactory {
+    private @Inject FirstPersonControllableBodyFactory bodyFactory;
+
+    public Entity[string] createEntities(const string parentName, const EntityFactoryParameters parameters) {
+        auto rootEntity = new Entity(parentName);
+        auto bodyEntity = bodyFactory.createEntity(parentName ~ "_body", parameters);
+
+        //TODO: create head
+
+        bodyEntity.parent = rootEntity;
+
+        return [
+            rootEntity.name: rootEntity,
+            bodyEntity.name: bodyEntity
+        ];
+    }
 }
 
 class FirstPersonControllableBodyFactory : EntityFactory {
