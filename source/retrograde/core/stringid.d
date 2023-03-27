@@ -19,7 +19,7 @@ debug (readableStringId) {
 
 /**
  * Create a StringId from the given string.
- * In debug mode stringids are just regular strings,
+ * With debug switch "readableStringId" stringids are just regular strings,
  * but in release mode they are actually integer hashes.
  */
 public pure StringId sid(string idString) {
@@ -32,5 +32,17 @@ public pure StringId sid(string idString) {
         }
 
         return stringId;
+    }
+}
+
+version (unittest) {
+    @("sid() should return the same value for the same string")
+    unittest {
+        assert(sid("test") == sid("test"));
+    }
+
+    @("sid() should return a different value for a different string")
+    unittest {
+        assert(sid("test") != sid("test2"));
     }
 }
