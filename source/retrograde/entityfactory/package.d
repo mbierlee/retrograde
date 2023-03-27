@@ -14,4 +14,5 @@ module retrograde.entityfactory;
 public import retrograde.entityfactory.animation;
 public import retrograde.entityfactory.camera;
 public import retrograde.entityfactory.drone;
+public import retrograde.entityfactory.firstperson;
 public import retrograde.entityfactory.rendering;

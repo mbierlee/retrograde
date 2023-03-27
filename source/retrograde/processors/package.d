@@ -9,10 +9,8 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.components;
+module retrograde.processors;
 
-public import retrograde.components.animation;
-public import retrograde.components.drone;
-public import retrograde.components.firstperson;
-public import retrograde.components.geometry;
-public import retrograde.components.rendering;
+public import retrograde.processors.animation;
+public import retrograde.processors.drone;
+public import retrograde.processors.firstperson;

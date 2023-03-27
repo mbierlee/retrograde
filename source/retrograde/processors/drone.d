@@ -19,7 +19,6 @@ import retrograde.core.input : InputMapper, KeyboardKeyCode, MappingTarget;
 
 import retrograde.components.drone : DroneControllableComponent;
 import retrograde.components.animation : TranslationComponent, RotationComponent;
-import retrograde.components.geometry : Orientation3DComponent, Position3DComponent;
 
 import std.math : PI;
 
