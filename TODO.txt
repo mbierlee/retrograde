@@ -1,4 +1,4 @@
 - Viewing-frustum culling.
 - EC serialization
 - Remote debugger
-- Set vertical field of view in cameras (and allow for Hor+ scaling (already default?). Renaming fixed scaling to anamorphic)
+- Fix FOV calculations (Set vertical field of view in cameras (and allow for Hor+ scaling (already default?). Renaming fixed scaling to anamorphic))

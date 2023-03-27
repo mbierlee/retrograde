@@ -67,7 +67,7 @@ enum DepthTestingMode {
  */
 struct CameraConfiguration {
     /// Y FOV in radians
-    scalar horizontalFieldOfView = degreesToRadians(45);
+    scalar horizontalFieldOfView = degreesToRadians(55);
 
     /// Aspect ratio (width over height).
     scalar aspectRatio = autoAspectRatio;
