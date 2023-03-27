@@ -14,18 +14,27 @@ module retrograde.processors.animation;
 import retrograde.core.entity : Entity, EntityProcessor;
 import retrograde.core.math : QuaternionD, Vector3D, toTranslationMatrix, toTranslationVector;
 
-import retrograde.components.animation : RotationComponent, TranslationComponent;
+import retrograde.components.animation : RotationComponent, TranslationComponent, AxisRotationComponent;
 import retrograde.components.geometry : Orientation3DComponent, Position3DComponent;
 
 class RotationEntityProcessor : EntityProcessor {
     public override bool acceptsEntity(Entity entity) {
-        return entity.hasComponent!RotationComponent && entity.hasComponent!Orientation3DComponent;
+        return (entity.hasComponent!RotationComponent || entity.hasComponent!AxisRotationComponent)
+            && entity.hasComponent!Orientation3DComponent;
     }
 
     public override void update() {
         foreach (entity; entities) {
             entity.maybeWithComponent!Orientation3DComponent((c) {
-                auto rotation = entity.getFromComponent!RotationComponent(c => c.rotation, QuaternionD());
+                auto rotation = QuaternionD();
+                entity.maybeWithComponent!RotationComponent((cr) {
+                    rotation = cr.rotation;
+                });
+
+                entity.maybeWithComponent!AxisRotationComponent((cr) {
+                    rotation = QuaternionD.createRotation(cr.radianAngle, cr.axis);
+                });
+
                 c.orientation = c.orientation * rotation;
             });
         }

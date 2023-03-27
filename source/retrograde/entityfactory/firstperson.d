@@ -12,27 +12,30 @@
 module retrograde.entityfactory.firstperson;
 
 import retrograde.core.entity : Entity, EntityFactory, EntityFactoryParameters, ofType;
-import retrograde.core.math : scalar;
+import retrograde.core.math : scalar, Vector3D;
 
-import retrograde.components.firstperson : FirstPersonMovementComponent;
+import retrograde.components.firstperson : FirstPersonControllableComponent;
 import retrograde.components.geometry : Position3DComponent, Orientation3DComponent;
-import retrograde.components.animation : RotationComponent, TranslationComponent;
+import retrograde.components.animation : AxisRotationComponent, RotationComponent, TranslationComponent;
 
-class FirstPersonMovementFactoryParameters : EntityFactoryParameters {
+import poodinis : Inject;
+
+class FirstPersonControllableFactoryParameters : EntityFactoryParameters {
     public scalar translationSpeedModifier = 1;
     public scalar rotationSpeedModifier = 1;
 }
 
-class FirstPersonMovementFactory : EntityFactory {
-    public override void addComponents(Entity entity, const EntityFactoryParameters parameters = new FirstPersonMovementFactoryParameters()) {
-        auto p = parameters.ofType!FirstPersonMovementFactoryParameters;
+class FirstPersonControllableBodyFactory : EntityFactory {
+    public override void addComponents(Entity entity, const EntityFactoryParameters parameters = new FirstPersonControllableFactoryParameters()) {
+        auto p = parameters.ofType!FirstPersonControllableFactoryParameters;
 
-        entity.maybeAddComponent(new FirstPersonMovementComponent(
+        entity.maybeAddComponent(new FirstPersonControllableComponent(
                 p.translationSpeedModifier,
                 p.rotationSpeedModifier
         ));
 
-        entity.maybeAddComponent!RotationComponent;
+        auto axisRotationComponent = new AxisRotationComponent(Vector3D.upVector, 0);
+        entity.maybeAddComponent(axisRotationComponent);
         entity.maybeAddComponent!TranslationComponent;
         entity.maybeAddComponent!Orientation3DComponent;
         entity.maybeAddComponent!Position3DComponent;

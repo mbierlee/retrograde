@@ -32,11 +32,43 @@ class RotationComponent : EntityComponent {
     public QuaternionD rotation;
 
     this() {
-
     }
 
     this(QuaternionD rotation) {
         this.rotation = rotation;
+    }
+}
+
+/** 
+ * An entity component that adds a constant rotation to an entity around a specific axis.
+ *
+ * Make sure to add the RotationEntityProcessor to the entity system and that
+ * the entity has a Orientation3DComponent.
+ */
+class AxisRotationComponent : EntityComponent {
+    mixin EntityComponentIdentity!"AxisRotationComponent";
+
+    /** 
+     * The axis around which the entity will be rotated.
+     *
+     * The axis will be normalized.
+     */
+    Vector3D axis;
+
+    /** 
+     * The amount of rotation applied to the entity.
+     *
+     * The rotation will be applied per frame, so the speed depends on the update loop
+     * framerate (not the renderer framerate.)
+     */
+    double radianAngle;
+
+    this() {
+    }
+
+    this(Vector3D axis, double radianAngle) {
+        this.axis = axis;
+        this.radianAngle = radianAngle;
     }
 }
 
@@ -58,7 +90,6 @@ class TranslationComponent : EntityComponent {
     public Vector3D translation = Vector3D(0);
 
     this() {
-
     }
 
     this(Vector3D translation) {

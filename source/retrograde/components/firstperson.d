@@ -17,11 +17,11 @@ import retrograde.core.math : scalar;
 /**
  * A component that allows an entity to move in a first person manner.
  *
- * Use the FirstPersonMovementProcessor to allow entities with this component to
+ * Use the FirstPersonControllableProcessor to allow entities with this component to
  * move and look around in first-person.
  */
-class FirstPersonMovementComponent : EntityComponent {
-    mixin EntityComponentIdentity!"FirstPersonMovementComponent";
+class FirstPersonControllableComponent : EntityComponent {
+    mixin EntityComponentIdentity!"FirstPersonControllableComponent";
 
     public scalar translationSpeedModifier = 1;
     public scalar rotationSpeedModifier = 1;

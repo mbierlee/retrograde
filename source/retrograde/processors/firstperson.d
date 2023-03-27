@@ -17,8 +17,8 @@ import retrograde.core.messaging : MessageHandler, MagnitudeMessage;
 import retrograde.core.math : scalar, Vector3D, QuaternionD;
 import retrograde.core.input : InputMapper, KeyboardKeyCode, MappingTarget;
 
-import retrograde.components.firstperson : FirstPersonMovementComponent;
-import retrograde.components.animation : TranslationComponent, RotationComponent;
+import retrograde.components.firstperson : FirstPersonControllableComponent;
+import retrograde.components.animation : TranslationComponent, RotationComponent, AxisRotationComponent;
 
 import std.math : PI;
 
@@ -35,11 +35,11 @@ const auto cmdLookLeft = sid("cmd_look_left");
 const auto cmdLookRight = sid("cmd_look_right");
 
 /** 
- * This processor handles the movement of entities with the FirstPersonMovementComponent.
+ * This processor handles the movement of entities with the FirstPersonControllableComponent.
  * 
  * When the entity has a camera its view will be updated to match the movement and view of the entity.
  */
-class FirstPersonMovementProcessor : EntityProcessor {
+class FirstPersonControllableProcessor : EntityProcessor {
     private MessageHandler messageHandler;
 
     private const defaultRotationSpeedFactor = (2 * PI) / 100;
@@ -49,7 +49,7 @@ class FirstPersonMovementProcessor : EntityProcessor {
     }
 
     public override bool acceptsEntity(Entity entity) {
-        return entity.hasComponent!FirstPersonMovementComponent;
+        return entity.hasComponent!FirstPersonControllableComponent;
     }
 
     public override void update() {
@@ -125,7 +125,7 @@ class FirstPersonMovementProcessor : EntityProcessor {
 
         if (receivedTranslation || receivedRotation) {
             foreach (entity; entities) {
-                auto mc = entity.getComponent!FirstPersonMovementComponent;
+                auto mc = entity.getComponent!FirstPersonControllableComponent;
 
                 if (receivedMoveForwards) {
                     mc.moveForwards = moveForwards;
@@ -159,17 +159,27 @@ class FirstPersonMovementProcessor : EntityProcessor {
                     mc.lookRight = lookRight;
                 }
 
+                if (receivedLookLeft || receivedLookRight) {
+                    entity.maybeWithComponent!AxisRotationComponent((c) {
+                        if (c.axis == Vector3D.upVector) {
+                            c.radianAngle = (
+                                -mc.lookRight + mc.lookLeft) * defaultRotationSpeedFactor * mc
+                                .rotationSpeedModifier;
+                        }
+                    });
+                }
+
                 if (receivedRotation) {
                     entity.maybeWithComponent!RotationComponent((c) {
                         //TODO: Invert look: -mc.lookUp + mc.lookDown
                         QuaternionD newRotation =
                             QuaternionD.createRotation(
-                                (-mc.lookDown + mc.lookUp) * defaultRotationSpeedFactor * mc.rotationSpeedModifier,
-                                Vector3D(1, 0, 0)
-                            ) *
-                            QuaternionD.createRotation(
                                 (-mc.lookRight + mc.lookLeft) * defaultRotationSpeedFactor * mc.rotationSpeedModifier,
                                 Vector3D(0, 1, 0)
+                            ) *
+                            QuaternionD.createRotation(
+                                (-mc.lookDown + mc.lookUp) * defaultRotationSpeedFactor * mc.rotationSpeedModifier,
+                                Vector3D(1, 0, 0)
                             );
 
                         c.rotation = newRotation;

@@ -23,10 +23,27 @@ alias scalar = double;
  */
 struct Vector(T, uint N) if (N > 0) {
     //TODO: In these methods a lot of vectors can be passed by reference, since they're const.
+
     private T[N] components;
 
     public alias _N = N;
     public alias _T = T;
+
+    static if (N >= 2) {
+        private static Vector!(T, N) _upVector;
+
+        static this() {
+            _upVector = Vector!(T, N)(0);
+            _upVector[1] = 1;
+        }
+
+        /**
+         * Returns the engine's standard up vector, which is +y.
+         */
+        static upVector() {
+            return _upVector;
+        }
+    }
 
     /**
      * Create new vector with all components set to the same value.
@@ -1256,11 +1273,12 @@ struct Quaternion(T) {
      *  axis = Regular three-dimensional axis to rotate around.
      */
     public static Quaternion createRotation(double radianAngle, const Vector3D axis) {
+        auto normalizedAxis = axis.normalize();
         return Quaternion(
             cos(radianAngle / 2),
-            sin(radianAngle / 2) * axis.x,
-            sin(radianAngle / 2) * axis.y,
-            sin(radianAngle / 2) * axis.z
+            sin(radianAngle / 2) * normalizedAxis.x,
+            sin(radianAngle / 2) * normalizedAxis.y,
+            sin(radianAngle / 2) * normalizedAxis.z
         );
     }
 
@@ -1816,6 +1834,20 @@ version (unittest) {
         auto const actualPoint = A.cubicBezierCurvePoint(B, C, D, 0.5);
         assert(expectedPoint == actualPoint);
     }
+
+    @("Get standard up vector in 2D")
+    unittest {
+        auto const expectedUpVector = Vector2D(0, 1);
+        auto const actualUpVector = Vector2D.upVector();
+        assert(expectedUpVector == actualUpVector);
+    }
+
+    @("Get standard up vector in 3D")
+    unittest {
+        auto const expectedUpVector = Vector3D(0, 1, 0);
+        auto const actualUpVector = Vector3D.upVector();
+        assert(expectedUpVector == actualUpVector);
+    }
 }
 
 // Bezier curve tests
@@ -2267,7 +2299,6 @@ version (unittest) {
 
 // Matrix utils tests
 version (unittest) {
-
     @("Create translation matrix from 2D vector")
     unittest {
         auto const vector = Vector2D(25, 56);
@@ -2411,7 +2442,6 @@ version (unittest) {
 
 // Quaternion tests
 version (unittest) {
-
     @("Create quaternion")
     unittest {
         auto const quaternion = QuaternionD();
