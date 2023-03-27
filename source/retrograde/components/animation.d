@@ -18,7 +18,7 @@ import retrograde.core.math : QuaternionD, Vector3D;
  * An entity component that adds a constant rotation to an entity.
  *
  * Make sure to add the RotationEntityProcessor to the entity system and that
- * the entity has a Orientation3DComponent.
+ * the entity has an Orientation3DComponent.
  */
 class RotationComponent : EntityComponent {
     mixin EntityComponentIdentity!"RotationComponent";
@@ -43,7 +43,7 @@ class RotationComponent : EntityComponent {
  * An entity component that adds a constant rotation to an entity around a specific axis.
  *
  * Make sure to add the RotationEntityProcessor to the entity system and that
- * the entity has a Orientation3DComponent.
+ * the entity has an Orientation3DComponent.
  */
 class AxisRotationComponent : EntityComponent {
     mixin EntityComponentIdentity!"AxisRotationComponent";
