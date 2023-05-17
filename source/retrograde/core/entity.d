@@ -837,13 +837,16 @@ abstract class EntityProcessor {
 /**
  * Type that defines the priority of an entity processor.
  */
-alias EntityProcessorPriority = byte;
+alias EntityProcessorPriority = ubyte;
 
 /**
  * A default priority ordering used by processors provided by the engine.
  */
 enum StandardEntityProcessorPriority : EntityProcessorPriority {
     highest = 0,
+    input = 10,
+    rotation = 20,
+    translation = 30,
     defaultPriority = 100,
     lowest = EntityProcessorPriority.max
 }

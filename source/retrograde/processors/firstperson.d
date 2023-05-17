@@ -11,7 +11,7 @@
 
 module retrograde.processors.firstperson;
 
-import retrograde.core.entity : Entity, EntityProcessor;
+import retrograde.core.entity : Entity, EntityProcessor, StandardEntityProcessorPriority;
 import retrograde.core.stringid : sid;
 import retrograde.core.messaging : MessageHandler, MagnitudeMessage;
 import retrograde.core.math : scalar, Vector3D, QuaternionD;
@@ -45,6 +45,7 @@ class FirstPersonControllableProcessor : EntityProcessor {
     private const defaultRotationSpeedFactor = (2 * PI) / 100;
 
     this(MessageHandler messageHandler) {
+        priority = StandardEntityProcessorPriority.input;
         this.messageHandler = messageHandler;
     }
 

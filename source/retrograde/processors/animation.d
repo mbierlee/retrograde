@@ -11,13 +11,17 @@
 
 module retrograde.processors.animation;
 
-import retrograde.core.entity : Entity, EntityProcessor;
+import retrograde.core.entity : Entity, EntityProcessor, StandardEntityProcessorPriority;
 import retrograde.core.math : QuaternionD, Vector3D, toTranslationMatrix, toTranslationVector;
 
 import retrograde.components.animation : RotationComponent, TranslationComponent, AxisRotationComponent;
 import retrograde.components.geometry : Orientation3DComponent, Position3DComponent;
 
 class RotationEntityProcessor : EntityProcessor {
+    this() {
+        priority = StandardEntityProcessorPriority.rotation;
+    }
+
     public override bool acceptsEntity(Entity entity) {
         return (entity.hasComponent!RotationComponent || entity.hasComponent!AxisRotationComponent)
             && entity.hasComponent!Orientation3DComponent;
@@ -41,8 +45,11 @@ class RotationEntityProcessor : EntityProcessor {
     }
 }
 
-//TODO: Find way to make sure TranslationEntityProcessor is always run after RotationEntityProcessor
 class TranslationEntityProcessor : EntityProcessor {
+    this() {
+        priority = StandardEntityProcessorPriority.translation;
+    }
+
     public override bool acceptsEntity(Entity entity) {
         return entity.hasComponent!TranslationComponent && entity.hasComponent!Position3DComponent;
     }

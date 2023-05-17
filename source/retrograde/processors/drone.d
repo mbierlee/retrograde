@@ -11,7 +11,7 @@
 
 module retrograde.processors.drone;
 
-import retrograde.core.entity : Entity, EntityProcessor;
+import retrograde.core.entity : Entity, EntityProcessor, StandardEntityProcessorPriority;
 import retrograde.core.stringid : sid;
 import retrograde.core.messaging : MessageHandler, MagnitudeMessage;
 import retrograde.core.math : Vector3D, scalar, QuaternionD;
@@ -61,6 +61,7 @@ class DroneControllerProcessor : EntityProcessor {
     private const defaultRotationSpeedFactor = (2 * PI) / 100;
 
     this(MessageHandler messageHandler) {
+        priority = StandardEntityProcessorPriority.input;
         this.messageHandler = messageHandler;
     }
 
