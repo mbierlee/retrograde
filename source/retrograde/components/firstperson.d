@@ -23,18 +23,18 @@ import retrograde.core.math : scalar;
 class FirstPersonControllableComponent : EntityComponent {
     mixin EntityComponentIdentity!"FirstPersonControllableComponent";
 
-    public scalar translationSpeedModifier = 1;
-    public scalar rotationSpeedModifier = 1;
+    scalar translationSpeedModifier = 1;
+    scalar rotationSpeedModifier = 1;
 
-    public scalar moveForwards = 0;
-    public scalar moveBackwards = 0;
-    public scalar strafeLeft = 0;
-    public scalar strafeRight = 0;
+    scalar moveForwards = 0;
+    scalar moveBackwards = 0;
+    scalar strafeLeft = 0;
+    scalar strafeRight = 0;
 
-    public scalar lookUp = 0;
-    public scalar lookDown = 0;
-    public scalar lookLeft = 0;
-    public scalar lookRight = 0;
+    scalar lookUp = 0;
+    scalar lookDown = 0;
+    scalar lookLeft = 0;
+    scalar lookRight = 0;
 
     this() {
     }

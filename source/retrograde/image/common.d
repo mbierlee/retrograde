@@ -32,7 +32,7 @@ class CommonImageLoader : ImageLoader {
      *
      * Throws: Exception when extension is not recognized.
      */
-    public Image load(File imageFile) {
+    Image load(File imageFile) {
         switch (imageFile.extension) {
         case ".png":
             return pngImageLoader.load(imageFile);
@@ -54,7 +54,7 @@ class CommonImageLoader : ImageLoader {
      *
      * Throws: Exception when called.
      */
-    public Image load(const ubyte[] data) {
+    Image load(const ubyte[] data) {
         throw new Exception(
             "The common image loader cannot determine what kind of image to load from raw data. Please use a specific loader instead.");
     }
@@ -66,10 +66,10 @@ version (unittest) {
     import poodinis : DependencyContainer, existingInstance;
 
     private class StubLoader(T : ImageLoader) : T {
-        public bool loadWasCalled = false;
-        public Image image;
+        bool loadWasCalled = false;
+        Image image;
 
-        public override Image load(File imageFile) {
+        override Image load(File imageFile) {
             loadWasCalled = true;
             return image;
         }
@@ -81,8 +81,8 @@ version (unittest) {
     }
 
     private class Fixture {
-        public PngImageLoader pngImageLoader;
-        public CommonImageLoader commonImageLoader;
+        PngImageLoader pngImageLoader;
+        CommonImageLoader commonImageLoader;
 
         this() {
             auto dependencies = new shared DependencyContainer();

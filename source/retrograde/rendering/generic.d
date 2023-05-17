@@ -57,12 +57,12 @@ class GenericRenderSystem : RenderSystem {
      * the platform's viewport is resized. Set to 'autoAspectRatio' or 0 to disable this
      * autocorrection and use the platform's viewport ascpect ratio instead.
      */
-    public @property viewportAspectRatio() {
+    @property viewportAspectRatio() {
         return _viewportAspectRatio;
     }
 
     /// ditto
-    public @property void viewportAspectRatio(scalar newRatio) {
+    @property void viewportAspectRatio(scalar newRatio) {
         _viewportAspectRatio = newRatio;
         updateView();
     }
@@ -73,12 +73,12 @@ class GenericRenderSystem : RenderSystem {
      * When true, the depth buffers of backgrounds are ignored and models in the principal
      * pass will always render in front of backgrounds.
      */
-    public @property clearDepthStencilBuffersBeforePrincipalPass() {
+    @property clearDepthStencilBuffersBeforePrincipalPass() {
         return _clearDepthStencilBuffersBeforePrincipalPass;
     }
 
     /// ditto
-    public @property void clearDepthStencilBuffersBeforePrincipalPass(
+    @property void clearDepthStencilBuffersBeforePrincipalPass(
         bool clearDepthStencilBuffersBeforePrincipalPass
     ) {
         _clearDepthStencilBuffersBeforePrincipalPass = clearDepthStencilBuffersBeforePrincipalPass;
@@ -91,18 +91,18 @@ class GenericRenderSystem : RenderSystem {
      * This might help with z-fighting between objects very close to the camera. Among foregrounds depth 
      * maps are still used to blend between images.
      */
-    public @property clearDepthStencilBuffersBeforeForegroundPass() {
+    @property clearDepthStencilBuffersBeforeForegroundPass() {
         return _clearDepthStencilBuffersBeforeForegroundPass;
     }
 
     /// ditto
-    public @property void clearDepthStencilBuffersBeforeForegroundPass(
+    @property void clearDepthStencilBuffersBeforeForegroundPass(
         bool clearDepthStencilBuffersBeforeForegroundPass
     ) {
         _clearDepthStencilBuffersBeforeForegroundPass = clearDepthStencilBuffersBeforeForegroundPass;
     }
 
-    override public void initialize() {
+    override void initialize() {
         graphicsApi.setClearColor(Color(0f, 0f, 0f, 1.0f));
         graphicsApi.setDefaultTextureFilteringModes(TextureFilteringMode.linear,
             TextureFilteringMode.linear);
@@ -110,18 +110,18 @@ class GenericRenderSystem : RenderSystem {
         updateView();
     }
 
-    override public void update() {
+    override void update() {
         handleMessages();
     }
 
-    override public void draw() {
+    override void draw() {
         graphicsApi.startFrame();
         drawOrthoBackgroundPass();
         drawPrincipalPass();
         drawOrthoForegroundPass();
     }
 
-    override public bool acceptsEntity(Entity entity) {
+    override bool acceptsEntity(Entity entity) {
         return entity.hasComponent!RenderableComponent ||
             (entity.hasComponent!CameraComponent && entity.hasComponent!ActiveCameraComponent);
     }

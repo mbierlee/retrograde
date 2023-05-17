@@ -22,7 +22,7 @@ debug (readableStringId) {
  * With debug switch "readableStringId" stringids are just regular strings,
  * but in release mode they are actually integer hashes.
  */
-public pure StringId sid(string idString) {
+pure StringId sid(string idString) {
     debug (readableStringId) {
         return idString;
     } else {

@@ -122,7 +122,7 @@ class MessageHandler {
      *
      * See_Also: receiveMessages, shiftStandbyToActiveQueue
      */
-    public void sendMessage(const StringId channel, immutable Message message) {
+    void sendMessage(const StringId channel, immutable Message message) {
         if ((channel in standbyMessageQueue) is null) {
             standbyMessageQueue[channel] = [];
         }
@@ -140,7 +140,7 @@ class MessageHandler {
      *
      * See_Also: sendMessage
      */
-    public void receiveMessages(const StringId channel, const MessageProcessor processor) {
+    void receiveMessages(const StringId channel, const MessageProcessor processor) {
         if (auto channelMessages = channel in activeMessageQueue) {
             foreach (message; *channelMessages) {
                 processor(channel, message);
@@ -158,7 +158,7 @@ class MessageHandler {
      *
      * See_Also: sendMessage
      */
-    public void receiveMessages(const StringId channel,
+    void receiveMessages(const StringId channel,
             const(void delegate(immutable Message)) processor) {
         if (auto channelMessages = channel in activeMessageQueue) {
             foreach (message; *channelMessages) {
@@ -179,7 +179,7 @@ class MessageHandler {
      *
      * See_Also: sendMessage
      */
-    public void receiveMessages(MessageType : Message)(const StringId channel,
+    void receiveMessages(MessageType : Message)(const StringId channel,
             const(void delegate(immutable MessageType)) processor) {
         if (auto channelMessages = channel in activeMessageQueue) {
             foreach (message; *channelMessages) {
@@ -196,7 +196,7 @@ class MessageHandler {
      * clears the stand-by qeueu.
      * This method is typically called at the start of an update cycle.
      */
-    public void shiftStandbyToActiveQueue() {
+    void shiftStandbyToActiveQueue() {
         activeMessageQueue = standbyMessageQueue;
         standbyMessageQueue.destroy();
     }
@@ -210,7 +210,7 @@ class MessageHandler {
      *
      * See_Also: sendMessageImmediately
      */
-    public void registerImmediateReceiver(const StringId channel, const MessageProcessor processor) {
+    void registerImmediateReceiver(const StringId channel, const MessageProcessor processor) {
         if ((channel in immediateReceivers) is null) {
             immediateReceivers[channel] = [];
         }
@@ -225,7 +225,7 @@ class MessageHandler {
      *  channel = ID of the channel where messages were sent to.
      *  processor = Processor delegate that has to be removed.
      */
-    public void removeImmedateReceiver(const StringId channel, const MessageProcessor processor) {
+    void removeImmedateReceiver(const StringId channel, const MessageProcessor processor) {
         if (auto receivers = channel in immediateReceivers) {
             *receivers = remove!(r => r is processor)(*receivers);
         }
@@ -239,7 +239,7 @@ class MessageHandler {
      *  channel = ID of the channel to send the message to.
      *  message = Message to send to the channel.
      */
-    public void sendMessageImmediately(const StringId channel, immutable Message message) {
+    void sendMessageImmediately(const StringId channel, immutable Message message) {
         if (auto receivers = channel in immediateReceivers) {
             foreach (receiver; *receivers) {
                 receiver(channel, message);

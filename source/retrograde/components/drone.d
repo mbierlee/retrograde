@@ -22,22 +22,22 @@ import retrograde.core.math : scalar;
 class DroneControllableComponent : EntityComponent {
     mixin EntityComponentIdentity!"DroneControllableComponent";
 
-    public scalar translationSpeedModifier = 1;
-    public scalar rotationSpeedModifier = 1;
+    scalar translationSpeedModifier = 1;
+    scalar rotationSpeedModifier = 1;
 
-    public scalar pitchUp = 0;
-    public scalar pitchDown = 0;
-    public scalar yawLeft = 0;
-    public scalar yawRight = 0;
-    public scalar bankLeft = 0;
-    public scalar bankRight = 0;
+    scalar pitchUp = 0;
+    scalar pitchDown = 0;
+    scalar yawLeft = 0;
+    scalar yawRight = 0;
+    scalar bankLeft = 0;
+    scalar bankRight = 0;
 
-    public scalar moveForwards = 0;
-    public scalar moveBackwards = 0;
-    public scalar moveLeft = 0;
-    public scalar moveRight = 0;
-    public scalar moveUp = 0;
-    public scalar moveDown = 0;
+    scalar moveForwards = 0;
+    scalar moveBackwards = 0;
+    scalar moveLeft = 0;
+    scalar moveRight = 0;
+    scalar moveUp = 0;
+    scalar moveDown = 0;
 
     this() {
     }

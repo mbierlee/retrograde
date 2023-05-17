@@ -49,11 +49,11 @@ class FirstPersonControllableProcessor : EntityProcessor {
         this.messageHandler = messageHandler;
     }
 
-    public override bool acceptsEntity(Entity entity) {
+    override bool acceptsEntity(Entity entity) {
         return entity.hasComponent!FirstPersonControllableComponent;
     }
 
-    public override void update() {
+    override void update() {
         bool receivedMoveForwards = false;
         bool receivedMoveBackwards = false;
         bool receivedStrafeLeft = false;

@@ -83,7 +83,7 @@ class RandomFaceColorsComponent : EntityComponent {
 class ModelComponent : EntityComponent {
     mixin EntityComponentIdentity!"ModelComponent";
 
-    public Model model;
+    Model model;
 
     /** 
      * Remove the ModelComponent after it has been loaded in video memory.
@@ -93,7 +93,7 @@ class ModelComponent : EntityComponent {
      * Whether this is actually done is up to the implementation of the RenderSystem.
      * The GenericRenderSystem honors this option.
      */
-    public bool removeWhenLoadedIntoVideoMemory;
+    bool removeWhenLoadedIntoVideoMemory;
 
     this() {
     }
@@ -109,10 +109,10 @@ class ModelComponent : EntityComponent {
 class TextureComponent : EntityComponent {
     mixin EntityComponentIdentity!"TextureComponent";
 
-    public Image texture;
-    public TextureFilteringMode minificationFilteringMode = TextureFilteringMode.globalDefault;
-    public TextureFilteringMode magnificationFilteringMode = TextureFilteringMode.globalDefault;
-    public bool generateMipMaps = true;
+    Image texture;
+    TextureFilteringMode minificationFilteringMode = TextureFilteringMode.globalDefault;
+    TextureFilteringMode magnificationFilteringMode = TextureFilteringMode.globalDefault;
+    bool generateMipMaps = true;
 
     this() {
     }
@@ -133,7 +133,7 @@ class TextureComponent : EntityComponent {
 class DepthMapComponent : EntityComponent {
     mixin EntityComponentIdentity!"DepthMapComponent";
 
-    public Image depthMap;
+    Image depthMap;
 
     this() {
     }

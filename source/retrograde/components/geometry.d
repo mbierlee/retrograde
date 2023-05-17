@@ -23,7 +23,7 @@ class Position3DComponent : EntityComponent {
     /**
      * A three-dimensional position.
      */
-    public Vector3D position = Vector3D(0);
+    Vector3D position = Vector3D(0);
 
     /** 
      * Create a position component at (0,0,0).
@@ -55,7 +55,7 @@ class Orientation3DComponent : EntityComponent {
     /**
      * An orientation in 3D space.
      */
-    public QuaternionD orientation;
+    QuaternionD orientation;
 
     /** 
      * Create an orientation without any rotation.
@@ -90,7 +90,7 @@ class Scale3DComponent : EntityComponent {
      *
      * Each individual axis is scaled at the given components.
      */
-    public Vector3D scale = Vector3D(1);
+    Vector3D scale = Vector3D(1);
 
     /** 
      * Create a scale component without any scaling applied.

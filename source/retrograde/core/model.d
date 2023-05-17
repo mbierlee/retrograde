@@ -157,7 +157,7 @@ class ModelParseException : Exception {
  * Common interface for model loaders.
  */
 interface ModelLoader {
-    public Model load(File modelFile);
+    Model load(File modelFile);
 }
 
 version (unittest) {

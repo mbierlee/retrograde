@@ -24,7 +24,7 @@ import std.logger : Logger;
 /** 
  * Constant used to indicate that a camera or render viewport should calculate the aspect ratio based on the platform's viewport.
  */
-public static const scalar autoAspectRatio = 0;
+static const scalar autoAspectRatio = 0;
 
 /** 
  * Type of projection to be used when rendering an active camera.
@@ -147,33 +147,33 @@ abstract class Shader {
      * Preprocess the shader if the API supports it.
      * This step typically includes shader libraries.
      */
-    abstract public void preprocess(Preprocessor preprocessor, const ShaderLib[] shaderLibs);
+    abstract void preprocess(Preprocessor preprocessor, const ShaderLib[] shaderLibs);
 
     /**
      * Compiles the shader if the API allows for such a thing.
      * When a shader is already compiled it might not be recompiled again.
      */
-    abstract public void compile();
+    abstract void compile();
 
     /**
      * Returns compilation info, such as errors, when the API implementation supports such a thing.
      */
-    public string getCompilationInfo() {
+    string getCompilationInfo() {
         return "";
     }
 
     /**
      * Whether the shader was previously compiled.
      */
-    abstract public bool isCompiled();
+    abstract bool isCompiled();
 
     /**
      * Clean up the shader, such as dealocating it from memory.
      * A shader typically needs to be compiled again after cleaning it.
      */
-    abstract public void clean();
+    abstract void clean();
 
-    public ShaderType getShaderType() {
+    ShaderType getShaderType() {
         return shaderType;
     }
 }
@@ -209,21 +209,21 @@ class ShaderProgram {
     /**
      * Adds a single shader to this shader program.
      */
-    public void addShader(Shader shader) {
+    void addShader(Shader shader) {
         this.shaders ~= shader;
     }
 
     /**
      * Adds multiple shaders to this shader program.
      */
-    public void addShaders(Shader[] shaders) {
+    void addShaders(Shader[] shaders) {
         this.shaders ~= shaders;
     }
 
     /**
      * Adds multiple shaders to this shader program.
      */
-    public void addShaders(Shader[] shaders...) {
+    void addShaders(Shader[] shaders...) {
         this.shaders ~= shaders;
     }
 
@@ -231,7 +231,7 @@ class ShaderProgram {
      * Adds a single shader lib to this program.
      * The lib can be shared and included in multiple shaders.
      */
-    public void addShaderLib(ShaderLib shaderLib) {
+    void addShaderLib(ShaderLib shaderLib) {
         this.shaderLibs ~= shaderLib;
     }
 
@@ -239,7 +239,7 @@ class ShaderProgram {
      * Adds multiple shader libs to this program.
      * The libs can be shared and included in multiple shaders.
      */
-    public void addShaderLibs(ShaderLib[] shaderLibs...) {
+    void addShaderLibs(ShaderLib[] shaderLibs...) {
         foreach (ShaderLib shaderLib; shaderLibs) {
             addShaderLib(shaderLib);
         }
@@ -248,7 +248,7 @@ class ShaderProgram {
     /** 
      * Preprocesses all shaders contained in this shader program
      */
-    public void preprocessShaders(Preprocessor preprocessor) {
+    void preprocessShaders(Preprocessor preprocessor) {
         foreach (Shader shader; shaders) {
             shader.preprocess(preprocessor, shaderLibs);
         }
@@ -257,21 +257,21 @@ class ShaderProgram {
     /** 
      * Whether all shaders are successfully pre-processed.
      */
-    public bool isPreProcessed() {
+    bool isPreProcessed() {
         return false;
     }
 
     /** 
      * Returns info regarding the pre-processing phase.
      */
-    public string getPreProcessInfo() {
+    string getPreProcessInfo() {
         return "";
     }
 
     /**
      * Compiles all shaders contained in this shader program.
      */
-    public void compileShaders() {
+    void compileShaders() {
         foreach (Shader shader; shaders) {
             shader.compile();
         }
@@ -283,20 +283,20 @@ class ShaderProgram {
      * The generic shader program implementation does nothing, but specific
      * implementations might actually link.
      */
-    public void linkProgram() {
+    void linkProgram() {
     }
 
     /**
      * Whether the program was successfully linked.
      */
-    public bool isLinked() {
+    bool isLinked() {
         return false;
     }
 
     /**
      * Returns link info, such as errors, when the API implementation supports such a thing.
      */
-    public string getLinkInfo() {
+    string getLinkInfo() {
         return "";
     }
 
@@ -306,7 +306,7 @@ class ShaderProgram {
      *
      * This does nothing in the generic shader program implementation.
      */
-    public void clean() {
+    void clean() {
     }
 }
 
@@ -332,23 +332,23 @@ enum ShaderType {
  * Vulkan, DirectX etc.
  */
 interface GraphicsApi {
-    public void initialize();
+    void initialize();
 
     /**
      * Returns the API's specific version.
      * It could change after initialization.
      */
-    public Version getVersion();
+    Version getVersion();
 
     /** 
      * Update the viewport to the given position and dimensions.
      */
-    public void updateViewport(const ref Viewport viewport);
+    void updateViewport(const ref Viewport viewport);
 
     /**
      * Sets the default clear color for the color buffer.
      */
-    public void setClearColor(const Color clearColor);
+    void setClearColor(const Color clearColor);
 
     /**
      * Sets the default texture filtering modes.
@@ -359,69 +359,69 @@ interface GraphicsApi {
      *  minificationMode = Mode used when textures are shown smaller than they are.
      *  magnificationMode = Mode used when textures are shown bigger than they are.
      */
-    public void setDefaultTextureFilteringModes(const TextureFilteringMode minificationMode, const TextureFilteringMode magnificationMode);
+    void setDefaultTextureFilteringModes(const TextureFilteringMode minificationMode, const TextureFilteringMode magnificationMode);
 
     /**
      * Prepare for a new frame to be rendered.
      */
-    public void startFrame();
+    void startFrame();
 
     /** 
      * Loads an entity's model and texture data into memory.
      */
-    public void loadIntoMemory(Entity entity);
+    void loadIntoMemory(Entity entity);
 
     /** 
      * Unloads an entity's model and texture data from memory.
      */
-    public void unloadFromVideoMemory(Entity entity);
+    void unloadFromVideoMemory(Entity entity);
 
     /**
      * Switches stateful rendering APIs over to use the default model shader in next draw calls.
      */
-    public void useDefaultModelShader();
+    void useDefaultModelShader();
 
     /**
      * Switches stateful rendering APIs over to use the default background shader in next draw calls.
      */
-    public void useDefaultBackgroundShader();
+    void useDefaultBackgroundShader();
 
     /**
      * Switches stateful rendering APIs over to use the default foreground shader in next draw calls.
      */
-    public void useDefaultForegroundShader();
+    void useDefaultForegroundShader();
 
     /** 
      * Draw an entity's model.
      */
-    public void drawModel(Entity entity, const ref Matrix4D modelViewProjectionMatrix, const ref CameraConfiguration cameraConfiguration);
+    void drawModel(Entity entity, const ref Matrix4D modelViewProjectionMatrix, const ref CameraConfiguration cameraConfiguration);
 
     /** 
      * Draw an entity as an orthographic background.
      */
-    public void drawOrthoBackground(Entity entity);
+    void drawOrthoBackground(Entity entity);
 
     /** 
      * Draw an entity as an orthographic foreground.
      */
-    public void drawOrthoForeground(Entity entity);
+    void drawOrthoForeground(Entity entity);
 
     /** 
      * Sets the API's render output mode.
      */
-    public void setRenderOutput(RenderOutput renderOutput);
+    void setRenderOutput(RenderOutput renderOutput);
 
     /** 
      * Set the depth testing mode used in the API.
      * In some APIs this might be done in shaders and determined while compiling
      * them, so changing this may cause shaders to recompile.
      */
-    public void setDepthTestingMode(DepthTestingMode depthTestingMode);
+    void setDepthTestingMode(DepthTestingMode depthTestingMode);
 
     /** 
      * Clears the depth and stencil buffers.
      */
-    public void clearDepthStencilBuffers();
+    void clearDepthStencilBuffers();
 }
 
 /** 
@@ -432,59 +432,59 @@ interface GraphicsApi {
 class NullGraphicsApi : GraphicsApi {
     private @Inject @OptionalDependency Logger logger;
 
-    public void initialize() {
+    void initialize() {
         if (logger) {
             logger.warning("Null Graphics API initialized. Nothing will actually be rendered.");
         }
     }
 
-    public Version getVersion() {
+    Version getVersion() {
         return Version(0, 0, 0, "NULLAPI");
     }
 
-    public void updateViewport(const ref Viewport viewport) {
+    void updateViewport(const ref Viewport viewport) {
     }
 
-    public void setClearColor(const Color clearColor) {
+    void setClearColor(const Color clearColor) {
     }
 
-    public void setDefaultTextureFilteringModes(const TextureFilteringMode minificationMode, const TextureFilteringMode magnificationMode) {
+    void setDefaultTextureFilteringModes(const TextureFilteringMode minificationMode, const TextureFilteringMode magnificationMode) {
     }
 
-    public void startFrame() {
+    void startFrame() {
     }
 
-    public void loadIntoMemory(Entity entity) {
+    void loadIntoMemory(Entity entity) {
     }
 
-    public void unloadFromVideoMemory(Entity entity) {
+    void unloadFromVideoMemory(Entity entity) {
     }
 
-    public void useDefaultModelShader() {
+    void useDefaultModelShader() {
     }
 
-    public void useDefaultBackgroundShader() {
+    void useDefaultBackgroundShader() {
     }
 
-    public void useDefaultForegroundShader() {
+    void useDefaultForegroundShader() {
     }
 
-    public void drawModel(Entity entity, const ref Matrix4D modelViewProjectionMatrix, const ref CameraConfiguration cameraConfiguration) {
+    void drawModel(Entity entity, const ref Matrix4D modelViewProjectionMatrix, const ref CameraConfiguration cameraConfiguration) {
     }
 
-    public void drawOrthoBackground(Entity entity) {
+    void drawOrthoBackground(Entity entity) {
     }
 
-    public void drawOrthoForeground(Entity entity) {
+    void drawOrthoForeground(Entity entity) {
     }
 
-    public void setRenderOutput(RenderOutput renderOutput) {
+    void setRenderOutput(RenderOutput renderOutput) {
     }
 
-    public void setDepthTestingMode(DepthTestingMode depthTestingMode) {
+    void setDepthTestingMode(DepthTestingMode depthTestingMode) {
     }
 
-    public void clearDepthStencilBuffers() {
+    void clearDepthStencilBuffers() {
     }
 }
 
@@ -506,30 +506,30 @@ struct Color {
 
 version (unittest) {
     class TestShader : Shader {
-        public bool _isCompiled = false;
-        public bool _isPreProcessed = false;
-        public bool _hasTestShaderLib = false;
+        bool _isCompiled = false;
+        bool _isPreProcessed = false;
+        bool _hasTestShaderLib = false;
 
         this() {
             super("testshader", ShaderType.unknown);
         }
 
-        override public void preprocess(Preprocessor preprocessor, const ShaderLib[] shaderLibs) {
+        override void preprocess(Preprocessor preprocessor, const ShaderLib[] shaderLibs) {
             _isPreProcessed = true;
             foreach (const ShaderLib lib; shaderLibs) {
                 _hasTestShaderLib = _hasTestShaderLib || lib.name == "testshaderlib";
             }
         }
 
-        override public void compile() {
+        override void compile() {
             _isCompiled = true;
         }
 
-        override public bool isCompiled() {
+        override bool isCompiled() {
             return _isCompiled;
         }
 
-        override public void clean() {
+        override void clean() {
         }
     }
 

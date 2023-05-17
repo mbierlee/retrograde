@@ -65,11 +65,11 @@ class DroneControllerProcessor : EntityProcessor {
         this.messageHandler = messageHandler;
     }
 
-    public override bool acceptsEntity(Entity entity) {
+    override bool acceptsEntity(Entity entity) {
         return entity.hasComponent!DroneControllableComponent;
     }
 
-    public override void update() {
+    override void update() {
         bool receivedPitchUp = false;
         bool receivedPitchDown = false;
         bool receivedYawLeft = false;

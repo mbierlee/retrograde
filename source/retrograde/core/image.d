@@ -29,16 +29,16 @@ enum ColorDepth {
  * Generic image data.
  */
 class Image {
-    public uint width;
-    public uint height;
-    public uint channels;
-    public ColorFormat colorFormat;
-    public ColorDepth colorDepth;
+    uint width;
+    uint height;
+    uint channels;
+    ColorFormat colorFormat;
+    ColorDepth colorDepth;
 
     /** 
      * Raw image data.
      */
-    public ubyte[] data;
+    ubyte[] data;
 }
 
 /** 
@@ -54,7 +54,7 @@ interface ImageLoader {
      * Returns:
      *  The loaded image.
      */
-    public Image load(File imageFile);
+    Image load(File imageFile);
 
     /** 
      * Load an image from raw data.
@@ -65,5 +65,5 @@ interface ImageLoader {
      * Returns:
      *  The loaded image.
      */
-    public Image load(const ubyte[] data);
+    Image load(const ubyte[] data);
 }

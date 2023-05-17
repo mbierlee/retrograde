@@ -28,7 +28,7 @@ class PngImageLoader : ImageLoader {
      * @param imageFile The file to load the image from.
      * @return The loaded image.
      */
-    public Image load(File imageFile) {
+    Image load(File imageFile) {
         return load(imageFile.data);
     }
 
@@ -38,7 +38,7 @@ class PngImageLoader : ImageLoader {
      * @param data The raw data to load the image from.
      * @return The loaded image.
      */
-    public Image load(const ubyte[] data) {
+    Image load(const ubyte[] data) {
         PNG_Header header = read_png_header_from_mem(data);
         int channels, irrelevant;
         read_png_info_from_mem(data, irrelevant, irrelevant, channels);

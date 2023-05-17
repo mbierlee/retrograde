@@ -20,14 +20,14 @@ import retrograde.components.animation : RotationComponent, TranslationComponent
 import std.typecons : No;
 
 class RotationEntityFactoryParameters : EntityFactoryParameters {
-    public QuaternionD rotation;
+    QuaternionD rotation;
 }
 
 /** 
  * Creates an entity that rotates via a RotationEntityProcessor.
  */
 class RotationEntityFactory : EntityFactory {
-    public override void addComponents(Entity entity, const EntityFactoryParameters parameters = new RotationEntityFactoryParameters()) {
+    override void addComponents(Entity entity, const EntityFactoryParameters parameters = new RotationEntityFactoryParameters()) {
         auto p = parameters.ofType!RotationEntityFactoryParameters;
 
         entity.maybeAddComponent(new RotationComponent(p.rotation));
@@ -36,14 +36,14 @@ class RotationEntityFactory : EntityFactory {
 }
 
 class TranslationEntityFactoryParameters : EntityFactoryParameters {
-    public Vector3D translation;
+    Vector3D translation;
 }
 
 /** 
  * Creates an entity that translates via a TranslationEntityProcessor.
  */
 class TranslationEntityFactory : EntityFactory {
-    public override void addComponents(Entity entity, const EntityFactoryParameters parameters = new RotationEntityFactoryParameters()) {
+    override void addComponents(Entity entity, const EntityFactoryParameters parameters = new RotationEntityFactoryParameters()) {
         auto p = parameters.ofType!TranslationEntityFactoryParameters;
 
         entity.maybeAddComponent(new TranslationComponent(p.translation));

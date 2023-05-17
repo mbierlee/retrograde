@@ -27,7 +27,7 @@ class CameraEntityFactoryParameters : EntityFactoryParameters {
  * Creates a camera entity used by renderers.
  */
 class CameraEntityFactory : EntityFactory {
-    public override void addComponents(Entity entity, const EntityFactoryParameters parameters = new CameraEntityFactoryParameters()) {
+    override void addComponents(Entity entity, const EntityFactoryParameters parameters = new CameraEntityFactoryParameters()) {
         auto p = parameters.ofType!CameraEntityFactoryParameters;
 
         entity.maybeAddComponent(new CameraComponent(p.cameraConfiguration));

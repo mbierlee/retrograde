@@ -21,14 +21,14 @@ import retrograde.components.animation : AxisRotationComponent, RotationComponen
 import poodinis : Inject;
 
 class FirstPersonControllableFactoryParameters : EntityFactoryParameters {
-    public scalar translationSpeedModifier = 1;
-    public scalar rotationSpeedModifier = 1;
+    scalar translationSpeedModifier = 1;
+    scalar rotationSpeedModifier = 1;
 }
 
 class FirstPersonControllableFactory : EntityHierarchyFactory {
     private @Inject FirstPersonControllableBodyFactory bodyFactory;
 
-    public Entity[string] createEntities(const string parentName, const EntityFactoryParameters parameters) {
+    Entity[string] createEntities(const string parentName, const EntityFactoryParameters parameters) {
         auto rootEntity = new Entity(parentName);
         auto bodyEntity = bodyFactory.createEntity(parentName ~ "_body", parameters);
 
@@ -44,7 +44,7 @@ class FirstPersonControllableFactory : EntityHierarchyFactory {
 }
 
 class FirstPersonControllableBodyFactory : EntityFactory {
-    public override void addComponents(Entity entity, const EntityFactoryParameters parameters = new FirstPersonControllableFactoryParameters()) {
+    override void addComponents(Entity entity, const EntityFactoryParameters parameters = new FirstPersonControllableFactoryParameters()) {
         auto p = parameters.ofType!FirstPersonControllableFactoryParameters;
 
         entity.maybeAddComponent(new FirstPersonControllableComponent(

@@ -29,7 +29,7 @@ class RotationComponent : EntityComponent {
      * The rotation will be applied per frame, so the speed depends on the update loop
      * framerate (not the renderer framerate.)
      */
-    public QuaternionD rotation;
+    QuaternionD rotation;
 
     this() {
     }
@@ -87,7 +87,7 @@ class TranslationComponent : EntityComponent {
      * The translation will be applied per frame, so the speed depends on the update loop
      * framerate (not the renderer framerate.)
      */
-    public Vector3D translation = Vector3D(0);
+    Vector3D translation = Vector3D(0);
 
     this() {
     }

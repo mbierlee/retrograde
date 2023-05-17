@@ -27,7 +27,7 @@ class CommonModelLoader : ModelLoader {
     private @Inject StanfordPlyLoader stanfordPlyLoader;
     private @Inject WavefrontObjLoader wavefrontObjLoader;
 
-    public Model load(File modelFile) {
+    Model load(File modelFile) {
         switch (modelFile.extension) {
         case ".ply":
             return stanfordPlyLoader.load(modelFile);
@@ -47,10 +47,10 @@ version (unittest) {
     import poodinis : DependencyContainer, existingInstance;
 
     private class StubLoader(T : ModelLoader) : T {
-        public bool loadWasCalled = false;
-        public Model model;
+        bool loadWasCalled = false;
+        Model model;
 
-        public override Model load(File modelFile) {
+        override Model load(File modelFile) {
             loadWasCalled = true;
             return model;
         }
@@ -62,9 +62,9 @@ version (unittest) {
     }
 
     private class Fixture {
-        public StanfordPlyLoader stanfordPlyLoader;
-        public WavefrontObjLoader wavefrontObjLoader;
-        public CommonModelLoader commonModelLoader;
+        StanfordPlyLoader stanfordPlyLoader;
+        WavefrontObjLoader wavefrontObjLoader;
+        CommonModelLoader commonModelLoader;
 
         this() {
             auto dependencies = new shared DependencyContainer();

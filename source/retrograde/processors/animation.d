@@ -22,12 +22,12 @@ class RotationEntityProcessor : EntityProcessor {
         priority = StandardEntityProcessorPriority.rotation;
     }
 
-    public override bool acceptsEntity(Entity entity) {
+    override bool acceptsEntity(Entity entity) {
         return (entity.hasComponent!RotationComponent || entity.hasComponent!AxisRotationComponent)
             && entity.hasComponent!Orientation3DComponent;
     }
 
-    public override void update() {
+    override void update() {
         foreach (entity; entities) {
             entity.maybeWithComponent!Orientation3DComponent((c) {
                 auto rotation = QuaternionD();
@@ -50,11 +50,11 @@ class TranslationEntityProcessor : EntityProcessor {
         priority = StandardEntityProcessorPriority.translation;
     }
 
-    public override bool acceptsEntity(Entity entity) {
+    override bool acceptsEntity(Entity entity) {
         return entity.hasComponent!TranslationComponent && entity.hasComponent!Position3DComponent;
     }
 
-    public override void update() {
+    override void update() {
         foreach (entity; entities) {
             entity.maybeWithComponent!Position3DComponent((c) {
                 auto rotationMatrix =

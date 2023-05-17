@@ -21,15 +21,15 @@ import retrograde.components.animation : RotationComponent, TranslationComponent
 import std.typecons : No;
 
 class DroneEntityFactoryParameters : EntityFactoryParameters {
-    public scalar translationSpeedModifier = 1;
-    public scalar rotationSpeedModifier = 1;
+    scalar translationSpeedModifier = 1;
+    scalar rotationSpeedModifier = 1;
 }
 
 /** 
  * Creates entities that are controllable by DroneControllerProcessors
  */
 class DroneEntityFactory : EntityFactory {
-    public override void addComponents(Entity entity, const EntityFactoryParameters parameters = new DroneEntityFactoryParameters()) {
+    override void addComponents(Entity entity, const EntityFactoryParameters parameters = new DroneEntityFactoryParameters()) {
         auto p = parameters.ofType!DroneEntityFactoryParameters;
 
         entity.maybeAddComponent(new DroneControllableComponent(

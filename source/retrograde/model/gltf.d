@@ -23,7 +23,7 @@ import std.exception : enforce;
 class GltfModelLoader : ModelLoader {
     private @Inject GltfJsonParser jsonParser;
 
-    public Model load(File modelFile) {
+    Model load(File modelFile) {
         switch (modelFile.extension) {
         case ".gltf":
             return jsonParser.parse(modelFile);
@@ -38,7 +38,7 @@ class GltfModelLoader : ModelLoader {
 }
 
 private class GltfJsonParser {
-    public Model parse(File modelFile) {
+    Model parse(File modelFile) {
         auto json = parseJSON(modelFile.textData);
         assertVersionIsCompatible(json);
 
@@ -77,7 +77,7 @@ version (unittest) {
             container.register!GltfModelLoader;
         }
 
-        public GltfModelLoader modelLoader() {
+        GltfModelLoader modelLoader() {
             return container.resolve!GltfModelLoader;
         }
     }

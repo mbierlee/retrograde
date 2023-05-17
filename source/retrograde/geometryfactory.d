@@ -22,7 +22,7 @@ class GeometryFactory {
     /** 
      * Create vertices for a plane.
      */
-    public Vertex[] createPlaneVertices(
+    Vertex[] createPlaneVertices(
         const uint width = 1,
         const uint height = 1,
         const Color vertexColor = Color(1, 1, 1, 1)

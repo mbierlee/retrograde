@@ -386,7 +386,7 @@ version (unittest) {
             return mockImage;
         }
 
-        public Image load(const ubyte[] data) {
+        Image load(const ubyte[] data) {
             return mockImage;
         }
     }

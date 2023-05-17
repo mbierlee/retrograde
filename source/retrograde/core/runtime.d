@@ -77,19 +77,19 @@ class StandardEngineRuntime : EngineRuntime {
 
     private bool _isTerminatable = false;
 
-    public override @property bool isTerminatable() {
+    override @property bool isTerminatable() {
         return _isTerminatable;
     }
 
-    public override @property long targetTickTimeMs() {
+    override @property long targetTickTimeMs() {
         return 10L;
     }
 
-    public override @property long lagTickLimit() {
+    override @property long lagTickLimit() {
         return 100L;
     }
 
-    public override void startGame(const PlatformSettings platformSettings) {
+    override void startGame(const PlatformSettings platformSettings) {
         assert(this.game !is null, "No Game instance is assigned to this runtime.");
 
         if (logEngineInfo) {
@@ -132,7 +132,7 @@ class StandardEngineRuntime : EngineRuntime {
         }
     }
 
-    public override void terminate() {
+    override void terminate() {
         _isTerminatable = true;
     }
 }
@@ -147,27 +147,27 @@ version (unittest) {
     import poodinis.valueinjector.mirage : parseIniConfig;
 
     class TestGame : Game {
-        public bool isInitialized;
-        public bool isUpdated;
-        public bool isRendered;
-        public bool isCleanedUp;
+        bool isInitialized;
+        bool isUpdated;
+        bool isRendered;
+        bool isCleanedUp;
 
         private @Inject EngineRuntime runtime;
 
-        public override void initialize() {
+        override void initialize() {
             isInitialized = true;
         }
 
-        public override void update() {
+        override void update() {
             isUpdated = true;
             runtime.terminate();
         }
 
-        public override void render(double extraPolation) {
+        override void render(double extraPolation) {
             isRendered = true;
         }
 
-        public override void terminate() {
+        override void terminate() {
             isCleanedUp = true;
         }
     }

@@ -81,7 +81,7 @@ version (Have_bindbc_opengl) {
         private static const uint standardAlbedoTextureUnit = 0;
         private static const uint standardDepthMapTextureUnit = 1;
 
-        public void initialize() {
+        void initialize() {
             const GLSupport support = loadOpenGL();
             if (support == GLSupport.badLibrary || support == GLSupport.noLibrary) {
                 logger.error("Failed to load OpenGL Library.");
@@ -121,30 +121,30 @@ version (Have_bindbc_opengl) {
             isInitialized = true;
         }
 
-        public Version getVersion() {
+        Version getVersion() {
             return glVersion;
         }
 
-        public void updateViewport(const ref Viewport viewport) {
+        void updateViewport(const ref Viewport viewport) {
             glViewport(viewport.x, viewport.y, viewport.width, viewport.height);
         }
 
-        public void setClearColor(const Color clearColor) {
+        void setClearColor(const Color clearColor) {
             this.clearColor = [
                 clearColor.r, clearColor.g, clearColor.b, clearColor.a
             ];
         }
 
-        public void setDefaultTextureFilteringModes(const TextureFilteringMode minificationMode, const TextureFilteringMode magnificationMode) {
+        void setDefaultTextureFilteringModes(const TextureFilteringMode minificationMode, const TextureFilteringMode magnificationMode) {
             defaultMinTextureFilteringMode = getGlMinTextureFilteringMode(minificationMode);
             defaultMagTextureFilteringMode = getGlMagTextureFilteringMode(magnificationMode);
         }
 
-        public void startFrame() {
+        void startFrame() {
             clearAllBuffers();
         }
 
-        public void loadIntoMemory(Entity entity) {
+        void loadIntoMemory(Entity entity) {
             if (entity.hasComponent!GlModelInfoComponent) {
                 return;
             }
@@ -236,7 +236,7 @@ version (Have_bindbc_opengl) {
             entity.addComponent(new GlModelInfoComponent(modelInfo));
         }
 
-        public void unloadFromVideoMemory(Entity entity) {
+        void unloadFromVideoMemory(Entity entity) {
             entity.maybeWithComponent!GlModelInfoComponent((c) {
                 foreach (GlMeshInfo mesh; c.info.meshes) {
                     glDeleteBuffers(1, &mesh.vertexBufferObject);
@@ -251,25 +251,25 @@ version (Have_bindbc_opengl) {
             });
         }
 
-        public void useDefaultModelShader() {
+        void useDefaultModelShader() {
             if (defaultModelShaderProgram) {
                 glUseProgram(defaultModelShaderProgram.getOpenGlShaderProgram());
             }
         }
 
-        public void useDefaultBackgroundShader() {
+        void useDefaultBackgroundShader() {
             if (defaultBackgroundShaderProgram) {
                 glUseProgram(defaultBackgroundShaderProgram.getOpenGlShaderProgram());
             }
         }
 
-        public void useDefaultForegroundShader() {
+        void useDefaultForegroundShader() {
             if (defaultBackgroundShaderProgram) {
                 glUseProgram(defaultBackgroundShaderProgram.getOpenGlShaderProgram());
             }
         }
 
-        public void drawModel(
+        void drawModel(
             Entity entity,
             const ref Matrix4D modelViewProjectionMatrix,
             const ref CameraConfiguration cameraConfiguration
@@ -294,19 +294,19 @@ version (Have_bindbc_opengl) {
             });
         }
 
-        public void drawOrthoBackground(Entity entity) {
+        void drawOrthoBackground(Entity entity) {
             drawOrthoScreenImage(entity, 1.0);
         }
 
-        public void drawOrthoForeground(Entity entity) {
+        void drawOrthoForeground(Entity entity) {
             drawOrthoScreenImage(entity, 0.0);
         }
 
-        public void setRenderOutput(RenderOutput renderOutput) {
+        void setRenderOutput(RenderOutput renderOutput) {
             this.renderOutput = renderOutput;
         }
 
-        public void setDepthTestingMode(DepthTestingMode depthTestingMode) {
+        void setDepthTestingMode(DepthTestingMode depthTestingMode) {
             this.depthTestingMode = depthTestingMode;
             if (isInitialized) {
                 //TODO: Clean-up previous shaders?
@@ -314,7 +314,7 @@ version (Have_bindbc_opengl) {
             }
         }
 
-        public void clearDepthStencilBuffers() {
+        void clearDepthStencilBuffers() {
             glClearBufferfi(GL_DEPTH_STENCIL, 0, 1, 1);
         }
 
@@ -605,7 +605,7 @@ version (Have_bindbc_opengl) {
             this.shaderTypeMapping = shaderTypeMapping;
         }
 
-        override public void preprocess(Preprocessor preprocessor, const ShaderLib[] shaderLibs) {
+        override void preprocess(Preprocessor preprocessor, const ShaderLib[] shaderLibs) {
             auto cPreProcessor = cast(CPreprocessor) preprocessor;
             if (cPreProcessor is null) {
                 throw new Exception("Expected a C-preprocessor for GLSL shaders.");
@@ -632,7 +632,7 @@ version (Have_bindbc_opengl) {
             shaderSource = cPreProcessor.preprocess(shaderSource, buildCtx);
         }
 
-        override public void compile() {
+        override void compile() {
             if (!shader) {
                 _isCompiled = false;
                 shader = glCreateShader(getOpenGlShaderType());
@@ -649,7 +649,7 @@ version (Have_bindbc_opengl) {
             }
         }
 
-        override public string getCompilationInfo() {
+        override string getCompilationInfo() {
             if (!shader) {
                 return "";
             }
@@ -667,21 +667,21 @@ version (Have_bindbc_opengl) {
             return to!string(fromStringz(&infoLog[0]));
         }
 
-        override public bool isCompiled() {
+        override bool isCompiled() {
             return _isCompiled;
         }
 
-        override public void clean() {
+        override void clean() {
             if (shader) {
                 glDeleteShader(shader);
             }
         }
 
-        public GLuint getOpenGlShader() {
+        GLuint getOpenGlShader() {
             return shader;
         }
 
-        public GLenum getOpenGlShaderType() {
+        GLenum getOpenGlShaderType() {
             return shaderTypeMapping[shaderType];
         }
     }
@@ -717,7 +717,7 @@ version (Have_bindbc_opengl) {
             }
         }
 
-        override public void preprocessShaders(Preprocessor preprocessor) {
+        override void preprocessShaders(Preprocessor preprocessor) {
             try {
                 super.preprocessShaders(preprocessor);
                 _isPreProcessed = true;
@@ -727,15 +727,15 @@ version (Have_bindbc_opengl) {
             }
         }
 
-        override public bool isPreProcessed() {
+        override bool isPreProcessed() {
             return _isPreProcessed;
         }
 
-        override public string getPreProcessInfo() {
+        override string getPreProcessInfo() {
             return preProcessInfo;
         }
 
-        override public void linkProgram() {
+        override void linkProgram() {
             if (program) {
                 glDeleteProgram(program);
             }
@@ -755,7 +755,7 @@ version (Have_bindbc_opengl) {
             _isLinked = linkStatus == 1;
         }
 
-        override public string getLinkInfo() {
+        override string getLinkInfo() {
             if (!program) {
                 return "";
             }
@@ -773,11 +773,11 @@ version (Have_bindbc_opengl) {
             return to!string(fromStringz(&infoLog[0]));
         }
 
-        override public bool isLinked() {
+        override bool isLinked() {
             return _isLinked;
         }
 
-        override public void clean() {
+        override void clean() {
             if (program) {
                 foreach (shader; shaders) {
                     auto glShader = cast(OpenGlShader) shader;
@@ -790,7 +790,7 @@ version (Have_bindbc_opengl) {
             }
         }
 
-        public GLuint getOpenGlShaderProgram() {
+        GLuint getOpenGlShaderProgram() {
             return program;
         }
     }
@@ -814,7 +814,7 @@ version (Have_bindbc_opengl) {
     private class GlModelInfoComponent : EntityComponent {
         mixin EntityComponentIdentity!"GlModelInfoComponent";
 
-        public GlModelInfo info;
+        GlModelInfo info;
 
         this() {
         }
@@ -827,7 +827,7 @@ version (Have_bindbc_opengl) {
     class GLErrorService {
         private @Inject Logger logger;
 
-        public GLenum[] getAllErrors() {
+        GLenum[] getAllErrors() {
             GLenum[] errors;
             while (true) {
                 GLenum error = glGetError();
@@ -840,7 +840,7 @@ version (Have_bindbc_opengl) {
             return errors;
         }
 
-        public void throwOnErrors(ExceptionType : Exception)(string action = "") {
+        void throwOnErrors(ExceptionType : Exception)(string action = "") {
             auto errors = getAllErrors();
             auto actionSpecifier = !action.empty ? " while " ~ action : "";
             if (errors.length > 0) {
@@ -848,7 +848,7 @@ version (Have_bindbc_opengl) {
             }
         }
 
-        public void logErrorsIfAny() {
+        void logErrorsIfAny() {
             auto errors = getAllErrors();
             if (errors.length > 0) {
                 logger.error(format("OpenGL errors were flagged: %s", errors));

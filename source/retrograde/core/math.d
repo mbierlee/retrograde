@@ -26,8 +26,8 @@ struct Vector(T, uint N) if (N > 0) {
 
     private T[N] components;
 
-    public alias _N = N;
-    public alias _T = T;
+    alias _N = N;
+    alias _T = T;
 
     static if (N >= 2) {
         private static Vector!(T, N) _upVector;
@@ -96,14 +96,14 @@ struct Vector(T, uint N) if (N > 0) {
     /**
      * Shortcut to the first component of the vector.
      */
-    public @property T x() const {
+    @property T x() const {
         return components[0];
     }
 
     /**
      * Sets the first component of the vector.
      */
-    public @property void x(T x) {
+    @property void x(T x) {
         components[0] = x;
     }
 
@@ -111,14 +111,14 @@ struct Vector(T, uint N) if (N > 0) {
         /**
          * Shortcut to the second component of the vector.
          */
-        public @property T y() const {
+        @property T y() const {
             return components[1];
         }
 
         /**
          * Sets the second component of the vector.
          */
-        public @property void y(const T y) {
+        @property void y(const T y) {
             components[1] = y;
         }
     }
@@ -127,14 +127,14 @@ struct Vector(T, uint N) if (N > 0) {
         /**
          * Shortcut to the third component of the vector.
          */
-        public @property T z() const {
+        @property T z() const {
             return components[2];
         }
 
         /**
          * Sets the third component of the vector.
          */
-        public @property void z(const T z) {
+        @property void z(const T z) {
             components[2] = z;
         }
     }
@@ -143,14 +143,14 @@ struct Vector(T, uint N) if (N > 0) {
         /**
          * Shortcut to the second component of the vector.
          */
-        public @property T w() const {
+        @property T w() const {
             return components[3];
         }
 
         /**
          * Sets the third component of the vector.
          */
-        public @property void w(const T w) {
+        @property void w(const T w) {
             components[3] = w;
         }
     }
@@ -161,7 +161,7 @@ struct Vector(T, uint N) if (N > 0) {
          *
          * The current vector is not changed.
          */
-        public Vector normalize() const {
+        Vector normalize() const {
             // Prevent magnitude calculation over and over
             auto const currentMagnitude = magnitude;
 
@@ -188,7 +188,7 @@ struct Vector(T, uint N) if (N > 0) {
         /**
          * Calculates the magnitude, or length, of the vector.
          */
-        public @property scalar magnitude() const {
+        @property scalar magnitude() const {
             scalar powSum = 0;
             static foreach (i; 0 .. N) {
                 powSum += components[i] * components[i];
@@ -202,7 +202,7 @@ struct Vector(T, uint N) if (N > 0) {
         /**
          * Returns the angle in degrees of this vector in two-dimentionsal space.
          */
-        public @property scalar angle() const {
+        @property scalar angle() const {
             auto angle = atan2(cast(scalar) y, cast(scalar) x);
             if (angle < 0) {
                 angle = (2 * PI) + angle;
@@ -442,7 +442,7 @@ struct Vector(T, uint N) if (N > 0) {
         /**
          * Returns a copy of this vector that has one component less.
          */
-        public Vector!(T, N - 1) downgrade() const {
+        Vector!(T, N - 1) downgrade() const {
             return Vector!(T, N - 1)(this.components[0 .. $ - 1]);
         }
     }
@@ -495,7 +495,7 @@ struct UnitVector(VectorType) {
     /**
      * Return a copy of the regular, normalized vector represented by this unit vector.
      */
-    public @property VectorType vector() const {
+    @property VectorType vector() const {
         return _vector;
     }
 }
@@ -519,7 +519,7 @@ struct BezierCurve(Vector, uint ControlPoints) if (ControlPoints > 2) {
         static foreach (i; 0 .. ControlPoints) {
             static if (i < theAlphabet.length) {
                 mixin(
-                    "public @property Vector " ~ theAlphabet[i] ~ "() const { return  controlPoints[" ~ i.to!string ~ "]; }"
+                    "@property Vector " ~ theAlphabet[i] ~ "() const { return  controlPoints[" ~ i.to!string ~ "]; }"
                 );
             }
         }
@@ -687,10 +687,10 @@ alias CubicBezierSpline(Vector) = BezierSpline!(Vector, 4);
 struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
     private T[Columns * Rows] data;
 
-    public alias _T = T;
-    public alias _Rows = Rows;
-    public alias _Columns = Columns;
-    public alias _VectorType = Vector!(T, Rows);
+    alias _T = T;
+    alias _Rows = Rows;
+    alias _Columns = Columns;
+    alias _VectorType = Vector!(T, Rows);
 
     /**
      * Creates a matrix where all its values are set to the initial value.
@@ -725,7 +725,7 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
         /**
          * Returns an identity matrix.
          */
-        public static @property Matrix identity() {
+        static @property Matrix identity() {
             return identityMatrix;
         }
 
@@ -867,7 +867,7 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
      *
      * The array is row-major.
      */
-    public CastType[Rows * Columns] getDataArray(CastType = T)() const {
+    CastType[Rows * Columns] getDataArray(CastType = T)() const {
         static if (is(CastType == T)) {
             return data;
         } else {
@@ -885,7 +885,7 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
      *
      * This essentially turns the array into a column-major array.
      */
-    public CastType[Rows * Columns] getTransposedDataArray(CastType = T)() const {
+    CastType[Rows * Columns] getTransposedDataArray(CastType = T)() const {
         CastType[Rows * Columns] transposedData;
         static foreach (row; 0 .. Rows) {
             static foreach (column; 0 .. Columns) {
@@ -904,7 +904,7 @@ alias Matrix2D = Matrix!(double, 2, 2);
 /**
  * Creates a translation matrix from a 2D vector.
  */
-public Matrix3D toTranslationMatrix(const Vector2D vector) {
+Matrix3D toTranslationMatrix(const Vector2D vector) {
     // dfmt off
     return Matrix3D(
         1, 0, vector.x,
@@ -917,7 +917,7 @@ public Matrix3D toTranslationMatrix(const Vector2D vector) {
 /**
  * Creates a translation matrix from a 3D vector.
  */
-public Matrix4D toTranslationMatrix(const Vector3D vector) {
+Matrix4D toTranslationMatrix(const Vector3D vector) {
     // dfmt off
     return Matrix4D(
         1, 0, 0, vector.x,
@@ -931,7 +931,7 @@ public Matrix4D toTranslationMatrix(const Vector3D vector) {
 /** 
  * Creates a translation vector from a matrix.
  */
-public Vector3D toTranslationVector(const Matrix4D matrix) {
+Vector3D toTranslationVector(const Matrix4D matrix) {
     return Vector3D(
         matrix[0, 3],
         matrix[1, 3],
@@ -942,7 +942,7 @@ public Vector3D toTranslationVector(const Matrix4D matrix) {
 /**
  * Creates a scaling matrix from a 2D scaling vector.
  */
-public Matrix3D toScalingMatrix(const Vector2D scalingVector) {
+Matrix3D toScalingMatrix(const Vector2D scalingVector) {
     // dfmt off
     return Matrix3D(
         scalingVector.x, 0              , 0,
@@ -955,7 +955,7 @@ public Matrix3D toScalingMatrix(const Vector2D scalingVector) {
 /**
  * Creates a scaling matrix from a 3D scaling vector.
  */
-public Matrix4D toScalingMatrix(const Vector3D scalingVector) {
+Matrix4D toScalingMatrix(const Vector3D scalingVector) {
     // dfmt off
     return Matrix4D(
         scalingVector.x, 0                 , 0              , 0,
@@ -975,7 +975,7 @@ public Matrix4D toScalingMatrix(const Vector3D scalingVector) {
  *  y = Y component of the axis to rotate around.
  *  z = Z component of the axis to rotate around.
  */
-public Matrix4D createRotationMatrix(const scalar radianAngle, const double x,
+Matrix4D createRotationMatrix(const scalar radianAngle, const double x,
     const double y, const double z) {
     const double x2 = x * x;
     const double y2 = y * y;
@@ -1001,7 +1001,7 @@ public Matrix4D createRotationMatrix(const scalar radianAngle, const double x,
  *  radianAngle = Amount of rotation in radian.
  *  axis = Vector that serves as the axis around which to rotate.
  */
-public Matrix4D createRotationMatrix(const scalar radianAngle, const Vector3D axis) {
+Matrix4D createRotationMatrix(const scalar radianAngle, const Vector3D axis) {
     return createRotationMatrix(radianAngle, axis.x, axis.y, axis.z);
 }
 
@@ -1011,7 +1011,7 @@ public Matrix4D createRotationMatrix(const scalar radianAngle, const Vector3D ax
  * Params:
  *  radianAngle = Amount of rotation in radian.
  */
-public Matrix3D createRotationMatrix(const scalar radianAngle) {
+Matrix3D createRotationMatrix(const scalar radianAngle) {
     // dfmt off
     return Matrix3D(
         cos(radianAngle), -sin(radianAngle), 0,
@@ -1027,7 +1027,7 @@ public Matrix3D createRotationMatrix(const scalar radianAngle) {
  * Params:
  *  radianAngle = Amount of rotation in radian.
  */
-public Matrix4D createXRotationMatrix(const scalar radianAngle) {
+Matrix4D createXRotationMatrix(const scalar radianAngle) {
     // dfmt off
     return Matrix4D(
         1,  0               , 0               , 0,
@@ -1044,7 +1044,7 @@ public Matrix4D createXRotationMatrix(const scalar radianAngle) {
  * Params:
  *  radianAngle = Amount of rotation in radian.
  */
-public Matrix4D createYRotationMatrix(const scalar radianAngle) {
+Matrix4D createYRotationMatrix(const scalar radianAngle) {
     // dfmt off
     return Matrix4D(
         cos(radianAngle), 0, -sin(radianAngle), 0,
@@ -1061,7 +1061,7 @@ public Matrix4D createYRotationMatrix(const scalar radianAngle) {
  * Params:
  *  radianAngle = Amount of rotation in radian.
  */
-public Matrix4D createZRotationMatrix(const scalar radianAngle) {
+Matrix4D createZRotationMatrix(const scalar radianAngle) {
     // dfmt off
     return Matrix4D(
         cos(radianAngle), -sin(radianAngle), 0, 0,
@@ -1075,7 +1075,7 @@ public Matrix4D createZRotationMatrix(const scalar radianAngle) {
 /**
  * Creates a world transformation matrix that looks at a target vector.
  */
-public Matrix4D createLookatMatrix(const Vector3D eyePosition,
+Matrix4D createLookatMatrix(const Vector3D eyePosition,
     const Vector3D targetPosition, const UnitVector3D upVector) {
 
     auto const forwardVector = (targetPosition - eyePosition).normalize();
@@ -1096,7 +1096,7 @@ public Matrix4D createLookatMatrix(const Vector3D eyePosition,
  * Creates a world transformation matrix that looks at the world with a specified pitch 
  * (up/down rotation) and yaw (left/right rotation).
  */
-public Matrix4D createViewMatrix(Vector3D eyePosition, scalar pitchInRadian, scalar yawInRadian) {
+Matrix4D createViewMatrix(Vector3D eyePosition, scalar pitchInRadian, scalar yawInRadian) {
     const scalar cosPitch = cos(pitchInRadian);
     const scalar sinPitch = sin(pitchInRadian);
     const scalar cosYaw = cos(yawInRadian);
@@ -1116,7 +1116,7 @@ public Matrix4D createViewMatrix(Vector3D eyePosition, scalar pitchInRadian, sca
     // dfmt on
 }
 
-public Matrix4D createViewMatrix(Vector3D eyePosition, QuaternionD eyeOrientation) {
+Matrix4D createViewMatrix(Vector3D eyePosition, QuaternionD eyeOrientation) {
     return eyeOrientation.inverse.toRotationMatrix * (-eyePosition).toTranslationMatrix;
 }
 
@@ -1130,7 +1130,7 @@ public Matrix4D createViewMatrix(Vector3D eyePosition, QuaternionD eyeOrientatio
  *   far = Far clipping plane. If 0, it is considered infinite.
  * Returns: Perspective Matrix
  */
-public Matrix4D createPerspectiveMatrix(scalar yfovRadian, scalar aspectRatio,
+Matrix4D createPerspectiveMatrix(scalar yfovRadian, scalar aspectRatio,
     scalar near, scalar far) {
     const scalar A = 1.0 / (aspectRatio * tan(0.5 * yfovRadian));
     const scalar B = 1.0 / (tan(0.5 * yfovRadian));
@@ -1159,7 +1159,7 @@ public Matrix4D createPerspectiveMatrix(scalar yfovRadian, scalar aspectRatio,
  *   far = Distance to the far clipping plane along the -Z axis
  * Returns: Orthographic Matrix
  */
-public Matrix4D createOrthographicMatrix(scalar left, scalar right, scalar bottom, scalar top, scalar near, scalar far) {
+Matrix4D createOrthographicMatrix(scalar left, scalar right, scalar bottom, scalar top, scalar near, scalar far) {
     return createOrthographicMatrix(right - left, top - bottom, near, far);
 }
 
@@ -1173,7 +1173,7 @@ public Matrix4D createOrthographicMatrix(scalar left, scalar right, scalar botto
  *   far = Distance to the far clipping plane along the -Z axis
  * Returns: Orthographic Matrix
  */
-public Matrix4D createOrthographicMatrix(scalar halfWidth, scalar halfHeight, scalar near, scalar far) {
+Matrix4D createOrthographicMatrix(scalar halfWidth, scalar halfHeight, scalar near, scalar far) {
     const scalar A = 1 / (halfWidth / 2);
     const scalar B = 1 / (halfHeight / 2);
     const scalar C = 2 / (near - far);
@@ -1192,14 +1192,14 @@ public Matrix4D createOrthographicMatrix(scalar halfWidth, scalar halfHeight, sc
 /**
  * Converts an angle in degrees to radians.
  */
-public double degreesToRadians(double degrees) {
+double degreesToRadians(double degrees) {
     return degrees * (PI / 180);
 }
 
 /**
  * Converts an angle in radians to degrees.
  */
-public double radiansToDegrees(double radians) {
+double radiansToDegrees(double radians) {
     return radians * (180 / PI);
 }
 
@@ -1211,34 +1211,34 @@ struct Quaternion(T) {
     private T realPart = 1;
     private VectorType imaginaryVector = VectorType(0);
 
-    public alias _T = T;
-    public alias VectorType = Vector!(T, 3);
+    alias _T = T;
+    alias VectorType = Vector!(T, 3);
 
     /**
      * The real number component.
      */
-    public @property T w() const {
+    @property T w() const {
         return realPart;
     }
 
     /**
      * The x component of the vector of imaginary numbers (a.k.a. bi).
      */
-    public @property T x() const {
+    @property T x() const {
         return imaginaryVector.x;
     }
 
     /**
      * The y component of the vector of imaginary numbers (a.k.a. cj).
      */
-    public @property T y() const {
+    @property T y() const {
         return imaginaryVector.y;
     }
 
     /**
      * The z component of the vector of imaginary numbers (a.k.a. dk).
      */
-    public @property T z() const {
+    @property T z() const {
         return imaginaryVector.z;
     }
 
@@ -1272,7 +1272,7 @@ struct Quaternion(T) {
      *  radianAngle = Rotation around the given axis in radians.
      *  axis = Regular three-dimensional axis to rotate around.
      */
-    public static Quaternion createRotation(double radianAngle, const Vector3D axis) {
+    static Quaternion createRotation(double radianAngle, const Vector3D axis) {
         auto normalizedAxis = axis.normalize();
         return Quaternion(
             cos(radianAngle / 2),
@@ -1316,7 +1316,7 @@ struct Quaternion(T) {
     /**
      * Convert quaterion to a four-dimensional rotation matrix.
      */
-    public Matrix4D toRotationMatrix() const {
+    Matrix4D toRotationMatrix() const {
         // dfmt off
          return Matrix4D(
             1 - 2 * (y * y) - 2 * (z * z), 2 * x * y - 2 * z * w          , (2 * x * z) + (2 * y * w)     , 0,
@@ -1330,7 +1330,7 @@ struct Quaternion(T) {
     /**
      * Convert quaterion to a vector of euler angles.
      */
-    public Vector3D toEulerAngles() const {
+    Vector3D toEulerAngles() const {
         //TODO: Verify for correctness. Also not really euler angles but that brian... bairn?...björn? guy angles.
         auto q = this;
 
@@ -1364,28 +1364,28 @@ struct Quaternion(T) {
     /**
      * Calculates the squared Euclidian magnitude of the quaternion.
      */
-    public scalar magnitudeSquared() const {
+    scalar magnitudeSquared() const {
         return w * w + x * x + y * y + z * z;
     }
 
     /**
      * Calculates the Euclidian magnitude of the quaternion.
      */
-    public scalar magnitude() const {
+    scalar magnitude() const {
         return sqrt(magnitudeSquared);
     }
 
     /** 
      * Returns a normalized form of this Quaternion.
      */
-    public Quaternion normalize() const {
+    Quaternion normalize() const {
         return this / magnitude;
     }
 
     /**
      * Return angle of quaternion in radian.
      */
-    public scalar angle() const {
+    scalar angle() const {
         return 2 * acos(w);
     }
 
@@ -1394,7 +1394,7 @@ struct Quaternion(T) {
      *
      * In case angle = 0 the axis is (0, 1, 0)
      */
-    public VectorType axis() const {
+    VectorType axis() const {
         auto q = normalize();
         auto _angle = q.angle;
         if (_angle == 0) {
@@ -1411,14 +1411,14 @@ struct Quaternion(T) {
     /**
      * Returns a new quaternion that is the conjugate of the current.
      */
-    public Quaternion conjugate() const {
+    Quaternion conjugate() const {
         return Quaternion(w, -x, -y, -z);
     }
 
     /**
      * Returns a new quaternion that is the inverse of the current.
      */
-    public Quaternion inverse() const {
+    Quaternion inverse() const {
         return conjugate / magnitudeSquared;
     }
 }

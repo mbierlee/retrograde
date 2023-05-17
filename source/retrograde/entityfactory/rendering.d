@@ -38,7 +38,7 @@ class ModelEntityFactory : EntityFactory {
     private @Inject CommonImageLoader imageLoader;
     private @Inject StorageSystem storage;
 
-    public override void addComponents(Entity entity, const EntityFactoryParameters parameters = new ModelEntityFactoryParameters()) {
+    override void addComponents(Entity entity, const EntityFactoryParameters parameters = new ModelEntityFactoryParameters()) {
         auto p = parameters.ofType!ModelEntityFactoryParameters;
 
         if (p.modelFilePath.length > 0) {
@@ -68,7 +68,7 @@ class BackgroundEntityFactoryParameters : EntityFactoryParameters {
  * Creates entities that are renderable backgrounds.
  */
 class BackgroundEntityFactory : SomegroundEntityFactory!BackgroundEntityFactoryParameters {
-    public override void addComponents(Entity entity, const EntityFactoryParameters parameters = new BackgroundEntityFactoryParameters()) {
+    override void addComponents(Entity entity, const EntityFactoryParameters parameters = new BackgroundEntityFactoryParameters()) {
         super.addComponents(entity, parameters);
         entity.maybeAddComponent!OrthoBackgroundComponent;
     }
@@ -80,7 +80,7 @@ alias ForegroundEntityFactoryParameters = BackgroundEntityFactoryParameters;
  * Creates entities that are renderable foregrounds.
  */
 class ForegroundEntityFactory : SomegroundEntityFactory!ForegroundEntityFactoryParameters {
-    public override void addComponents(Entity entity, const EntityFactoryParameters parameters = new ForegroundEntityFactoryParameters()) {
+    override void addComponents(Entity entity, const EntityFactoryParameters parameters = new ForegroundEntityFactoryParameters()) {
         super.addComponents(entity, parameters);
         entity.maybeAddComponent!OrthoForegroundComponent;
     }
@@ -90,7 +90,7 @@ private class SomegroundEntityFactory(FactoryParamsT : EntityFactoryParameters) 
     private @Inject CommonImageLoader imageLoader;
     private @Inject StorageSystem storage;
 
-    public override void addComponents(Entity entity, const EntityFactoryParameters parameters = new FactoryParamsT()) {
+    override void addComponents(Entity entity, const EntityFactoryParameters parameters = new FactoryParamsT()) {
         auto p = parameters.ofType!FactoryParamsT;
 
         if (p.textureFilePath.length > 0) {

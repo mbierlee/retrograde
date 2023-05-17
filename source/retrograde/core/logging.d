@@ -56,7 +56,7 @@ class StdoutLogger : Logger {
         outFile.flush();
     }
 
-    public bool stdoutIsAvailable() {
+    bool stdoutIsAvailable() {
         try {
             stdoutFile.writeln();
             stdoutFile.flush();
