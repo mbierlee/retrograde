@@ -57,12 +57,12 @@ class GenericRenderSystem : RenderSystem {
      * the platform's viewport is resized. Set to 'autoAspectRatio' or 0 to disable this
      * autocorrection and use the platform's viewport ascpect ratio instead.
      */
-    @property viewportAspectRatio() {
+    scalar viewportAspectRatio() {
         return _viewportAspectRatio;
     }
 
     /// ditto
-    @property void viewportAspectRatio(scalar newRatio) {
+    void viewportAspectRatio(scalar newRatio) {
         _viewportAspectRatio = newRatio;
         updateView();
     }
@@ -73,12 +73,12 @@ class GenericRenderSystem : RenderSystem {
      * When true, the depth buffers of backgrounds are ignored and models in the principal
      * pass will always render in front of backgrounds.
      */
-    @property clearDepthStencilBuffersBeforePrincipalPass() {
+    bool clearDepthStencilBuffersBeforePrincipalPass() {
         return _clearDepthStencilBuffersBeforePrincipalPass;
     }
 
     /// ditto
-    @property void clearDepthStencilBuffersBeforePrincipalPass(
+    void clearDepthStencilBuffersBeforePrincipalPass(
         bool clearDepthStencilBuffersBeforePrincipalPass
     ) {
         _clearDepthStencilBuffersBeforePrincipalPass = clearDepthStencilBuffersBeforePrincipalPass;
@@ -91,12 +91,12 @@ class GenericRenderSystem : RenderSystem {
      * This might help with z-fighting between objects very close to the camera. Among foregrounds depth 
      * maps are still used to blend between images.
      */
-    @property clearDepthStencilBuffersBeforeForegroundPass() {
+    bool clearDepthStencilBuffersBeforeForegroundPass() {
         return _clearDepthStencilBuffersBeforeForegroundPass;
     }
 
     /// ditto
-    @property void clearDepthStencilBuffersBeforeForegroundPass(
+    void clearDepthStencilBuffersBeforeForegroundPass(
         bool clearDepthStencilBuffersBeforeForegroundPass
     ) {
         _clearDepthStencilBuffersBeforeForegroundPass = clearDepthStencilBuffersBeforeForegroundPass;

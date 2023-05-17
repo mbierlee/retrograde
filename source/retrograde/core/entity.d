@@ -45,14 +45,14 @@ class Entity {
      * Human-readble name of this entity.
      * Mainly used for debugging purposes.
      */
-    @property name() {
+    string name() {
         return _name;
     }
 
     /**
      * A collection of this entity's components.
      */
-    @property components() {
+    EntityComponent[] components() {
         return _components.values;
     }
 
@@ -349,7 +349,7 @@ mixin template EntityComponentIdentity(string ComponentType) {
 class EntityCollection {
     private Entity[EntityIdType] entities;
 
-    @property size_t length() {
+    size_t length() {
         return entities.length;
     }
 
@@ -424,8 +424,8 @@ const auto evEntityAddedToManager = sid("ev_entity_added_to_manager");
 const auto evEntityRemovedFromManager = sid("ev_entity_removed_from_manager");
 
 class EntityLifeCycleMessage : Message {
-    @property StringId id;
-    @property const Entity entity;
+    StringId id;
+    const Entity entity;
 
     this(const StringId id, const Entity entity) {
         this.id = id;
@@ -735,14 +735,14 @@ abstract class EntityProcessor {
     /**
      * Amount of entities assigned to this processor.
      */
-    @property entityCount() {
+    size_t entityCount() {
         return _entities.length();
     }
 
     /**
      * Entities assigned to this processor.
      */
-    @property entities() {
+    Entity[] entities() {
         return _entities.getAll();
     }
 

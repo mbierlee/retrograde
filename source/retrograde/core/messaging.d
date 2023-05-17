@@ -22,7 +22,7 @@ alias MessageProcessor = void delegate(const StringId channel, immutable Message
  * Base class for message data.
  */
 class Message {
-    @property StringId id;
+    StringId id;
 
     this(const StringId id = sid("")) {
         this.id = id;
@@ -42,7 +42,7 @@ class Message {
  * See_Also: InputMapper
  */
 class MagnitudeMessage : Message {
-    @property double magnitude;
+    double magnitude;
 
     this(const StringId id, const double magnitude) {
         super(id);

@@ -96,14 +96,14 @@ struct Vector(T, uint N) if (N > 0) {
     /**
      * Shortcut to the first component of the vector.
      */
-    @property T x() const {
+    T x() const {
         return components[0];
     }
 
     /**
      * Sets the first component of the vector.
      */
-    @property void x(T x) {
+    void x(T x) {
         components[0] = x;
     }
 
@@ -111,14 +111,14 @@ struct Vector(T, uint N) if (N > 0) {
         /**
          * Shortcut to the second component of the vector.
          */
-        @property T y() const {
+        T y() const {
             return components[1];
         }
 
         /**
          * Sets the second component of the vector.
          */
-        @property void y(const T y) {
+        void y(const T y) {
             components[1] = y;
         }
     }
@@ -127,14 +127,14 @@ struct Vector(T, uint N) if (N > 0) {
         /**
          * Shortcut to the third component of the vector.
          */
-        @property T z() const {
+        T z() const {
             return components[2];
         }
 
         /**
          * Sets the third component of the vector.
          */
-        @property void z(const T z) {
+        void z(const T z) {
             components[2] = z;
         }
     }
@@ -143,14 +143,14 @@ struct Vector(T, uint N) if (N > 0) {
         /**
          * Shortcut to the second component of the vector.
          */
-        @property T w() const {
+        T w() const {
             return components[3];
         }
 
         /**
          * Sets the third component of the vector.
          */
-        @property void w(const T w) {
+        void w(const T w) {
             components[3] = w;
         }
     }
@@ -188,7 +188,7 @@ struct Vector(T, uint N) if (N > 0) {
         /**
          * Calculates the magnitude, or length, of the vector.
          */
-        @property scalar magnitude() const {
+        scalar magnitude() const {
             scalar powSum = 0;
             static foreach (i; 0 .. N) {
                 powSum += components[i] * components[i];
@@ -202,7 +202,7 @@ struct Vector(T, uint N) if (N > 0) {
         /**
          * Returns the angle in degrees of this vector in two-dimentionsal space.
          */
-        @property scalar angle() const {
+        scalar angle() const {
             auto angle = atan2(cast(scalar) y, cast(scalar) x);
             if (angle < 0) {
                 angle = (2 * PI) + angle;
@@ -495,7 +495,7 @@ struct UnitVector(VectorType) {
     /**
      * Return a copy of the regular, normalized vector represented by this unit vector.
      */
-    @property VectorType vector() const {
+    VectorType vector() const {
         return _vector;
     }
 }
@@ -519,7 +519,7 @@ struct BezierCurve(Vector, uint ControlPoints) if (ControlPoints > 2) {
         static foreach (i; 0 .. ControlPoints) {
             static if (i < theAlphabet.length) {
                 mixin(
-                    "@property Vector " ~ theAlphabet[i] ~ "() const { return  controlPoints[" ~ i.to!string ~ "]; }"
+                    "Vector " ~ theAlphabet[i] ~ "() const { return  controlPoints[" ~ i.to!string ~ "]; }"
                 );
             }
         }
@@ -725,7 +725,7 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
         /**
          * Returns an identity matrix.
          */
-        static @property Matrix identity() {
+        static Matrix identity() {
             return identityMatrix;
         }
 
@@ -1217,28 +1217,28 @@ struct Quaternion(T) {
     /**
      * The real number component.
      */
-    @property T w() const {
+    T w() const {
         return realPart;
     }
 
     /**
      * The x component of the vector of imaginary numbers (a.k.a. bi).
      */
-    @property T x() const {
+    T x() const {
         return imaginaryVector.x;
     }
 
     /**
      * The y component of the vector of imaginary numbers (a.k.a. cj).
      */
-    @property T y() const {
+    T y() const {
         return imaginaryVector.y;
     }
 
     /**
      * The z component of the vector of imaginary numbers (a.k.a. dk).
      */
-    @property T z() const {
+    T z() const {
         return imaginaryVector.z;
     }
 

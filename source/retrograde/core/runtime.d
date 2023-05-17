@@ -30,14 +30,14 @@ interface EngineRuntime {
      * Whether the engine is currently terminatable.
      * In the StandardEngineRuntime it is set when terminate() is called.
      */
-    @property bool isTerminatable();
+    bool isTerminatable();
 
     /**
      * The targeted time in milliseconds an update cycle has.
      * In the StandardEngineRuntime, when exceeded, the engine tries to catch up in the next cycle.
      * Some systems, such as a render system, might use this to dynamically optimize performance.
      */
-    @property long targetTickTimeMs();
+    long targetTickTimeMs();
 
     /**
      * A limit imposed on the engine for the amount of ticks it is allowed to catch up to.
@@ -45,7 +45,7 @@ interface EngineRuntime {
      * render and resume catching up during the next cycle.
      * Some systems, such as a render system, might use this to dynamically optimize performance.
      */
-    @property long lagTickLimit();
+    long lagTickLimit();
 
     /**
      * Starts the game.
@@ -77,15 +77,15 @@ class StandardEngineRuntime : EngineRuntime {
 
     private bool _isTerminatable = false;
 
-    override @property bool isTerminatable() {
+    override bool isTerminatable() {
         return _isTerminatable;
     }
 
-    override @property long targetTickTimeMs() {
+    override long targetTickTimeMs() {
         return 10L;
     }
 
-    override @property long lagTickLimit() {
+    override long lagTickLimit() {
         return 100L;
     }
 
