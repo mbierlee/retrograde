@@ -18,6 +18,7 @@ import std.exception : enforce;
 import std.string : format;
 import std.conv : to;
 import std.typecons : Flag, Yes, No;
+import std.algorithm : sort;
 
 import poodinis : Inject, DependencyContainer;
 
@@ -494,8 +495,10 @@ class EntityManager {
      */
     public void addEntityProcessors(EntityProcessor[] processors) {
         foreach (processor; processors) {
-            addEntityProcessor(processor);
+            _addEntityProcessor(processor);
         }
+
+        _sortEntityProcessors();
     }
 
     /**
@@ -504,10 +507,8 @@ class EntityManager {
      *  processor: Entity processor to be added.
      */
     public void addEntityProcessor(EntityProcessor processor) {
-        _processors ~= processor;
-        foreach (entity; _entities.getAll()) {
-            processor.addEntity(entity);
-        }
+        _addEntityProcessor(processor);
+        _sortEntityProcessors();
     }
 
     /**
@@ -523,6 +524,7 @@ class EntityManager {
         auto processor = cast(EntityProcessorType) typeInfo.create();
         enforce!Exception(processor !is null,
             format("Error creating processor of type %s. Does the processor have a default constructor?", typeInfo));
+
         addEntityProcessor(processor);
     }
 
@@ -642,6 +644,25 @@ class EntityManager {
         }
     }
 
+    /**
+     * Convenience method for sending a life cycle message regarding the given entity via the 
+     * entityLifeCycleChannel. 
+     */
+    public void sendLifeCycleMessage(const StringId messageId, const Entity entity) {
+        messageHandler.sendMessage(entityLifeCycleChannel, EntityLifeCycleMessage.create(messageId, entity));
+    }
+
+    private void _addEntityProcessor(EntityProcessor processor) {
+        _processors ~= processor;
+        foreach (entity; _entities.getAll()) {
+            processor.addEntity(entity);
+        }
+    }
+
+    private void _sortEntityProcessors() {
+        _processors.sort!((a, b) => a.priority < b.priority);
+    }
+
     private void handleLifeCycleMessages() {
         messageHandler.receiveMessages(entityLifeCycleChannel, (
                 immutable EntityLifeCycleMessage message) {
@@ -663,9 +684,6 @@ class EntityManager {
         });
     }
 
-    public void sendLifeCycleMessage(const StringId messageId, const Entity entity) {
-        messageHandler.sendMessage(entityLifeCycleChannel, EntityLifeCycleMessage.create(messageId, entity));
-    }
 }
 
 /**
@@ -677,6 +695,11 @@ class EntityManager {
  */
 abstract class EntityProcessor {
     protected EntityCollection _entities;
+
+    /**
+     * The execution priority of this entity processor.
+     */
+    public EntityProcessorPriority priority = StandardEntityProcessorPriority.defaultPriority;
 
     /**
      * Whether the entity processor accepts the entity.
@@ -811,6 +834,20 @@ abstract class EntityProcessor {
     }
 }
 
+/**
+ * Type that defines the priority of an entity processor.
+ */
+alias EntityProcessorPriority = byte;
+
+/**
+ * A default priority ordering used by processors provided by the engine.
+ */
+enum StandardEntityProcessorPriority : EntityProcessorPriority {
+    highest = 0,
+    defaultPriority = 100,
+    lowest = EntityProcessorPriority.max
+}
+
 /** 
  * Base class for entity factories to defined creation parameters.
  */
@@ -877,6 +914,9 @@ T ofType(T : EntityFactoryParameters)(const EntityFactoryParameters params) {
 
 // Test entities, components and processors.
 version (unittest) {
+    class TestEntity : Entity {
+    }
+
     class TestEntityComponent : EntityComponent {
         mixin EntityComponentIdentity!"TestEntityComponent";
         public int theAnswer = 42;
@@ -1248,8 +1288,6 @@ version (unittest) {
 
 // Entity Manager tests
 version (unittest) {
-    class TestEntity : Entity {
-    }
 
     @("Add entity to entity manager")
     unittest {
@@ -1465,6 +1503,51 @@ version (unittest) {
         });
 
         assert(entityRemovedEventWasSent);
+    }
+
+    @("Added entity processors are sorted by priority when adding them one by one")
+    unittest {
+        auto manager = new EntityManager();
+        auto processorOne = new TestEntityProcessor();
+        auto processorTwo = new TestEntityProcessor();
+        auto processorThree = new TestEntityProcessor();
+        auto processorFour = new TestEntityProcessor();
+        processorOne.priority = 1;
+        processorTwo.priority = 2;
+        processorThree.priority = 3;
+        processorFour.priority = 4;
+
+        manager.addEntityProcessor(processorFour);
+        manager.addEntityProcessor(processorTwo);
+        manager.addEntityProcessor(processorOne);
+        manager.addEntityProcessor(processorThree);
+
+        assert(manager.processors[0] is processorOne);
+        assert(manager.processors[1] is processorTwo);
+        assert(manager.processors[2] is processorThree);
+        assert(manager.processors[3] is processorFour);
+    }
+
+    @("Added entity processors are sorted by priority when adding them all in one go")
+    unittest {
+        auto manager = new EntityManager();
+        auto processorOne = new TestEntityProcessor();
+        auto processorTwo = new TestEntityProcessor();
+        auto processorThree = new TestEntityProcessor();
+        auto processorFour = new TestEntityProcessor();
+        processorOne.priority = 1;
+        processorTwo.priority = 2;
+        processorThree.priority = 3;
+        processorFour.priority = 4;
+
+        manager.addEntityProcessors([
+            processorFour, processorTwo, processorOne, processorThree
+        ]);
+
+        assert(manager.processors[0] is processorOne);
+        assert(manager.processors[1] is processorTwo);
+        assert(manager.processors[2] is processorThree);
+        assert(manager.processors[3] is processorFour);
     }
 }
 
