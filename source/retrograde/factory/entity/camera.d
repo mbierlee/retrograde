@@ -9,7 +9,7 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.entityfactory.camera;
+module retrograde.factory.entity.camera;
 
 import retrograde.core.entity : Entity, EntityFactory, EntityFactoryParameters, ofType;
 import retrograde.core.rendering : CameraConfiguration;

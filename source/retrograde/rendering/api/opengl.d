@@ -31,7 +31,7 @@ version (Have_bindbc_opengl) {
     import retrograde.components.rendering : RandomFaceColorsComponent, ModelComponent, OrthoBackgroundComponent,
         OrthoForegroundComponent, TextureComponent, DepthMapComponent;
 
-    import retrograde.geometryfactory : GeometryFactory;
+    import retrograde.factory.geometry : GeometryFactory;
 
     import poodinis : Inject, Value, OptionalDependency;
 

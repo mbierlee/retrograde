@@ -9,7 +9,7 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.entityfactory.firstperson;
+module retrograde.factory.entity.firstperson;
 
 import retrograde.core.entity : Entity, EntityFactory, EntityFactoryParameters, ofType, EntityHierarchyFactory;
 import retrograde.core.math : scalar, Vector3D;
@@ -27,18 +27,16 @@ class FirstPersonControllableFactoryParameters : EntityFactoryParameters {
 
 class FirstPersonControllableFactory : EntityHierarchyFactory {
     private @Inject FirstPersonControllableBodyFactory bodyFactory;
+    private @Inject FirstPersonControllableHeadFactory headFactory;
 
-    Entity[string] createEntities(const string parentName, const EntityFactoryParameters parameters) {
-        auto rootEntity = new Entity(parentName);
-        auto bodyEntity = bodyFactory.createEntity(parentName ~ "_body", parameters);
-
-        //TODO: create head
-
-        bodyEntity.parent = rootEntity;
+    Entity[string] createEntities(const string entityName, const EntityFactoryParameters parameters) {
+        auto bodyEntity = bodyFactory.createEntity(entityName ~ "_body", parameters);
+        auto headEntity = headFactory.createEntity(entityName ~ "_head", parameters);
+        headEntity.parent = bodyEntity;
 
         return [
-            rootEntity.name: rootEntity,
-            bodyEntity.name: bodyEntity
+            bodyEntity.name: bodyEntity,
+            headEntity.name: headEntity
         ];
     }
 }
@@ -54,6 +52,22 @@ class FirstPersonControllableBodyFactory : EntityFactory {
 
         auto axisRotationComponent = new AxisRotationComponent(Vector3D.upVector, 0);
         entity.maybeAddComponent(axisRotationComponent);
+        entity.maybeAddComponent!TranslationComponent;
+        entity.maybeAddComponent!Orientation3DComponent;
+        entity.maybeAddComponent!Position3DComponent;
+    }
+}
+
+class FirstPersonControllableHeadFactory : EntityFactory {
+    override void addComponents(Entity entity, const EntityFactoryParameters parameters = new FirstPersonControllableFactoryParameters()) {
+        auto p = parameters.ofType!FirstPersonControllableFactoryParameters;
+
+        entity.maybeAddComponent(new FirstPersonControllableComponent(
+                p.translationSpeedModifier,
+                p.rotationSpeedModifier
+        ));
+
+        entity.maybeAddComponent!RotationComponent;
         entity.maybeAddComponent!TranslationComponent;
         entity.maybeAddComponent!Orientation3DComponent;
         entity.maybeAddComponent!Position3DComponent;

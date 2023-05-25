@@ -9,7 +9,7 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.geometryfactory;
+module retrograde.factory.geometry;
 
 import retrograde.core.model : Vertex, Face;
 import retrograde.core.rendering : Color;

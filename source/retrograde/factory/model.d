@@ -9,9 +9,9 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.modelfactory;
+module retrograde.factory.model;
 
-import retrograde.geometryfactory;
+import retrograde.factory.geometry : GeometryFactory;
 import retrograde.core.model : Vertex, Model, Mesh, Face, TextureCoordinate;
 
 import poodinis;

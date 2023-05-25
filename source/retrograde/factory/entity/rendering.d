@@ -9,7 +9,7 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.entityfactory.rendering;
+module retrograde.factory.entity.rendering;
 
 import retrograde.core.entity : Entity, EntityFactory, EntityFactoryParameters, ofType;
 import retrograde.core.storage : StorageSystem;
