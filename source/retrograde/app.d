@@ -3,8 +3,9 @@
  *
  * The main entry point for the Retrograde Engine when running as a
  * runtime.
- * In this mode, the engine is the main executable and the game project
- * is a dynamic library that is loaded at runtime.
+ * - When compiled to native code, this runs the game's WASM module in a WASM runtime.
+ * - When compiled to WebAssembly, this is the entry point for communicating to the game's
+ *   WASM module.
  *
  * Authors:
  *  Mike Bierlee, m.bierlee@lostmoment.com
