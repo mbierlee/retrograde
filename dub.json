@@ -1,0 +1,26 @@
+{
+  "name": "retrograde",
+  "description": "The Retrograde Game Engine",
+  "authors": ["Mike Bierlee", "Lostmoment"],
+  "license": "MIT",
+  "copyright": "Copyright Mike Bierlee 2014-2023",
+  "dflags": ["-betterC"],
+  "targetPath": "bin",
+  "configurations": [
+    {
+      "name": "runtime",
+      "targetType": "executable",
+      "versions": ["runtime"]
+    },
+    {
+      "name": "library",
+      "targetType": "library"
+    },
+    {
+      "name": "unittest",
+      "targetType": "library",
+      "sourcePaths": ["source"],
+      "importPaths": ["source"]
+    }
+  ]
+}

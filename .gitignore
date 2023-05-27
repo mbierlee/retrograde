@@ -1,0 +1,17 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/retrograde
+retrograde.so
+retrograde.dylib
+retrograde.dll
+retrograde.a
+retrograde.lib
+retrograde-test-*
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst
+/bin
