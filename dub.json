@@ -22,5 +22,11 @@
       "sourcePaths": ["source"],
       "importPaths": ["source"]
     }
-  ]
+  ],
+  "buildTypes": {
+    "release-O3": {
+      "buildOptions": ["releaseMode"],
+      "dflags-ldc2": ["-O3"]
+    }
+  }
 }
