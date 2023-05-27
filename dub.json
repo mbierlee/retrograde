@@ -8,14 +8,15 @@
   "targetPath": "bin",
   "configurations": [
     {
+      "name": "library",
+      "targetType": "library"
+    },
+    {
       "name": "runtime",
       "targetType": "executable",
       "versions": ["runtime"]
     },
-    {
-      "name": "library",
-      "targetType": "library"
-    },
+
     {
       "name": "wasm",
       "targetType": "executable",
