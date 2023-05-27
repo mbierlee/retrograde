@@ -18,8 +18,13 @@ module retrograde.app;
 
 version (runtime)  :  //
 
-import core.stdc.stdio : printf;
+version (WebAssembly) {
+	extern (C) void _start() {
+	}
+} else {
+	import core.stdc.stdio : printf;
 
-extern (C) void main() {
-	printf("Edit source/app.d to start your project.\n");
+	extern (C) void main() {
+		printf("Edit source/app.d to start your project.\n");
+	}
 }

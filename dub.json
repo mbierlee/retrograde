@@ -17,6 +17,13 @@
       "targetType": "library"
     },
     {
+      "name": "wasm",
+      "targetType": "executable",
+      "dflags-ldc2": ["-fvisibility=hidden", "-betterC"],
+      "lflags-ldc2": ["-allow-undefined"],
+      "versions": ["runtime"]
+    },
+    {
       "name": "unittest",
       "targetType": "library",
       "sourcePaths": ["source"],
