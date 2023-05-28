@@ -9,3 +9,8 @@ build-wasm:
 
 run:
 	dub run --config=runtime
+
+copy-wasm:
+	mkdir -p ./websource/wasm/; cp ./bin/retrograde.wasm ./websource/wasm/retrograde.wasm
+
+build-wasm-demo: build-wasm copy-wasm

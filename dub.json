@@ -21,7 +21,7 @@
       "name": "wasm",
       "targetType": "executable",
       "dflags-ldc2": ["-fvisibility=hidden", "-betterC"],
-      "lflags-ldc2": ["-allow-undefined"],
+      "lflags": ["-allow-undefined"],
       "versions": ["runtime"]
     },
     {

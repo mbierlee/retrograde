@@ -19,13 +19,14 @@ module retrograde.app;
 
 version (runtime)  :  //
 
-version (WebAssembly) {
-	extern (C) void _start() {
-	}
-} else {
-	import core.stdc.stdio : printf;
+import retrograde.std.stdio : writeln;
 
-	extern (C) void main() {
-		printf("Edit source/app.d to start your project.\n");
-	}
+version (WebAssembly) {
+    export extern (C) void _start() {
+        writeln("Hello WebAssembly world!");
+    }
+} else {
+    extern (C) void main() {
+        writeln("Hello native world!");
+    }
 }
