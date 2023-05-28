@@ -3,7 +3,7 @@ import stdio from "./std/stdio.js";
 
 export default class EngineRuntimeModule extends WasmModule {
   constructor() {
-    super("/wasm/retrograde.wasm", {
+    super("./wasm/retrograde-app.wasm", {
       writeln: (msgLength, msgPtr) => {
         const message = this.getString(msgPtr, msgLength);
         stdio.writeln(message);
