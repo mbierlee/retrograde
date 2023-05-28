@@ -50,12 +50,46 @@ struct Result(T) {
     }
 }
 
+/// Create a successful result with a value.
 Result!T success(T)(T value) if (!is(T == void)) {
     return Result!T(value);
 }
 
+/// Create a failed result with an error message.
 Result!T failure(T)(string errorMessage) if (!is(T == void)) {
     return Result!T.failure(errorMessage);
+}
+
+/** 
+ * An OperationResult is a type that can be used to return a success or failure
+ * of an operation that does not return a value. It is used for idiomatic error handling.
+ */
+struct OperationResult {
+    private bool success;
+    private string _errorMessage;
+
+    this(bool isSuccessful, string errorMessage = "") {
+        this.success = isSuccessful;
+        this._errorMessage = errorMessage;
+    }
+
+    bool isSuccessful() {
+        return this.success;
+    }
+
+    string errorMessage() {
+        return this._errorMessage;
+    }
+}
+
+/// Create a successful OperationResult.
+OperationResult success() {
+    return OperationResult(true);
+}
+
+/// Create a failed OperationResult with an error message.
+OperationResult failure(string errorMessage) {
+    return OperationResult(false, errorMessage);
 }
 
 private union ResultValue(T) {
@@ -96,6 +130,32 @@ unittest {
 @("failure returns a failed result")
 unittest {
     auto result = failure!int("Something went wrong");
+    assert(!result.isSuccessful);
+    assert(result.errorMessage == "Something went wrong");
+}
+
+@("OperationResult can be created with a success")
+unittest {
+    auto result = OperationResult(true);
+    assert(result.isSuccessful);
+}
+
+@("OperationResult can be created with a failure")
+unittest {
+    auto result = OperationResult(false, "Something went wrong");
+    assert(!result.isSuccessful);
+    assert(result.errorMessage == "Something went wrong");
+}
+
+@("success returns a successful OperationResult")
+unittest {
+    auto result = success();
+    assert(result.isSuccessful);
+}
+
+@("failure returns a failed OperationResult")
+unittest {
+    auto result = failure("Something went wrong");
     assert(!result.isSuccessful);
     assert(result.errorMessage == "Something went wrong");
 }
