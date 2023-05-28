@@ -12,19 +12,6 @@
       "targetType": "library"
     },
     {
-      "name": "runtime",
-      "targetType": "executable",
-      "versions": ["runtime"]
-    },
-
-    {
-      "name": "wasm",
-      "targetType": "executable",
-      "dflags-ldc2": ["-fvisibility=hidden", "-betterC"],
-      "lflags": ["-allow-undefined"],
-      "versions": ["runtime"]
-    },
-    {
       "name": "unittest",
       "targetType": "library",
       "sourcePaths": ["source"],

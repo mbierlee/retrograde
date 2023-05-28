@@ -4,26 +4,15 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Run",
-      "type": "shell",
-      "command": "make run",
-      "problemMatcher": [],
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      }
-    },
-    {
       "label": "Build Library",
       "type": "shell",
       "command": "make build-lib",
       "problemMatcher": [],
       "group": {
         "kind": "build",
-        "isDefault": false
+        "isDefault": true
       }
     },
-
     {
       "label": "Dub Test",
       "type": "shell",
