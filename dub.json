@@ -12,10 +12,11 @@
       "targetType": "library"
     },
     {
-      "name": "unittest",
+      "name": "unittest-native",
       "targetType": "library",
       "sourcePaths": ["source"],
-      "importPaths": ["source"]
+      "importPaths": ["source"],
+      "versions": ["Native"]
     }
   ],
   "buildTypes": {

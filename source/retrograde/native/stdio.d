@@ -9,10 +9,12 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.std.stdio;
+module retrograde.native.stdio;
 
-version (WebAssembly) {
-    public import retrograde.wasm.stdio;
-} else {
-    public import retrograde.native.stdio;
+version (Native)  :  //
+
+import core.stdc.stdio : printf;
+
+void writeln(string msg) {
+    printf("%s\n", msg.ptr);
 }

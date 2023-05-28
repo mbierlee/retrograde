@@ -9,10 +9,10 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.std.stdio;
+module retrograde.std.memory;
 
 version (WebAssembly) {
-    public import retrograde.wasm.stdio;
+    public import retrograde.wasm.memory;
 } else {
-    public import retrograde.native.stdio;
+    // static assert(0, "Memory management is yet implemented for this platform.");
 }

@@ -4,5 +4,5 @@ build-lib:
 build-runtime:
 	dub build --config=runtime
 
-test:
-	dub test
+test-native:
+	dub test --config=unittest-native
