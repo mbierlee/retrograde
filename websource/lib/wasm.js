@@ -36,4 +36,14 @@ export default class WasmModule {
     const buffer = new Uint8Array(this.memory.buffer, pointer, length);
     return new TextDecoder("utf-8").decode(buffer);
   }
+
+  getCString(pointer) {
+    const buffer = new Uint8Array(this.memory.buffer, pointer);
+    let length = 0;
+    while (buffer[length] != 0) {
+      length++;
+    }
+
+    return this.getString(pointer, length);
+  }
 }
