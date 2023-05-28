@@ -1,4 +1,4 @@
-import WasmModule from "../wasm.js";
+import WasmModule from "./wasm.js";
 
 export default class EngineRuntimeModule extends WasmModule {
   constructor() {
@@ -15,10 +15,4 @@ export default class EngineRuntimeModule extends WasmModule {
       },
     });
   }
-}
-
-export function startEngine() {
-  const engineModule = new EngineRuntimeModule();
-  engineModule.start();
-  return engineModule;
 }
