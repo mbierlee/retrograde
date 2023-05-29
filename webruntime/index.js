@@ -5,8 +5,8 @@ document.addEventListener("DOMContentLoaded", function () {
   engineModule.init().then(() => {
     engineModule.start();
 
-    function runLoop(timestampMs) {
-      engineModule.update(timestampMs);
+    function runLoop(elapsedTimeMs) {
+      engineModule.executeEngineLoopCycle(elapsedTimeMs);
       requestAnimationFrame(runLoop);
     }
 
