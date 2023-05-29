@@ -15,6 +15,14 @@ version (Native)  :  //
 
 import core.stdc.stdio : printf;
 
-void writeln(string msg) {
+void writelnStr(string msg) {
     printf("%s\n", msg.ptr);
+}
+
+void writelnUint(uint number) {
+    printf("%d\n", number);
+}
+
+void writelnInt(int number) {
+    printf("%d\n", number);
 }

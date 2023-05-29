@@ -16,3 +16,15 @@ version (WebAssembly) {
 } else {
     public import retrograde.native.stdio;
 }
+
+void writeln(T)(T value) {
+    static if (is(T == string)) {
+        writelnStr(value);
+    } else static if (is(T == uint)) {
+        writelnUint(value);
+    } else static if (is(T == int)) {
+        writelnInt(value);
+    } else {
+        static assert(0, "Unsupported type");
+    }
+}
