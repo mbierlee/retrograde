@@ -28,6 +28,10 @@ export extern (C) void executeEngineLoopCycle(double elapsedTimeMs) {
     assert(updateFunction != null, "updateFunction cannot be null. Set it before starting the engine loop.");
 
     double deltaTimeMs = elapsedTimeMs - lastTimeMs;
+    if (deltaTimeMs < 0.0) {
+        deltaTimeMs = 0.0;
+    }
+
     lagTimeMs += deltaTimeMs;
     long lagCompensationTicks = 0;
 
