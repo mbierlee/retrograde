@@ -4,6 +4,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const engineModule = new EngineRuntimeModule();
   engineModule.init().then(() => {
     engineModule.start();
+    engineModule.initEngine();
 
     function runLoop(elapsedTimeMs) {
       engineModule.executeEngineLoopCycle(elapsedTimeMs);

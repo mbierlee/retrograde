@@ -11,11 +11,14 @@
 
 module retrograde.engine.runtime;
 
+alias InitFunction = void function();
 alias UpdateFunction = void function();
+
+InitFunction initFunction = null;
+UpdateFunction updateFunction = null;
 
 uint targetTickTimeMs = cast(uint)((1.0 / 60.0) * 1000);
 long lagTickLimit = 100;
-UpdateFunction updateFunction = null;
 bool terminateEngineLoop = false;
 
 private double lastTimeMs = 0.0;
@@ -43,11 +46,17 @@ export extern (C) void executeEngineLoopCycle(double elapsedTimeMs) {
     lastTimeMs = elapsedTimeMs;
 }
 
+export extern (C) void initEngine() {
+    assert(initFunction != null, "initFunction cannot be null. Set it before engine initialization.");
+    initFunction();
+}
+
 template DefaultEntryPoint() {
     version (WebAssembly) {
         export extern (C) void _start() {
             mixin("
-                import retrograde.engine.runtime : updateFunction;
+                import retrograde.engine.runtime : initFunction, updateFunction;
+                initFunction = &init;
                 updateFunction = &update;
             ");
 
@@ -56,6 +65,7 @@ template DefaultEntryPoint() {
         }
     } else {
         void main() {
+            //TODO: initialize game
             //TODO: run game loop
             assert(false, "Native update loop not yet implemented");
         }

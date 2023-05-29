@@ -28,6 +28,10 @@ export default class EngineRuntimeModule extends WasmModule {
     });
   }
 
+  initEngine() {
+    this.instance.exports.initEngine();
+  }
+
   executeEngineLoopCycle(elapsedTimeMs) {
     this.instance.exports.executeEngineLoopCycle(elapsedTimeMs);
   }
