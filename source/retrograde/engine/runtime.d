@@ -42,3 +42,22 @@ export extern (C) void executeEngineLoopCycle(double elapsedTimeMs) {
     // TODO: Call render function.
     lastTimeMs = elapsedTimeMs;
 }
+
+template DefaultEntryPoint() {
+    version (WebAssembly) {
+        export extern (C) void _start() {
+            mixin("
+                import retrograde.engine.runtime : updateFunction;
+                updateFunction = &update;
+            ");
+
+            // We do not run the internal engine loop in WebAssembly,
+            // the browser is in charge of that.
+        }
+    } else {
+        void main() {
+            //TODO: run game loop
+            assert(false, "Native update loop not yet implemented");
+        }
+    }
+}
