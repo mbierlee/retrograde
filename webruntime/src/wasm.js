@@ -24,11 +24,7 @@ export default class WasmModule {
     );
   }
 
-  async start() {
-    if (this.instance == null) {
-      await this.init();
-    }
-
+  start() {
     this.instance.exports._start();
   }
 

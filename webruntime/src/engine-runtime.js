@@ -15,4 +15,8 @@ export default class EngineRuntimeModule extends WasmModule {
       },
     });
   }
+
+  update(timestampMs) {
+    this.instance.exports.update(timestampMs);
+  }
 }
