@@ -18,3 +18,7 @@ export extern (C) void writelnStr(string msg);
 export extern (C) void writelnUint(uint number);
 
 export extern (C) void writelnInt(int number);
+
+export extern (C) void writelnDouble(double number);
+
+export extern (C) void writelnFloat(float number);

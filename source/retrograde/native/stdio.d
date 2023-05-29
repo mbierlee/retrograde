@@ -26,3 +26,11 @@ void writelnUint(uint number) {
 void writelnInt(int number) {
     printf("%d\n", number);
 }
+
+void writelnDouble(double number) {
+    printf("%f\n", number);
+}
+
+void writelnFloat(float number) {
+    printf("%f\n", number);
+}

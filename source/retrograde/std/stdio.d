@@ -24,6 +24,10 @@ void writeln(T)(T value) {
         writelnUint(value);
     } else static if (is(T == int)) {
         writelnInt(value);
+    } else static if (is(T == double)) {
+        writelnDouble(value);
+    } else static if (is(T == float)) {
+        writelnFloat(value);
     } else {
         static assert(0, "Unsupported type");
     }
