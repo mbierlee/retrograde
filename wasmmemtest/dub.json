@@ -1,0 +1,15 @@
+{
+  "name": "wasmmemtest",
+  "description": "WASM memory tester",
+  "license": "MIT",
+  "authors": ["Mike Bierlee"],
+  "copyright": "Copyright © 2023, Mike Bierlee",
+  "targetType": "executable",
+  "targetPath": "web/bin",
+  "dflags-ldc2": ["-fvisibility=hidden", "-betterC"],
+  "lflags": ["-allow-undefined"],
+  "dependencies": {
+    "retrograde": { "path": "../" }
+  },
+  "versions": ["WasmMemTest"]
+}

@@ -18,6 +18,18 @@ export default class EngineRuntimeModule extends WasmModule {
       writelnFloat: (value) => {
         console.log(value);
       },
+      writelnChar: (value) => {
+        console.log(value);
+      },
+      writelnUbyte: (value) => {
+        console.log(value);
+      },
+      writelnByte: (value) => {
+        console.log(value);
+      },
+      writelnBool: (value) => {
+        console.log(value == 1 ? "true" : "false");
+      },
       __assert: (assertionMsgPtr, srcFilePtr, srcLineNumber) => {
         const assertionMessage = this.getCString(assertionMsgPtr);
         const srcFile = this.getCString(srcFilePtr);

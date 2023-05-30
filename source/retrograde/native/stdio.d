@@ -34,3 +34,19 @@ void writelnDouble(double number) {
 void writelnFloat(float number) {
     printf("%f\n", number);
 }
+
+void writelnChar(char character) {
+    printf("%c\n", character);
+}
+
+void writelnUbyte(ubyte number) {
+    printf("%d\n", number);
+}
+
+void writelnByte(byte number) {
+    printf("%d\n", number);
+}
+
+void writelnBool(bool value) {
+    printf("%s\n", value ? "true" : "false");
+}

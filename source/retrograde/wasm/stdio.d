@@ -13,12 +13,15 @@ module retrograde.wasm.stdio;
 
 version (WebAssembly)  :  //
 
-export extern (C) void writelnStr(string msg);
+export:
+extern (C):
 
-export extern (C) void writelnUint(uint number);
-
-export extern (C) void writelnInt(int number);
-
-export extern (C) void writelnDouble(double number);
-
-export extern (C) void writelnFloat(float number);
+void writelnStr(string msg);
+void writelnUint(uint number);
+void writelnInt(int number);
+void writelnDouble(double number);
+void writelnFloat(float number);
+void writelnChar(char character);
+void writelnUbyte(ubyte number);
+void writelnByte(byte number);
+void writelnBool(bool value);

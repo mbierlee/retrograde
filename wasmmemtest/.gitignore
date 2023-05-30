@@ -1,0 +1,17 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/wasmmemtest
+wasmmemtest.so
+wasmmemtest.dylib
+wasmmemtest.dll
+wasmmemtest.a
+wasmmemtest.lib
+wasmmemtest-test-*
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst
+/web/bin

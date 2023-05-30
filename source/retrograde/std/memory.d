@@ -14,5 +14,5 @@ module retrograde.std.memory;
 version (WebAssembly) {
     public import retrograde.wasm.memory;
 } else {
-    // static assert(0, "Memory management is yet implemented for this platform.");
+    static assert(0, "Memory management is yet implemented for this platform.");
 }

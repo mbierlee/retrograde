@@ -28,6 +28,14 @@ void writeln(T)(T value) {
         writelnDouble(value);
     } else static if (is(T == float)) {
         writelnFloat(value);
+    } else static if (is(T == char)) {
+        writelnChar(value);
+    } else static if (is(T == ubyte)) {
+        writelnUbyte(value);
+    } else static if (is(T == byte)) {
+        writelnByte(value);
+    } else static if (is(T == bool)) {
+        writelnBool(value);
     } else {
         static assert(0, "Unsupported type");
     }
