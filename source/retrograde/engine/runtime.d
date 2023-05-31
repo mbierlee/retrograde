@@ -62,6 +62,12 @@ template DefaultEntryPoint() {
                 import retrograde.engine.runtime : initFunction, updateFunction;
                 initFunction = &init;
                 updateFunction = &update;
+
+                import retrograde.wasm.memory : initializeHeapMemory;
+                // These function pointers somehow end up on the heap, so we need to offset them.
+                // and for some reason there's an extra one, no idea where it comes from!
+                // Find a more reliable way to determine the true start of the free heap.
+                initializeHeapMemory(initFunction.sizeof + updateFunction.sizeof + updateFunction.sizeof); 
             ");
 
             // We do not run the internal engine loop in WebAssembly,

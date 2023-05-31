@@ -6,7 +6,7 @@
   "copyright": "Copyright © 2023, Mike Bierlee",
   "targetType": "executable",
   "targetPath": "web/bin",
-  "dflags-ldc2": ["-fvisibility=hidden", "-betterC"],
+  "dflags-ldc2": ["-fvisibility=hidden", "-betterC", "-O3"],
   "lflags": ["-allow-undefined"],
   "dependencies": {
     "retrograde": { "path": "../" }
