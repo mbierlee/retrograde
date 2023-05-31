@@ -138,6 +138,17 @@ void runMemTests() {
         assert(block.checksum == (block.blockSize ^ MemoryBlock.BlockHeader));
         assert(block.isValidBlock());
     });
+
+    test("initializeHeapMemory with offset initializes the heap at the offset", {
+        initializeHeapMemory(10);
+
+        MemoryBlock* block = cast(MemoryBlock*) heapStart;
+        assert(block.header == MemoryBlock.BlockHeader);
+        assert(!block.isAllocated);
+        assert(block.blockSize == heapSize() - MemoryBlock.sizeof);
+        assert(block.checksum == (block.blockSize ^ MemoryBlock.BlockHeader));
+        assert(block.isValidBlock());
+    });
 }
 
 void test(string name, void function() testFunc) {
