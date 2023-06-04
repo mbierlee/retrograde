@@ -68,10 +68,7 @@ template DefaultEntryPoint() {
                 // These function pointers somehow end up on the heap, so we need to offset them.
                 // and for some reason there's an extra one, no idea where it comes from!
                 // Find a more reliable way to determine the true start of the free heap.
-                //
-                // UPDATE: I think it's the table? not sure. Also added another 4 bytes to the offset since I think
-                // It reserves 4x4 bytes.
-                auto res = initializeHeapMemory(initFunction.sizeof + updateFunction.sizeof + (uint.sizeof * 2)); 
+                auto res = initializeHeapMemory(initFunction.sizeof + updateFunction.sizeof + updateFunction.sizeof); 
                 if (res.isFailure) {
                     import retrograde.std.stdio : writeErrLnStr;
                     writeErrLnStr(res.errorMessage);
