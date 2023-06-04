@@ -16,16 +16,22 @@ module retrograde.wasm.memory;
 
 version (WebAssembly)  :  //
 
-import retrograde.std.result : success, failure, Result;
+import retrograde.std.result : success, failure, Result, OperationResult;
 
 Result!(void*) malloc(size_t size) {
     assert(false, "not yet implemented");
 }
 
-void initializeHeapMemory(size_t _heapOffset = 0) {
+OperationResult initializeHeapMemory(size_t _heapOffset = 0) {
     heapOffset = _heapOffset;
+    auto res = maybeGrowHeap(0);
+    if (res.isFailure) {
+        return res;
+    }
+
     wipeHeap();
-    createBlock(heapStart, heapSize() - MemoryBlock.sizeof);
+    createBlock(heapStart, heapSize - MemoryBlock.sizeof);
+    return success();
 }
 
 void printDebugInfo() {
@@ -73,6 +79,10 @@ private ubyte* heapStart() {
     return &__heap_base + heapOffset;
 }
 
+/** 
+ * Sets the num bytes of the block of memory pointed by ptr to the specified value (interpreted as an unsigned char).
+ * Returns: ptr as-is.
+ */
 export extern (C) ubyte* memset(ubyte* ptr, ubyte value, size_t num) {
     foreach (i; 0 .. num) {
         ptr[i] = value;
@@ -107,6 +117,20 @@ private void createBlock(void* ptr, size_t blockSize) {
     *block = MemoryBlock();
     block.blockSize = blockSize;
     block.setChecksum();
+}
+
+private OperationResult maybeGrowHeap(size_t wantedBytes) {
+    auto wantedTotal = wantedBytes + MemoryBlock.sizeof;
+    auto currentHeapSize = heapSize;
+    if (currentHeapSize < wantedTotal) {
+        size_t pages = (wantedTotal - currentHeapSize) / _64KiB + 1;
+        auto res = llvm_wasm_memory_grow(0, pages);
+        if (res == -1) {
+            return failure("Failed to grow heap");
+        }
+    }
+
+    return success();
 }
 
 version (WasmMemTest)  :  //
