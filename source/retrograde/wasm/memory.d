@@ -18,7 +18,27 @@ version (WebAssembly)  :  //
 
 import retrograde.std.result : success, failure, Result, OperationResult;
 
-Result!(void*) malloc(size_t size) {
+/** 
+ * Allocate memory block of size bytes. Returns a pointer to the allocated memory, 
+ * or a null pointer if the request fails.
+ */
+export extern (C) void* malloc(size_t size) {
+    auto res = findFreeBlock(size);
+    if (res.isSuccessful) {
+        auto block = res.value;
+        if (splitBlock(block, size).isFailure) {
+            return null;
+        }
+
+        if (allocateBlock(block, size).isFailure) {
+            return null;
+        }
+
+        //TODO: return success
+    } else {
+        assert(false, "free block not found: not yet implemented");
+    }
+
     assert(false, "not yet implemented");
 }
 
@@ -50,6 +70,35 @@ void printDebugInfo() {
     writeln(heapSize);
 }
 
+/** 
+ * Sets the num bytes of the block of memory pointed by ptr to the specified value (interpreted as an unsigned char).
+ * Returns: ptr as-is.
+ */
+export extern (C) ubyte* memset(ubyte* ptr, ubyte value, size_t num) {
+    foreach (i; 0 .. num) {
+        ptr[i] = value;
+    }
+
+    return ptr;
+}
+
+/**
+ * Compares the block of memory pointed by ptr1 to the block of memory pointed by ptr2, returning zero if they are equal
+ * or a value different from zero representing which is greater if they are not.
+ */
+export extern (C) int memcmp(const void* ptr1, const void* ptr2, size_t num) {
+    const ubyte* p1 = cast(const ubyte*) ptr1;
+    const ubyte* p2 = cast(const ubyte*) ptr2;
+
+    foreach (i; 0 .. num) {
+        if (p1[i] != p2[i]) {
+            return p1[i] - p2[i];
+        }
+    }
+
+    return 0;
+}
+
 private enum _64KiB = 65_536;
 private size_t heapOffset = 0;
 
@@ -79,32 +128,25 @@ private ubyte* heapStart() {
     return &__heap_base + heapOffset;
 }
 
-/** 
- * Sets the num bytes of the block of memory pointed by ptr to the specified value (interpreted as an unsigned char).
- * Returns: ptr as-is.
- */
-export extern (C) ubyte* memset(ubyte* ptr, ubyte value, size_t num) {
-    foreach (i; 0 .. num) {
-        ptr[i] = value;
-    }
-
-    return ptr;
-}
-
 private align(16) struct MemoryBlock {
     enum BlockHeader = 0x4B4F4C42;
 
     size_t header = BlockHeader;
     bool isAllocated = false;
-    size_t blockSize;
+    size_t blockSize; // In bytes
+    size_t usedSize; // In bytes
     size_t checksum;
 
     void setChecksum() {
-        checksum = blockSize ^ BlockHeader;
+        checksum = calculateChecksum();
     }
 
     bool isValidBlock() {
-        return header == BlockHeader && checksum == (blockSize ^ BlockHeader);
+        return header == BlockHeader && checksum == calculateChecksum();
+    }
+
+    private size_t calculateChecksum() {
+        return blockSize ^ BlockHeader;
     }
 }
 
@@ -130,6 +172,53 @@ private OperationResult maybeGrowHeap(size_t wantedBytes) {
         }
     }
 
+    return success();
+}
+
+private Result!(MemoryBlock*) findFreeBlock(size_t wantedBytes) {
+    MemoryBlock* block = cast(MemoryBlock*) heapStart;
+    while (block.isValidBlock()) {
+        if (!block.isAllocated && block.blockSize >= wantedBytes) {
+            return success(block);
+        }
+
+        block = cast(MemoryBlock*)(cast(ubyte*) block + block.blockSize + MemoryBlock.sizeof);
+    }
+
+    return failure!(MemoryBlock*)("No free block found");
+}
+
+private OperationResult splitBlock(MemoryBlock* block, size_t wantedBytes) {
+    if (!block.isValidBlock()) {
+        return failure("Failed to split block: it is not valid");
+    }
+
+    if (wantedBytes > block.blockSize) {
+        return failure("Failed to split block: it is too small");
+    }
+
+    if (wantedBytes + MemoryBlock.sizeof >= block.blockSize) {
+        return success();
+    }
+
+    auto newBlockSize = block.blockSize - wantedBytes - MemoryBlock.sizeof;
+    createBlock(cast(ubyte*) block + MemoryBlock.sizeof + wantedBytes, newBlockSize);
+    block.blockSize = wantedBytes;
+    block.setChecksum();
+    return success();
+}
+
+private OperationResult allocateBlock(MemoryBlock* block, size_t usedBytes) {
+    if (!block.isValidBlock()) {
+        return failure("Failed to allocate block: it is not valid");
+    }
+
+    if (usedBytes > block.blockSize) {
+        return failure("Failed to allocate block: it is too small");
+    }
+
+    block.isAllocated = true;
+    block.usedSize = usedBytes;
     return success();
 }
 
@@ -159,6 +248,7 @@ void runMemTests() {
         assert(block.header == MemoryBlock.BlockHeader);
         assert(!block.isAllocated);
         assert(block.blockSize == heapSize() - MemoryBlock.sizeof);
+        assert(block.usedSize == 0);
         assert(block.checksum == (block.blockSize ^ MemoryBlock.BlockHeader));
         assert(block.isValidBlock());
     });
@@ -170,8 +260,101 @@ void runMemTests() {
         assert(block.header == MemoryBlock.BlockHeader);
         assert(!block.isAllocated);
         assert(block.blockSize == heapSize() - MemoryBlock.sizeof);
+        assert(block.usedSize == 0);
         assert(block.checksum == (block.blockSize ^ MemoryBlock.BlockHeader));
         assert(block.isValidBlock());
+    });
+
+    test("findFreeBlock finds a free block", {
+        initializeHeapMemory();
+        auto res = findFreeBlock(10);
+        assert(res.isSuccessful);
+        assert(res.value.header == MemoryBlock.BlockHeader);
+        assert(!res.value.isAllocated);
+        assert(res.value.blockSize == heapSize() - MemoryBlock.sizeof);
+        assert(res.value.usedSize == 0);
+        assert(res.value.checksum == (res.value.blockSize ^ MemoryBlock.BlockHeader));
+        assert(res.value.isValidBlock());
+    });
+
+    test("splitBlock splits a block to the wanted size", {
+        initializeHeapMemory();
+        auto res = findFreeBlock(10);
+        assert(res.isSuccessful);
+        auto block = res.value;
+        auto splitRes = splitBlock(block, 5);
+        assert(splitRes.isSuccessful);
+        assert(block.header == MemoryBlock.BlockHeader);
+        assert(!block.isAllocated);
+        assert(block.blockSize == 5);
+        assert(block.usedSize == 0);
+        assert(block.checksum == (block.blockSize ^ MemoryBlock.BlockHeader));
+        assert(block.isValidBlock());
+
+        auto nextBlock = cast(MemoryBlock*)(cast(ubyte*) block + block.blockSize + MemoryBlock
+            .sizeof);
+        assert(nextBlock.header == MemoryBlock.BlockHeader);
+        assert(!nextBlock.isAllocated);
+        assert(nextBlock.blockSize == heapSize() - MemoryBlock.sizeof - 5 - MemoryBlock.sizeof);
+        assert(nextBlock.usedSize == 0);
+        assert(nextBlock.checksum == (nextBlock.blockSize ^ MemoryBlock.BlockHeader));
+        assert(nextBlock.isValidBlock());
+    });
+
+    test("splitBlock does not split a block if it is too small", {
+        initializeHeapMemory();
+        createBlock(heapStart, 10);
+        auto res = findFreeBlock(10);
+        assert(res.isSuccessful);
+        auto block = res.value;
+        auto splitRes = splitBlock(block, 15);
+        assert(!splitRes.isSuccessful);
+        assert(splitRes.errorMessage == "Failed to split block: it is too small");
+        assert(block.header == MemoryBlock.BlockHeader);
+        assert(!block.isAllocated);
+        assert(block.blockSize == 10);
+        assert(block.usedSize == 0);
+        assert(block.checksum == (block.blockSize ^ MemoryBlock.BlockHeader));
+        assert(block.isValidBlock());
+    });
+
+    test("splitBlock does not split a block if it is invalid", {
+        initializeHeapMemory();
+        auto res = findFreeBlock(10);
+        assert(res.isSuccessful);
+        auto block = res.value;
+        block.header = 0;
+        auto splitRes = splitBlock(block, 5);
+        assert(!splitRes.isSuccessful);
+        assert(splitRes.errorMessage == "Failed to split block: it is not valid");
+    });
+
+    test("allocateBlock allocates a block", {
+        initializeHeapMemory();
+        createBlock(heapStart, 10);
+        auto res = findFreeBlock(10);
+        assert(res.isSuccessful);
+        auto block = res.value;
+        auto allocRes = allocateBlock(block, 5);
+        assert(allocRes.isSuccessful);
+        assert(block.header == MemoryBlock.BlockHeader);
+        assert(block.isAllocated);
+        assert(block.blockSize == 10);
+        assert(block.usedSize == 5);
+        assert(block.checksum == (block.blockSize ^ MemoryBlock.BlockHeader));
+        assert(block.isValidBlock());
+    });
+
+    test("allocateBlock does not allocate a block if it is too small", {
+        initializeHeapMemory();
+        createBlock(heapStart, 10);
+        auto res = findFreeBlock(10);
+        assert(res.isSuccessful);
+        auto block = res.value;
+        auto allocRes = allocateBlock(block, 15);
+        assert(!allocRes.isSuccessful);
+        assert(allocRes.errorMessage == "Failed to allocate block: it is too small");
+        assert(!block.isAllocated);
     });
 }
 
