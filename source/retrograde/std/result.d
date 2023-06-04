@@ -35,6 +35,10 @@ struct Result(T) {
         return this.success;
     }
 
+    bool isFailure() {
+        return !this.success;
+    }
+
     T value() {
         assert(this.success, "Result is not successful and should not be accessed. Make sure to check isSuccessful() first.");
         return this.payload.value;
@@ -75,6 +79,10 @@ struct OperationResult {
 
     bool isSuccessful() {
         return this.success;
+    }
+
+    bool isFailure() {
+        return !this.success;
     }
 
     string errorMessage() {
@@ -158,4 +166,18 @@ unittest {
     auto result = failure("Something went wrong");
     assert(!result.isSuccessful);
     assert(result.errorMessage == "Something went wrong");
+}
+
+@("Result isFailure is opposite of isSuccessful")
+unittest {
+    auto result = Result!int("Something went wrong");
+    assert(result.isFailure);
+    assert(!result.isSuccessful);
+}
+
+@("OperationResult isFailure is opposite of isSuccessful")
+unittest {
+    auto result = OperationResult(false, "Something went wrong");
+    assert(result.isFailure);
+    assert(!result.isSuccessful);
 }

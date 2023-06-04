@@ -48,5 +48,5 @@ void writelnByte(byte number) {
 }
 
 void writelnBool(bool value) {
-    printf("%s\n", value ? "true" : "false");
+    printf("%s\n", value ? "true".ptr : "false".ptr);
 }
