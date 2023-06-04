@@ -42,34 +42,6 @@ export extern (C) void* malloc(size_t size) {
     assert(false, "not yet implemented");
 }
 
-OperationResult initializeHeapMemory(size_t _heapOffset = 0) {
-    heapOffset = _heapOffset;
-    auto res = maybeGrowHeap(0);
-    if (res.isFailure) {
-        return res;
-    }
-
-    wipeHeap();
-    createBlock(heapStart, heapSize - MemoryBlock.sizeof);
-    return success();
-}
-
-void printDebugInfo() {
-    import retrograde.std.stdio : writeln;
-
-    writeln("Memory debug info: ");
-    writeln("end of data: ");
-    writeln(cast(size_t)&__data_end);
-    writeln("start of heap base: ");
-    writeln(cast(size_t)&__heap_base);
-    writeln("start of usable heap: ");
-    writeln(cast(size_t) heapStart);
-    writeln("memory size: ");
-    writeln(llvm_wasm_memory_size(0) * _64KiB);
-    writeln("freely usable memory: ");
-    writeln(heapSize);
-}
-
 /** 
  * Sets the num bytes of the block of memory pointed by ptr to the specified value (interpreted as an unsigned char).
  * Returns: ptr as-is.
@@ -97,6 +69,34 @@ export extern (C) int memcmp(const void* ptr1, const void* ptr2, size_t num) {
     }
 
     return 0;
+}
+
+OperationResult initializeHeapMemory(size_t _heapOffset = 0) {
+    heapOffset = _heapOffset;
+    auto res = maybeGrowHeap(0);
+    if (res.isFailure) {
+        return res;
+    }
+
+    wipeHeap();
+    createBlock(heapStart, heapSize - MemoryBlock.sizeof);
+    return success();
+}
+
+void printDebugInfo() {
+    import retrograde.std.stdio : writeln;
+
+    writeln("Memory debug info: ");
+    writeln("end of data: ");
+    writeln(cast(size_t)&__data_end);
+    writeln("start of heap base: ");
+    writeln(cast(size_t)&__heap_base);
+    writeln("start of usable heap: ");
+    writeln(cast(size_t) heapStart);
+    writeln("memory size: ");
+    writeln(llvm_wasm_memory_size(0) * _64KiB);
+    writeln("freely usable memory: ");
+    writeln(heapSize);
 }
 
 private enum _64KiB = 65_536;
