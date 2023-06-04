@@ -25,3 +25,13 @@ void writelnChar(char character);
 void writelnUbyte(ubyte number);
 void writelnByte(byte number);
 void writelnBool(bool value);
+
+void writeErrLnStr(string msg);
+void writeErrLnUint(uint number);
+void writeErrLnInt(int number);
+void writeErrLnDouble(double number);
+void writeErrLnFloat(float number);
+void writeErrLnChar(char character);
+void writeErrLnUbyte(ubyte number);
+void writeErrLnByte(byte number);
+void writeErrLnBool(bool value);

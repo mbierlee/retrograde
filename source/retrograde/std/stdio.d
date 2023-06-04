@@ -17,6 +17,9 @@ version (WebAssembly) {
     public import retrograde.native.stdio;
 }
 
+/** 
+ * Prints a value to the standard output stream.
+ */
 void writeln(T)(T value) {
     static if (is(T == string)) {
         writelnStr(value);
@@ -36,6 +39,33 @@ void writeln(T)(T value) {
         writelnByte(value);
     } else static if (is(T == bool)) {
         writelnBool(value);
+    } else {
+        static assert(0, "Unsupported type");
+    }
+}
+
+/** 
+ * Prints a value to the standard error stream.
+ */
+void writeErrLn(T)(T value) {
+    static if (is(T == string)) {
+        writeErrLnStr(value);
+    } else static if (is(T == uint)) {
+        writeErrLnUint(value);
+    } else static if (is(T == int)) {
+        writeErrLnInt(value);
+    } else static if (is(T == double)) {
+        writeErrLnDouble(value);
+    } else static if (is(T == float)) {
+        writeErrLnFloat(value);
+    } else static if (is(T == char)) {
+        writeErrLnChar(value);
+    } else static if (is(T == ubyte)) {
+        writeErrLnUbyte(value);
+    } else static if (is(T == byte)) {
+        writeErrLnByte(value);
+    } else static if (is(T == bool)) {
+        writeErrLnBool(value);
     } else {
         static assert(0, "Unsupported type");
     }
