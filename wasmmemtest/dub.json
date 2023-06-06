@@ -11,5 +11,5 @@
   "dependencies": {
     "retrograde": { "path": "../" }
   },
-  "versions": ["WasmMemTest"]
+  "versions": ["WasmMemTest", "MemoryDebug"]
 }

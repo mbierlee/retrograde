@@ -18,6 +18,10 @@ version (WebAssembly)  :  //
 
 import retrograde.std.result : success, failure, Result, OperationResult;
 
+version (MemoryDebug) {
+    import retrograde.std.stdio : writeErrLn;
+}
+
 /** 
  * Allocate memory block of size bytes. Returns a pointer to the allocated memory, 
  * or a null pointer if the request fails.
@@ -26,15 +30,25 @@ export extern (C) void* malloc(size_t size) {
     auto res = findFreeBlock(size);
     if (res.isSuccessful) {
         auto block = res.value;
-        if (splitBlock(block, size).isFailure) {
+        auto splitRes = splitBlock(block, size);
+        if (splitRes.isFailure) {
+            version (MemoryDebug) {
+                writeErrLn(splitRes.errorMessage);
+            }
+
             return null;
         }
 
-        if (allocateBlock(block, size).isFailure) {
+        auto allocateRes = allocateBlock(block, size);
+        if (allocateRes.isFailure) {
+            version (MemoryDebug) {
+                writeErrLn(allocateRes.errorMessage);
+            }
+
             return null;
         }
 
-        //TODO: return success
+        return cast(void*) block.dataStart;
     } else {
         assert(false, "free block not found: not yet implemented");
     }
@@ -145,6 +159,26 @@ private align(16) struct MemoryBlock {
         return header == BlockHeader && checksum == calculateChecksum();
     }
 
+    ubyte[] blockData() {
+        return ((cast(ubyte*)&this) + typeof(this).sizeof)[0 .. blockSize];
+    }
+
+    ubyte[] usedData() {
+        return blockData[0 .. usedSize];
+    }
+
+    ubyte* dataStart() {
+        return &blockData[0];
+    }
+
+    ubyte* blockDataEnd() {
+        return dataStart + blockSize;
+    }
+
+    ubyte* usedDataEnd() {
+        return dataStart + usedSize;
+    }
+
     private size_t calculateChecksum() {
         return blockSize ^ BlockHeader;
     }
@@ -226,7 +260,9 @@ version (WasmMemTest)  :  //
 import retrograde.std.stdio : writeln;
 
 void runMemTests() {
-    printDebugInfo();
+    version (MemoryDebug) {
+        printDebugInfo();
+    }
 
     writeln("Starting memory tests...");
     writeln("");
@@ -355,6 +391,51 @@ void runMemTests() {
         assert(!allocRes.isSuccessful);
         assert(allocRes.errorMessage == "Failed to allocate block: it is too small");
         assert(!block.isAllocated);
+    });
+
+    test("allocateBlock does not allocate a block if it is invalid", {
+        initializeHeapMemory();
+        auto res = findFreeBlock(10);
+        assert(res.isSuccessful);
+        auto block = res.value;
+        block.header = 0;
+        auto allocRes = allocateBlock(block, 5);
+        assert(!allocRes.isSuccessful);
+        assert(allocRes.errorMessage == "Failed to allocate block: it is not valid");
+        assert(!block.isAllocated);
+    });
+
+    test("Access MemoryBlock data and pointers", {
+        initializeHeapMemory();
+        createBlock(heapStart, 10);
+        auto res = findFreeBlock(10);
+        assert(res.isSuccessful);
+        auto block = res.value;
+        auto allocRes = allocateBlock(block, 5);
+        assert(allocRes.isSuccessful);
+
+        assert(block.dataStart == cast(ubyte*) block + MemoryBlock.sizeof);
+        assert(block.blockDataEnd == cast(ubyte*) block + MemoryBlock.sizeof + 10);
+        assert(block.usedDataEnd == cast(ubyte*) block + MemoryBlock.sizeof + 5);
+
+        auto data = cast(ubyte*) block + MemoryBlock.sizeof;
+        data[0] = 'H';
+        data[1] = 'e';
+        data[2] = 'l';
+        data[3] = 'l';
+        data[4] = 'o';
+        assert(block.header == MemoryBlock.BlockHeader);
+        assert(block.isValidBlock);
+        assert(block.blockData[0] == 'H');
+        assert(block.blockData[1] == 'e');
+        assert(block.blockData[2] == 'l');
+        assert(block.blockData[3] == 'l');
+        assert(block.blockData[4] == 'o');
+        assert(block.blockData[5] == '\0');
+        assert(block.blockData[6] == '\0');
+        assert(block.blockData[7] == '\0');
+        assert(block.blockData[8] == '\0');
+        assert(block.blockData[9] == '\0');
     });
 }
 
