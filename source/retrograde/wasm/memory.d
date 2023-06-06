@@ -50,10 +50,20 @@ export extern (C) void* malloc(size_t size) {
 
         return cast(void*) block.dataStart;
     } else {
-        assert(false, "free block not found: not yet implemented");
-    }
+        // TODO: Find out if neighbouring blocks can be merged to make room for the requested size.
+        auto extendRes = extendBlockspace(size);
+        if (extendRes.isFailure) {
+            version (MemoryDebug) {
+                writeErrLn(extendRes.errorMessage);
+            }
 
-    assert(false, "not yet implemented");
+            return null;
+        }
+
+        //TODO: Set free block to previous heap end here to speed up findFreeBlock (when implemented)
+
+        return malloc(size);
+    }
 }
 
 /** 
@@ -101,7 +111,7 @@ void printDebugInfo() {
     import retrograde.std.stdio : writeln;
 
     writeln("--Memory Debug Info--");
-    writeln("End of Data: ");
+    writeln("End of Static Data: ");
     writeln(cast(size_t)&__data_end);
     writeln("Start of Heap Base: ");
     writeln(cast(size_t)&__heap_base);
@@ -228,8 +238,12 @@ private OperationResult growHeap(size_t wantedBytes) {
 }
 
 private Result!(MemoryBlock*) findFreeBlock(size_t wantedBytes) {
+    //TODO: Replace with Option
+    //TODO: Keep track of the first free block to speed up this search
+
     MemoryBlock* block = cast(MemoryBlock*) heapStart;
-    while (block.isValidBlock()) {
+    auto endOfHeap = cast(void*) heapEnd;
+    while (cast(void*) block < endOfHeap && block.isValidBlock()) {
         if (!block.isAllocated && block.blockSize >= wantedBytes) {
             return success(block);
         }
@@ -274,6 +288,19 @@ private OperationResult allocateBlock(MemoryBlock* block, size_t usedBytes) {
     return success();
 }
 
+private OperationResult extendBlockspace(size_t wantedBytes) {
+    auto previousEndOfHeap = cast(ubyte*) heapEnd;
+    auto res = growHeap(wantedBytes + MemoryBlock.sizeof);
+    if (res.isFailure) {
+        return res;
+    }
+
+    auto newEndOfHeap = cast(ubyte*) heapEnd;
+    auto newBlockSize = newEndOfHeap - previousEndOfHeap - MemoryBlock.sizeof;
+    createBlock(previousEndOfHeap, newBlockSize);
+    return success();
+}
+
 version (WasmMemTest)  :  //
 import retrograde.std.stdio : writeln;
 
@@ -299,8 +326,6 @@ void runMemTests() {
     });
 
     test("initializeHeapMemory initializes the heap", {
-        initializeHeapMemory();
-
         MemoryBlock* block = cast(MemoryBlock*) heapStart;
         assert(block.header == MemoryBlock.BlockHeader);
         assert(!block.isAllocated);
@@ -312,7 +337,6 @@ void runMemTests() {
 
     test("initializeHeapMemory with offset initializes the heap at the offset", {
         initializeHeapMemory(10);
-
         MemoryBlock* block = cast(MemoryBlock*) heapStart;
         assert(block.header == MemoryBlock.BlockHeader);
         assert(!block.isAllocated);
@@ -323,7 +347,6 @@ void runMemTests() {
     });
 
     test("findFreeBlock finds a free block", {
-        initializeHeapMemory();
         auto res = findFreeBlock(10);
         assert(res.isSuccessful);
         assert(res.value.header == MemoryBlock.BlockHeader);
@@ -334,8 +357,14 @@ void runMemTests() {
         assert(res.value.isValidBlock());
     });
 
+    test("findFreeBlock fails when there are no free blocks", {
+        createBlock(heapStart, 10);
+        allocateBlock(cast(MemoryBlock*) heapStart, 10);
+        auto res = findFreeBlock(3);
+        assert(res.isFailure);
+    });
+
     test("splitBlock splits a block to the wanted size", {
-        initializeHeapMemory();
         auto res = findFreeBlock(10);
         assert(res.isSuccessful);
         auto block = res.value;
@@ -359,7 +388,6 @@ void runMemTests() {
     });
 
     test("splitBlock does not split a block if it is too small", {
-        initializeHeapMemory();
         createBlock(heapStart, 10);
         auto res = findFreeBlock(10);
         assert(res.isSuccessful);
@@ -376,7 +404,6 @@ void runMemTests() {
     });
 
     test("splitBlock does not split a block if it is invalid", {
-        initializeHeapMemory();
         auto res = findFreeBlock(10);
         assert(res.isSuccessful);
         auto block = res.value;
@@ -387,7 +414,6 @@ void runMemTests() {
     });
 
     test("allocateBlock allocates a block", {
-        initializeHeapMemory();
         createBlock(heapStart, 10);
         auto res = findFreeBlock(10);
         assert(res.isSuccessful);
@@ -403,7 +429,6 @@ void runMemTests() {
     });
 
     test("allocateBlock does not allocate a block if it is too small", {
-        initializeHeapMemory();
         createBlock(heapStart, 10);
         auto res = findFreeBlock(10);
         assert(res.isSuccessful);
@@ -415,7 +440,6 @@ void runMemTests() {
     });
 
     test("allocateBlock does not allocate a block if it is invalid", {
-        initializeHeapMemory();
         auto res = findFreeBlock(10);
         assert(res.isSuccessful);
         auto block = res.value;
@@ -427,7 +451,6 @@ void runMemTests() {
     });
 
     test("Access MemoryBlock data and pointers", {
-        initializeHeapMemory();
         createBlock(heapStart, 10);
         auto res = findFreeBlock(10);
         assert(res.isSuccessful);
@@ -459,8 +482,20 @@ void runMemTests() {
         assert(block.blockData[9] == '\0');
     });
 
+    test("extendBlockspace extends block space", {
+        auto firstBlock = cast(MemoryBlock*) heapStart;
+        assert(heapEnd == firstBlock.blockDataEnd);
+        extendBlockspace(10 + MemoryBlock.sizeof);
+
+        auto secondBlock = cast(MemoryBlock*) firstBlock.blockDataEnd;
+        assert(secondBlock.isValidBlock());
+        assert(secondBlock.blockSize == cast(size_t) heapEnd - cast(
+            size_t) secondBlock - MemoryBlock.sizeof);
+        assert(!secondBlock.isAllocated);
+        assert(secondBlock.usedSize == 0);
+    });
+
     test("malloc allocates memory when free block is available", {
-        initializeHeapMemory();
         createBlock(heapStart, 10);
         auto ptr = malloc(5);
         assert(ptr != null);
@@ -473,9 +508,27 @@ void runMemTests() {
         assert(block.checksum == (block.blockSize ^ MemoryBlock.BlockHeader));
         assert(block.isValidBlock());
     });
+
+    test("malloc extends memory when no free block is available", {
+        auto block = cast(MemoryBlock*) heapStart;
+        assert(block.isValidBlock());
+        allocateBlock(block, block.blockSize - MemoryBlock.sizeof);
+        auto findRes = findFreeBlock(10);
+        assert(!findRes.isSuccessful);
+
+        auto prevHeapEnd = heapEnd;
+        auto ptr = malloc(10);
+        assert(ptr != null);
+        assert(ptr == (cast(void*) prevHeapEnd) + MemoryBlock.sizeof);
+    });
+
+    writeln("");
+    writeln("All tests passed!");
+    writeln("");
 }
 
 void test(string name, void function() testFunc) {
+    initializeHeapMemory();
     writeln(name);
     testFunc();
     writeln("  OK!");
