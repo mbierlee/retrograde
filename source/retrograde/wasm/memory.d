@@ -67,7 +67,7 @@ export extern (C) void* malloc(size_t size) {
 }
 
 /** 
- * Sets the num bytes of the block of memory pointed by ptr to the specified value (interpreted as an unsigned char).
+ * Sets the num bytes of the block of memory pointed by ptr to the specified value (interpreted as an unsigned byte).
  * Returns: ptr as-is.
  */
 export extern (C) ubyte* memset(ubyte* ptr, ubyte value, size_t num) {
