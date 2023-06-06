@@ -70,9 +70,9 @@ export extern (C) void* malloc(size_t size) {
  * Sets the num bytes of the block of memory pointed by ptr to the specified value (interpreted as an unsigned byte).
  * Returns: ptr as-is.
  */
-export extern (C) ubyte* memset(ubyte* ptr, ubyte value, size_t num) {
+export extern (C) void* memset(void* ptr, ubyte value, size_t num) {
     foreach (i; 0 .. num) {
-        ptr[i] = value;
+        *(cast(ubyte*)&ptr[i]) = value;
     }
 
     return ptr;
@@ -520,6 +520,30 @@ void runMemTests() {
         auto ptr = malloc(10);
         assert(ptr != null);
         assert(ptr == (cast(void*) prevHeapEnd) + MemoryBlock.sizeof);
+    });
+
+    test("memset sets memory", {
+        string str = "Hello World!";
+        auto ret = memset(cast(ubyte*) str.ptr, '-', 5);
+        assert(ret == cast(ubyte*) str.ptr);
+        assert(str == "----- World!");
+    });
+
+    test("memcmp compares two sequences of memory", {
+        auto ptr1 = malloc(10);
+        auto ptr2 = malloc(10);
+        assert(ptr1 != null);
+        assert(ptr1 != ptr2);
+
+        memset(ptr1, '$', 10);
+        memset(ptr2, '$', 10);
+        assert(memcmp(ptr1, ptr2, 10) == 0);
+
+        memset(ptr2, '#', 10);
+        assert(memcmp(ptr1, ptr2, 10) > 0);
+
+        memset(ptr2, '%', 10);
+        assert(memcmp(ptr1, ptr2, 10) < 0);
     });
 
     writeln("");
