@@ -100,17 +100,20 @@ OperationResult initializeHeapMemory(size_t _heapOffset = 0) {
 void printDebugInfo() {
     import retrograde.std.stdio : writeln;
 
-    writeln("Memory debug info: ");
-    writeln("end of data: ");
+    writeln("--Memory Debug Info--");
+    writeln("End of Data: ");
     writeln(cast(size_t)&__data_end);
-    writeln("start of heap base: ");
+    writeln("Start of Heap Base: ");
     writeln(cast(size_t)&__heap_base);
-    writeln("start of usable heap: ");
+    writeln("Start of Usable Heap: ");
     writeln(cast(size_t) heapStart);
-    writeln("memory size: ");
+    writeln("Memory Size: ");
     writeln(llvm_wasm_memory_size(0) * _64KiB);
-    writeln("freely usable memory: ");
+    writeln("Freely Usable Memory: ");
     writeln(heapSize);
+    writeln("End of Heap: ");
+    writeln(cast(size_t) heapEnd);
+    writeln("--End of Memory Debug Info--");
 }
 
 private enum _64KiB = 65_536;
@@ -141,6 +144,10 @@ private size_t heapSize() {
 
 private ubyte* heapStart() {
     return &__heap_base + heapOffset;
+}
+
+private ubyte* heapEnd() {
+    return heapStart + heapSize;
 }
 
 private align(16) struct MemoryBlock {
@@ -277,6 +284,7 @@ void runMemTests() {
         printDebugInfo();
     }
 
+    writeln("");
     writeln("Starting memory tests...");
     writeln("");
 
