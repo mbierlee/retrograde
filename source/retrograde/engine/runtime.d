@@ -52,6 +52,25 @@ export extern (C) void executeEngineLoopCycle(double elapsedTimeMs) {
 
 export extern (C) void initEngine() {
     assert(initFunction != null, "initFunction cannot be null. Set it before engine initialization.");
+    assert(updateFunction != null, "updateFunction cannot be null. Set it before engine initialization.");
+
+    version (WebAssembly) {
+        import retrograde.wasm.memory : initializeHeapMemory;
+
+        // These function pointers somehow end up on the heap, so we need to offset them.
+        // and for some reason there's an extra one, no idea where it comes from!
+        // Find a more reliable way to determine the true start of the free heap.
+        auto res = initializeHeapMemory(
+            initFunction.sizeof + updateFunction.sizeof + updateFunction.sizeof
+        );
+
+        if (res.isFailure) {
+            import retrograde.std.stdio : writeErrLnStr;
+
+            writeErrLnStr(res.errorMessage);
+        }
+    }
+
     initFunction();
 }
 
@@ -62,17 +81,6 @@ template DefaultEntryPoint() {
                 import retrograde.engine.runtime : initFunction, updateFunction;
                 initFunction = &init;
                 updateFunction = &update;
-
-                import retrograde.wasm.memory : initializeHeapMemory;
-
-                // These function pointers somehow end up on the heap, so we need to offset them.
-                // and for some reason there's an extra one, no idea where it comes from!
-                // Find a more reliable way to determine the true start of the free heap.
-                auto res = initializeHeapMemory(initFunction.sizeof + updateFunction.sizeof + updateFunction.sizeof); 
-                if (res.isFailure) {
-                    import retrograde.std.stdio : writeErrLnStr;
-                    writeErrLnStr(res.errorMessage);
-                }
             ");
 
             // We do not run the internal engine loop in WebAssembly,
@@ -80,7 +88,7 @@ template DefaultEntryPoint() {
         }
     } else {
         void main() {
-            //TODO: initialize game
+            initEngine();
             //TODO: run game loop
             assert(false, "Native update loop not yet implemented");
         }
