@@ -87,7 +87,7 @@ export extern (C) int memcmp(const void* ptr1, const void* ptr2, size_t num) {
 
 OperationResult initializeHeapMemory(size_t _heapOffset = 0) {
     heapOffset = _heapOffset;
-    auto res = maybeGrowHeap(0);
+    auto res = maybeGrowInitialHeap();
     if (res.isFailure) {
         return res;
     }
@@ -115,6 +115,7 @@ void printDebugInfo() {
 
 private enum _64KiB = 65_536;
 private size_t heapOffset = 0;
+private enum initialHeapSize = _64KiB;
 
 /**
  * @param mem Index of the WASM Memory object to grow.
@@ -195,15 +196,25 @@ private void createBlock(void* ptr, size_t blockSize) {
     block.setChecksum();
 }
 
-private OperationResult maybeGrowHeap(size_t wantedBytes) {
-    auto wantedTotal = wantedBytes + MemoryBlock.sizeof;
+private OperationResult maybeGrowInitialHeap() {
+    auto wantedTotal = MemoryBlock.sizeof + initialHeapSize;
     auto currentHeapSize = heapSize;
     if (currentHeapSize < wantedTotal) {
-        size_t pages = (wantedTotal - currentHeapSize) / _64KiB + 1;
-        auto res = llvm_wasm_memory_grow(0, pages);
-        if (res == -1) {
-            return failure("Failed to grow heap");
+        auto res = growHeap(wantedTotal);
+        if (res.isFailure) {
+            return res;
         }
+    }
+
+    return success();
+}
+
+private OperationResult growHeap(size_t wantedBytes) {
+    auto wantedTotal = wantedBytes + MemoryBlock.sizeof;
+    size_t pages = wantedTotal / _64KiB + 1;
+    auto res = llvm_wasm_memory_grow(0, pages);
+    if (res == -1) {
+        return failure("Failed to grow heap");
     }
 
     return success();
@@ -260,6 +271,8 @@ version (WasmMemTest)  :  //
 import retrograde.std.stdio : writeln;
 
 void runMemTests() {
+    initializeHeapMemory();
+
     version (MemoryDebug) {
         printDebugInfo();
     }
@@ -436,6 +449,21 @@ void runMemTests() {
         assert(block.blockData[7] == '\0');
         assert(block.blockData[8] == '\0');
         assert(block.blockData[9] == '\0');
+    });
+
+    test("malloc allocates memory when free block is available", {
+        initializeHeapMemory();
+        createBlock(heapStart, 10);
+        auto ptr = malloc(5);
+        assert(ptr != null);
+        auto block = cast(MemoryBlock*)(cast(ubyte*) ptr - MemoryBlock.sizeof);
+        assert(ptr == block.dataStart);
+        assert(block.header == MemoryBlock.BlockHeader);
+        assert(block.isAllocated);
+        assert(block.blockSize == 10);
+        assert(block.usedSize == 5);
+        assert(block.checksum == (block.blockSize ^ MemoryBlock.BlockHeader));
+        assert(block.isValidBlock());
     });
 }
 
