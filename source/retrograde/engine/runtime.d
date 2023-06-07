@@ -17,7 +17,7 @@ alias UpdateFunction = void function();
 InitFunction initFunction = null;
 UpdateFunction updateFunction = null;
 
-uint targetTickTimeMs = cast(uint)((1.0 / 60.0) * 1000);
+double targetTickTimeMs = (1.0 / 60.0) * 1000;
 long lagTickLimit = 100;
 bool terminateEngineLoop = false;
 
