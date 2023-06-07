@@ -243,16 +243,16 @@ private OperationResult growHeap(size_t wantedBytes) {
 }
 
 private Result!(MemoryBlock*) findFreeBlock(size_t wantedBytes) {
-    // TODO: Find out if neighbouring blocks can be merged to make room for the requested size.
     //TODO: Replace with Option
 
     MemoryBlock* block = firstFreeBlock !is null ? firstFreeBlock : cast(MemoryBlock*) heapStart;
     MemoryBlock* previousBlock = null;
     auto endOfHeap = cast(void*) heapEnd;
     while (cast(void*) block < endOfHeap && block.isValidBlock()) {
-        // if (!previousBlock.isAllocated) {
-
-        // }
+        if (previousBlock !is null && !previousBlock.isAllocated && !block.isAllocated) {
+            combineBlocks(previousBlock, block);
+            block = previousBlock;
+        }
 
         if (!block.isAllocated && block.blockSize >= wantedBytes) {
             return success(block);
@@ -405,12 +405,17 @@ void runMemTests() {
         assert(res.isFailure);
     });
 
-    // test("findFreeBlock combines adjected blocks that are not allocated", {
-    //     splitBlock(cast(MemoryBlock*) heapStart, 5);
-    //     auto res = findFreeBlock(10);
-    //     assert(res.isSuccessful);
-    //     assert(res.value is cast(MemoryBlock*) heapStart);
-    // });
+    test("findFreeBlock combines adjacent blocks that are not allocated", {
+        auto block1 = cast(MemoryBlock*) heapStart;
+        splitBlock(block1, 5);
+        auto block2 = block1.nextBlock;
+        assert(block2.isValidBlock());
+        auto res = findFreeBlock(10);
+        assert(res.isSuccessful);
+        assert(res.value is block1);
+        assert(block1.blockSize > 5);
+        assert(!block2.isValidBlock());
+    });
 
     test("combineBlocks combines two unallocated blocks", {
         splitBlock(cast(MemoryBlock*) heapStart, 5);
