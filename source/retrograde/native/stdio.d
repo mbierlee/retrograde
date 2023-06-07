@@ -27,6 +27,14 @@ void writelnInt(int number) {
     printf("%d\n", number);
 }
 
+void writelnUlong(ulong number) {
+    printf("%d\n", number);
+}
+
+void writelnLong(long number) {
+    printf("%d\n", number);
+}
+
 void writelnDouble(double number) {
     printf("%f\n", number);
 }
@@ -49,4 +57,48 @@ void writelnByte(byte number) {
 
 void writelnBool(bool value) {
     printf("%s\n", value ? "true".ptr : "false".ptr);
+}
+
+void writeErrLnStr(string msg) {
+    printf("ERROR: %s\n", msg.ptr);
+}
+
+void writeErrLnUint(uint number) {
+    printf("ERROR: %d\n", number);
+}
+
+void writeErrLnInt(int number) {
+    printf("ERROR: %d\n", number);
+}
+
+void writeErrLnULong(ulong number) {
+    printf("ERROR: %d\n", number);
+}
+
+void writeErrLnLong(long number) {
+    printf("ERROR: %d\n", number);
+}
+
+void writeErrLnDouble(double number) {
+    printf("ERROR: %f\n", number);
+}
+
+void writeErrLnFloat(float number) {
+    printf("ERROR: %f\n", number);
+}
+
+void writeErrLnChar(char character) {
+    printf("ERROR: %c\n", character);
+}
+
+void writeErrLnUbyte(ubyte number) {
+    printf("ERROR: %d\n", number);
+}
+
+void writeErrLnByte(byte number) {
+    printf("ERROR: %d\n", number);
+}
+
+void writeErrLnBool(bool value) {
+    printf("ERROR: %s\n", value ? "true".ptr : "false".ptr);
 }

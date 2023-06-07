@@ -19,6 +19,8 @@ extern (C):
 void writelnStr(string msg);
 void writelnUint(uint number);
 void writelnInt(int number);
+void writelnULong(ulong number);
+void writelnLong(long number);
 void writelnDouble(double number);
 void writelnFloat(float number);
 void writelnChar(char character);
@@ -29,6 +31,8 @@ void writelnBool(bool value);
 void writeErrLnStr(string msg);
 void writeErrLnUint(uint number);
 void writeErrLnInt(int number);
+void writeErrLnULong(ulong number);
+void writeErrLnLong(long number);
 void writeErrLnDouble(double number);
 void writeErrLnFloat(float number);
 void writeErrLnChar(char character);

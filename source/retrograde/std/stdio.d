@@ -27,6 +27,10 @@ void writeln(T)(T value) {
         writelnUint(value);
     } else static if (is(T == int)) {
         writelnInt(value);
+    } else static if (is(T == ulong)) {
+        writelnUlong(value);
+    } else static if (is(T == long)) {
+        writelnLong(value);
     } else static if (is(T == double)) {
         writelnDouble(value);
     } else static if (is(T == float)) {
@@ -54,6 +58,10 @@ void writeErrLn(T)(T value) {
         writeErrLnUint(value);
     } else static if (is(T == int)) {
         writeErrLnInt(value);
+    } else static if (is(T == ulong)) {
+        writeErrLnUlong(value);
+    } else static if (is(T == long)) {
+        writeErrLnLong(value);
     } else static if (is(T == double)) {
         writeErrLnDouble(value);
     } else static if (is(T == float)) {
