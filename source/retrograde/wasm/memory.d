@@ -29,6 +29,10 @@ version (MemoryDebug) {
  * or a null pointer if the request fails.
  */
 export extern (C) void* malloc(size_t size) {
+    if (size == 0) {
+        return null;
+    }
+
     auto res = findFreeBlock(size);
     if (res.isDefined) {
         auto block = res.value;
@@ -610,6 +614,11 @@ void runMemTests() {
         auto ptr = malloc(10);
         assert(ptr != null);
         assert(ptr is prevHeapEnd + MemoryBlock.sizeof);
+    });
+
+    test("malloc returns a null pointer when the given size is 0", {
+        auto ptr = malloc(0);
+        assert(ptr is null);
     });
 
     test("memset sets memory", {
