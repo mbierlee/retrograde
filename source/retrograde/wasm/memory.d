@@ -18,6 +18,7 @@ version (WebAssembly)  :  //
 
 import retrograde.std.result : success, failure, Result, OperationResult;
 import retrograde.std.option : some, none, Option;
+import retrograde.std.stdio : writeln;
 
 version (MemoryDebug) {
     import retrograde.std.stdio : writeErrLn;
@@ -109,8 +110,6 @@ OperationResult initializeHeapMemory(size_t _heapOffset = 0) {
 }
 
 void printDebugInfo() {
-    import retrograde.std.stdio : writeln;
-
     writeln("--Memory Debug Info--");
     writeln("End of Static Data: ");
     writeln(cast(size_t)&__data_end);
@@ -342,7 +341,6 @@ private OperationResult extendBlockspace(size_t wantedBytes) {
 }
 
 version (WasmMemTest)  :  //
-import retrograde.std.stdio : writeln;
 
 void runMemTests() {
     initializeHeapMemory();
