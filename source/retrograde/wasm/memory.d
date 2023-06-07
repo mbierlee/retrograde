@@ -302,7 +302,7 @@ private OperationResult combineBlocks(MemoryBlock* block1, MemoryBlock* block2) 
 
     auto newBlockSize = block1.blockSize + block2.blockSize + MemoryBlock.sizeof;
     createBlock(block1, newBlockSize);
-    memset(block1.dataStart, 0, newBlockSize);
+    memset(block2, 0, MemoryBlock.sizeof);
     return success();
 }
 
@@ -425,6 +425,10 @@ void runMemTests() {
         assert(res.isSuccessful);
         assert(block1.isValidBlock());
         assert(!block2.isValidBlock());
+
+        foreach (ubyte membyte; block1.blockData) {
+            assert(membyte == 0);
+        }
     });
 
     test("combineBlocks fails when one block is not a block", {
