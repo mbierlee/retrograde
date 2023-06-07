@@ -50,7 +50,6 @@ export extern (C) void* malloc(size_t size) {
 
         return cast(void*) block.dataStart;
     } else {
-        // TODO: Find out if neighbouring blocks can be merged to make room for the requested size.
         auto extendRes = extendBlockspace(size);
         if (extendRes.isFailure) {
             version (MemoryDebug) {
@@ -59,8 +58,6 @@ export extern (C) void* malloc(size_t size) {
 
             return null;
         }
-
-        //TODO: Set free block to previous heap end here to speed up findFreeBlock (when implemented)
 
         return malloc(size);
     }
@@ -96,7 +93,9 @@ export extern (C) int memcmp(const void* ptr1, const void* ptr2, size_t num) {
 }
 
 OperationResult initializeHeapMemory(size_t _heapOffset = 0) {
+    firstFreeBlock = null;
     heapOffset = _heapOffset;
+
     auto res = maybeGrowInitialHeap();
     if (res.isFailure) {
         return res;
@@ -104,6 +103,7 @@ OperationResult initializeHeapMemory(size_t _heapOffset = 0) {
 
     wipeHeap();
     createBlock(heapStart, heapSize - MemoryBlock.sizeof);
+    firstFreeBlock = cast(MemoryBlock*) heapStart;
     return success();
 }
 
@@ -127,8 +127,9 @@ void printDebugInfo() {
 }
 
 private enum _64KiB = 65_536;
-private size_t heapOffset = 0;
 private enum initialHeapSize = _64KiB;
+private size_t heapOffset;
+private MemoryBlock* firstFreeBlock;
 
 /**
  * @param mem Index of the WASM Memory object to grow.
@@ -238,10 +239,10 @@ private OperationResult growHeap(size_t wantedBytes) {
 }
 
 private Result!(MemoryBlock*) findFreeBlock(size_t wantedBytes) {
+    // TODO: Find out if neighbouring blocks can be merged to make room for the requested size.
     //TODO: Replace with Option
-    //TODO: Keep track of the first free block to speed up this search
 
-    MemoryBlock* block = cast(MemoryBlock*) heapStart;
+    MemoryBlock* block = firstFreeBlock !is null ? firstFreeBlock : cast(MemoryBlock*) heapStart;
     auto endOfHeap = cast(void*) heapEnd;
     while (cast(void*) block < endOfHeap && block.isValidBlock()) {
         if (!block.isAllocated && block.blockSize >= wantedBytes) {
@@ -285,19 +286,26 @@ private OperationResult allocateBlock(MemoryBlock* block, size_t usedBytes) {
 
     block.isAllocated = true;
     block.usedSize = usedBytes;
+    if (block is firstFreeBlock) {
+        firstFreeBlock = cast(MemoryBlock*)(
+            (cast(ubyte*) block) + MemoryBlock.sizeof + block.blockSize
+        );
+    }
+
     return success();
 }
 
 private OperationResult extendBlockspace(size_t wantedBytes) {
-    auto previousEndOfHeap = cast(ubyte*) heapEnd;
+    auto previousEndOfHeap = heapEnd;
     auto res = growHeap(wantedBytes + MemoryBlock.sizeof);
     if (res.isFailure) {
         return res;
     }
 
-    auto newEndOfHeap = cast(ubyte*) heapEnd;
+    auto newEndOfHeap = heapEnd;
     auto newBlockSize = newEndOfHeap - previousEndOfHeap - MemoryBlock.sizeof;
     createBlock(previousEndOfHeap, newBlockSize);
+    firstFreeBlock = cast(MemoryBlock*) previousEndOfHeap;
     return success();
 }
 
@@ -458,9 +466,9 @@ void runMemTests() {
         auto allocRes = allocateBlock(block, 5);
         assert(allocRes.isSuccessful);
 
-        assert(block.dataStart == cast(ubyte*) block + MemoryBlock.sizeof);
-        assert(block.blockDataEnd == cast(ubyte*) block + MemoryBlock.sizeof + 10);
-        assert(block.usedDataEnd == cast(ubyte*) block + MemoryBlock.sizeof + 5);
+        assert(block.dataStart is cast(ubyte*) block + MemoryBlock.sizeof);
+        assert(block.blockDataEnd is cast(ubyte*) block + MemoryBlock.sizeof + 10);
+        assert(block.usedDataEnd is cast(ubyte*) block + MemoryBlock.sizeof + 5);
 
         auto data = cast(ubyte*) block + MemoryBlock.sizeof;
         data[0] = 'H';
@@ -484,7 +492,7 @@ void runMemTests() {
 
     test("extendBlockspace extends block space", {
         auto firstBlock = cast(MemoryBlock*) heapStart;
-        assert(heapEnd == firstBlock.blockDataEnd);
+        assert(heapEnd is firstBlock.blockDataEnd);
         extendBlockspace(10 + MemoryBlock.sizeof);
 
         auto secondBlock = cast(MemoryBlock*) firstBlock.blockDataEnd;
@@ -498,9 +506,9 @@ void runMemTests() {
     test("malloc allocates memory when free block is available", {
         createBlock(heapStart, 10);
         auto ptr = malloc(5);
-        assert(ptr != null);
+        assert(ptr !is null);
         auto block = cast(MemoryBlock*)(cast(ubyte*) ptr - MemoryBlock.sizeof);
-        assert(ptr == block.dataStart);
+        assert(ptr is block.dataStart);
         assert(block.header == MemoryBlock.BlockHeader);
         assert(block.isAllocated);
         assert(block.blockSize == 10);
@@ -512,20 +520,20 @@ void runMemTests() {
     test("malloc extends memory when no free block is available", {
         auto block = cast(MemoryBlock*) heapStart;
         assert(block.isValidBlock());
-        allocateBlock(block, block.blockSize - MemoryBlock.sizeof);
+        allocateBlock(block, block.blockSize);
         auto findRes = findFreeBlock(10);
         assert(!findRes.isSuccessful);
 
         auto prevHeapEnd = heapEnd;
         auto ptr = malloc(10);
         assert(ptr != null);
-        assert(ptr == (cast(void*) prevHeapEnd) + MemoryBlock.sizeof);
+        assert(ptr is (cast(ubyte*) prevHeapEnd) + MemoryBlock.sizeof);
     });
 
     test("memset sets memory", {
         string str = "Hello World!";
         auto ret = memset(cast(ubyte*) str.ptr, '-', 5);
-        assert(ret == cast(ubyte*) str.ptr);
+        assert(ret is cast(ubyte*) str.ptr);
         assert(str == "----- World!");
     });
 
