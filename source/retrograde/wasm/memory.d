@@ -17,6 +17,7 @@ module retrograde.wasm.memory;
 version (WebAssembly)  :  //
 
 import retrograde.std.result : success, failure, Result, OperationResult;
+import retrograde.std.option : some, none, Option;
 
 version (MemoryDebug) {
     import retrograde.std.stdio : writeErrLn;
@@ -28,7 +29,7 @@ version (MemoryDebug) {
  */
 export extern (C) void* malloc(size_t size) {
     auto res = findFreeBlock(size);
-    if (res.isSuccessful) {
+    if (res.isDefined) {
         auto block = res.value;
         auto splitRes = splitBlock(block, size);
         if (splitRes.isFailure) {
@@ -242,9 +243,7 @@ private OperationResult growHeap(size_t wantedBytes) {
     return success();
 }
 
-private Result!(MemoryBlock*) findFreeBlock(size_t wantedBytes) {
-    //TODO: Replace with Option
-
+private Option!(MemoryBlock*) findFreeBlock(size_t wantedBytes) {
     MemoryBlock* block = firstFreeBlock !is null ? firstFreeBlock : cast(MemoryBlock*) heapStart;
     MemoryBlock* previousBlock = null;
     auto endOfHeap = cast(void*) heapEnd;
@@ -255,14 +254,14 @@ private Result!(MemoryBlock*) findFreeBlock(size_t wantedBytes) {
         }
 
         if (!block.isAllocated && block.blockSize >= wantedBytes) {
-            return success(block);
+            return some(block);
         }
 
         previousBlock = block;
         block = cast(MemoryBlock*)(cast(ubyte*) block + block.blockSize + MemoryBlock.sizeof);
     }
 
-    return failure!(MemoryBlock*)("No free block found");
+    return none!(MemoryBlock*);
 }
 
 private OperationResult splitBlock(MemoryBlock* block, size_t wantedBytes) {
@@ -286,11 +285,11 @@ private OperationResult splitBlock(MemoryBlock* block, size_t wantedBytes) {
 }
 
 private OperationResult combineBlocks(MemoryBlock* block1, MemoryBlock* block2) {
-    if (!block1.isValidBlock()) {
+    if (!block1.isValidBlock) {
         return failure("Failed to combine blocks: block1 is not valid");
     }
 
-    if (!block2.isValidBlock()) {
+    if (!block2.isValidBlock) {
         return failure("Failed to combine blocks: block2 is not valid");
     }
 
@@ -389,7 +388,7 @@ void runMemTests() {
 
     test("findFreeBlock finds a free block", {
         auto res = findFreeBlock(10);
-        assert(res.isSuccessful);
+        assert(res.isDefined);
         assert(res.value.header == MemoryBlock.BlockHeader);
         assert(!res.value.isAllocated);
         assert(res.value.blockSize == heapSize() - MemoryBlock.sizeof);
@@ -402,7 +401,7 @@ void runMemTests() {
         createBlock(heapStart, 10);
         allocateBlock(cast(MemoryBlock*) heapStart, 10);
         auto res = findFreeBlock(3);
-        assert(res.isFailure);
+        assert(res.isEmpty);
     });
 
     test("findFreeBlock combines adjacent blocks that are not allocated", {
@@ -411,7 +410,7 @@ void runMemTests() {
         auto block2 = block1.nextBlock;
         assert(block2.isValidBlock());
         auto res = findFreeBlock(10);
-        assert(res.isSuccessful);
+        assert(res.isDefined);
         assert(res.value is block1);
         assert(block1.blockSize > 5);
         assert(!block2.isValidBlock());
@@ -456,7 +455,7 @@ void runMemTests() {
 
     test("splitBlock splits a block to the wanted size", {
         auto res = findFreeBlock(10);
-        assert(res.isSuccessful);
+        assert(res.isDefined);
         auto block = res.value;
         auto splitRes = splitBlock(block, 5);
         assert(splitRes.isSuccessful);
@@ -479,7 +478,7 @@ void runMemTests() {
     test("splitBlock does not split a block if it is too small", {
         createBlock(heapStart, 10);
         auto res = findFreeBlock(10);
-        assert(res.isSuccessful);
+        assert(res.isDefined);
         auto block = res.value;
         auto splitRes = splitBlock(block, 15);
         assert(!splitRes.isSuccessful);
@@ -494,7 +493,7 @@ void runMemTests() {
 
     test("splitBlock does not split a block if it is invalid", {
         auto res = findFreeBlock(10);
-        assert(res.isSuccessful);
+        assert(res.isDefined);
         auto block = res.value;
         block.header = 0;
         auto splitRes = splitBlock(block, 5);
@@ -505,7 +504,7 @@ void runMemTests() {
     test("allocateBlock allocates a block", {
         createBlock(heapStart, 10);
         auto res = findFreeBlock(10);
-        assert(res.isSuccessful);
+        assert(res.isDefined);
         auto block = res.value;
         auto allocRes = allocateBlock(block, 5);
         assert(allocRes.isSuccessful);
@@ -520,7 +519,7 @@ void runMemTests() {
     test("allocateBlock does not allocate a block if it is too small", {
         createBlock(heapStart, 10);
         auto res = findFreeBlock(10);
-        assert(res.isSuccessful);
+        assert(res.isDefined);
         auto block = res.value;
         auto allocRes = allocateBlock(block, 15);
         assert(!allocRes.isSuccessful);
@@ -530,7 +529,7 @@ void runMemTests() {
 
     test("allocateBlock does not allocate a block if it is invalid", {
         auto res = findFreeBlock(10);
-        assert(res.isSuccessful);
+        assert(res.isDefined);
         auto block = res.value;
         block.header = 0;
         auto allocRes = allocateBlock(block, 5);
@@ -542,7 +541,7 @@ void runMemTests() {
     test("Access MemoryBlock data and pointers", {
         createBlock(heapStart, 10);
         auto res = findFreeBlock(10);
-        assert(res.isSuccessful);
+        assert(res.isDefined);
         auto block = res.value;
         auto allocRes = allocateBlock(block, 5);
         assert(allocRes.isSuccessful);
@@ -603,7 +602,7 @@ void runMemTests() {
         assert(block.isValidBlock());
         allocateBlock(block, block.blockSize);
         auto findRes = findFreeBlock(10);
-        assert(!findRes.isSuccessful);
+        assert(findRes.isEmpty);
 
         auto prevHeapEnd = heapEnd;
         auto ptr = malloc(10);
