@@ -19,18 +19,6 @@ struct Result(T) {
     private bool success;
     private ResultValue!T payload;
 
-    this(T value) {
-        this.success = true;
-        this.payload.value = value;
-    }
-
-    static if (!is(T == string)) {
-        this(string errorMessage) {
-            this.success = false;
-            this.payload.errorMessage = errorMessage;
-        }
-    }
-
     bool isSuccessful() {
         return this.success;
     }
@@ -48,20 +36,22 @@ struct Result(T) {
         assert(!this.success, "Result is successful so it does not have an error message. Make sure to check isSuccessful() first.");
         return this.payload.errorMessage;
     }
-
-    private static failure(string errorMessage) {
-        return Result!T(errorMessage);
-    }
 }
 
 /// Create a successful result with a value.
 Result!T success(T)(T value) if (!is(T == void)) {
-    return Result!T(value);
+    Result!T result;
+    result.success = true;
+    result.payload.value = value;
+    return result;
 }
 
 /// Create a failed result with an error message.
 Result!T failure(T)(string errorMessage) if (!is(T == void)) {
-    return Result!T.failure(errorMessage);
+    Result!T result;
+    result.success = false;
+    result.payload.errorMessage = errorMessage;
+    return result;
 }
 
 /** 
@@ -71,11 +61,6 @@ Result!T failure(T)(string errorMessage) if (!is(T == void)) {
 struct OperationResult {
     private bool success;
     private string _errorMessage;
-
-    this(bool isSuccessful, string errorMessage = "") {
-        this.success = isSuccessful;
-        this._errorMessage = errorMessage;
-    }
 
     bool isSuccessful() {
         return this.success;
@@ -92,12 +77,17 @@ struct OperationResult {
 
 /// Create a successful OperationResult.
 OperationResult success() {
-    return OperationResult(true);
+    OperationResult result;
+    result.success = true;
+    return result;
 }
 
 /// Create a failed OperationResult with an error message.
 OperationResult failure(string errorMessage) {
-    return OperationResult(false, errorMessage);
+    OperationResult result;
+    result.success = false;
+    result._errorMessage = errorMessage;
+    return result;
 }
 
 private union ResultValue(T) {
@@ -106,27 +96,6 @@ private union ResultValue(T) {
 }
 
 version (unittest)  :  //
-
-@("Result can be created with a value")
-unittest {
-    auto result = Result!int(42);
-    assert(result.isSuccessful);
-    assert(result.value == 42);
-}
-
-@("Result can be created with an error message")
-unittest {
-    auto result = Result!int("Something went wrong");
-    assert(!result.isSuccessful);
-    assert(result.errorMessage == "Something went wrong");
-}
-
-@("Result can be created with a string value")
-unittest {
-    auto result = Result!string("Hello world");
-    assert(result.isSuccessful);
-    assert(result.value == "Hello world");
-}
 
 @("success returns a successful result")
 unittest {
@@ -144,13 +113,13 @@ unittest {
 
 @("OperationResult can be created with a success")
 unittest {
-    auto result = OperationResult(true);
+    auto result = success();
     assert(result.isSuccessful);
 }
 
 @("OperationResult can be created with a failure")
 unittest {
-    auto result = OperationResult(false, "Something went wrong");
+    auto result = failure("Something went wrong");
     assert(!result.isSuccessful);
     assert(result.errorMessage == "Something went wrong");
 }
@@ -170,14 +139,14 @@ unittest {
 
 @("Result isFailure is opposite of isSuccessful")
 unittest {
-    auto result = Result!int("Something went wrong");
+    auto result = failure("Something went wrong");
     assert(result.isFailure);
     assert(!result.isSuccessful);
 }
 
 @("OperationResult isFailure is opposite of isSuccessful")
 unittest {
-    auto result = OperationResult(false, "Something went wrong");
+    auto result = failure("Something went wrong");
     assert(result.isFailure);
     assert(!result.isSuccessful);
 }
