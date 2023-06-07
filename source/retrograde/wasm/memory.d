@@ -76,7 +76,7 @@ export extern (C) void* malloc(size_t size) {
  * Make sure to nullify the pointer after freeing it for safety.
  */
 export extern (C) void free(void* ptr) {
-    if (ptr == null) {
+    if (ptr is null) {
         return;
     }
 
@@ -90,6 +90,35 @@ export extern (C) void free(void* ptr) {
     }
 
     freeBlock(res.value);
+}
+
+/**
+ * Similar to free, the memory space pointed to by ptr is freed.
+ * An allocation size check is performed for safety. The given size must match 
+ * the size of the memory block when it was allocated.
+ */
+export extern (C) void free_sized(void* ptr, size_t size) {
+    if (ptr is null) {
+        return;
+    }
+
+    auto res = getBlock(ptr);
+    if (res.isFailure) {
+        version (MemoryDebug) {
+            writeErrLn(res.errorMessage);
+        }
+
+        return;
+    }
+
+    auto block = res.value;
+    if (block.usedSize == size) {
+        freeBlock(block);
+    } else {
+        version (MemoryDebug) {
+            writeErrLn("Size mismatch when freeing memory block.");
+        }
+    }
 }
 
 /** 
@@ -794,6 +823,17 @@ void runMemTests() {
         auto ptr = malloc(10);
         assert(ptr != null);
         free(ptr);
+        auto block = getBlock(ptr).value;
+        assert(!block.isAllocated);
+        foreach (ubyte blockByte; block.blockData) {
+            assert(blockByte == 0);
+        }
+    });
+
+    test("free_sized frees previously allocated memory", {
+        auto ptr = malloc(10);
+        assert(ptr != null);
+        free_sized(ptr, 10);
         auto block = getBlock(ptr).value;
         assert(!block.isAllocated);
         foreach (ubyte blockByte; block.blockData) {
