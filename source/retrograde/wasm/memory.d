@@ -69,6 +69,29 @@ export extern (C) void* malloc(size_t size) {
     }
 }
 
+/**
+ * Frees the memory space pointed to by ptr, which must have been returned by a previous call to malloc.
+ * Otherwise, or if free(ptr) has already been called before, undefined behavior occurs.
+ * If ptr is null, no operation is performed.
+ * Make sure to nullify the pointer after freeing it for safety.
+ */
+export extern (C) void free(void* ptr) {
+    if (ptr == null) {
+        return;
+    }
+
+    auto res = getBlock(ptr);
+    if (res.isFailure) {
+        version (MemoryDebug) {
+            writeErrLn(res.errorMessage);
+        }
+
+        return;
+    }
+
+    freeBlock(res.value);
+}
+
 /** 
  * Sets the num bytes of the block of memory pointed by ptr to the specified value (interpreted as an unsigned byte).
  * Returns: ptr as-is.
@@ -206,6 +229,10 @@ private align(16) struct MemoryBlock {
         return cast(MemoryBlock*) blockDataEnd;
     }
 
+    void clearBlockData() {
+        memset(dataStart, 0, blockSize);
+    }
+
     private size_t calculateChecksum() {
         return blockSize ^ BlockHeader;
     }
@@ -330,6 +357,25 @@ private OperationResult allocateBlock(MemoryBlock* block, size_t usedBytes) {
     return success();
 }
 
+private OperationResult freeBlock(MemoryBlock* block) {
+    if (!block.isValidBlock()) {
+        return failure("Failed to free block: it is not valid");
+    }
+
+    if (!block.isAllocated) {
+        return failure("Failed to free block: it is not allocated");
+    }
+
+    block.isAllocated = false;
+    block.clearBlockData();
+    block.usedSize = 0;
+    if (firstFreeBlock is null || block < firstFreeBlock) {
+        firstFreeBlock = block;
+    }
+
+    return success();
+}
+
 private OperationResult extendBlockspace(size_t wantedBytes) {
     auto previousEndOfHeap = heapEnd;
     auto res = growHeap(wantedBytes + MemoryBlock.sizeof);
@@ -342,6 +388,21 @@ private OperationResult extendBlockspace(size_t wantedBytes) {
     createBlock(previousEndOfHeap, newBlockSize);
     firstFreeBlock = cast(MemoryBlock*) previousEndOfHeap;
     return success();
+}
+
+private Result!(MemoryBlock*) getBlock(void* dataPtr) {
+    if (dataPtr is null) {
+        return failure!(MemoryBlock*)("Failed to get block: dataPtr is null");
+    }
+
+    auto block = cast(MemoryBlock*)(cast(ubyte*) dataPtr - MemoryBlock.sizeof);
+    if (!block.isValidBlock()) {
+        return failure!(MemoryBlock*)(
+            "Failed to get block: pointer does not point to the start of valid block data"
+        );
+    }
+
+    return success(block);
 }
 
 version (WasmMemTest)  :  //
@@ -593,7 +654,7 @@ void runMemTests() {
         createBlock(heapStart, 10);
         auto ptr = malloc(5);
         assert(ptr !is null);
-        auto block = cast(MemoryBlock*)(cast(ubyte*) ptr - MemoryBlock.sizeof);
+        auto block = getBlock(ptr).value;
         assert(ptr is block.dataStart);
         assert(block.header == MemoryBlock.BlockHeader);
         assert(block.isAllocated);
@@ -643,6 +704,101 @@ void runMemTests() {
 
         memset(ptr2, '%', 10);
         assert(memcmp(ptr1, ptr2, 10) < 0);
+    });
+
+    test("getBlock gets a valid block from a data pointer", {
+        auto ptr = malloc(10);
+        assert(ptr != null);
+        auto res = getBlock(ptr);
+        assert(res.isSuccessful);
+        auto block = res.value;
+        assert(block.isValidBlock);
+        assert(block.dataStart is ptr);
+    });
+
+    test("getBlock fails when the pointer does not point to the start of blockdata", {
+        auto ptr = malloc(10);
+        assert(ptr != null);
+        auto res = getBlock(ptr + 1);
+        assert(!res.isSuccessful);
+        assert(
+            res.errorMessage == "Failed to get block: pointer does not point to the start of valid block data"
+        );
+    });
+
+    test("getBlock fails when the pointer is null", {
+        auto res = getBlock(null);
+        assert(!res.isSuccessful);
+        assert(res.errorMessage == "Failed to get block: dataPtr is null");
+    });
+
+    test("freeBlock frees an allocated block", {
+        auto ptr = malloc(10);
+        assert(ptr != null);
+        auto block = getBlock(ptr).value;
+        auto res = freeBlock(block);
+        assert(res.isSuccessful);
+        assert(!block.isAllocated);
+        assert(block.usedSize == 0);
+        assert(block.checksum == (block.blockSize ^ MemoryBlock.BlockHeader));
+    });
+
+    test("freeBlock fails when a block is not valid", {
+        auto ptr = malloc(10);
+        assert(ptr != null);
+        auto block = getBlock(ptr).value;
+        block.header = 0;
+        auto res = freeBlock(block);
+        assert(!res.isSuccessful);
+        assert(res.errorMessage == "Failed to free block: it is not valid");
+        assert(block.isAllocated);
+    });
+
+    test("freeBlock fails when a block is not allocated", {
+        auto ptr = malloc(10);
+        assert(ptr != null);
+        auto block = getBlock(ptr).value;
+        block.isAllocated = false;
+        auto res = freeBlock(block);
+        assert(!res.isSuccessful);
+        assert(res.errorMessage == "Failed to free block: it is not allocated");
+        assert(!block.isAllocated);
+    });
+
+    test("freeBlock fails when repeatedly freeing a block", {
+        auto ptr = malloc(10);
+        assert(ptr != null);
+        auto block = getBlock(ptr).value;
+        auto res = freeBlock(block);
+        assert(res.isSuccessful);
+        assert(!block.isAllocated);
+        res = freeBlock(block);
+        assert(!res.isSuccessful);
+        assert(res.errorMessage == "Failed to free block: it is not allocated");
+        assert(!block.isAllocated);
+    });
+
+    test("freeBlock clears block data on free", {
+        auto ptr = malloc(10);
+        assert(ptr != null);
+        memset(ptr, 'H', 10);
+        auto block = getBlock(ptr).value;
+        auto res = freeBlock(block);
+        assert(res.isSuccessful);
+        foreach (ubyte blockByte; block.blockData) {
+            assert(blockByte == 0);
+        }
+    });
+
+    test("free frees previously allocated memory", {
+        auto ptr = malloc(10);
+        assert(ptr != null);
+        free(ptr);
+        auto block = getBlock(ptr).value;
+        assert(!block.isAllocated);
+        foreach (ubyte blockByte; block.blockData) {
+            assert(blockByte == 0);
+        }
     });
 
     writeln("");
