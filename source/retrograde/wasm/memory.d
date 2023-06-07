@@ -198,6 +198,10 @@ private align(16) struct MemoryBlock {
         return dataStart + usedSize;
     }
 
+    MemoryBlock* nextBlock() {
+        return cast(MemoryBlock*) blockDataEnd;
+    }
+
     private size_t calculateChecksum() {
         return blockSize ^ BlockHeader;
     }
@@ -243,12 +247,18 @@ private Result!(MemoryBlock*) findFreeBlock(size_t wantedBytes) {
     //TODO: Replace with Option
 
     MemoryBlock* block = firstFreeBlock !is null ? firstFreeBlock : cast(MemoryBlock*) heapStart;
+    MemoryBlock* previousBlock = null;
     auto endOfHeap = cast(void*) heapEnd;
     while (cast(void*) block < endOfHeap && block.isValidBlock()) {
+        // if (!previousBlock.isAllocated) {
+
+        // }
+
         if (!block.isAllocated && block.blockSize >= wantedBytes) {
             return success(block);
         }
 
+        previousBlock = block;
         block = cast(MemoryBlock*)(cast(ubyte*) block + block.blockSize + MemoryBlock.sizeof);
     }
 
@@ -272,6 +282,29 @@ private OperationResult splitBlock(MemoryBlock* block, size_t wantedBytes) {
     createBlock(cast(ubyte*) block + MemoryBlock.sizeof + wantedBytes, newBlockSize);
     block.blockSize = wantedBytes;
     block.setChecksum();
+    return success();
+}
+
+private OperationResult combineBlocks(MemoryBlock* block1, MemoryBlock* block2) {
+    if (!block1.isValidBlock()) {
+        return failure("Failed to combine blocks: block1 is not valid");
+    }
+
+    if (!block2.isValidBlock()) {
+        return failure("Failed to combine blocks: block2 is not valid");
+    }
+
+    if (block1.isAllocated) {
+        return failure("Failed to combine blocks: block1 is allocated");
+    }
+
+    if (block2.isAllocated) {
+        return failure("Failed to combine blocks: block2 is allocated");
+    }
+
+    auto newBlockSize = block1.blockSize + block2.blockSize + MemoryBlock.sizeof;
+    createBlock(block1, newBlockSize);
+    memset(block1.dataStart, 0, newBlockSize);
     return success();
 }
 
@@ -337,7 +370,7 @@ void runMemTests() {
         MemoryBlock* block = cast(MemoryBlock*) heapStart;
         assert(block.header == MemoryBlock.BlockHeader);
         assert(!block.isAllocated);
-        assert(block.blockSize == heapSize() - MemoryBlock.sizeof);
+        assert(block.blockSize == heapSize - MemoryBlock.sizeof);
         assert(block.usedSize == 0);
         assert(block.checksum == (block.blockSize ^ MemoryBlock.BlockHeader));
         assert(block.isValidBlock());
@@ -372,6 +405,50 @@ void runMemTests() {
         assert(res.isFailure);
     });
 
+    // test("findFreeBlock combines adjected blocks that are not allocated", {
+    //     splitBlock(cast(MemoryBlock*) heapStart, 5);
+    //     auto res = findFreeBlock(10);
+    //     assert(res.isSuccessful);
+    //     assert(res.value is cast(MemoryBlock*) heapStart);
+    // });
+
+    test("combineBlocks combines two unallocated blocks", {
+        splitBlock(cast(MemoryBlock*) heapStart, 5);
+        auto block1 = cast(MemoryBlock*) heapStart;
+        auto block2 = block1.nextBlock;
+        assert(block1.isValidBlock());
+        assert(block2.isValidBlock());
+
+        auto res = combineBlocks(block1, block2);
+        assert(res.isSuccessful);
+        assert(block1.isValidBlock());
+        assert(!block2.isValidBlock());
+    });
+
+    test("combineBlocks fails when one block is not a block", {
+        auto validBlock = cast(MemoryBlock*) heapStart;
+        auto invalidBlock = cast(MemoryBlock*)(heapStart + 10);
+        assert(validBlock.isValidBlock());
+        assert(!invalidBlock.isValidBlock());
+
+        auto res = combineBlocks(validBlock, invalidBlock);
+        assert(res.isFailure);
+        assert(res.errorMessage == "Failed to combine blocks: block2 is not valid");
+    });
+
+    test("combineBlocks fails when one block is already allocated", {
+        splitBlock(cast(MemoryBlock*) heapStart, 5);
+        auto block1 = cast(MemoryBlock*) heapStart;
+        auto block2 = block1.nextBlock;
+        allocateBlock(block1, 5);
+        assert(block1.isValidBlock());
+        assert(block2.isValidBlock());
+
+        auto res = combineBlocks(block1, block2);
+        assert(res.isFailure);
+        assert(res.errorMessage == "Failed to combine blocks: block1 is allocated");
+    });
+
     test("splitBlock splits a block to the wanted size", {
         auto res = findFreeBlock(10);
         assert(res.isSuccessful);
@@ -385,8 +462,7 @@ void runMemTests() {
         assert(block.checksum == (block.blockSize ^ MemoryBlock.BlockHeader));
         assert(block.isValidBlock());
 
-        auto nextBlock = cast(MemoryBlock*)(cast(ubyte*) block + block.blockSize + MemoryBlock
-            .sizeof);
+        auto nextBlock = block.nextBlock;
         assert(nextBlock.header == MemoryBlock.BlockHeader);
         assert(!nextBlock.isAllocated);
         assert(nextBlock.blockSize == heapSize() - MemoryBlock.sizeof - 5 - MemoryBlock.sizeof);
@@ -495,7 +571,7 @@ void runMemTests() {
         assert(heapEnd is firstBlock.blockDataEnd);
         extendBlockspace(10 + MemoryBlock.sizeof);
 
-        auto secondBlock = cast(MemoryBlock*) firstBlock.blockDataEnd;
+        auto secondBlock = firstBlock.nextBlock;
         assert(secondBlock.isValidBlock());
         assert(secondBlock.blockSize == cast(size_t) heapEnd - cast(
             size_t) secondBlock - MemoryBlock.sizeof);
@@ -527,7 +603,7 @@ void runMemTests() {
         auto prevHeapEnd = heapEnd;
         auto ptr = malloc(10);
         assert(ptr != null);
-        assert(ptr is (cast(ubyte*) prevHeapEnd) + MemoryBlock.sizeof);
+        assert(ptr is prevHeapEnd + MemoryBlock.sizeof);
     });
 
     test("memset sets memory", {
