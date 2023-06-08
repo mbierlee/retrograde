@@ -112,13 +112,8 @@ export extern (C) void free_sized(void* ptr, size_t size) {
     }
 
     auto block = res.value;
-    if (block.usedSize == size) {
-        freeBlock(block);
-    } else {
-        version (MemoryDebug) {
-            writeErrLn("Size mismatch when freeing memory block.");
-        }
-    }
+    assert(block.usedSize == size, "Size mismatch when freeing memory block.");
+    freeBlock(block);
 }
 
 /** 
