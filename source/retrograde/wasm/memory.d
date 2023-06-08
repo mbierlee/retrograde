@@ -168,7 +168,6 @@ OperationResult initializeHeapMemory(size_t _heapOffset = 0) {
         return res;
     }
 
-    wipeHeap();
     createBlock(heapStart, heapSize - MemoryBlock.sizeof);
     firstFreeBlock = cast(MemoryBlock*) heapStart;
     return success();
@@ -884,6 +883,7 @@ void runMemTests() {
 }
 
 void test(string name, void function() testFunc) {
+    wipeHeap();
     initializeHeapMemory();
     writeln(name);
     testFunc();
