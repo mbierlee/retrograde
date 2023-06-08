@@ -183,6 +183,7 @@ export extern (C) void free_sized(void* ptr, size_t size) {
  */
 export extern (C) void* memset(void* ptr, ubyte value, size_t num) {
     foreach (i; 0 .. num) {
+
         *(cast(ubyte*)&ptr[i]) = value;
     }
 
@@ -208,8 +209,8 @@ export extern (C) int memcmp(const void* ptr1, const void* ptr2, size_t num) {
 
 /** 
  * Copies memory from src into dest for count amount of bytes.
- * No bounds checking is peformed. When count is greated than src or dest's
- * allocated sized, unintended memory is copied/replaced and corruption may occur.
+ * No bounds checking is performed. When count is greated than src or dest's
+ * allocated sizes, unintended memory is copied/replaced and corruption may occur.
  * It is faster than memmove, but unsafe.
  */
 export extern (C) void* memcpy(void* dest, const void* src, size_t count) {
@@ -218,6 +219,42 @@ export extern (C) void* memcpy(void* dest, const void* src, size_t count) {
     }
 
     return dest;
+}
+
+/** 
+ * Copies memory from src into dest for count amount of bytes.
+ * Makes sure that the count is not greater than the size of the source memory
+ * and that dest is big enough. If not, dest is resized.
+ * If something goes wrong, null is returned.
+ */
+void* memmove(void* dest, const void* src, size_t count) {
+    auto srcBlockRes = src.getBlock;
+    if (srcBlockRes.isFailure) {
+        version (MemoryDebug) {
+            writeErrLn(srcBlockRes.errorMessage);
+        }
+
+        return null;
+    }
+
+    auto srcBlock = srcBlockRes.value;
+    auto actualCount = srcBlock.usedSize >= count ? count : srcBlock.usedSize;
+
+    auto destBlockRes = dest.getBlock;
+    if (destBlockRes.isFailure) {
+        version (MemoryDebug) {
+            writeErrLn(destBlockRes.errorMessage);
+        }
+
+        return null;
+    }
+
+    auto destBlock = destBlockRes.value;
+    if (destBlock.usedSize < actualCount) {
+        dest = realloc(dest, actualCount);
+    }
+
+    return memcpy(dest, src, actualCount);
 }
 
 OperationResult initializeHeapMemory(size_t _heapOffset = 0) {
@@ -487,12 +524,12 @@ private OperationResult extendBlockspace(size_t wantedBytes) {
     return success();
 }
 
-private Result!(MemoryBlock*) getBlock(void* dataPtr) {
+private Result!(MemoryBlock*) getBlock(const void* dataPtr) {
     if (dataPtr is null) {
         return failure!(MemoryBlock*)("Failed to get block: dataPtr is null");
     }
 
-    auto block = cast(MemoryBlock*)(cast(ubyte*) dataPtr - MemoryBlock.sizeof);
+    auto block = cast(MemoryBlock*)(cast(const ubyte*) dataPtr - MemoryBlock.sizeof);
     if (!block.isValidBlock()) {
         return failure!(MemoryBlock*)(
             "Failed to get block: pointer does not point to the start of valid block data"
@@ -1036,6 +1073,53 @@ void runMemTests() {
         memcpy(ptr2, ptr1, 2);
         assert(ptr2[0] == 'H');
         assert(ptr2[1] == 'I');
+    });
+
+    test("memmove copies src into dest", {
+        auto ptr1 = cast(ubyte*) malloc(2);
+        auto ptr2 = cast(ubyte*) malloc(2);
+        ptr1[0] = 'H';
+        ptr1[1] = 'I';
+        assert(ptr2[0] == 0);
+        assert(ptr2[1] == 0);
+        memmove(ptr2, ptr1, 2);
+        assert(ptr2[0] == 'H');
+        assert(ptr2[1] == 'I');
+    });
+
+    test("memmove does not copy more than is allocated for src", {
+        auto ptr1 = cast(ubyte*) malloc(2);
+        ptr1[0] = 'H';
+        ptr1[1] = 'I';
+
+        auto ptr2 = cast(ubyte*) malloc(1);
+        *ptr2 = 'X'; // overflow would actually lead to reading the block header anyway, not 'X'
+
+        auto ptr3 = cast(ubyte*) malloc(3);
+        assert(ptr3[0] == 0);
+        assert(ptr3[1] == 0);
+        assert(ptr3[2] == 0);
+
+        memmove(ptr3, ptr1, 3);
+        assert(ptr3[0] == 'H');
+        assert(ptr3[1] == 'I');
+        assert(ptr3[2] == 0);
+    });
+
+    test("memmove resizes dest when it does not fit", {
+        auto ptr1 = cast(ubyte*) malloc(2);
+        ptr1[0] = 'H';
+        ptr1[1] = 'I';
+
+        auto ptr2 = cast(ubyte*) malloc(1);
+        malloc(1); // Intentional fragmentation to prevent free-block combining
+        auto ptr3 = cast(ubyte*) memmove(ptr2, ptr1, 2);
+        assert(ptr3 !is ptr2);
+        assert(ptr3[0] == 'H');
+        assert(ptr3[1] == 'I');
+
+        auto ptr2Block = ptr2.getBlock.value;
+        assert(!ptr2Block.isAllocated);
     });
 
     writeln("");
