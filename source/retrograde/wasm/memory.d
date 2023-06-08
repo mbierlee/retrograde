@@ -72,6 +72,7 @@ export extern (C) void* malloc(size_t size) {
 /** 
  * Allocates a memory block of the given size N times.
  * Unlike with malloc, the allocated memory is cleared upon allocation.
+ * When the returned pointer is null, allocation failed.
  */
 export extern (C) void* calloc(size_t nitems, size_t size) {
     auto ptr = malloc(nitems * size);
@@ -81,6 +82,52 @@ export extern (C) void* calloc(size_t nitems, size_t size) {
 
     memset(ptr, 0, nitems * size);
     return ptr;
+}
+
+/** 
+ * Resize a block of memory. If the given ptr is null, a new block is allocated.
+ * Returns a pointer to either the same memory block if the resize fit, otherwise
+ * a different pointer to a new block of memory. When the returned pointer is null,
+ * something is wrong.
+ */
+export extern (C) void* realloc(void* ptr, size_t newSize) {
+    if (ptr is null) {
+        return malloc(newSize);
+    }
+
+    auto getRes = getBlock(ptr);
+    if (getRes.isFailure) {
+        version (MemoryDebug) {
+            writeErrLn(getRes.errorMessage);
+        }
+
+        return null;
+    }
+
+    auto block = getRes.value;
+    if (newSize > block.blockSize) {
+        freeBlock(block);
+        return malloc(newSize);
+    } else if (newSize > block.usedSize) {
+        block.usedSize = newSize;
+        return ptr;
+    } else if (newSize < block.usedSize) {
+        block.usedSize = newSize;
+        if (block.blockSize - block.usedSize > MemoryBlock.sizeof) {
+            auto splitRes = splitBlock(block, newSize);
+            if (splitRes.isFailure) {
+                version (MemoryDebug) {
+                    writeErrLn(splitRes.errorMessage);
+                }
+
+                return null;
+            }
+        }
+
+        return ptr;
+    } else {
+        return ptr;
+    }
 }
 
 /**
@@ -875,6 +922,94 @@ void runMemTests() {
         for (size_t i; i < 10 * uint.sizeof; i++) {
             assert(*(cast(ubyte*) ptr + i) == 0);
         }
+    });
+
+    test("realloc returns same pointer when the size of the block is the same", {
+        auto ptr = malloc(10);
+        auto newPtr = realloc(ptr, 10);
+        assert(newPtr is ptr);
+    });
+
+    test("realloc expands used bytes within a block if there is space", {
+        createBlock(heapStart, 10 + MemoryBlock.sizeof);
+        auto ptr = malloc(10);
+        auto block = ptr.getBlock.value;
+        assert(cast(void*) block is cast(void*) heapStart);
+        auto newPtr = realloc(ptr, 11);
+        assert(newPtr is ptr);
+        assert(block.isValidBlock);
+        assert(block.usedSize == 11);
+    });
+
+    test("realloc shrinks memory when smaller but does not split when there is not enough room for another block", {
+        createBlock(heapStart, 12);
+        auto ptr = malloc(10);
+        auto block = ptr.getBlock.value;
+        assert(cast(void*) block is cast(void*) heapStart);
+        auto newPtr = realloc(ptr, 9);
+        assert(newPtr is ptr);
+        assert(block.isValidBlock);
+        assert(block.usedSize == 9);
+        assert(block.blockSize == 12);
+    });
+
+    test("realloc shrinks memory when smaller and splits the block when another fits in the unused space", {
+        createBlock(heapStart, 10 + MemoryBlock.sizeof);
+        auto ptr = malloc(10);
+        auto block = ptr.getBlock.value;
+        assert(cast(void*) block is cast(void*) heapStart);
+        auto newPtr = realloc(ptr, 8);
+        assert(newPtr is ptr);
+        assert(block.isValidBlock);
+        assert(block.isAllocated);
+        assert(block.usedSize == 8);
+        assert(block.blockSize == 8);
+        auto nextBlock = block.nextBlock;
+        assert(nextBlock.isValidBlock);
+        assert(!nextBlock.isAllocated);
+        assert(nextBlock.usedSize == 0);
+        assert(nextBlock.blockSize == 2);
+    });
+
+    test("realloc allocates a new block of memory when it doesn't fit in the current one", {
+        auto ptr = malloc(10);
+        malloc(11); // Cause some intentional fragmentation. Otherwise the first and second blocks are combined and split again.
+        auto newPtr = realloc(ptr, 20);
+        assert(ptr !is newPtr);
+
+        auto block1 = ptr.getBlock.value;
+        assert(block1.isValidBlock);
+        assert(!block1.isAllocated);
+        assert(block1.blockSize == 10);
+        assert(block1.usedSize == 0);
+
+        auto block2 = newPtr.getBlock.value;
+        assert(block2.isValidBlock);
+        assert(block2.isAllocated);
+        assert(block2.blockSize == 20);
+        assert(block2.usedSize == 20);
+    });
+
+    test("realloc will consume neighbouring free blocks when it doesn't fit in the current block", {
+        //.. due to the behaviour of malloc
+
+        auto ptr = malloc(10);
+        // Rest of the heap is a second, free block now.
+        auto newPtr = realloc(ptr, 20);
+        assert(ptr is newPtr);
+        auto block = newPtr.getBlock.value;
+        assert(block.isValidBlock);
+        assert(block.isAllocated);
+        assert(block.blockSize == 20);
+        assert(block.usedSize == 20);
+    });
+
+    test("realloc simply mallocs when the given pointer is null", {
+        auto ptr = realloc(null, 10);
+        assert(ptr != null);
+        auto block = getBlock(ptr).value;
+        assert(block.isAllocated);
+        assert(block.usedSize == 10);
     });
 
     writeln("");
