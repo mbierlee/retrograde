@@ -391,7 +391,6 @@ private OperationResult freeBlock(MemoryBlock* block) {
     }
 
     block.isAllocated = false;
-    block.clearBlockData();
     block.usedSize = 0;
     if (firstFreeBlock is null || block < firstFreeBlock) {
         firstFreeBlock = block;
@@ -802,7 +801,7 @@ void runMemTests() {
         assert(!block.isAllocated);
     });
 
-    test("freeBlock clears block data on free", {
+    test("freeBlock does not clear block data", {
         auto ptr = malloc(10);
         assert(ptr != null);
         memset(ptr, 'H', 10);
@@ -810,18 +809,19 @@ void runMemTests() {
         auto res = freeBlock(block);
         assert(res.isSuccessful);
         foreach (ubyte blockByte; block.blockData) {
-            assert(blockByte == 0);
+            assert(blockByte == 'H');
         }
     });
 
     test("free frees previously allocated memory", {
         auto ptr = malloc(10);
         assert(ptr != null);
+        memset(ptr, 'X', 10);
         free(ptr);
         auto block = getBlock(ptr).value;
         assert(!block.isAllocated);
         foreach (ubyte blockByte; block.blockData) {
-            assert(blockByte == 0);
+            assert(blockByte == 'X');
         }
     });
 
