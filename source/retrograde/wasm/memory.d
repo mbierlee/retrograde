@@ -69,6 +69,20 @@ export extern (C) void* malloc(size_t size) {
     }
 }
 
+/** 
+ * Allocates a memory block of the given size N times.
+ * Unlike with malloc, the allocated memory is cleared upon allocation.
+ */
+export extern (C) void* calloc(size_t nitems, size_t size) {
+    auto ptr = malloc(nitems * size);
+    if (ptr is null) {
+        return null;
+    }
+
+    memset(ptr, 0, nitems * size);
+    return ptr;
+}
+
 /**
  * Frees the memory space pointed to by ptr, which must have been returned by a previous call to malloc.
  * Otherwise, or if free(ptr) has already been called before, undefined behavior occurs.
@@ -833,6 +847,34 @@ void runMemTests() {
         assert(!block.isAllocated);
         foreach (ubyte blockByte; block.blockData) {
             assert(blockByte == 0);
+        }
+    });
+
+    test("calloc allocates an array of memory", {
+        auto ptr = calloc(10, uint.sizeof);
+        assert(ptr != null);
+        auto block = getBlock(ptr).value;
+        assert(block.isAllocated);
+        assert(block.usedSize == 10 * uint.sizeof);
+        assert(block.blockSize == 10 * uint.sizeof);
+    });
+
+    test("calloc clears memory after allocation", {
+        auto ptr = malloc(10 * uint.sizeof);
+        memset(ptr, 0xFF, 10 * uint.sizeof);
+        free(ptr);
+
+        // Sanity check to make sure the freed memory is reallocated
+        // and not cleared.
+        ptr = malloc(10 * uint.sizeof);
+        for (size_t i; i < 10 * uint.sizeof; i++) {
+            assert(*(cast(ubyte*) ptr + i) == 0xFF);
+        }
+
+        free(ptr);
+        ptr = calloc(10, uint.sizeof);
+        for (size_t i; i < 10 * uint.sizeof; i++) {
+            assert(*(cast(ubyte*) ptr + i) == 0);
         }
     });
 
