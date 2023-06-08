@@ -206,6 +206,20 @@ export extern (C) int memcmp(const void* ptr1, const void* ptr2, size_t num) {
     return 0;
 }
 
+/** 
+ * Copies memory from src into dest for count amount of bytes.
+ * No bounds checking is peformed. When count is greated than src or dest's
+ * allocated sized, unintended memory is copied/replaced and corruption may occur.
+ * It is faster than memmove, but unsafe.
+ */
+export extern (C) void* memcpy(void* dest, const void* src, size_t count) {
+    for (size_t i; i < count; i++) {
+        (cast(ubyte*) dest)[i] = (cast(ubyte*) src)[i];
+    }
+
+    return dest;
+}
+
 OperationResult initializeHeapMemory(size_t _heapOffset = 0) {
     firstFreeBlock = null;
     heapOffset = _heapOffset;
@@ -1010,6 +1024,18 @@ void runMemTests() {
         auto block = getBlock(ptr).value;
         assert(block.isAllocated);
         assert(block.usedSize == 10);
+    });
+
+    test("memcpy copies src into dest", {
+        auto ptr1 = cast(ubyte*) malloc(2);
+        auto ptr2 = cast(ubyte*) malloc(2);
+        ptr1[0] = 'H';
+        ptr1[1] = 'I';
+        assert(ptr2[0] == 0);
+        assert(ptr2[1] == 0);
+        memcpy(ptr2, ptr1, 2);
+        assert(ptr2[0] == 'H');
+        assert(ptr2[1] == 'I');
     });
 
     writeln("");
