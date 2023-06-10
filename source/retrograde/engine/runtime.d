@@ -24,6 +24,18 @@ bool terminateEngineLoop = false;
 private double lastTimeMs = 0.0;
 private double lagTimeMs = 0.0;
 
+version (WebAssembly) {
+} else {
+    import core.stdc.time : clock, CLOCKS_PER_SEC;
+
+    void runLoop() {
+        while (!terminateEngineLoop) {
+            auto elapsedTimeMs = clock() / CLOCKS_PER_SEC * 1000;
+            executeEngineLoopCycle(elapsedTimeMs);
+        }
+    }
+}
+
 export extern (C) void executeEngineLoopCycle(double elapsedTimeMs) {
     assert(updateFunction != null, "updateFunction cannot be null. Set it before starting the engine loop.");
 
@@ -75,22 +87,29 @@ export extern (C) void initEngine() {
 }
 
 template DefaultEntryPoint() {
+    void setupHooks() {
+        mixin("
+            import retrograde.engine.runtime : initFunction, updateFunction;
+            initFunction = &init;
+            updateFunction = &update;
+        ");
+    }
+
     version (WebAssembly) {
         export extern (C) void _start() {
-            mixin("
-                import retrograde.engine.runtime : initFunction, updateFunction;
-                initFunction = &init;
-                updateFunction = &update;
-            ");
+            setupHooks();
 
             // We do not run the internal engine loop in WebAssembly,
             // the browser is in charge of that.
+            // Also initEngine is called by the web runtime.
         }
     } else {
         void main() {
+            import retrograde.engine.runtime : initEngine, runLoop;
+
+            setupHooks();
             initEngine();
-            //TODO: run game loop
-            assert(false, "Native update loop not yet implemented");
+            runLoop();
         }
     }
 }
