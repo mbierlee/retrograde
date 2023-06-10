@@ -227,7 +227,7 @@ export extern (C) void* memcpy(void* dest, const void* src, size_t count) {
  * and that dest is big enough. If not, dest is resized.
  * If something goes wrong, null is returned.
  */
-void* memmove(void* dest, const void* src, size_t count) {
+export extern (C) void* memmove(void* dest, const void* src, size_t count) {
     auto srcBlockRes = src.getBlock;
     if (srcBlockRes.isFailure) {
         version (MemoryDebug) {
