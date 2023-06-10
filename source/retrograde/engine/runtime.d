@@ -68,6 +68,7 @@ export extern (C) void initEngine() {
 
     version (WebAssembly) {
         import retrograde.wasm.memory : initializeHeapMemory;
+        import retrograde.std.stdio : writeErrLnStr;
 
         // These function pointers somehow end up on the heap, so we need to offset them.
         // and for some reason there's an extra one, no idea where it comes from!
@@ -77,8 +78,6 @@ export extern (C) void initEngine() {
         );
 
         if (res.isFailure) {
-            import retrograde.std.stdio : writeErrLnStr;
-
             writeErrLnStr(res.errorMessage);
         }
     }
