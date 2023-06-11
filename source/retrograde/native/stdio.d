@@ -28,11 +28,11 @@ void writelnInt(int number) {
 }
 
 void writelnUlong(ulong number) {
-    printf("%d\n", number);
+    printf("%d\n", cast(uint) number);
 }
 
 void writelnLong(long number) {
-    printf("%d\n", number);
+    printf("%d\n", cast(int) number);
 }
 
 void writelnDouble(double number) {
@@ -72,11 +72,11 @@ void writeErrLnInt(int number) {
 }
 
 void writeErrLnULong(ulong number) {
-    printf("ERROR: %d\n", number);
+    printf("ERROR: %d\n", cast(uint) number);
 }
 
 void writeErrLnLong(long number) {
-    printf("ERROR: %d\n", number);
+    printf("ERROR: %d\n", cast(int) number);
 }
 
 void writeErrLnDouble(double number) {
