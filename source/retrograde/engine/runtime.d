@@ -69,13 +69,7 @@ export extern (C) void initEngine() {
         import retrograde.wasm.memory : initializeHeapMemory;
         import retrograde.std.stdio : writeErrLnStr;
 
-        // These function pointers somehow end up on the heap, so we need to offset them.
-        // and for some reason there's an extra one, no idea where it comes from!
-        // Find a more reliable way to determine the true start of the free heap.
-        auto res = initializeHeapMemory(
-            initFunction.sizeof + updateFunction.sizeof + updateFunction.sizeof
-        );
-
+        auto res = initializeHeapMemory();
         if (res.isFailure) {
             writeErrLnStr(res.errorMessage);
         }

@@ -257,7 +257,16 @@ export extern (C) void* memmove(void* dest, const void* src, size_t count) {
     return memcpy(dest, src, actualCount);
 }
 
-OperationResult initializeHeapMemory(size_t _heapOffset = 0) {
+/** 
+ * Initializes the heap memoery. 
+ * This function must be called before any other memory function.
+ * Params: 
+ *   _heapOffset: The offset from the end of the static data section to the start of the heap.
+ *                Defaults to 64KiB, which is recommended because LDC stores some global function
+ *                pointers and vars on the heap, which can cause problems if the memory manager is
+ *                also working in that area.
+ */
+OperationResult initializeHeapMemory(size_t _heapOffset = _64KiB) {
     firstFreeBlock = null;
     heapOffset = _heapOffset;
 
@@ -319,14 +328,22 @@ private extern (C) ubyte __data_end;
 // Start of heap. Take an address of it (&__heap_base) to get the actual address.
 private extern (C) ubyte __heap_base;
 
+// Size of the full heap, including unusable memory.
+private size_t fullHeapSize() {
+    return llvm_wasm_memory_size(0) * _64KiB - cast(size_t)&__heap_base;
+}
+
+// Size of the usable heap.
 private size_t heapSize() {
     return llvm_wasm_memory_size(0) * _64KiB - cast(size_t) heapStart;
 }
 
+// Start of the usable heap.
 private ubyte* heapStart() {
     return &__heap_base + heapOffset;
 }
 
+// End of the usable heap.
 private ubyte* heapEnd() {
     return heapStart + heapSize;
 }
@@ -389,8 +406,8 @@ private void createBlock(void* ptr, size_t blockSize) {
 }
 
 private OperationResult maybeGrowInitialHeap() {
-    auto wantedTotal = MemoryBlock.sizeof + initialHeapSize;
-    auto currentHeapSize = heapSize;
+    auto wantedTotal = initialHeapSize;
+    auto currentHeapSize = fullHeapSize;
     if (currentHeapSize < wantedTotal) {
         auto res = growHeap(wantedTotal);
         if (res.isFailure) {
