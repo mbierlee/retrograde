@@ -12,7 +12,7 @@ export default class EngineRuntimeModule extends WasmModule {
       writelnInt: (value) => {
         console.log(value);
       },
-      writelnULong: (value) => {
+      writelnUlong: (value) => {
         console.log(value);
       },
       writelnLong: (value) => {

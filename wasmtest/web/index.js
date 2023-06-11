@@ -26,6 +26,12 @@ WebAssembly.instantiateStreaming(fetch("bin/wasmmemtest.wasm"), {
     writelnInt: (value) => {
       console.log(value);
     },
+    writelnUlong: (value) => {
+      console.log(value);
+    },
+    writelnLong: (value) => {
+      console.log(value);
+    },
     writelnDouble: (value) => {
       console.log(value);
     },
@@ -45,12 +51,18 @@ WebAssembly.instantiateStreaming(fetch("bin/wasmmemtest.wasm"), {
       console.log(value == 1 ? "true" : "false");
     },
     writeErrLnStr: (msgLength, msgPtr) => {
-      console.error(this.getString(msgPtr, msgLength));
+      console.error(getString(msgPtr, msgLength));
     },
     writeErrLnUint: (value) => {
       console.error(value);
     },
     writeErrLnInt: (value) => {
+      console.error(value);
+    },
+    writeErrLnULong: (value) => {
+      console.error(value);
+    },
+    writeErrLnLong: (value) => {
       console.error(value);
     },
     writeErrLnDouble: (value) => {

@@ -19,7 +19,7 @@ extern (C):
 void writelnStr(string msg);
 void writelnUint(uint number);
 void writelnInt(int number);
-void writelnULong(ulong number);
+void writelnUlong(ulong number);
 void writelnLong(long number);
 void writelnDouble(double number);
 void writelnFloat(float number);
