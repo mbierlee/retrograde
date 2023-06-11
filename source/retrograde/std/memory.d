@@ -54,13 +54,10 @@ T* makeRaw(T)(const T initial = T.init) {
     return makeRaw(initial);
 }
 
-/**
- * Allocates memory of the given type.
- * The memory is initialized to the given value.
- */
+/// ditto
 T* makeRaw(T)(const ref T initial) {
     T* ptr = allocateRaw!T;
-    *ptr = initial;
+    memcpy(ptr, &initial, T.sizeof);
     return ptr;
 }
 
@@ -77,29 +74,92 @@ T[] makeRawArray(T)(size_t length, T initialValue = T.init) {
     return ptr[0 .. length];
 }
 
+/** 
+ * A pointer to allocated memory that is freed when the pointer goes out of scope.
+ *
+ * The pointer has unique, exclusive ownership of the memory. The original raw pointer
+ * should not be used after the unique pointer is created and definitely not be freed
+ * manually.
+ */
+struct UniquePtr(T) {
+    private T* ptr;
+
+    this(T* ptr) {
+        assert(ptr !is null);
+        this.ptr = ptr;
+    }
+
+    ~this() {
+        if (ptr !is null) {
+            destroy(*ptr);
+            free(ptr);
+            ptr = null;
+        }
+    }
+
+    auto opDispatch(string s)() {
+        return mixin("ptr." ~ s);
+    }
+
+    auto opDispatch(string s, Args...)(Args args) {
+        return mixin("ptr." ~ s ~ "(args)");
+    }
+}
+
+/**
+ * Create a unique pointer from a raw pointer.
+ */
+UniquePtr!T unique(T)(T* ptr) {
+    return UniquePtr!T(ptr);
+}
+
+/**
+ * Create a unique pointer from a raw pointer.
+ * The pointer is initialized to the given value.
+ */
+UniquePtr!T makeUnique(T)(const T initial = T.init) {
+    return makeUnique(initial);
+}
+
+/// ditto
+UniquePtr!T makeUnique(T)(const ref T initial) {
+    return UniquePtr!T(makeRaw(initial));
+}
+
 version (unittest) {
     unittest {
         runStdMemoryTests();
     }
 }
 
+private bool testStructDestroyed = false;
+
+private struct TestStruct {
+    int a = 42;
+    int b = 66;
+
+    ~this() {
+        testStructDestroyed = true;
+    }
+
+    void doubleValues() {
+        a *= 2;
+        b *= 2;
+    }
+}
+
 void runStdMemoryTests() {
     writeSection("-- High-level memory tests --");
 
-    struct TestStruct {
-        int a = 42;
-        int b = 66;
-    }
-
     test("Create an uninitialized raw pointer", {
-        TestStruct* testStruct = allocateRaw!TestStruct();
+        TestStruct* testStruct = allocateRaw!TestStruct;
         assert(testStruct.a != 42);
         assert(testStruct.b != 66);
         free(testStruct);
     });
 
     test("Create an initialized, default raw pointer", {
-        TestStruct* testStruct = makeRaw!TestStruct();
+        TestStruct* testStruct = makeRaw!TestStruct;
         assert(testStruct.a == 42);
         assert(testStruct.b == 66);
         free(testStruct);
@@ -136,5 +196,39 @@ void runStdMemoryTests() {
         }
 
         free(slice);
+    });
+
+    test("Create and use a unique pointer", {
+        auto uniquePtr = UniquePtr!TestStruct(makeRaw!TestStruct);
+        assert(uniquePtr.ptr.a == 42);
+        assert(uniquePtr.ptr.b == 66);
+
+        uniquePtr.doubleValues();
+        assert(uniquePtr.a == 84);
+        assert(uniquePtr.b == 132);
+    });
+
+    test("Create an initialized unique pointer", {
+        auto uniquePtr = makeUnique!TestStruct;
+        assert(uniquePtr.a == 42);
+        assert(uniquePtr.b == 66);
+    });
+    test("A destroyed unique pointer will nullify the container pointer", {
+        auto uniquePtr = makeRaw!TestStruct().unique;
+        assert(uniquePtr.ptr !is null);
+        uniquePtr.destroy();
+        assert(uniquePtr.ptr is null);
+    });
+
+    test("A destroyed unique pointer will destroy the contained pointer", {
+        auto rawPtr = makeRaw!TestStruct();
+        testStructDestroyed = false;
+        {
+            auto uniquePtr = rawPtr.unique;
+            assert(uniquePtr.ptr !is null);
+            assert(!testStructDestroyed);
+        }
+
+        assert(testStructDestroyed);
     });
 }

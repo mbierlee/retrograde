@@ -24,8 +24,7 @@ bool terminateEngineLoop = false;
 private double lastTimeMs = 0.0;
 private double lagTimeMs = 0.0;
 
-version (WebAssembly) {
-} else {
+version (Native) {
     import core.stdc.time : clock, CLOCKS_PER_SEC;
 
     void runLoop() {
