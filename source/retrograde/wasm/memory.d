@@ -305,6 +305,53 @@ void wipeHeap() {
     memset(heapStart, 0, heapSize);
 }
 
+struct MemoryMetrics {
+    ulong heapSizeBytes;
+    ulong usedHeapBytes;
+    ulong usedAllocatedBytes;
+    ulong freeHeapBytes;
+    ulong freeAllocatedBytes;
+    ulong numBlocks;
+
+    void print() {
+        writeln("Heap Size:");
+        writeln(heapSizeBytes);
+        writeln("Used Heap Bytes:");
+        writeln(usedHeapBytes);
+        writeln("Used Allocated Bytes:");
+        writeln(usedAllocatedBytes);
+        writeln("Free Heap Bytes:");
+        writeln(freeHeapBytes);
+        writeln("Free Allocated Bytes:");
+        writeln(freeAllocatedBytes);
+        writeln("Number of Blocks:");
+        writeln(numBlocks);
+    }
+}
+
+MemoryMetrics getMemoryMetrics() {
+    MemoryMetrics metrics;
+    metrics.heapSizeBytes = heapSize;
+
+    auto block = cast(MemoryBlock*) heapStart;
+    auto endOfHeap = cast(void*) heapEnd;
+    while (cast(void*) block < endOfHeap && block.isValidBlock()) {
+        metrics.numBlocks++;
+
+        if (block.isAllocated) {
+            metrics.usedAllocatedBytes += block.usedSize;
+            metrics.usedHeapBytes += MemoryBlock.sizeof + block.blockSize;
+        } else {
+            metrics.freeAllocatedBytes += block.usedSize;
+            metrics.freeHeapBytes += MemoryBlock.sizeof + block.blockSize;
+        }
+
+        block = block.nextBlock;
+    }
+
+    return metrics;
+}
+
 private enum _64KiB = 65_536;
 private enum initialHeapSize = _64KiB;
 private size_t heapOffset;
@@ -445,7 +492,7 @@ private Option!(MemoryBlock*) findFreeBlock(size_t wantedBytes) {
         }
 
         previousBlock = block;
-        block = cast(MemoryBlock*)(cast(ubyte*) block + block.blockSize + MemoryBlock.sizeof);
+        block = block.nextBlock;
     }
 
     return none!(MemoryBlock*);
