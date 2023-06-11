@@ -28,3 +28,26 @@ version (WebAssembly) {
         free(ptr);
     }
 }
+
+/**
+ * Allocates memory of the given type.
+ * The memory is not initialized.
+ */
+T* allocateRaw(T)() {
+    return cast(T*) malloc(T.sizeof);
+}
+
+version (unittest)  :  //
+
+struct TestStruct {
+    int a = 42;
+    int b = 66;
+}
+
+@("Create an uninitialized raw pointer")
+unittest {
+    TestStruct* testStruct = allocateRaw!TestStruct();
+    assert(testStruct.a != 42);
+    assert(testStruct.b != 66);
+    free(testStruct);
+}
