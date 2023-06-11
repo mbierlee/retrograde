@@ -11,8 +11,10 @@
 
 module retrograde.std.memory;
 
+import retrograde.std.test : test, writeSection;
+
 version (WebAssembly) {
-    public import retrograde.wasm.memory;
+    public import retrograde.wasm.memory : malloc, free, calloc, realloc, memset, memcmp, memcpy;
 } else {
     public import core.stdc.stdlib : malloc, free, calloc, realloc;
     public import core.stdc.string : memset, memcmp, memcpy;
@@ -27,6 +29,13 @@ version (WebAssembly) {
     export extern (C) void free_sized(void* ptr, size_t size) {
         free(ptr);
     }
+}
+
+/** 
+ * Free an array pointer referenced by a slice.
+ */
+export extern (C) void free(T)(T[] slice) {
+    free(slice.ptr);
 }
 
 /**
@@ -55,42 +64,77 @@ T* makeRaw(T)(const ref T initial) {
     return ptr;
 }
 
-version (unittest)  :  //
+/**
+ * Allocates an array of the given type.
+ * The memory is initialized to given value.
+ */
+T[] makeRawArray(T)(size_t length, T initialValue = T.init) {
+    auto ptr = cast(T*) calloc(length, T.sizeof);
+    for (size_t i = 0; i < length; i++) {
+        ptr[i] = initialValue;
+    }
 
-struct TestStruct {
-    int a = 42;
-    int b = 66;
+    return ptr[0 .. length];
 }
 
-@("Create an uninitialized raw pointer")
-unittest {
-    TestStruct* testStruct = allocateRaw!TestStruct();
-    assert(testStruct.a != 42);
-    assert(testStruct.b != 66);
-    free(testStruct);
+version (unittest) {
+    unittest {
+        runStdMemoryTests();
+    }
 }
 
-@("Create an initialized, default raw pointer")
-unittest {
-    TestStruct* testStruct = makeRaw!TestStruct();
-    assert(testStruct.a == 42);
-    assert(testStruct.b == 66);
-    free(testStruct);
-}
+void runStdMemoryTests() {
+    writeSection("-- High-level memory tests --");
 
-@("Create an initialized, used-defined raw pointer by reference")
-unittest {
-    auto initial = TestStruct(44, 33);
-    TestStruct* testStruct = makeRaw(initial);
-    assert(testStruct.a == 44);
-    assert(testStruct.b == 33);
-    free(testStruct);
-}
+    struct TestStruct {
+        int a = 42;
+        int b = 66;
+    }
 
-@("Create an initialized, used-defined raw pointer by value")
-unittest {
-    TestStruct* testStruct = makeRaw(TestStruct(66, 77));
-    assert(testStruct.a == 66);
-    assert(testStruct.b == 77);
-    free(testStruct);
+    test("Create an uninitialized raw pointer", {
+        TestStruct* testStruct = allocateRaw!TestStruct();
+        assert(testStruct.a != 42);
+        assert(testStruct.b != 66);
+        free(testStruct);
+    });
+
+    test("Create an initialized, default raw pointer", {
+        TestStruct* testStruct = makeRaw!TestStruct();
+        assert(testStruct.a == 42);
+        assert(testStruct.b == 66);
+        free(testStruct);
+    });
+
+    test("Create an initialized, used-defined raw pointer by reference", {
+        auto initial = TestStruct(44, 33);
+        TestStruct* testStruct = makeRaw(initial);
+        assert(testStruct.a == 44);
+        assert(testStruct.b == 33);
+        free(testStruct);
+    });
+
+    test("Create an initialized, used-defined raw pointer by value", {
+        TestStruct* testStruct = makeRaw(TestStruct(66, 77));
+        assert(testStruct.a == 66);
+        assert(testStruct.b == 77);
+        free(testStruct);
+    });
+
+    test("Create an array of raw pointers", {
+        auto slice = makeRawArray!int(10);
+        for (size_t i = 0; i < 10; i++) {
+            assert(slice[i] == 0);
+        }
+
+        free(slice);
+    });
+
+    test("Create an array of raw pointers initialized by custom value", {
+        auto slice = makeRawArray!int(10, 42);
+        for (size_t i = 0; i < 10; i++) {
+            assert(slice[i] == 42);
+        }
+
+        free(slice);
+    });
 }

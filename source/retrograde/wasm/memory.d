@@ -288,6 +288,14 @@ void printDebugInfo() {
     writeln("--End of Memory Debug Info--");
 }
 
+/**
+ * Wipe the complete heap.
+ * Used for testing purposes only.
+ */
+void wipeHeap() {
+    memset(heapStart, 0, heapSize);
+}
+
 private enum _64KiB = 65_536;
 private enum initialHeapSize = _64KiB;
 private size_t heapOffset;
@@ -371,10 +379,6 @@ private align(16) struct MemoryBlock {
     private size_t calculateChecksum() {
         return blockSize ^ BlockHeader;
     }
-}
-
-private void wipeHeap() {
-    memset(heapStart, 0, heapSize);
 }
 
 private void createBlock(void* ptr, size_t blockSize) {
@@ -540,17 +544,10 @@ private Result!(MemoryBlock*) getBlock(const void* dataPtr) {
 }
 
 version (WasmMemTest)  :  //
+import retrograde.std.test : test, writeSection;
 
-void runMemTests() {
-    initializeHeapMemory();
-
-    version (MemoryDebug) {
-        printDebugInfo();
-    }
-
-    writeln("");
-    writeln("Starting memory tests...");
-    writeln("");
+void runWasmMemTests() {
+    writeSection("-- Low-level WASM memory tests --");
 
     test("Initial heap size is usable", {
         foreach (i; 0 .. heapSize) {
@@ -1121,16 +1118,4 @@ void runMemTests() {
         auto ptr2Block = ptr2.getBlock.value;
         assert(!ptr2Block.isAllocated);
     });
-
-    writeln("");
-    writeln("All tests passed!");
-    writeln("");
-}
-
-void test(string name, void function() testFunc) {
-    wipeHeap();
-    initializeHeapMemory();
-    writeln(name);
-    testFunc();
-    writeln("  OK!");
 }
