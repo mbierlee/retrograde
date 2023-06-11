@@ -37,6 +37,24 @@ T* allocateRaw(T)() {
     return cast(T*) malloc(T.sizeof);
 }
 
+/**
+ * Allocates memory of the given type.
+ * The memory is initialized to the given value.
+ */
+T* makeRaw(T)(const T initial = T.init) {
+    return makeRaw(initial);
+}
+
+/**
+ * Allocates memory of the given type.
+ * The memory is initialized to the given value.
+ */
+T* makeRaw(T)(const ref T initial) {
+    T* ptr = allocateRaw!T;
+    *ptr = initial;
+    return ptr;
+}
+
 version (unittest)  :  //
 
 struct TestStruct {
@@ -49,5 +67,30 @@ unittest {
     TestStruct* testStruct = allocateRaw!TestStruct();
     assert(testStruct.a != 42);
     assert(testStruct.b != 66);
+    free(testStruct);
+}
+
+@("Create an initialized, default raw pointer")
+unittest {
+    TestStruct* testStruct = makeRaw!TestStruct();
+    assert(testStruct.a == 42);
+    assert(testStruct.b == 66);
+    free(testStruct);
+}
+
+@("Create an initialized, used-defined raw pointer by reference")
+unittest {
+    auto initial = TestStruct(44, 33);
+    TestStruct* testStruct = makeRaw(initial);
+    assert(testStruct.a == 44);
+    assert(testStruct.b == 33);
+    free(testStruct);
+}
+
+@("Create an initialized, used-defined raw pointer by value")
+unittest {
+    TestStruct* testStruct = makeRaw(TestStruct(66, 77));
+    assert(testStruct.a == 66);
+    assert(testStruct.b == 77);
     free(testStruct);
 }
