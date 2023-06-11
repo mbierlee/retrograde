@@ -349,7 +349,8 @@ private ubyte* heapEnd() {
 }
 
 private align(16) struct MemoryBlock {
-    enum BlockHeader = 0x4B4F4C42;
+    enum BlockHeader = 0x4B4F4C42; // "BLOK"
+    enum ChecksumMagic = 0x4B454843; // "CHEK"
 
     size_t header = BlockHeader;
     bool isAllocated = false;
@@ -394,7 +395,7 @@ private align(16) struct MemoryBlock {
     }
 
     private size_t calculateChecksum() {
-        return blockSize ^ BlockHeader;
+        return blockSize ^ ChecksumMagic;
     }
 }
 
@@ -582,7 +583,7 @@ void runWasmMemTests() {
         assert(!block.isAllocated);
         assert(block.blockSize == heapSize - MemoryBlock.sizeof);
         assert(block.usedSize == 0);
-        assert(block.checksum == (block.blockSize ^ MemoryBlock.BlockHeader));
+        assert(block.checksum == (block.blockSize ^ MemoryBlock.ChecksumMagic));
         assert(block.isValidBlock());
     });
 
@@ -593,7 +594,7 @@ void runWasmMemTests() {
         assert(!block.isAllocated);
         assert(block.blockSize == heapSize() - MemoryBlock.sizeof);
         assert(block.usedSize == 0);
-        assert(block.checksum == (block.blockSize ^ MemoryBlock.BlockHeader));
+        assert(block.checksum == (block.blockSize ^ MemoryBlock.ChecksumMagic));
         assert(block.isValidBlock());
     });
 
@@ -604,7 +605,7 @@ void runWasmMemTests() {
         assert(!res.value.isAllocated);
         assert(res.value.blockSize == heapSize() - MemoryBlock.sizeof);
         assert(res.value.usedSize == 0);
-        assert(res.value.checksum == (res.value.blockSize ^ MemoryBlock.BlockHeader));
+        assert(res.value.checksum == (res.value.blockSize ^ MemoryBlock.ChecksumMagic));
         assert(res.value.isValidBlock());
     });
 
@@ -678,7 +679,7 @@ void runWasmMemTests() {
         assert(!block.isAllocated);
         assert(block.blockSize == 5);
         assert(block.usedSize == 0);
-        assert(block.checksum == (block.blockSize ^ MemoryBlock.BlockHeader));
+        assert(block.checksum == (block.blockSize ^ MemoryBlock.ChecksumMagic));
         assert(block.isValidBlock());
 
         auto nextBlock = block.nextBlock;
@@ -686,7 +687,7 @@ void runWasmMemTests() {
         assert(!nextBlock.isAllocated);
         assert(nextBlock.blockSize == heapSize() - MemoryBlock.sizeof - 5 - MemoryBlock.sizeof);
         assert(nextBlock.usedSize == 0);
-        assert(nextBlock.checksum == (nextBlock.blockSize ^ MemoryBlock.BlockHeader));
+        assert(nextBlock.checksum == (nextBlock.blockSize ^ MemoryBlock.ChecksumMagic));
         assert(nextBlock.isValidBlock());
     });
 
@@ -702,7 +703,7 @@ void runWasmMemTests() {
         assert(!block.isAllocated);
         assert(block.blockSize == 10);
         assert(block.usedSize == 0);
-        assert(block.checksum == (block.blockSize ^ MemoryBlock.BlockHeader));
+        assert(block.checksum == (block.blockSize ^ MemoryBlock.ChecksumMagic));
         assert(block.isValidBlock());
     });
 
@@ -727,7 +728,7 @@ void runWasmMemTests() {
         assert(block.isAllocated);
         assert(block.blockSize == 10);
         assert(block.usedSize == 5);
-        assert(block.checksum == (block.blockSize ^ MemoryBlock.BlockHeader));
+        assert(block.checksum == (block.blockSize ^ MemoryBlock.ChecksumMagic));
         assert(block.isValidBlock());
     });
 
@@ -808,7 +809,7 @@ void runWasmMemTests() {
         assert(block.isAllocated);
         assert(block.blockSize == 10);
         assert(block.usedSize == 5);
-        assert(block.checksum == (block.blockSize ^ MemoryBlock.BlockHeader));
+        assert(block.checksum == (block.blockSize ^ MemoryBlock.ChecksumMagic));
         assert(block.isValidBlock());
     });
 
@@ -888,7 +889,7 @@ void runWasmMemTests() {
         assert(res.isSuccessful);
         assert(!block.isAllocated);
         assert(block.usedSize == 0);
-        assert(block.checksum == (block.blockSize ^ MemoryBlock.BlockHeader));
+        assert(block.checksum == (block.blockSize ^ MemoryBlock.ChecksumMagic));
     });
 
     test("freeBlock fails when a block is not valid", {
