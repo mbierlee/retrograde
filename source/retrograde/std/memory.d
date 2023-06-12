@@ -93,8 +93,9 @@ struct UniquePtr(T) {
         if (ptr !is null) {
             destroy(*ptr);
             free(ptr);
-            ptr = null;
         }
+
+        ptr = null;
     }
 
     @disable this(ref typeof(this));
@@ -139,6 +140,63 @@ UniquePtr!T makeUnique(T)(const T initial = T.init) {
 /// ditto
 UniquePtr!T makeUnique(T)(const ref T initial) {
     return UniquePtr!T(makeRaw(initial));
+}
+
+/**
+ * Create a shared pointer from a raw pointer.
+ * A shared pointer can be copied and shared between multiple owners.
+ * The memory is freed when the last owner destroys the shared pointer.
+ */
+struct SharedPtr(T) {
+    private T* ptr;
+    private size_t* refCount;
+
+    this(T* ptr) {
+        assert(ptr !is null);
+        this.ptr = ptr;
+        refCount = makeRaw!size_t;
+        *refCount = 1;
+    }
+
+    ~this() {
+        if (ptr !is null) {
+            assert(refCount !is null, "Reference count is null but pointer is not null.");
+            (*refCount)--;
+            if (*refCount <= 0) {
+                destroy(*ptr);
+                free(ptr);
+                free(refCount);
+            }
+        }
+
+        ptr = null;
+        refCount = null;
+    }
+
+    this(ref return scope typeof(this) other) {
+        assert(other.ptr !is null, "Other shared pointer is null and may not be used.");
+        assert(other.refCount !is null, "Other shared pointer reference count is null but pointer is not null.");
+        ptr = other.ptr;
+        refCount = other.refCount;
+        (*refCount)++;
+    }
+
+    auto opDispatch(string s)() {
+        assert(ptr !is null, "Shared pointer is null and may not be used.");
+        return mixin("ptr." ~ s);
+    }
+
+    auto opDispatch(string s, Args...)(Args args) {
+        assert(ptr !is null, "Shared pointer is null and may not be used.");
+        return mixin("ptr." ~ s ~ "(args)");
+    }
+}
+
+/**
+ * Create a shared pointer from a raw pointer.
+ */
+SharedPtr!T share(T)(T* ptr) {
+    return SharedPtr!T(ptr);
 }
 
 version (unittest) {
@@ -260,7 +318,7 @@ void runStdMemoryTests() {
     test("A unique pointer is destroyed when containing objects are", {
         testStructDestroyed = false;
         {
-            auto container = TestContainer(makeUnique!TestStruct);
+            TestContainer(makeUnique!TestStruct);
         }
 
         assert(testStructDestroyed);
@@ -277,5 +335,57 @@ void runStdMemoryTests() {
         auto uniquePtr2 = uniquePtr.move;
         assert(uniquePtr.ptr is null);
         assert(uniquePtr2.ptr is rawPtr);
+    });
+
+    test("Create and use a shared pointer", {
+        auto sharedPtr = SharedPtr!TestStruct(makeRaw!TestStruct);
+        assert(sharedPtr.ptr.a == 42);
+        assert(sharedPtr.ptr.b == 66);
+        assert(*(sharedPtr.refCount) == 1);
+
+        sharedPtr.doubleValues();
+        assert(sharedPtr.a == 84);
+        assert(sharedPtr.b == 132);
+    });
+
+    test("Contained object is destroyed and freed when shared pointer goes out of scope and ref is 0", {
+        testStructDestroyed = false; // This is just to make dfmt not add a huge amount of spaces
+
+        {
+            auto sharedPtr = makeRaw!TestStruct().share;
+            testStructDestroyed = false;
+            assert(sharedPtr.ptr !is null);
+            assert(*(sharedPtr.refCount) == 1);
+            assert(!testStructDestroyed);
+        }
+
+        assert(testStructDestroyed);
+    });
+
+    test("In a shared pointer the refcount is properly managed and containing object cleaned up", {
+        testStructDestroyed = false; // This is just to make dfmt not add a huge amount of spaces
+
+        {
+            auto rawPtr = makeRaw!TestStruct();
+            testStructDestroyed = false;
+            SharedPtr!TestStruct sharedPtr = rawPtr.share;
+            assert(*(sharedPtr.refCount) == 1);
+            assert(sharedPtr.ptr is rawPtr);
+            assert(!testStructDestroyed);
+
+            {
+                SharedPtr!TestStruct sharedPtr2 = sharedPtr;
+                assert(*(sharedPtr.refCount) == 2);
+                assert(*(sharedPtr2.refCount) == 2);
+                assert(sharedPtr.ptr is rawPtr);
+                assert(sharedPtr2.ptr is rawPtr);
+                assert(!testStructDestroyed);
+            }
+
+            assert(!testStructDestroyed);
+            assert(*(sharedPtr.refCount) == 1);
+        }
+
+        assert(testStructDestroyed);
     });
 }
