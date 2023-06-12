@@ -106,6 +106,17 @@ struct UniquePtr(T) {
     auto opDispatch(string s, Args...)(Args args) {
         return mixin("ptr." ~ s ~ "(args)");
     }
+
+    /**
+     * Move the raw pointer to another unique pointer.
+     * The original pointer is not freed.
+     * This instance will become useless and should not be used anymore.
+     */
+    UniquePtr!T move() {
+        auto movedPtr = UniquePtr!T(ptr);
+        ptr = null;
+        return movedPtr;
+    }
 }
 
 /**
@@ -250,5 +261,13 @@ void runStdMemoryTests() {
     test("A unique pointer cannot be copied", {
         auto uniquePtr = makeUnique!TestStruct;
         assert(!__traits(compiles, mixin("auto uniquePtr2 = uniquePtr")));
+    });
+
+    test("A unique pointer's ownership can be moved", {
+        auto rawPtr = makeRaw!TestStruct;
+        auto uniquePtr = rawPtr.unique;
+        auto uniquePtr2 = uniquePtr.move;
+        assert(uniquePtr.ptr is null);
+        assert(uniquePtr2.ptr is rawPtr);
     });
 }
