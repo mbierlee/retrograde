@@ -141,16 +141,21 @@ export extern (C) void free(void* ptr) {
         return;
     }
 
-    auto res = getBlock(ptr);
-    if (res.isFailure) {
+    auto getRes = getBlock(ptr);
+    if (getRes.isFailure) {
         version (MemoryDebug) {
-            writeErrLn(res.errorMessage);
+            writeErrLn(getRes.errorMessage);
         }
 
         return;
     }
 
-    freeBlock(res.value);
+    auto freeRes = freeBlock(getRes.value);
+    if (freeRes.isFailure) {
+        version (MemoryDebug) {
+            writeErrLn(freeRes.errorMessage);
+        }
+    }
 }
 
 /**

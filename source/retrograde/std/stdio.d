@@ -16,7 +16,7 @@ version (WebAssembly) {
 } else version (Native) {
     public import retrograde.native.stdio;
 } else {
-    static assert(false, "No stdio implementation available for this target platform");
+    static assert(false, "No stdio implementation available for target platform. Provide one of these versions: WebAssembly, Native");
 }
 
 /** 
