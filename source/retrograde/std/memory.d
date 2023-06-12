@@ -159,16 +159,8 @@ struct SharedPtr(T) {
     }
 
     ~this() {
-        if (ptr !is null) {
-            assert(refCount !is null, "Reference count is null but pointer is not null.");
-            (*refCount)--;
-            if (*refCount <= 0) {
-                destroy(*ptr);
-                free(ptr);
-                free(refCount);
-            }
-        }
-
+        assert(ptr is null || refCount !is null, "Reference count is null but pointer is not null.");
+        releaseShare();
         ptr = null;
         refCount = null;
     }
@@ -176,6 +168,15 @@ struct SharedPtr(T) {
     this(ref return scope typeof(this) other) {
         assert(other.ptr !is null, "Other shared pointer is null and may not be used.");
         assert(other.refCount !is null, "Other shared pointer reference count is null but pointer is not null.");
+        ptr = other.ptr;
+        refCount = other.refCount;
+        (*refCount)++;
+    }
+
+    void opAssign(ref return scope typeof(this) other) {
+        assert(other.ptr !is null, "Other shared pointer is null and may not be used.");
+        assert(other.refCount !is null, "Other shared pointer reference count is null but pointer is not null.");
+        releaseShare();
         ptr = other.ptr;
         refCount = other.refCount;
         (*refCount)++;
@@ -189,6 +190,17 @@ struct SharedPtr(T) {
     auto opDispatch(string s, Args...)(Args args) {
         assert(ptr !is null, "Shared pointer is null and may not be used.");
         return mixin("ptr." ~ s ~ "(args)");
+    }
+
+    private void releaseShare() {
+        if (ptr !is null && refCount !is null) {
+            (*refCount)--;
+            if (*refCount <= 0) {
+                destroy(*ptr);
+                free(ptr);
+                free(refCount);
+            }
+        }
     }
 }
 
@@ -399,5 +411,18 @@ void runStdMemoryTests() {
         }
 
         assert(testStructDestroyed);
+    });
+
+    test("A shared pointer that is being assigned another shared pointer takes care of its refcount first", {
+        auto sharedPtr1 = makeShared!TestStruct;
+        auto sharedPtr2 = makeShared!TestStruct;
+        testStructDestroyed = true;
+        sharedPtr1 = sharedPtr2;
+        assert(testStructDestroyed);
+        assert(sharedPtr2.ptr !is null);
+        assert(sharedPtr1.ptr is sharedPtr2.ptr);
+        assert(sharedPtr2.refCount !is null);
+        assert(sharedPtr1.refCount is sharedPtr2.refCount);
+        assert(*(sharedPtr2.refCount) == 2);
     });
 }
