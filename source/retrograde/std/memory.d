@@ -232,11 +232,17 @@ void runStdMemoryTests() {
         assert(uniquePtr.a == 42);
         assert(uniquePtr.b == 66);
     });
+
     test("A destroyed unique pointer will nullify the container pointer", {
-        auto uniquePtr = makeRaw!TestStruct().unique;
-        assert(uniquePtr.ptr !is null);
-        uniquePtr.destroy();
-        assert(uniquePtr.ptr is null);
+        testStructDestroyed = false;
+
+        {
+            auto uniquePtr = makeRaw!TestStruct().unique;
+            testStructDestroyed = false;
+            assert(uniquePtr.ptr !is null);
+        }
+
+        assert(testStructDestroyed);
     });
 
     test("A destroyed unique pointer will destroy the contained pointer", {
