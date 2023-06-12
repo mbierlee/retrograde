@@ -97,6 +97,8 @@ struct UniquePtr(T) {
         }
     }
 
+    @disable this(ref typeof(this));
+
     auto opDispatch(string s)() {
         return mixin("ptr." ~ s);
     }
@@ -243,5 +245,10 @@ void runStdMemoryTests() {
         }
 
         assert(testStructDestroyed);
+    });
+
+    test("A unique pointer cannot be copied", {
+        auto uniquePtr = makeUnique!TestStruct;
+        assert(!__traits(compiles, mixin("auto uniquePtr2 = uniquePtr")));
     });
 }
