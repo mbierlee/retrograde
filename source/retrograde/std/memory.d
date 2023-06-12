@@ -148,6 +148,10 @@ private struct TestStruct {
     }
 }
 
+private struct TestContainer {
+    UniquePtr!TestStruct ptr;
+}
+
 void runStdMemoryTests() {
     writeSection("-- High-level memory tests --");
 
@@ -227,6 +231,15 @@ void runStdMemoryTests() {
             auto uniquePtr = rawPtr.unique;
             assert(uniquePtr.ptr !is null);
             assert(!testStructDestroyed);
+        }
+
+        assert(testStructDestroyed);
+    });
+
+    test("A unique pointer is destroyed when containing objects are", {
+        testStructDestroyed = false;
+        {
+            auto container = TestContainer(makeUnique!TestStruct);
         }
 
         assert(testStructDestroyed);
