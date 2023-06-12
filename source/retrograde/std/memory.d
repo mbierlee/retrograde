@@ -130,8 +130,7 @@ UniquePtr!T unique(T)(T* ptr) {
 }
 
 /**
- * Create a unique pointer from a raw pointer.
- * The pointer is initialized to the given value.
+ * Create a unique pointer initialized to the given value.
  */
 UniquePtr!T makeUnique(T)(const T initial = T.init) {
     return makeUnique(initial);
@@ -197,6 +196,18 @@ struct SharedPtr(T) {
  */
 SharedPtr!T share(T)(T* ptr) {
     return SharedPtr!T(ptr);
+}
+
+/**
+ * Create a shared pointer initialized to the given value.
+ */
+SharedPtr!T makeShared(T)(const T initial = T.init) {
+    return makeShared(initial);
+}
+
+/// ditto
+SharedPtr!T makeShared(T)(const ref T initial) {
+    return SharedPtr!T(makeRaw(initial));
 }
 
 version (unittest) {
@@ -352,7 +363,7 @@ void runStdMemoryTests() {
         testStructDestroyed = false; // This is just to make dfmt not add a huge amount of spaces
 
         {
-            auto sharedPtr = makeRaw!TestStruct().share;
+            auto sharedPtr = makeShared!TestStruct;
             testStructDestroyed = false;
             assert(sharedPtr.ptr !is null);
             assert(*(sharedPtr.refCount) == 1);
