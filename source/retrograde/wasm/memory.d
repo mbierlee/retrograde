@@ -310,7 +310,7 @@ struct MemoryMetrics {
     ulong usedHeapBytes;
     ulong usedAllocatedBytes;
     ulong freeHeapBytes;
-    ulong freeAllocatedBytes;
+    ulong freeBlockBytes;
     ulong numBlocks;
 
     void print() {
@@ -322,8 +322,8 @@ struct MemoryMetrics {
         writeln(usedAllocatedBytes);
         writeln("Free Heap Bytes:");
         writeln(freeHeapBytes);
-        writeln("Free Allocated Bytes:");
-        writeln(freeAllocatedBytes);
+        writeln("Free Blockspace Bytes:");
+        writeln(freeBlockBytes);
         writeln("Number of Blocks:");
         writeln(numBlocks);
     }
@@ -342,7 +342,7 @@ MemoryMetrics getMemoryMetrics() {
             metrics.usedAllocatedBytes += block.usedSize;
             metrics.usedHeapBytes += MemoryBlock.sizeof + block.blockSize;
         } else {
-            metrics.freeAllocatedBytes += block.usedSize;
+            metrics.freeBlockBytes += block.blockSize;
             metrics.freeHeapBytes += MemoryBlock.sizeof + block.blockSize;
         }
 
