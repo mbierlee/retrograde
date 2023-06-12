@@ -99,6 +99,7 @@ struct UniquePtr(T) {
     }
 
     @disable this(ref typeof(this));
+    @disable void opAssign(ref typeof(this));
 
     auto opDispatch(string s)() {
         assert(ptr !is null, "Unique pointer is null and may not be used.");
