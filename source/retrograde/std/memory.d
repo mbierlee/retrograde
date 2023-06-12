@@ -100,10 +100,12 @@ struct UniquePtr(T) {
     @disable this(ref typeof(this));
 
     auto opDispatch(string s)() {
+        assert(ptr !is null, "Unique pointer is null and may not be used.");
         return mixin("ptr." ~ s);
     }
 
     auto opDispatch(string s, Args...)(Args args) {
+        assert(ptr !is null, "Unique pointer is null and may not be used.");
         return mixin("ptr." ~ s ~ "(args)");
     }
 
