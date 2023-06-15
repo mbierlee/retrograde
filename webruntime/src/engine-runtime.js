@@ -27,6 +27,12 @@ export default class EngineRuntimeModule extends WasmModule {
       writelnChar: (value) => {
         console.log(value);
       },
+      writelnWChar: (value) => {
+        console.log(value);
+      },
+      writelnDChar: (value) => {
+        console.log(value);
+      },
       writelnUbyte: (value) => {
         console.log(value);
       },
@@ -58,6 +64,12 @@ export default class EngineRuntimeModule extends WasmModule {
         console.error(value);
       },
       writeErrLnChar: (value) => {
+        console.error(value);
+      },
+      writeErrLnWChar: (value) => {
+        console.error(value);
+      },
+      writeErrLnDChar: (value) => {
         console.error(value);
       },
       writeErrLnUbyte: (value) => {

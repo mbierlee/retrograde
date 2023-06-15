@@ -41,6 +41,12 @@ WebAssembly.instantiateStreaming(fetch("bin/wasmmemtest.wasm"), {
     writelnChar: (value) => {
       console.log(value);
     },
+    writelnWChar: (value) => {
+      console.log(value);
+    },
+    writelnDChar: (value) => {
+      console.log(value);
+    },
     writelnUbyte: (value) => {
       console.log(value);
     },
@@ -72,6 +78,12 @@ WebAssembly.instantiateStreaming(fetch("bin/wasmmemtest.wasm"), {
       console.error(value);
     },
     writeErrLnChar: (value) => {
+      console.error(value);
+    },
+    writeErrLnWChar: (value) => {
+      console.error(value);
+    },
+    writeErrLnDChar: (value) => {
       console.error(value);
     },
     writeErrLnUbyte: (value) => {
