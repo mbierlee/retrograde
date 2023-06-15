@@ -106,6 +106,12 @@ struct UniquePtr(T) {
         return mixin("_ptr." ~ s ~ "(args)");
     }
 
+    auto opIndex(size_t i) {
+        assert(ptr !is null, "Shared pointer is null and may not be used.");
+        //TODO: Bounds checking
+        return ptr[i];
+    }
+
     /**
      * Get the raw pointer.
      * The pointer is still managed by the unique pointer and should not be freed manually.
@@ -243,6 +249,12 @@ struct SharedPtr(T) {
     auto opDispatch(string s, Args...)(Args args) {
         assert(ptr !is null, "Shared pointer is null and may not be used.");
         return mixin("ptr." ~ s ~ "(args)");
+    }
+
+    auto opIndex(size_t i) {
+        assert(ptr !is null, "Shared pointer is null and may not be used.");
+        //TODO: Bounds checking
+        return ptr[i];
     }
 
     size_t useCount() {
@@ -444,6 +456,15 @@ void runStdMemoryTests() {
         assert(uniquePtr.ptr is rawPtr2);
     });
 
+    test("A unique pointer pointing to an array can be accessed like one", {
+        auto rawPtr = makeRawArray!int(10, 42);
+        auto uniquePtr = rawPtr.ptr.unique;
+
+        for (size_t i = 0; i < 10; i++) {
+            assert(uniquePtr[i] == 42);
+        }
+    });
+
     test("Create and use a shared pointer", {
         auto sharedPtr = SharedPtr!TestStruct(makeRaw!TestStruct);
         assert(sharedPtr.ptr.a == 42);
@@ -515,5 +536,14 @@ void runStdMemoryTests() {
         assert(uniquePtr.ptr is null);
         assert(sharedPtr.ptr !is null);
         assert(sharedPtr.useCount == 1);
+    });
+
+    test("A shared pointer pointing to an array can be accessed like one", {
+        auto rawPtr = makeRawArray!int(10, 42);
+        auto sharedPtr = rawPtr.ptr.share;
+
+        for (size_t i = 0; i < 10; i++) {
+            assert(sharedPtr[i] == 42);
+        }
     });
 }
