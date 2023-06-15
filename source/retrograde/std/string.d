@@ -11,11 +11,11 @@
 
 module retrograde.std.string;
 
-import retrograde.std.memory : free, calloc, memcpy, unique, UniquePtr;
+import retrograde.std.memory : free, calloc, memcpy, realloc, unique, UniquePtr;
 import retrograde.std.test : test, writeSection;
 
 /** 
- * A UTF-8 encoded, dynamic string.
+ * A dynamic string that manages its own memory.
  */
 struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
     private T* ptr;
@@ -25,30 +25,80 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
      * Create a String from a D string
      */
     this(string str) {
-        ptr = cast(T*) calloc(str.length, T.sizeof);
-        _length = str.length;
-        memcpy(cast(void*) ptr, cast(void*) str.ptr, str.length);
+        copyFrom(cast(void*) str.ptr, str.length);
+    }
+
+    this(ref return scope typeof(this) other) {
+        copyFrom(cast(void*) other.ptr, other._length);
     }
 
     ~this() {
-        if (ptr !is null) {
-            free(cast(void*) ptr);
-        }
+        freePtr();
     }
+
+    void opAssign(ref typeof(this) other) {
+        freePtr();
+        copyFrom(cast(void*) other.ptr, other._length);
+    }
+
+    void opAssign(typeof(this) other) {
+        this.opAssign(other);
+    }
+
+    void opAssign(string str) {
+        freePtr();
+        copyFrom(cast(void*) str.ptr, str.length);
+    }
+
+    void opOpAssign(string op : "~")(ref typeof(this) rhs) {
+        auto prevLength = _length;
+        _length += rhs.length;
+        ptr = cast(T*) realloc(cast(void*) ptr, _length * T.sizeof);
+        memcpy(cast(void*)(ptr + prevLength), cast(void*) rhs.ptr, rhs.length * T.sizeof);
+    }
+
+    void opOpAssign(string op : "~")(typeof(this) rhs) {
+        this.opOpAssign!op(rhs);
+    }
+
+    void opOpAssign(string op : "~")(string rhs) {
+        auto prevLength = _length;
+        _length += rhs.length;
+        ptr = cast(T*) realloc(cast(void*) ptr, _length * T.sizeof);
+        memcpy(cast(void*)(ptr + prevLength), cast(void*) rhs.ptr, rhs.length * T.sizeof);
+    }
+
+    bool opCast(T : bool)() const {
+        return ptr !is null && _length > 0;
+    }
+
+    typeof(this) opBinary(string op : "~")(ref typeof(this) rhs) {
+        auto str = String(this);
+        str._length += rhs.length;
+        str.ptr = cast(T*) realloc(cast(void*) str.ptr, str._length * T.sizeof);
+        memcpy(cast(void*)(str.ptr + _length), cast(void*) rhs.ptr, rhs.length * T.sizeof);
+        return str;
+    }
+
+    typeof(this) opBinary(string op : "~")(typeof(this) rhs) {
+        return this.opBinary!op(rhs);
+    }
+
+    //TODO: opIndex and opDollar
 
     static if (is(T == char)) {
         /** 
          * Get the D string representation of this String.
          */
         string get() const {
-            return cast(string) ptr[0 .. length];
+            return cast(string) ptr[0 .. _length];
         }
     } else {
         /** 
          * Get a character array of this String
          */
         const(T)[] get() const {
-            return ptr[0 .. length];
+            return ptr[0 .. _length];
         }
     }
 
@@ -64,6 +114,20 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
         cStrPtr[0 .. _length] = ptr[0 .. _length];
         cStrPtr[_length] = '\0';
         return cStrPtr.unique;
+    }
+
+    private void copyFrom(void* ptr, size_t length) {
+        this.ptr = cast(T*) calloc(length, T.sizeof);
+        _length = length;
+        memcpy(cast(void*) this.ptr, ptr, length);
+    }
+
+    private void freePtr() {
+        if (ptr !is null) {
+            free(cast(void*) ptr);
+        }
+
+        ptr = null;
     }
 }
 
@@ -118,4 +182,57 @@ void runStringTests() {
         assert(strcmp(cast(void*) cStr.ptr, cast(void*) "Hello world\0".ptr) == 0);
     });
 
+    test("Construct a String from another String", {
+        auto str = String("Hello world");
+        auto str2 = String(str);
+        assert(str2.get == "Hello world");
+        assert(str2.length == 11);
+        assert(str2.ptr !is str.ptr);
+    });
+
+    test("Assigning a String to another String copies it", {
+        auto str = String("Hello world");
+        auto str2 = String("Goodbye world");
+        str2 = str;
+        assert(str2.get == "Hello world");
+        assert(str2.length == 11);
+        assert(str2.ptr !is str.ptr);
+    });
+
+    test("Assigning a D string to a String copies it", {
+        auto str = String("Hello world");
+        str = "Goodbye world";
+        assert(str.get == "Goodbye world");
+        assert(str.length == 13);
+    });
+
+    test("String can be used in a truthy test to check for emptyness", {
+        auto str = String("Hello world");
+        assert(str);
+        str = String("");
+        assert(!str);
+    });
+
+    test("Two strings can be concatenated", {
+        auto str = String("Hello");
+        auto str2 = String(" world");
+        auto str3 = str ~ str2 ~ String("!");
+        assert(str3.get == "Hello world!");
+        assert(str3.length == 12);
+    });
+
+    test("Concatenate String to another String", {
+        auto str = String("Hello");
+        auto str2 = String(" world");
+        str ~= str2;
+        assert(str.get == "Hello world");
+        assert(str.length == 11);
+    });
+
+    test("Concatenate D string to String", {
+        auto str = String("Hello");
+        str ~= " world";
+        assert(str.get == "Hello world");
+        assert(str.length == 11);
+    });
 }
