@@ -106,8 +106,22 @@ export extern (C) void* realloc(void* ptr, size_t newSize) {
 
     auto block = getRes.value;
     if (newSize > block.blockSize) {
+        auto previousUsedSize = block.usedSize;
         freeBlock(block);
-        return malloc(newSize);
+        auto newPtr = malloc(newSize);
+        if (newPtr is null) {
+            version (MemoryDebug) {
+                writeErrLn("Failed to allocate new memory block when resizing.");
+            }
+
+            return null;
+        }
+
+        if (ptr !is newPtr) {
+            memcpy(newPtr, ptr, previousUsedSize);
+        }
+
+        return newPtr;
     } else if (newSize > block.usedSize) {
         block.usedSize = newSize;
         return ptr;
@@ -1143,6 +1157,17 @@ void runWasmMemTests() {
         auto block = getBlock(ptr).value;
         assert(block.isAllocated);
         assert(block.usedSize == 10);
+    });
+
+    test("realloc preserves the previous contents of the block when copying to bigger block", {
+        auto ptr = malloc(10);
+        memset(ptr, 0xFF, 10);
+        malloc(20); // Cause some intentional fragmentation. Otherwise realloc will just expand the block.
+        auto newPtr = realloc(ptr, 20);
+        assert(ptr !is newPtr);
+        for (size_t i; i < 10; i++) {
+            assert(*(cast(ubyte*) newPtr + i) == 0xFF);
+        }
     });
 
     test("memcpy copies src into dest", {
