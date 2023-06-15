@@ -268,7 +268,8 @@ export extern (C) void* memmove(void* dest, const void* src, size_t count) {
  */
 extern (C) void _d_array_slice_copy(void* dest, size_t destlen, void* src, size_t srclen, size_t elemsz) {
     debug {
-        memmove(dest, src, destlen * elemsz);
+        auto res = memmove(dest, src, destlen * elemsz);
+        assert(res is dest, "Array slice copy failed.");
     } else {
         memcpy(dest, src, destlen * elemsz);
     }
