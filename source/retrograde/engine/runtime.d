@@ -96,7 +96,7 @@ template DefaultEntryPoint() {
             // Also initEngine is called by the web runtime.
         }
     } else {
-        void main() {
+        extern (C) void main() {
             import retrograde.engine.runtime : initEngine, runLoop;
 
             setupHooks();
