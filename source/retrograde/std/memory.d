@@ -82,33 +82,49 @@ T[] makeRawArray(T)(size_t length, T initialValue = T.init) {
  * manually.
  */
 struct UniquePtr(T) {
-    private T* ptr;
+    private T* _ptr;
 
     this(T* ptr) {
         assert(ptr !is null);
-        this.ptr = ptr;
+        _ptr = ptr;
     }
 
     ~this() {
-        if (ptr !is null) {
-            destroy(*ptr);
-            free(ptr);
-        }
-
-        ptr = null;
+        cleanup();
     }
 
     @disable this(ref typeof(this));
     @disable void opAssign(ref typeof(this));
 
     auto opDispatch(string s)() {
-        assert(ptr !is null, "Unique pointer is null and may not be used.");
-        return mixin("ptr." ~ s);
+        assert(_ptr !is null, "Unique pointer is null and may not be used.");
+        return mixin("_ptr." ~ s);
     }
 
     auto opDispatch(string s, Args...)(Args args) {
-        assert(ptr !is null, "Unique pointer is null and may not be used.");
-        return mixin("ptr." ~ s ~ "(args)");
+        assert(_ptr !is null, "Unique pointer is null and may not be used.");
+        return mixin("_ptr." ~ s ~ "(args)");
+    }
+
+    /**
+     * Get the raw pointer.
+     * The pointer is still managed by the unique pointer and should not be freed manually.
+     * Do not use it to create another smart pointer, but use one of the other methods instead
+     * such as move or share.
+     */
+    T* ptr() {
+        return _ptr;
+    }
+
+    /**
+     * Release the raw pointer.
+     * The pointer is no longer managed by the unique pointer and must be freed manually.
+     * This instance will become useless and should not be used anymore.
+     */
+    T* release() {
+        auto ptr = _ptr;
+        _ptr = null;
+        return ptr;
     }
 
     /**
@@ -117,9 +133,7 @@ struct UniquePtr(T) {
      * This instance will become useless and should not be used anymore.
      */
     UniquePtr!T move() {
-        auto movedPtr = UniquePtr!T(ptr);
-        ptr = null;
-        return movedPtr;
+        return UniquePtr!T(release());
     }
 
     /**
@@ -128,9 +142,37 @@ struct UniquePtr(T) {
      * This instance will become useless and should not be used anymore.
      */
     SharedPtr!T share() {
-        auto sharedPtr = SharedPtr!T(ptr);
-        ptr = null;
-        return sharedPtr;
+        return SharedPtr!T(release());
+    }
+
+    /**
+     * Swap the raw pointer with another unique pointer.
+     * If either pointer is null then the other pointer will become null.
+     */
+    void swap(ref typeof(this) other) {
+        auto tmp = _ptr;
+        _ptr = other._ptr;
+        other._ptr = tmp;
+    }
+
+    /**
+     * Reset the raw pointer.
+     * The previously owned pointer is freed. 
+     * If no pointer is given then the pointer is set to null, which
+     * makes this instance useless.
+     */
+    void reset(T* ptr = null) {
+        cleanup();
+        _ptr = ptr;
+    }
+
+    private void cleanup() {
+        if (_ptr !is null) {
+            destroy(*_ptr);
+            free(_ptr);
+        }
+
+        _ptr = null;
     }
 }
 
@@ -201,6 +243,10 @@ struct SharedPtr(T) {
     auto opDispatch(string s, Args...)(Args args) {
         assert(ptr !is null, "Shared pointer is null and may not be used.");
         return mixin("ptr." ~ s ~ "(args)");
+    }
+
+    size_t useCount() {
+        return refCount is null ? 0 : *refCount;
     }
 
     private void releaseShare() {
@@ -372,11 +418,37 @@ void runStdMemoryTests() {
         assert(uniquePtr2.ptr is rawPtr);
     });
 
+    test("A unique pointer's ownership can be released", {
+        auto rawPtr = makeRaw!TestStruct;
+        auto uniquePtr = rawPtr.unique;
+        auto rawPtr2 = uniquePtr.release;
+        assert(uniquePtr.ptr is null);
+        assert(rawPtr2 is rawPtr);
+    });
+
+    test("A unique pointer's ownership can be swapped", {
+        auto rawPtr = makeRaw!TestStruct;
+        auto uniquePtr = rawPtr.unique;
+        auto rawPtr2 = makeRaw!TestStruct;
+        auto uniquePtr2 = rawPtr2.unique;
+        uniquePtr.swap(uniquePtr2);
+        assert(uniquePtr.ptr is rawPtr2);
+        assert(uniquePtr2.ptr is rawPtr);
+    });
+
+    test("A unique pointer can be reset", {
+        auto rawPtr = makeRaw!TestStruct;
+        auto rawPtr2 = makeRaw!TestStruct;
+        auto uniquePtr = rawPtr.unique;
+        uniquePtr.reset(rawPtr2);
+        assert(uniquePtr.ptr is rawPtr2);
+    });
+
     test("Create and use a shared pointer", {
         auto sharedPtr = SharedPtr!TestStruct(makeRaw!TestStruct);
         assert(sharedPtr.ptr.a == 42);
         assert(sharedPtr.ptr.b == 66);
-        assert(*(sharedPtr.refCount) == 1);
+        assert(sharedPtr.useCount == 1);
 
         sharedPtr.doubleValues();
         assert(sharedPtr.a == 84);
@@ -390,7 +462,7 @@ void runStdMemoryTests() {
             auto sharedPtr = makeShared!TestStruct;
             testStructDestroyed = false;
             assert(sharedPtr.ptr !is null);
-            assert(*(sharedPtr.refCount) == 1);
+            assert(sharedPtr.useCount == 1);
             assert(!testStructDestroyed);
         }
 
@@ -404,13 +476,13 @@ void runStdMemoryTests() {
             auto rawPtr = makeRaw!TestStruct();
             testStructDestroyed = false;
             SharedPtr!TestStruct sharedPtr = rawPtr.share;
-            assert(*(sharedPtr.refCount) == 1);
+            assert(sharedPtr.useCount == 1);
             assert(sharedPtr.ptr is rawPtr);
             assert(!testStructDestroyed);
 
             {
                 SharedPtr!TestStruct sharedPtr2 = sharedPtr;
-                assert(*(sharedPtr.refCount) == 2);
+                assert(sharedPtr.useCount == 2);
                 assert(*(sharedPtr2.refCount) == 2);
                 assert(sharedPtr.ptr is rawPtr);
                 assert(sharedPtr2.ptr is rawPtr);
@@ -418,7 +490,7 @@ void runStdMemoryTests() {
             }
 
             assert(!testStructDestroyed);
-            assert(*(sharedPtr.refCount) == 1);
+            assert(sharedPtr.useCount == 1);
         }
 
         assert(testStructDestroyed);
@@ -434,7 +506,7 @@ void runStdMemoryTests() {
         assert(sharedPtr1.ptr is sharedPtr2.ptr);
         assert(sharedPtr2.refCount !is null);
         assert(sharedPtr1.refCount is sharedPtr2.refCount);
-        assert(*(sharedPtr2.refCount) == 2);
+        assert(sharedPtr2.useCount == 2);
     });
 
     test("Convert a unique pointer into a shared pointer", {
@@ -442,6 +514,6 @@ void runStdMemoryTests() {
         auto sharedPtr = uniquePtr.share;
         assert(uniquePtr.ptr is null);
         assert(sharedPtr.ptr !is null);
-        assert(*(sharedPtr.refCount) == 1);
+        assert(sharedPtr.useCount == 1);
     });
 }
