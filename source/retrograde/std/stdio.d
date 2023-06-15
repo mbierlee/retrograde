@@ -39,6 +39,10 @@ void writeln(T)(T value) {
         writelnFloat(value);
     } else static if (is(T == char)) {
         writelnChar(value);
+    } else static if (is(T == wchar)) {
+        writelnWChar(value);
+    } else static if (is(T == dchar)) {
+        writelnDChar(value);
     } else static if (is(T == ubyte)) {
         writelnUbyte(value);
     } else static if (is(T == byte)) {
@@ -70,6 +74,10 @@ void writeErrLn(T)(T value) {
         writeErrLnFloat(value);
     } else static if (is(T == char)) {
         writeErrLnChar(value);
+    } else static if (is(T == wchar)) {
+        writeErrLnWChar(value);
+    } else static if (is(T == dchar)) {
+        writeErrLnDChar(value);
     } else static if (is(T == ubyte)) {
         writeErrLnUbyte(value);
     } else static if (is(T == byte)) {

@@ -47,6 +47,14 @@ void writelnChar(char character) {
     printf("%c\n", character);
 }
 
+void writelnWChar(wchar character) {
+    printf("%c\n", character);
+}
+
+void writelnDChar(dchar character) {
+    printf("%c\n", character);
+}
+
 void writelnUbyte(ubyte number) {
     printf("%d\n", number);
 }
@@ -88,6 +96,14 @@ void writeErrLnFloat(float number) {
 }
 
 void writeErrLnChar(char character) {
+    printf("ERROR: %c\n", character);
+}
+
+void writeErrlnWChar(wchar character) {
+    printf("ERROR: %c\n", character);
+}
+
+void writeErrlnDChar(dchar character) {
     printf("ERROR: %c\n", character);
 }
 
