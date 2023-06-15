@@ -121,6 +121,17 @@ struct UniquePtr(T) {
         ptr = null;
         return movedPtr;
     }
+
+    /**
+     * Move the raw pointer to a shared pointer.
+     * The original pointer is not freed.
+     * This instance will become useless and should not be used anymore.
+     */
+    SharedPtr!T share() {
+        auto sharedPtr = SharedPtr!T(ptr);
+        ptr = null;
+        return sharedPtr;
+    }
 }
 
 /**
@@ -424,5 +435,13 @@ void runStdMemoryTests() {
         assert(sharedPtr2.refCount !is null);
         assert(sharedPtr1.refCount is sharedPtr2.refCount);
         assert(*(sharedPtr2.refCount) == 2);
+    });
+
+    test("Convert a unique pointer into a shared pointer", {
+        auto uniquePtr = makeUnique!TestStruct;
+        auto sharedPtr = uniquePtr.share;
+        assert(uniquePtr.ptr is null);
+        assert(sharedPtr.ptr !is null);
+        assert(*(sharedPtr.refCount) == 1);
     });
 }
