@@ -1,7 +1,7 @@
 import retrograde.wasm.memory : initializeHeapMemory, printDebugInfo, runWasmMemTests;
 import retrograde.std.stdio : writeln;
 import retrograde.std.memory : runStdMemoryTests;
-import retrograde.std.test : writeSection;
+import retrograde.std.test : writeSection, runTests;
 import retrograde.std.string : runStringTests;
 
 export extern (C) void _start() {
@@ -12,10 +12,6 @@ export extern (C) void _start() {
     }
 
     writeSection("Starting tests...");
-
-    runWasmMemTests();
-    runStdMemoryTests();
-    runStringTests();
-
+    runTests();
     writeSection("All tests passed!");
 }

@@ -93,11 +93,7 @@ export extern (C) int strcmp(const void* ptr1, const void* ptr2) {
     return *str1 - *str2;
 }
 
-version (unittest) {
-    unittest {
-        runStringTests();
-    }
-}
+///  --- Tests ---
 
 void runStringTests() {
     import retrograde.std.memory : memcmp;

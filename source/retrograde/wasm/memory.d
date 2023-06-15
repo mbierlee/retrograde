@@ -625,6 +625,8 @@ private Result!(MemoryBlock*) getBlock(const void* dataPtr) {
     return success(block);
 }
 
+///  --- Tests ---
+
 version (WasmMemTest)  :  //
 import retrograde.std.test : test, writeSection;
 

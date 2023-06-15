@@ -31,3 +31,23 @@ void writeSection(string name) {
     writeln(name);
     writeln("");
 }
+
+void runTests() {
+    version (WebAssembly) {
+        import retrograde.wasm.memory : runWasmMemTests;
+
+        runWasmMemTests();
+    }
+
+    import retrograde.std.memory : runStdMemoryTests;
+    import retrograde.std.string : runStringTests;
+
+    runStdMemoryTests();
+    runStringTests();
+}
+
+version (unittest) {
+    unittest {
+        runTests();
+    }
+}
