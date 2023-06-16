@@ -42,28 +42,30 @@ Option!T none(T)() {
     return option;
 }
 
-version (unittest)  :  //
+///  --- Tests ---
 
-@("Option created with some() is defined and has a value")
-unittest {
-    auto option = some!int(42);
-    assert(option.isDefined());
-    assert(option.value == 42);
-}
+void runOptionTests() {
+    import retrograde.std.test : test, writeSection;
 
-@("Option created with none() is not defined and has no value")
-unittest {
-    auto option = none!int;
-    assert(!option.isDefined());
-}
+    writeSection("-- Option tests --");
+    test("Option created with some() is defined and has a value", {
+        auto option = some!int(42);
+        assert(option.isDefined());
+        assert(option.value == 42);
+    });
 
-@("Option isEmpty() is opposite of isDefined()")
-unittest {
-    auto option = some!int(42);
-    assert(!option.isEmpty());
-    assert(option.isDefined());
+    test("Option created with none() is not defined and has no value", {
+        auto option = none!int;
+        assert(!option.isDefined());
+    });
 
-    option = none!int;
-    assert(option.isEmpty());
-    assert(!option.isDefined());
+    test("Option isEmpty() is opposite of isDefined()", {
+        auto option = some!int(42);
+        assert(!option.isEmpty());
+        assert(option.isDefined());
+
+        option = none!int;
+        assert(option.isEmpty());
+        assert(!option.isDefined());
+    });
 }

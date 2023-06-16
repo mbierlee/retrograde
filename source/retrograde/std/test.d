@@ -42,10 +42,14 @@ void runTests() {
     import retrograde.std.memory : runStdMemoryTests;
     import retrograde.std.string : runStringTests;
     import retrograde.std.stringid : runStringIdTests;
+    import retrograde.std.option : runOptionTests;
+    import retrograde.std.result : runResultTests;
 
     runStdMemoryTests();
     runStringTests();
     runStringIdTests();
+    runOptionTests();
+    runResultTests();
 }
 
 version (unittest) {

@@ -95,58 +95,56 @@ private union ResultValue(T) {
     string errorMessage;
 }
 
-version (unittest)  :  //
+///  --- Tests ---
 
-@("success returns a successful result")
-unittest {
-    auto result = success(42);
-    assert(result.isSuccessful);
-    assert(result.value == 42);
-}
+void runResultTests() {
+    import retrograde.std.test : test, writeSection;
 
-@("failure returns a failed result")
-unittest {
-    auto result = failure!int("Something went wrong");
-    assert(!result.isSuccessful);
-    assert(result.errorMessage == "Something went wrong");
-}
+    writeSection("-- Result tests --");
 
-@("OperationResult can be created with a success")
-unittest {
-    auto result = success();
-    assert(result.isSuccessful);
-}
+    test("Result can be created with a success", () {
+        auto result = success(42);
+        assert(result.isSuccessful);
+        assert(result.value == 42);
+    });
 
-@("OperationResult can be created with a failure")
-unittest {
-    auto result = failure("Something went wrong");
-    assert(!result.isSuccessful);
-    assert(result.errorMessage == "Something went wrong");
-}
+    test("Result can be created with a failure", () {
+        auto result = failure!int("Something went wrong");
+        assert(!result.isSuccessful);
+        assert(result.errorMessage == "Something went wrong");
+    });
 
-@("success returns a successful OperationResult")
-unittest {
-    auto result = success();
-    assert(result.isSuccessful);
-}
+    test("OperationResult can be created with a success", {
+        auto result = success();
+        assert(result.isSuccessful);
+    });
 
-@("failure returns a failed OperationResult")
-unittest {
-    auto result = failure("Something went wrong");
-    assert(!result.isSuccessful);
-    assert(result.errorMessage == "Something went wrong");
-}
+    test("OperationResult can be created with a failure", {
+        auto result = failure("Something went wrong");
+        assert(!result.isSuccessful);
+        assert(result.errorMessage == "Something went wrong");
+    });
 
-@("Result isFailure is opposite of isSuccessful")
-unittest {
-    auto result = failure("Something went wrong");
-    assert(result.isFailure);
-    assert(!result.isSuccessful);
-}
+    test("success returns a successful OperationResult", {
+        auto result = success();
+        assert(result.isSuccessful);
+    });
 
-@("OperationResult isFailure is opposite of isSuccessful")
-unittest {
-    auto result = failure("Something went wrong");
-    assert(result.isFailure);
-    assert(!result.isSuccessful);
+    test("failure returns a failed OperationResult", {
+        auto result = failure("Something went wrong");
+        assert(!result.isSuccessful);
+        assert(result.errorMessage == "Something went wrong");
+    });
+
+    test("Result isFailure is opposite of isSuccessful", {
+        auto result = failure("Something went wrong");
+        assert(result.isFailure);
+        assert(!result.isSuccessful);
+    });
+
+    test("OperationResult isFailure is opposite of isSuccessful", {
+        auto result = failure("Something went wrong");
+        assert(result.isFailure);
+        assert(!result.isSuccessful);
+    });
 }
