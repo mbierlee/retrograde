@@ -303,4 +303,10 @@ void runStringTests() {
         assert(str.get == "Hello hhhhh");
     });
 
+    test("Create String from a slice", {
+        auto dStr = "Hello world";
+        auto str = String(dStr[6 .. $]);
+        assert(str.get == "world");
+    });
+
 }
