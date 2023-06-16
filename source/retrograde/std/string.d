@@ -125,6 +125,34 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
         return value;
     }
 
+    bool opEquals()(auto ref const typeof(this) other) const {
+        if (other.length != _length) {
+            return false;
+        }
+
+        for (size_t i = 0; i < _length; i++) {
+            if (ptr[i] != other.ptr[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    bool opEquals()(auto ref const string other) const {
+        if (other.length != _length) {
+            return false;
+        }
+
+        for (size_t i = 0; i < _length; i++) {
+            if (ptr[i] != other.ptr[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     static if (is(T == char)) {
         /** 
          * Get the D string representation of this String.
@@ -307,6 +335,14 @@ void runStringTests() {
         auto dStr = "Hello world";
         auto str = String(dStr[6 .. $]);
         assert(str.get == "world");
+    });
+
+    test("Compare string through equals operator", {
+        auto str = String("Hello world");
+        auto str2 = String("Hello world");
+        assert(str == "Hello world");
+        assert(str != "Goodbye world");
+        assert(str == str2);
     });
 
 }
