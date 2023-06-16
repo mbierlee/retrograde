@@ -11,8 +11,6 @@
 
 module retrograde.std.memory;
 
-import retrograde.std.test : test, writeSection;
-
 version (WebAssembly) {
     public import retrograde.wasm.memory : malloc, free, calloc, realloc, memset, memcmp, memcpy;
 } else {
@@ -315,6 +313,8 @@ private struct TestContainer {
 }
 
 void runStdMemoryTests() {
+    import retrograde.std.test : test, writeSection;
+
     writeSection("-- High-level memory tests --");
 
     test("Create an uninitialized raw pointer", {

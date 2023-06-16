@@ -12,7 +12,6 @@
 module retrograde.std.string;
 
 import retrograde.std.memory : free, calloc, memcpy, realloc, unique, UniquePtr;
-import retrograde.std.test : test, writeSection;
 
 /** 
  * A dynamic string that manages its own memory.
@@ -243,6 +242,7 @@ export extern (C) int strcmp(const void* ptr1, const void* ptr2) {
 ///  --- Tests ---
 
 void runStringTests() {
+    import retrograde.std.test : test, writeSection;
     import retrograde.std.memory : memcmp;
 
     writeSection("-- String tests --");
