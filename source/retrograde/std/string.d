@@ -84,7 +84,46 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
         return this.opBinary!op(rhs);
     }
 
-    //TODO: opIndex and opDollar
+    T opIndex(size_t index) {
+        return ptr[index];
+    }
+
+    T[] opIndex() {
+        return ptr[0 .. _length];
+    }
+
+    size_t opDollar() {
+        return _length;
+    }
+
+    T[] opSlice(size_t dim : 0)(size_t i, size_t j) {
+        return ptr[i .. j];
+    }
+
+    T[] opIndex()(T[] slice) {
+        return slice;
+    }
+
+    T opIndexAssign(T value, size_t i) {
+        ptr[i] = value;
+        return value;
+    }
+
+    T opIndexAssign(T value) {
+        for (size_t i = 0; i < _length; i++) {
+            ptr[i] = value;
+        }
+
+        return value;
+    }
+
+    T opIndexAssign(T value, T[] slice) {
+        for (size_t i = 0; i < slice.length; i++) {
+            slice[i] = value;
+        }
+
+        return value;
+    }
 
     static if (is(T == char)) {
         /** 
@@ -235,4 +274,33 @@ void runStringTests() {
         assert(str.get == "Hello world");
         assert(str.length == 11);
     });
+
+    test("Using dollar on String", {
+        auto str = String("Hello world");
+        assert(str[$ - 1] == 'd');
+    });
+
+    test("Getting slice from String", {
+        auto str = String("Hello world");
+        assert(str[0 .. 5] == "Hello");
+    });
+
+    test("Change character of String via index", {
+        auto str = String("Hello world");
+        str[0] = 'h';
+        assert(str.get == "hello world");
+    });
+
+    test("Change all characters of String via index", {
+        auto str = String("Hello world");
+        str[] = 'h';
+        assert(str.get == "hhhhhhhhhhh");
+    });
+
+    test("Change all characters of String via slice", {
+        auto str = String("Hello world");
+        str[6 .. $] = 'h';
+        assert(str.get == "Hello hhhhh");
+    });
+
 }
