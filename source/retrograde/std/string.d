@@ -153,6 +153,15 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
         return true;
     }
 
+    ulong toHash() nothrow @trusted const {
+        ulong hash = 0;
+        foreach (i; 0 .. _length) {
+            hash = hash * 33 + ptr[i];
+        }
+
+        return hash;
+    }
+
     static if (is(T == char)) {
         /** 
          * Get the D string representation of this String.
@@ -201,6 +210,13 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
 alias String = StringT!char;
 alias WString = StringT!wchar;
 alias DString = StringT!dchar;
+
+/** 
+ * Convenience function for creating a String from a D string.
+ */
+String s(string str) {
+    return String(str);
+}
 
 /** 
  * Compare two C strings.
@@ -343,6 +359,17 @@ void runStringTests() {
         assert(str == "Hello world");
         assert(str != "Goodbye world");
         assert(str == str2);
+    });
+
+    test("Create String with s convenience function", {
+        auto str = "Hello world".s;
+        assert(str.get == "Hello world");
+    });
+
+    test("Create hash for String", {
+        auto str = "Hello world".s;
+        auto str2 = "Hello world".s;
+        assert(str.toHash == str2.toHash);
     });
 
 }
