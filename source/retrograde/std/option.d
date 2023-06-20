@@ -48,6 +48,7 @@ void runOptionTests() {
     import retrograde.std.test : test, writeSection;
 
     writeSection("-- Option tests --");
+    
     test("Option created with some() is defined and has a value", {
         auto option = some!int(42);
         assert(option.isDefined());

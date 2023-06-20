@@ -25,6 +25,7 @@ version (MemoryDebug) {
 }
 
 version (LDC) {
+    // https://github.com/ldc-developers/druntime/blob/ldc/src/ldc/intrinsics.di
     import ldc.intrinsics : llvm_wasm_memory_grow, llvm_wasm_memory_size;
 }
 

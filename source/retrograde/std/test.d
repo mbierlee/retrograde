@@ -44,12 +44,16 @@ void runTests() {
     import retrograde.std.stringid : runStringIdTests;
     import retrograde.std.option : runOptionTests;
     import retrograde.std.result : runResultTests;
+    import retrograde.std.math : runMathTests;
+    import retrograde.std.collections : runCollectionsTests;
 
     runStdMemoryTests();
     runStringTests();
     runStringIdTests();
     runOptionTests();
     runResultTests();
+    runMathTests();
+    runCollectionsTests();
 }
 
 version (unittest) {
