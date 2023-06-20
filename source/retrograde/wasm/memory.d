@@ -24,6 +24,10 @@ version (MemoryDebug) {
     import retrograde.std.stdio : writeErrLn;
 }
 
+version (LDC) {
+    import ldc.intrinsics : llvm_wasm_memory_grow, llvm_wasm_memory_size;
+}
+
 /** 
  * Allocate memory block of size bytes. Returns a pointer to the allocated memory, 
  * or a null pointer if the request fails.
@@ -389,22 +393,10 @@ private enum initialHeapSize = _64KiB;
 private size_t heapOffset;
 private MemoryBlock* firstFreeBlock;
 
-/**
- * @param mem Index of the WASM Memory object to grow.
- * @param delta Number of pages to grow memory by. Each page is 65536 bytes (64KiB).
- * @return Previous memory size in pages or -1 on failure.
- */
-pragma(LDC_intrinsic, "llvm.wasm.memory.grow.i32")
-private int llvm_wasm_memory_grow(int mem, int delta);
-
-/// Returns currently allocated memory pages. Each page is 65536 bytes (64KiB).
-pragma(LDC_intrinsic, "llvm.wasm.memory.size.i32")
-private int llvm_wasm_memory_size(int mem);
-
-// End of static data. Take an address of it (&__data_end) to get the actual address.
+// End of static data. Take an address of it (&__data_end) to get the actual address. Provided by LDC.
 private extern (C) ubyte __data_end;
 
-// Start of heap. Take an address of it (&__heap_base) to get the actual address.
+// Start of heap. Take an address of it (&__heap_base) to get the actual address. Provided by LDC.
 private extern (C) ubyte __heap_base;
 
 // Size of the full heap, including unusable memory.
