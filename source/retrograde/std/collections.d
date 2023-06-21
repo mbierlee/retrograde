@@ -23,7 +23,7 @@ private enum defaultChunkSize = 8;
  * When the queue is emptied, the allocated memory is not freed up. This is done to prevent unnecessary memory
  * allocations and deallocations. It is possible to compact the queue manually to free up memory.
  *
- * This queue is not thread-safe.
+ * This queue implementation is not thread-safe.
  */
 struct Queue(T, size_t chunkSize = defaultChunkSize) {
     private T* items = null;
@@ -32,20 +32,24 @@ struct Queue(T, size_t chunkSize = defaultChunkSize) {
     private size_t front = 0;
     private size_t rear = 0;
 
-    this(ref return scope Queue!T rhs) {
+    this(ref return scope typeof(this) other) {
         // Force a copy of the items array to be made to prevent the same items array from being shared with rhs.
         // Without this, this instance's items may be freed up on destruction of rhs.
-        _length = rhs.length;
-        items = rhs.createShuffledResizedQueue(length);
+        _length = other._length;
+        items = other.createShuffledResizedQueue(_length);
         front = 0;
-        rear = length;
-        _capacity = getCapacitySizeForItems(length);
+        rear = _length;
+        _capacity = getCapacitySizeForItems(_length);
     }
 
     ~this() {
-        if (items) {
+        if (items !is null) {
             free(items);
             items = null;
+            _length = 0;
+            _capacity = 0;
+            front = 0;
+            rear = 0;
         }
     }
 
@@ -73,7 +77,7 @@ struct Queue(T, size_t chunkSize = defaultChunkSize) {
      * Allocated space is never freed up.
      */
     T dequeue() {
-        if (!items || length == 0) {
+        if (!items || _length == 0) {
             return T.init;
         }
 
@@ -90,7 +94,7 @@ struct Queue(T, size_t chunkSize = defaultChunkSize) {
      * To check whether the queue is empty, use isEmpty().
      */
     T peek() {
-        if (!items || length == 0) {
+        if (!items || _length == 0) {
             return T.init;
         }
 
@@ -105,7 +109,7 @@ struct Queue(T, size_t chunkSize = defaultChunkSize) {
     }
 
     /**
-     * Returns the allocated capacity of the queue in number of queue items.
+     * Returns the allocated capacity of the queue in number of items.
      */
     size_t capacity() {
         return _capacity;
@@ -115,7 +119,7 @@ struct Queue(T, size_t chunkSize = defaultChunkSize) {
      * Returns whether the queue is empty.
      */
     bool isEmpty() {
-        return length == 0;
+        return _length == 0;
     }
 
     /**
@@ -134,11 +138,11 @@ struct Queue(T, size_t chunkSize = defaultChunkSize) {
      * The queue's capacity will determined by how many chunks are needed for the current items in the queue.
      */
     void compact() {
-        T* newQueue = createShuffledResizedQueue(length);
+        T* newQueue = createShuffledResizedQueue(_length);
         replaceQueue(newQueue);
         front = 0;
-        rear = length;
-        _capacity = getCapacitySizeForItems(length);
+        rear = _length;
+        _capacity = getCapacitySizeForItems(_length);
     }
 
     /**
@@ -150,7 +154,7 @@ struct Queue(T, size_t chunkSize = defaultChunkSize) {
     }
 
     private void moveRear() {
-        if (length != capacity && rear == capacity - 1) {
+        if (_length != _capacity && rear == _capacity - 1) {
             rear = 0;
         } else {
             rear++;
@@ -158,7 +162,7 @@ struct Queue(T, size_t chunkSize = defaultChunkSize) {
     }
 
     private void moveFront() {
-        if (length != capacity && front == capacity - 1) {
+        if (_length != _capacity && front == _capacity - 1) {
             front = 0;
         } else {
             front++;
@@ -168,19 +172,19 @@ struct Queue(T, size_t chunkSize = defaultChunkSize) {
     private void considerResize() {
         if (items is null) {
             items = cast(T*) malloc(T.sizeof * chunkSize);
-            if (items) {
+            if (items !is null) {
                 _capacity = chunkSize;
             }
-        } else if (capacity == length) {
+        } else if (_capacity == _length) {
             if (rear > front) {
-                items = cast(T*) realloc(items, T.sizeof * (capacity + chunkSize));
+                items = cast(T*) realloc(items, T.sizeof * (_capacity + chunkSize));
                 _capacity += chunkSize;
             } else {
-                T* newChunk = createShuffledResizedQueue(capacity + chunkSize);
+                T* newChunk = createShuffledResizedQueue(_capacity + chunkSize);
                 replaceQueue(newChunk);
                 _capacity += chunkSize;
                 front = 0;
-                rear = length;
+                rear = _length;
             }
         }
     }
@@ -199,7 +203,7 @@ struct Queue(T, size_t chunkSize = defaultChunkSize) {
         T* newQueue = cast(T*) malloc(newMemorySize);
         size_t readHead = front;
         size_t writeHead = 0;
-        while (writeHead != length) {
+        while (writeHead != _length) {
             newQueue[writeHead] = items[readHead];
             readHead++;
             if (readHead == capacity) {
@@ -217,12 +221,201 @@ struct Queue(T, size_t chunkSize = defaultChunkSize) {
     }
 }
 
+/**
+ * A dynamic array that automatically resizes when needed.
+ * Items are stored in a contiguous memory block.
+ * This array implementation is not thread-safe.
+ */
+struct Array(T, size_t chunkSize = defaultChunkSize) {
+    private T* items = null;
+    private size_t _length = 0;
+    private size_t _capacity = 0;
+
+    this(ref return scope typeof(this) other) {
+        this(other.items[0 .. other._length]);
+        _capacity = other._length;
+    }
+
+    this(scope T[] other) {
+        items = cast(T*) malloc(T.sizeof * other.length);
+        if (items !is null) {
+            foreach (T item; other) {
+                items[_length] = item;
+                _length++;
+            }
+
+            _capacity = other.length;
+        }
+    }
+
+    ~this() {
+        deallocate();
+    }
+
+    /**
+     * Returns the amount of items currently in the array.
+     */
+    size_t length() {
+        return _length;
+    }
+
+    /**
+     * Returns the allocated capacity of the array in number of items.
+     */
+    size_t capacity() {
+        return _capacity;
+    }
+
+    /**
+     * Change the capacity of the array.
+     * This will allocate or deallocate memory as needed.
+     */
+    void capacity(size_t newCapacity) {
+        if (newCapacity == _capacity) {
+            return;
+        }
+
+        if (newCapacity == 0) {
+            deallocate();
+            return;
+        }
+
+        if (items is null) {
+            items = cast(T*) malloc(T.sizeof * newCapacity);
+        } else {
+            items = cast(T*) realloc(items, T.sizeof * newCapacity);
+        }
+
+        _capacity = newCapacity;
+
+        if (_length > _capacity) {
+            _length = _capacity;
+        }
+    }
+
+    /** 
+     * Add an item to the end of the array.
+     */
+    void add(T item) {
+        considerResize();
+
+        if (items !is null) {
+            items[_length] = item;
+            _length++;
+        }
+    }
+
+    /** 
+     * Deallocate all claimed memory, effectively clearing the array in the process.
+     */
+    void deallocate() {
+        _length = 0;
+        _capacity = 0;
+        if (items !is null) {
+            free(items);
+            items = null;
+        }
+    }
+
+    /**
+     * Truncate the array to the given length. 
+     */
+    void truncate(size_t newLength) {
+        if (newLength < _length) {
+            _length = newLength;
+        }
+    }
+
+    void opOpAssign(string op : "~")(T rhs) {
+        add(rhs);
+    }
+
+    void opOpAssign(string op : "~")(ref typeof(this) rhs) {
+        foreach (T item; rhs.items[0 .. rhs._length]) {
+            add(item);
+        }
+    }
+
+    typeof(this) opBinary(string op : "~")(ref typeof(this) rhs) {
+        typeof(this) result = this;
+        result ~= rhs;
+        return result;
+    }
+
+    typeof(this) opBinary(string op : "~")(T rhs) {
+        typeof(this) result = this;
+        result ~= rhs;
+        return result;
+    }
+
+    typeof(this) opBinary(string op : "~")(ref T rhs) {
+        typeof(this) result = this;
+        result ~= rhs;
+        return result;
+    }
+
+    auto opIndex(size_t i) {
+        assert(i >= 0 && i < _length, "Index out of bounds");
+        return items[i];
+    }
+
+    T[] opIndex() {
+        return items[0 .. _length];
+    }
+
+    size_t opDollar() {
+        return _length;
+    }
+
+    T[] opSlice(size_t dim : 0)(size_t i, size_t j) {
+        assert(i >= 0 && j >= 0 && i <= _length && j <= _length, "Index out of bounds");
+        return items[i .. j];
+    }
+
+    T[] opIndex()(T[] slice) {
+        return slice;
+    }
+
+    T opIndexAssign(T value, size_t i) {
+        assert(i >= 0 && i < _length, "Index out of bounds");
+        items[i] = value;
+        return value;
+    }
+
+    T opIndexAssign(T value) {
+        for (size_t i = 0; i < _length; i++) {
+            items[i] = value;
+        }
+
+        return value;
+    }
+
+    T opIndexAssign(T value, T[] slice) {
+        for (size_t i = 0; i < slice.length; i++) {
+            slice[i] = value;
+        }
+
+        return value;
+    }
+
+    private void considerResize() {
+        if (items is null) {
+            items = cast(T*) malloc(T.sizeof * chunkSize);
+            if (items !is null) {
+                _capacity = chunkSize;
+            }
+        } else if (_capacity == length) {
+            items = cast(T*) realloc(items, T.sizeof * (_capacity + chunkSize));
+            _capacity += chunkSize;
+        }
+    }
+}
+
 ///  --- Tests ---
 
 void runCollectionsTests() {
-    import retrograde.std.test : writeSection;
-
     runQueueTests();
+    runArrayTests();
 }
 
 void runQueueTests() {
@@ -236,6 +429,7 @@ void runQueueTests() {
         Queue!int queue;
         queue.enqueue(1);
         assert(queue.length == 1);
+        assert(queue.capacity == defaultChunkSize);
     });
 
     test("Dequeue item", () {
@@ -245,6 +439,7 @@ void runQueueTests() {
 
         auto item = queue.dequeue();
         assert(queue.length == 0);
+        assert(queue.capacity == defaultChunkSize);
         assert(item == 44);
     });
 
@@ -457,4 +652,155 @@ void runQueueTests() {
         assert(queue.peek == 1);
         assert(queue.length == 3);
     });
+}
+
+void runArrayTests() {
+    import retrograde.std.test : test, writeSection;
+
+    writeSection("-- Array tests --");
+
+    test("Create an Array", () {
+        Array!int array;
+        assert(array.length == 0);
+        assert(array.capacity == 0);
+    });
+
+    test("Add item to an Array", () {
+        Array!int array;
+        array.add(1);
+        assert(array.length == 1);
+        assert(array.capacity == defaultChunkSize);
+        assert(array[0] == 1);
+    });
+
+    test("Add item to an Array with concat operator", () {
+        Array!int array;
+        array ~= 1;
+        assert(array.length == 1);
+        assert(array.capacity == defaultChunkSize);
+        assert(array[0] == 1);
+    });
+
+    test("Make a copy of array through assignment", () {
+        Array!int array;
+        array.add(1);
+        array.add(2);
+        array.add(3);
+        auto array2 = array;
+        array.add(4);
+        array2.add(5);
+        assert(array.length == 4);
+        assert(array2.length == 4);
+        assert(array.capacity == defaultChunkSize);
+        assert(array2.capacity == defaultChunkSize + 3);
+        assert(array[0 .. 4] == [1, 2, 3, 4]);
+        assert(array2[0 .. 4] == [1, 2, 3, 5]);
+    });
+
+    test("Assign Array element through index", () {
+        Array!int array;
+        array.add(1);
+        array.add(2);
+        array.add(3);
+        array[1] = 5;
+        assert(array[1] == 5);
+        assert(array[0 .. 3] == [1, 5, 3]);
+    });
+
+    test("Opdollar points to last element", () {
+        Array!int array;
+        array.add(1);
+        array.add(2);
+        array.add(5);
+        assert(array.opDollar == 3);
+        assert(array[$ - 1] == 5);
+    });
+
+    test("Slice of Array", () {
+        Array!int array;
+        array.add(1);
+        array.add(2);
+        array.add(3);
+        array.add(4);
+        array.add(5);
+        assert(array[1 .. 4] == [2, 3, 4]);
+    });
+
+    test("Assign all values of Array", () {
+        Array!int array;
+        array.add(1);
+        array.add(2);
+        array.add(3);
+        array[] = 5;
+        assert(array[0 .. 3] == [5, 5, 5]);
+    });
+
+    test("Initialize Array through static assignment", () {
+        Array!int array = [1, 2, 3, 4, 5];
+        assert(array.length == 5);
+        assert(array.capacity == 5);
+        assert(array[0 .. 5] == [1, 2, 3, 4, 5]);
+    });
+
+    test("Concat two Arrays", () {
+        Array!int array = [1, 2, 3];
+        Array!int array2 = [4, 5, 6];
+        array ~= array2;
+        assert(array[0 .. 6] == [1, 2, 3, 4, 5, 6]);
+        assert(array._length == 6);
+        assert(array._capacity == defaultChunkSize + 3);
+    });
+
+    test("Create new Array by concatting two Arrays in binary manner", () {
+        Array!int array = [1, 2, 3];
+        Array!int array2 = [4, 5, 6];
+        auto array3 = array ~ array2;
+        assert(array3[0 .. 6] == [1, 2, 3, 4, 5, 6]);
+    });
+
+    test("Create new Array by concatting an Array and element", () {
+        Array!int array = [1, 2, 3];
+        auto array2 = array ~ 4;
+        assert(array2[0 .. 4] == [1, 2, 3, 4]);
+    });
+
+    test("Deallocate an Array", () {
+        Array!int array = [1, 2, 3, 4, 5];
+        array.deallocate();
+        assert(array.length == 0);
+        assert(array.capacity == 0);
+        assert(array.items is null);
+    });
+
+    test("Truncate an Array", () {
+        Array!int array = [1, 2, 3, 4, 5];
+        array.truncate(3);
+        assert(array.length == 3);
+        assert(array.capacity == 5);
+        assert(array[0 .. $] == [1, 2, 3]);
+    });
+
+    test("Increase Array capacity", () {
+        Array!int array = [1, 2, 3, 4, 5];
+        array.capacity = 10;
+        assert(array.length == 5);
+        assert(array.capacity == 10);
+        assert(array[0 .. $] == [1, 2, 3, 4, 5]);
+    });
+
+    test("Set Array capacity to zero", () {
+        Array!int array = [1, 2, 3, 4, 5];
+        array.capacity = 0;
+        assert(array.length == 0);
+        assert(array.capacity == 0);
+    });
+
+    test("Reduce Array by reducing capacity", () {
+        Array!int array = [1, 2, 3, 4, 5];
+        array.capacity = 3;
+        assert(array.length == 3);
+        assert(array.capacity == 3);
+        assert(array[0 .. $] == [1, 2, 3]);
+    });
+
 }
