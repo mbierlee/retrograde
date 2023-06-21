@@ -67,6 +67,9 @@ struct Queue(T, size_t chunkSize = defaultChunkSize) {
     /**
      * Removes and returns an item from the front of the queue.
      *
+     * If the queue is empty, the default value of T is returned.
+     * To check whether the queue is empty, use isEmpty().
+     *
      * Allocated space is never freed up.
      */
     T dequeue() {
@@ -81,6 +84,20 @@ struct Queue(T, size_t chunkSize = defaultChunkSize) {
     }
 
     /**
+     * Returns the item at the front of the queue without removing it.
+     *
+     * If the queue is empty, the default value of T is returned.
+     * To check whether the queue is empty, use isEmpty().
+     */
+    T peek() {
+        if (!items || length == 0) {
+            return T.init;
+        }
+
+        return items[front];
+    }
+
+    /**
      * Returns the amount of items currently in the queue.
      */
     size_t length() {
@@ -92,6 +109,13 @@ struct Queue(T, size_t chunkSize = defaultChunkSize) {
      */
     size_t capacity() {
         return _capacity;
+    }
+
+    /**
+     * Returns whether the queue is empty.
+     */
+    bool isEmpty() {
+        return length == 0;
     }
 
     /**
@@ -404,13 +428,33 @@ void runQueueTests() {
         // If you see something like "Program exited with code -1073740940" this test failed!
     });
 
-    test("Get array copy", () {
+    test("Reassignment of a Queue copies it", () {
         Queue!int queue;
         queue.enqueue(1);
         queue.enqueue(2);
-        assert(queue.getArrayCopy!2 == [1, 2]);
+        auto queue2 = queue;
+        queue.enqueue(0);
+        queue2.enqueue(3);
 
-        Queue!int queue2;
-        assert(queue2.getArrayCopy!2 == [int.init, int.init]);
+        assert(queue.items[0 .. 3] == [1, 2, 0]);
+        assert(queue2.items[0 .. 3] == [1, 2, 3]);
+    });
+
+    test("Check queue for emptyness", () {
+        Queue!int queue;
+        assert(queue.isEmpty);
+        queue.enqueue(1);
+        assert(!queue.isEmpty);
+        queue.dequeue();
+        assert(queue.isEmpty);
+    });
+
+    test("Queue can be peeked", () {
+        Queue!int queue;
+        queue.enqueue(1);
+        queue.enqueue(2);
+        queue.enqueue(3);
+        assert(queue.peek == 1);
+        assert(queue.length == 3);
     });
 }
