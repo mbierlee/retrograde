@@ -306,6 +306,26 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
     }
 
     /** 
+     * Remove an item specified by index from the array.
+     */
+    void remove(size_t index) {
+        if (index >= _length) {
+            return;
+        }
+
+        if (index == _length - 1) {
+            _length--;
+            return;
+        }
+
+        for (size_t i = index; i < _length - 1; i++) {
+            items[i] = items[i + 1];
+        }
+
+        _length--;
+    }
+
+    /** 
      * Deallocate all claimed memory, effectively clearing the array in the process.
      */
     void deallocate() {
@@ -803,4 +823,27 @@ void runArrayTests() {
         assert(array[0 .. $] == [1, 2, 3]);
     });
 
+    test("Remove an item from the middle of the array", () {
+        Array!int array = [1, 2, 3, 4, 5];
+        array.remove(1);
+        assert(array.length == 4);
+        assert(array.capacity == 5);
+        assert(array[0 .. $] == [1, 3, 4, 5]);
+    });
+
+    test("Remove an item from the start of the array", () {
+        Array!int array = [1, 2, 3, 4, 5];
+        array.remove(0);
+        assert(array.length == 4);
+        assert(array.capacity == 5);
+        assert(array[0 .. $] == [2, 3, 4, 5]);
+    });
+
+    test("Remove an item from the end of the array", () {
+        Array!int array = [1, 2, 3, 4, 5];
+        array.remove(4);
+        assert(array.length == 4);
+        assert(array.capacity == 5);
+        assert(array[0 .. $] == [1, 2, 3, 4]);
+    });
 }
