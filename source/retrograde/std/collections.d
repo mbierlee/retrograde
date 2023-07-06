@@ -11,8 +11,9 @@
 
 module retrograde.std.collections;
 
-import retrograde.std.memory : malloc, realloc, free;
+import retrograde.std.memory : malloc, realloc, free, makeRaw;
 import retrograde.std.math : ceil;
+import retrograde.std.option : Option, some, none;
 
 private enum defaultChunkSize = 8;
 
@@ -445,11 +446,130 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
     }
 }
 
+/** 
+ * A doubly linked list.
+ * This implementation is not thread-safe.
+ */
+struct LinkedList(T) {
+    private alias NodePtr = LinkedListNode!T*;
+
+    private NodePtr head;
+    private NodePtr tail;
+
+    private size_t _length;
+
+    ~this() {
+        NodePtr node = head;
+        while (node !is null) {
+            NodePtr next = node.next;
+            free(node);
+            node = next;
+        }
+    }
+
+    /// The number of items in the list.
+    size_t length() {
+        return _length;
+    }
+
+    /// Add an item to the end of the list.
+    void add(T item) {
+        NodePtr node = makeRaw!(LinkedListNode!T);
+        node.value = item;
+
+        if (head is null) {
+            head = node;
+            tail = node;
+        } else {
+            tail.next = node;
+            node.prev = tail;
+            tail = node;
+        }
+
+        _length++;
+    }
+
+    /// Remove the first item from the list.
+    void removeFirst() {
+        if (head is null) {
+            return;
+        }
+
+        NodePtr node = head;
+        head = head.next;
+        if (head is null) {
+            tail = null;
+        } else {
+            head.prev = null;
+        }
+
+        free(node);
+        _length--;
+    }
+
+    /// Remove the last item from the list.
+    void removeLast() {
+        if (tail is null) {
+            return;
+        }
+
+        NodePtr node = tail;
+        tail = tail.prev;
+        if (tail is null) {
+            head = null;
+        } else {
+            tail.next = null;
+        }
+
+        free(node);
+        _length--;
+    }
+
+    /// Remove all items from the list.
+    void clear() {
+        NodePtr node = head;
+        while (node !is null) {
+            NodePtr next = node.next;
+            free(node);
+            node = next;
+        }
+
+        head = null;
+        tail = null;
+        _length = 0;
+    }
+
+    /// Get first item in the list.
+    Option!T first() {
+        if (head is null) {
+            return none!T;
+        }
+
+        return head.value.some;
+    }
+
+    /// Get last item in the list.
+    Option!T last() {
+        if (tail is null) {
+            return none!T;
+        }
+
+        return tail.value.some;
+    }
+}
+
+private struct LinkedListNode(T) {
+    T value;
+    LinkedListNode!T* next;
+    LinkedListNode!T* prev;
+}
+
 ///  --- Tests ---
 
 void runCollectionsTests() {
     runQueueTests();
     runArrayTests();
+    runLinkedListTests();
 }
 
 void runQueueTests() {
@@ -868,4 +988,52 @@ void runArrayTests() {
         assert(array.capacity == 5);
         assert(array[0 .. $] == [1, 10, 3, 4, 5]);
     });
+}
+
+void runLinkedListTests() {
+    import retrograde.std.test : test, writeSection;
+
+    writeSection("-- LinkedList tests --");
+
+    test("Add items to LinkedList", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        assert(list.length == 2);
+        assert(list.first.value == 1);
+        assert(list.last.value == 2);
+    });
+
+    test("Remove first item from LinkedList", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        list.removeFirst();
+        assert(list.length == 1);
+        assert(list.first.value == 2);
+        assert(list.last.value == 2);
+        assert(list.first is list.last);
+    });
+
+    test("Remove last item from LinkedList", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        list.removeLast();
+        assert(list.length == 1);
+        assert(list.first.value == 1);
+        assert(list.last.value == 1);
+        assert(list.first is list.last);
+    });
+
+    test("Clear all items from LinkedList", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        list.clear();
+        assert(list.length == 0);
+        assert(list.first.isEmpty);
+        assert(list.last.isEmpty);
+    });
+
 }
