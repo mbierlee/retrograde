@@ -11,7 +11,7 @@
 
 module retrograde.std.collections;
 
-import retrograde.std.memory : malloc, realloc, free, makeRaw;
+import retrograde.std.memory : malloc, realloc, free, allocateRaw;
 import retrograde.std.math : ceil;
 import retrograde.std.option : Option, some, none;
 
@@ -475,7 +475,9 @@ struct LinkedList(T) {
 
     /// Add an item to the end of the list.
     void add(T item) {
-        NodePtr node = makeRaw!(LinkedListNode!T);
+        NodePtr node = allocateRaw!(LinkedListNode!T);
+        node.next = null;
+        node.prev = null;
         node.value = item;
 
         if (head is null) {
