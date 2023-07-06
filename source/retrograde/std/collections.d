@@ -295,6 +295,7 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
 
     /** 
      * Add an item to the end of the array.
+     * Alternatively, you can use the ~= operator to add an item.
      */
     void add(T item) {
         considerResize();
@@ -325,6 +326,18 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         _length--;
     }
 
+    /**
+     * ReplaCE an item at the given index with a new item.
+     * Alternatively, you can use the [] operator to replace an item.
+     */
+    void replace(size_t index, T newItem) {
+        if (index >= _length) {
+            return;
+        }
+
+        items[index] = newItem;
+    }
+
     /** 
      * Deallocate all claimed memory, effectively clearing the array in the process.
      */
@@ -338,7 +351,8 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
     }
 
     /**
-     * Truncate the array to the given length. 
+     * Truncate the array to the given length.
+     * Allocated memory will not be deallocated.
      */
     void truncate(size_t newLength) {
         if (newLength < _length) {
@@ -845,5 +859,13 @@ void runArrayTests() {
         assert(array.length == 4);
         assert(array.capacity == 5);
         assert(array[0 .. $] == [1, 2, 3, 4]);
+    });
+
+    test("Replace an item in the middle of the array", () {
+        Array!int array = [1, 2, 3, 4, 5];
+        array.replace(1, 10);
+        assert(array.length == 5);
+        assert(array.capacity == 5);
+        assert(array[0 .. $] == [1, 10, 3, 4, 5]);
     });
 }
