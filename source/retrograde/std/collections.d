@@ -250,7 +250,7 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
     }
 
     ~this() {
-        deallocate();
+        clear();
     }
 
     /**
@@ -277,7 +277,7 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         }
 
         if (newCapacity == 0) {
-            deallocate();
+            clear();
             return;
         }
 
@@ -340,9 +340,10 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
     }
 
     /** 
-     * Deallocate all claimed memory, effectively clearing the array in the process.
+     * Clear all items in the array.
+     * Allocated memory will be deallocated.
      */
-    void deallocate() {
+    void clear() {
         _length = 0;
         _capacity = 0;
         if (items !is null) {
@@ -918,9 +919,9 @@ void runArrayTests() {
         assert(array2[0 .. 4] == [1, 2, 3, 4]);
     });
 
-    test("Deallocate an Array", () {
+    test("Clear an Array", () {
         Array!int array = [1, 2, 3, 4, 5];
-        array.deallocate();
+        array.clear();
         assert(array.length == 0);
         assert(array.capacity == 0);
         assert(array.items is null);
