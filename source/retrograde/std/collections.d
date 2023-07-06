@@ -526,6 +526,84 @@ struct LinkedList(T) {
         _length--;
     }
 
+    /// Remove all items with the given value from the list.
+    void removeAll(const T item) {
+        NodePtr node = head;
+        while (node !is null) {
+            NodePtr next = node.next;
+            if (node.value == item) {
+                if (node.prev is null) {
+                    head = node.next;
+                } else {
+                    node.prev.next = node.next;
+                }
+
+                if (node.next is null) {
+                    tail = node.prev;
+                } else {
+                    node.next.prev = node.prev;
+                }
+
+                free(node);
+                _length--;
+            }
+
+            node = next;
+        }
+    }
+
+    /// Remove all items that satisfy the given predicate from the list.
+    void removeWhere(bool function(const ref T) pred) {
+        NodePtr node = head;
+        while (node !is null) {
+            NodePtr next = node.next;
+            if (pred(node.value)) {
+                if (node.prev is null) {
+                    head = node.next;
+                } else {
+                    node.prev.next = node.next;
+                }
+
+                if (node.next is null) {
+                    tail = node.prev;
+                } else {
+                    node.next.prev = node.prev;
+                }
+
+                free(node);
+                _length--;
+            }
+
+            node = next;
+        }
+    }
+
+    // Remove the first item with the given value from the list.
+    void removeFirst(T item) {
+        NodePtr node = head;
+        while (node !is null) {
+            if (node.value == item) {
+                if (node.prev is null) {
+                    head = node.next;
+                } else {
+                    node.prev.next = node.next;
+                }
+
+                if (node.next is null) {
+                    tail = node.prev;
+                } else {
+                    node.next.prev = node.prev;
+                }
+
+                free(node);
+                _length--;
+                return;
+            }
+
+            node = node.next;
+        }
+    }
+
     /// Remove all items from the list.
     void clear() {
         NodePtr node = head;
@@ -1035,6 +1113,48 @@ void runLinkedListTests() {
         assert(list.length == 0);
         assert(list.first.isEmpty);
         assert(list.last.isEmpty);
+    });
+
+    test("Remove all items with specified value from LinkedList", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        list.add(1);
+        list.add(2);
+        list.add(1);
+        list.add(2);
+        list.removeAll(1);
+        assert(list.length == 3);
+        assert(list.first.value == 2);
+        assert(list.last.value == 2);
+    });
+
+    test("Remove all items that match the given predicate from LinkedList", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        list.add(1);
+        list.add(2);
+        list.add(1);
+        list.add(2);
+        list.removeWhere((const ref int value) => value == 1);
+        assert(list.length == 3);
+        assert(list.first.value == 2);
+        assert(list.last.value == 2);
+    });
+
+    test("Remove the first item with specified value from LinkedList", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        list.add(1);
+        list.add(2);
+        list.add(1);
+        list.add(2);
+        list.removeFirst(1);
+        assert(list.length == 5);
+        assert(list.first.value == 2);
+        assert(list.last.value == 2);
     });
 
 }
