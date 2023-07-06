@@ -328,7 +328,7 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
     }
 
     /**
-     * ReplaCE an item at the given index with a new item.
+     * Replace an item at the given index with a new item.
      * Alternatively, you can use the [] operator to replace an item.
      */
     void replace(size_t index, T newItem) {
