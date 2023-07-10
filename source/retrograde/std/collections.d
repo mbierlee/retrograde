@@ -426,13 +426,25 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         return value;
     }
 
-    T opIndexAssign(T value, T[] slice) {
-        for (size_t i = 0; i < slice.length; i++) {
-            slice[i] = value;
+    bool opEquals(const T[] other) const {
+        return opEquals(other);
+    }
+
+    bool opEquals(ref const T[] other) const {
+        if (other.length != _length) {
+            return false;
         }
 
-        return value;
+        for (size_t i = 0; i < _length; i++) {
+            if (items[i] != other[i]) {
+                return false;
+            }
+        }
+
+        return true;
     }
+
+    //tODO: regular opEquals
 
     private void considerResize() {
         if (items is null) {
@@ -637,6 +649,75 @@ struct LinkedList(T) {
 
         return tail.value.some;
     }
+
+    /// Get the item at the given index as Option.
+    Option!T get(size_t index) {
+        if (index >= _length) {
+            return none!T;
+        }
+
+        NodePtr node = head;
+        for (size_t i = 0; i < index; i++) {
+            node = node.next;
+        }
+
+        return node.value.some;
+    }
+
+    auto opIndex(size_t i) {
+        assert(i >= 0 && i < _length, "Index out of bounds");
+        return get(i).value;
+    }
+
+    size_t opDollar() {
+        return _length;
+    }
+
+    Array!T opSlice(size_t dim : 0)(size_t i, size_t j) {
+        assert(i >= 0 && j >= 0 && i <= _length && j <= _length, "Index out of bounds");
+        assert(i <= j, "Invalid slice");
+
+        Array!T result;
+        result.capacity = j - i;
+        NodePtr node = head;
+        for (size_t k = 0; k < i; k++) {
+            node = node.next;
+        }
+
+        for (size_t k = 0; k < result.capacity; k++) {
+            result.add(node.value);
+            node = node.next;
+        }
+
+        return result;
+    }
+
+    Array!T opIndex()(Array!T slice) {
+        return slice;
+    }
+
+    T opIndexAssign(T value, size_t i) {
+        assert(i >= 0 && i < _length, "Index out of bounds");
+        NodePtr node = head;
+        for (size_t k = 0; k < i; k++) {
+            node = node.next;
+        }
+
+        node.value = value;
+        return value;
+    }
+
+    T opIndexAssign(T value) {
+        NodePtr node = head;
+        while (node !is null) {
+            node.value = value;
+            node = node.next;
+        }
+
+        return value;
+    }
+
+    //tODO: regular opEquals
 }
 
 private struct LinkedListNode(T) {
@@ -1159,4 +1240,64 @@ void runLinkedListTests() {
         assert(list.last.value == 2);
     });
 
+    test("Access LinkedList element by using get", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        list.add(3);
+        assert(list.get(0).value == 1);
+        assert(list.get(1).value == 2);
+        assert(list.get(2).value == 3);
+        assert(list.get(3) == none!int);
+    });
+
+    test("Access LinkedList element by index", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        list.add(3);
+        assert(list[0] == 1);
+        assert(list[1] == 2);
+        assert(list[$ - 1] == 3);
+    });
+
+    test("Get slice from LinkedList", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        list.add(3);
+        list.add(4);
+        list.add(5);
+        int[5] expected = [1, 2, 3, 4, 5];
+
+        assert(list[0 .. 1] == expected[0 .. 1]);
+        assert(list[0 .. 2] == expected[0 .. 2]);
+        assert(list[0 .. 3] == expected[0 .. 3]);
+        assert(list[0 .. 4] == expected[0 .. 4]);
+        assert(list[0 .. $] == expected);
+        assert(list[1 .. 2] == expected[1 .. 2]);
+        assert(list[3 .. $] == expected[3 .. $]);
+    });
+
+    test("Assign different value to item in LinkedList", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        list.add(3);
+        list[1] = 10;
+        assert(list[0] == 1);
+        assert(list[1] == 10);
+        assert(list[2] == 3);
+    });
+
+    test("Assign different value to all items in LinkedList", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        list.add(3);
+        list[] = 10;
+        assert(list[0] == 10);
+        assert(list[1] == 10);
+        assert(list[2] == 10);
+    });
 }
