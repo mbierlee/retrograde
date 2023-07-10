@@ -256,14 +256,14 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
     /**
      * Returns the amount of items currently in the array.
      */
-    size_t length() {
+    size_t length() const {
         return _length;
     }
 
     /**
      * Returns the allocated capacity of the array in number of items.
      */
-    size_t capacity() {
+    size_t capacity() const {
         return _capacity;
     }
 
@@ -412,7 +412,7 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         return slice;
     }
 
-    T opIndexAssign(T value, size_t i) {
+    T opIndexAssign(const T value, size_t i) {
         assert(i >= 0 && i < _length, "Index out of bounds");
         items[i] = value;
         return value;
@@ -444,7 +444,23 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         return true;
     }
 
-    //tODO: regular opEquals
+    bool opEquals(const typeof(this) other) const {
+        return opEquals(other);
+    }
+
+    bool opEquals(ref const typeof(this) other) const {
+        if (other.length != _length) {
+            return false;
+        }
+
+        for (size_t i = 0; i < _length; i++) {
+            if (items[i] != other.items[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     private void considerResize() {
         if (items is null) {
@@ -481,7 +497,7 @@ struct LinkedList(T) {
     }
 
     /// The number of items in the list.
-    size_t length() {
+    size_t length() const {
         return _length;
     }
 
@@ -717,7 +733,28 @@ struct LinkedList(T) {
         return value;
     }
 
-    //tODO: regular opEquals
+    bool opEquals(const typeof(this) other) const {
+        return opEquals(other);
+    }
+
+    bool opEquals(ref const typeof(this) other) const {
+        if (other.length != _length) {
+            return false;
+        }
+
+        NodePtr node = cast(NodePtr) head;
+        NodePtr otherNode = cast(NodePtr) other.head;
+        while (node !is null) {
+            if (node.value != otherNode.value) {
+                return false;
+            }
+
+            node = node.next;
+            otherNode = otherNode.next;
+        }
+
+        return true;
+    }
 }
 
 private struct LinkedListNode(T) {
@@ -1150,6 +1187,13 @@ void runArrayTests() {
         assert(array.capacity == 5);
         assert(array[0 .. $] == [1, 10, 3, 4, 5]);
     });
+
+    test("Compare two Arrays for equality", () {
+        Array!int array = [1, 2, 3, 4, 5];
+        Array!int array2 = [1, 2, 3, 4, 5];
+        assert(array == array2);
+    });
+
 }
 
 void runLinkedListTests() {
@@ -1299,5 +1343,17 @@ void runLinkedListTests() {
         assert(list[0] == 10);
         assert(list[1] == 10);
         assert(list[2] == 10);
+    });
+
+    test("Compare two LinkedLists for equality", () {
+        LinkedList!int list1;
+        LinkedList!int list2;
+        list1.add(1);
+        list1.add(2);
+        list1.add(3);
+        list2.add(1);
+        list2.add(2);
+        list2.add(3);
+        assert(list1 == list2);
     });
 }
