@@ -42,7 +42,7 @@ Option!T none(T)() {
     return option;
 }
 
-///  --- Tests ---
+version (UnitTesting)  :  ///
 
 void runOptionTests() {
     import retrograde.std.test : test, writeSection;

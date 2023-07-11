@@ -95,7 +95,7 @@ private union ResultValue(T) {
     string errorMessage;
 }
 
-///  --- Tests ---
+version (UnitTesting)  :  ///
 
 void runResultTests() {
     import retrograde.std.test : test, writeSection;

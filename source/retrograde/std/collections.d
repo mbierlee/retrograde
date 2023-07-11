@@ -926,7 +926,7 @@ struct LinkedListIterator(T) {
     }
 }
 
-///  --- Tests ---
+version (UnitTesting)  :  ///
 
 void runCollectionsTests() {
     runQueueTests();

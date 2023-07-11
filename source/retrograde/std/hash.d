@@ -43,6 +43,8 @@ ulong hashOf(string value) nothrow @trusted {
     return hash;
 }
 
+version (UnitTesting)  :  ///
+
 void runHashTests() {
     import retrograde.std.test : test, writeSection;
 

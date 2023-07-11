@@ -35,7 +35,7 @@ pure StringId sid(string idString) {
     }
 }
 
-///  --- Tests ---
+version (UnitTesting)  :  ///
 
 void runStringIdTests() {
     import retrograde.std.test : test, writeSection;

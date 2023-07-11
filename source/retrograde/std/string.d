@@ -235,7 +235,7 @@ export extern (C) int strcmp(const void* ptr1, const void* ptr2) {
     return *str1 - *str2;
 }
 
-///  --- Tests ---
+version (UnitTesting)  :  ///
 
 void runStringTests() {
     import retrograde.std.test : test, writeSection;

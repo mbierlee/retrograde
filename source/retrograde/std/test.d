@@ -11,6 +11,8 @@
 
 module retrograde.std.test;
 
+version (UnitTesting)  :  ///
+
 import retrograde.std.stdio : writeln;
 
 void test(string name, void function() testFunc) {

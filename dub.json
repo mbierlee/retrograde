@@ -16,7 +16,7 @@
       "targetType": "library",
       "sourcePaths": ["source"],
       "importPaths": ["source"],
-      "versions": ["Native"]
+      "versions": ["Native", "UnitTesting"]
     }
   ],
   "buildTypes": {

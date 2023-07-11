@@ -17,7 +17,7 @@ version (Native) {
     public import retrograde.wasm.math;
 }
 
-///  --- Tests ---
+version (UnitTesting)  :  ///
 
 void runMathTests() {
     import retrograde.std.test : test, writeSection;

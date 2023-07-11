@@ -294,7 +294,7 @@ SharedPtr!T makeShared(T)(const ref T initial) {
     return SharedPtr!T(makeRaw(initial));
 }
 
-///  --- Tests ---
+version (UnitTesting)  :  ///
 
 private bool testStructDestroyed = false;
 
