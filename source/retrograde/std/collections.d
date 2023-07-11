@@ -854,7 +854,7 @@ struct LinkedListIterator(T) {
 
     /// Insert an item at the current position of the iterator.
     void insert(T value) {
-        NodePtr newNode = cast(NodePtr) malloc(LinkedListNode!T.sizeof);
+        NodePtr newNode = allocateRaw!(LinkedListNode!T);
         newNode.value = value;
         newNode.next = node;
         newNode.prev = node.prev;
