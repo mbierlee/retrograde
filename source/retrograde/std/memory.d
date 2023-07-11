@@ -230,6 +230,10 @@ struct SharedPtr(T) {
         (*refCount)++;
     }
 
+    void opAssign(return scope typeof(this) other) {
+        opAssign(other);
+    }
+
     void opAssign(ref return scope typeof(this) other) {
         assert(other.ptr !is null, "Other shared pointer is null and may not be used.");
         assert(other.refCount !is null, "Other shared pointer reference count is null but pointer is not null.");
