@@ -40,12 +40,11 @@ version (Windows) {
          * Stops the timer and returns the elapsed time in milliseconds.
          */
         double stop() {
-            if (!_isRunning) {
-                return elapsedMs;
+            if (_isRunning) {
+                elapsedMs = peek();
+                _isRunning = false;
             }
 
-            elapsedMs = peek();
-            _isRunning = false;
             return elapsedMs;
         }
 
