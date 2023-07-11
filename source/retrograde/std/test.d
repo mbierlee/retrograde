@@ -34,9 +34,11 @@ void writeSection(string name) {
 
 void runTests() {
     version (WebAssembly) {
-        import retrograde.wasm.memory : runWasmMemTests;
+        version (WasmMemTest) {
+            import retrograde.wasm.memory : runWasmMemTests;
 
-        runWasmMemTests();
+            runWasmMemTests();
+        }
     }
 
     import retrograde.std.memory : runStdMemoryTests;
