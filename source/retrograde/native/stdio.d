@@ -20,7 +20,7 @@ void writelnStr(string msg) {
 }
 
 void writelnUint(uint number) {
-    printf("%d\n", number);
+    printf("%u\n", number);
 }
 
 void writelnInt(int number) {
@@ -28,11 +28,11 @@ void writelnInt(int number) {
 }
 
 void writelnUlong(ulong number) {
-    printf("%d\n", cast(uint) number);
+    printf("%llu\n", number);
 }
 
 void writelnLong(long number) {
-    printf("%d\n", cast(int) number);
+    printf("%lld\n", number);
 }
 
 void writelnDouble(double number) {
@@ -48,19 +48,19 @@ void writelnChar(char character) {
 }
 
 void writelnWChar(wchar character) {
-    printf("%c\n", character);
+    printf("%lc\n", character);
 }
 
 void writelnDChar(dchar character) {
-    printf("%c\n", character);
+    printf("%lc\n", character);
 }
 
 void writelnUbyte(ubyte number) {
-    printf("%d\n", number);
+    printf("%hhu\n", number);
 }
 
 void writelnByte(byte number) {
-    printf("%d\n", number);
+    printf("%hhd\n", number);
 }
 
 void writelnBool(bool value) {
@@ -72,7 +72,7 @@ void writeErrLnStr(string msg) {
 }
 
 void writeErrLnUint(uint number) {
-    printf("ERROR: %d\n", number);
+    printf("ERROR: %u\n", number);
 }
 
 void writeErrLnInt(int number) {
@@ -80,11 +80,11 @@ void writeErrLnInt(int number) {
 }
 
 void writeErrLnULong(ulong number) {
-    printf("ERROR: %d\n", cast(uint) number);
+    printf("ERROR: %llu\n", number);
 }
 
 void writeErrLnLong(long number) {
-    printf("ERROR: %d\n", cast(int) number);
+    printf("ERROR: %lld\n", number);
 }
 
 void writeErrLnDouble(double number) {
@@ -100,19 +100,19 @@ void writeErrLnChar(char character) {
 }
 
 void writeErrlnWChar(wchar character) {
-    printf("ERROR: %c\n", character);
+    printf("ERROR: %lc\n", character);
 }
 
 void writeErrlnDChar(dchar character) {
-    printf("ERROR: %c\n", character);
+    printf("ERROR: %lc\n", character);
 }
 
 void writeErrLnUbyte(ubyte number) {
-    printf("ERROR: %d\n", number);
+    printf("ERROR: %hhu\n", number);
 }
 
 void writeErrLnByte(byte number) {
-    printf("ERROR: %d\n", number);
+    printf("ERROR: %hhd\n", number);
 }
 
 void writeErrLnBool(bool value) {
