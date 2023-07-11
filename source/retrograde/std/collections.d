@@ -558,28 +558,7 @@ struct LinkedList(T) {
 
     /// Remove all items with the given value from the list.
     void removeAll(const T item) {
-        NodePtr node = head;
-        while (node !is null) {
-            NodePtr next = node.next;
-            if (node.value == item) {
-                if (node.prev is null) {
-                    head = node.next;
-                } else {
-                    node.prev.next = node.next;
-                }
-
-                if (node.next is null) {
-                    tail = node.prev;
-                } else {
-                    node.next.prev = node.prev;
-                }
-
-                free(node);
-                _length--;
-            }
-
-            node = next;
-        }
+        removeItems(item, false);
     }
 
     /// Remove all items that satisfy the given predicate from the list.
@@ -610,28 +589,7 @@ struct LinkedList(T) {
 
     // Remove the first item with the given value from the list.
     void removeFirst(T item) {
-        NodePtr node = head;
-        while (node !is null) {
-            if (node.value == item) {
-                if (node.prev is null) {
-                    head = node.next;
-                } else {
-                    node.prev.next = node.next;
-                }
-
-                if (node.next is null) {
-                    tail = node.prev;
-                } else {
-                    node.next.prev = node.prev;
-                }
-
-                free(node);
-                _length--;
-                return;
-            }
-
-            node = node.next;
-        }
+        removeItems(item, true);
     }
 
     /// Remove all items from the list.
@@ -759,6 +717,35 @@ struct LinkedList(T) {
         }
 
         return true;
+    }
+
+    private void removeItems(T item, bool onlyRemoveFirst) {
+        NodePtr node = head;
+        while (node !is null) {
+            NodePtr next = node.next;
+            if (node.value == item) {
+                if (node.prev is null) {
+                    head = node.next;
+                } else {
+                    node.prev.next = node.next;
+                }
+
+                if (node.next is null) {
+                    tail = node.prev;
+                } else {
+                    node.next.prev = node.prev;
+                }
+
+                free(node);
+                _length--;
+
+                if (onlyRemoveFirst) {
+                    return;
+                }
+            }
+
+            node = next;
+        }
     }
 }
 
