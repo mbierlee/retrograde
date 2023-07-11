@@ -680,6 +680,11 @@ struct LinkedList(T) {
         return node.value.some;
     }
 
+    /// Create a new iterator for the list.
+    LinkedListIterator!T iterator() {
+        return LinkedListIterator!T(&this);
+    }
+
     auto opIndex(size_t i) {
         assert(i >= 0 && i < _length, "Index out of bounds");
         return get(i).value;
@@ -761,6 +766,119 @@ private struct LinkedListNode(T) {
     T value;
     LinkedListNode!T* next;
     LinkedListNode!T* prev;
+}
+
+/** 
+ * An iterator that more efficiently allows for linear traversal
+ * of a linked list.
+ *
+ * Each access to a LinkedList by index will start seeking from the
+ * start. This iterator instead will pick up where it left off.
+ *
+ * This iterator is not safe to use if the list is modified while
+ * iterating. It is not thread safe.
+ *
+ * This iterator becomes invalid when the linked list is destroyed.
+ * Make sure to not use it anymore.
+ */
+struct LinkedListIterator(T) {
+    private alias NodePtr = LinkedListNode!T*;
+
+    private LinkedList!T* list;
+    private NodePtr node;
+
+    this(LinkedList!T* list) {
+        this.list = list;
+        this.node = list.head;
+    }
+
+    bool hasNext() {
+        return node !is null;
+    }
+
+    bool hasPrevious() {
+        return node !is null && node.prev !is null;
+    }
+
+    /// Get the next item in the list and move the iterator forward.
+    Option!T next() {
+        if (node is null) {
+            return none!T;
+        }
+
+        T value = node.value;
+        node = node.next;
+        return value.some;
+    }
+
+    /// Get the previous item in the list and move the iterator back.
+    Option!T previous() {
+        if (node is null || node.prev is null) {
+            return none!T;
+        }
+
+        node = node.prev;
+        return node.value.some;
+    }
+
+    /// Reset the iterator to the start of the list.
+    void reset() {
+        node = list.head;
+    }
+
+    /// Remove the item at the current position of the iterator and move forward.
+    void remove() {
+        if (node is null) {
+            return;
+        }
+
+        NodePtr next = node.next;
+        NodePtr prev = node.prev;
+        if (prev !is null) {
+            prev.next = next;
+        }
+
+        if (next !is null) {
+            next.prev = prev;
+        }
+
+        if (list.head is node) {
+            list.head = next;
+        }
+
+        list._length--;
+
+        free(node);
+        node = next;
+    }
+
+    /// Insert an item at the current position of the iterator.
+    void insert(T value) {
+        NodePtr newNode = cast(NodePtr) malloc(LinkedListNode!T.sizeof);
+        newNode.value = value;
+        newNode.next = node;
+        newNode.prev = node.prev;
+
+        if (node.prev !is null) {
+            node.prev.next = newNode;
+        }
+
+        if (node is list.head) {
+            list.head = newNode;
+        }
+
+        node.prev = newNode;
+        list._length++;
+    }
+
+    /// Replace the item at the current position of the iterator.
+    void replace(T value) {
+        if (node is null) {
+            return;
+        }
+
+        node.value = value;
+    }
 }
 
 ///  --- Tests ---
@@ -1355,5 +1473,109 @@ void runLinkedListTests() {
         list2.add(2);
         list2.add(3);
         assert(list1 == list2);
+    });
+
+    test("Iterate over a LinkedList using a LinkedListIterator", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        list.add(3);
+        int[3] expected = [1, 2, 3];
+        auto iterator = list.iterator;
+        int i = 0;
+        while (iterator.hasNext) {
+            assert(iterator.next.value == expected[i++]);
+        }
+    });
+
+    test("Iterate over a LinkedList using a LinkedListIterator and then back", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        list.add(3);
+        int[3] expected = [1, 2, 3];
+        auto iterator = list.iterator;
+        int i = 0;
+        while (iterator.hasNext) {
+            assert(iterator.next.value == expected[i++]);
+        }
+
+        i = 2;
+        while (iterator.hasPrevious) {
+            assert(iterator.previous.value == expected[i--]);
+        }
+    });
+
+    test("Iterate over a LinkedList using a LinkedListIterator and then reset it", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        list.add(3);
+        int[3] expected = [1, 2, 3];
+        auto iterator = list.iterator;
+        int i = 0;
+        while (iterator.hasNext) {
+            assert(iterator.next.value == expected[i++]);
+        }
+
+        iterator.reset;
+        i = 0;
+        while (iterator.hasNext) {
+            assert(iterator.next.value == expected[i++]);
+        }
+    });
+
+    test("Remove item in LinkedListIterator", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        list.add(3);
+        auto iterator = list.iterator;
+        iterator.next;
+        iterator.remove;
+        assert(list.length == 2);
+
+        int[2] expected = [1, 3];
+        iterator.reset;
+        int i = 0;
+        while (iterator.hasNext) {
+            assert(iterator.next.value == expected[i++]);
+        }
+    });
+
+    test("Insert item in LinkedListIterator", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        list.add(3);
+        auto iterator = list.iterator;
+        iterator.next;
+        iterator.insert(10);
+        assert(list.length == 4);
+
+        int[4] expected = [1, 10, 2, 3];
+        iterator.reset;
+        int i = 0;
+        while (iterator.hasNext) {
+            assert(iterator.next.value == expected[i++]);
+        }
+    });
+
+    test("Replace item in LinkedListIterator", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        list.add(3);
+        auto iterator = list.iterator;
+        iterator.next;
+        iterator.replace(10);
+        assert(list.length == 3);
+
+        int[3] expected = [1, 10, 3];
+        iterator.reset;
+        int i = 0;
+        while (iterator.hasNext) {
+            assert(iterator.next.value == expected[i++]);
+        }
     });
 }

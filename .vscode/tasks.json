@@ -3,23 +3,35 @@
   // for the documentation about the tasks.json format
   "version": "2.0.0",
   "tasks": [
-    {
-      "label": "Build Library",
-      "type": "shell",
-      "command": "make build-lib",
-      "problemMatcher": [],
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      }
-    },
+    // {
+    //   "label": "Build Library",
+    //   "type": "shell",
+    //   "command": "make build-lib",
+    //   "problemMatcher": [],
+    //   "group": {
+    //     "kind": "build",
+    //     "isDefault": true
+    //   }
+    // },
+    // {
+    //   "label": "Test Native",
+    //   "type": "shell",
+    //   "command": "make test-native",
+    //   "problemMatcher": [],
+    //   "group": {
+    //     "kind": "test",
+    //     "isDefault": true
+    //   }
+    // }
+
+    //Temp fix for borked VS code test as build
     {
       "label": "Test Native",
       "type": "shell",
       "command": "make test-native",
       "problemMatcher": [],
       "group": {
-        "kind": "test",
+        "kind": "build",
         "isDefault": true
       }
     }
