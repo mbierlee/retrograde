@@ -1582,4 +1582,40 @@ void runLinkedListTests() {
             assert(iterator.next.value == expected[i++]);
         }
     });
+
+    test("Using get on an empty list returns none", () {
+        LinkedList!int list;
+        assert(list.get(0) == none!int);
+    });
+
+    test("Removing items in an empty list does nothing", () {
+        LinkedList!int list;
+        list.removeFirst();
+        list.removeLast();
+        list.removeAll(0);
+        list.removeWhere((const ref int i) => i == 0);
+        assert(list.length == 0);
+    });
+
+    test("Getting first from empty list returns none", () {
+        LinkedList!int list;
+        assert(list.first == none!int);
+    });
+
+    test("Getting last from empty list returns none", () {
+        LinkedList!int list;
+        assert(list.last == none!int);
+    });
+
+    test("Getting iterator from empty list returns none on next", () {
+        LinkedList!int list;
+        auto iterator = list.iterator;
+        assert(iterator.next == none!int);
+    });
+
+    test("Empty lists are equal when compared", () {
+        LinkedList!int list1;
+        LinkedList!int list2;
+        assert(list1 == list2);
+    });
 }
