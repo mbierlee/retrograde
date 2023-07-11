@@ -25,11 +25,13 @@ private double lastTimeMs = 0.0;
 private double lagTimeMs = 0.0;
 
 version (Native) {
-    import core.stdc.time : clock, CLOCKS_PER_SEC;
+    import retrograde.std.time : StopWatch;
 
     void runLoop() {
+        StopWatch sw;
+        sw.start();
         while (!terminateEngineLoop) {
-            auto elapsedTimeMs = clock() / CLOCKS_PER_SEC * 1000;
+            auto elapsedTimeMs = sw.peek();
             executeEngineLoopCycle(elapsedTimeMs);
         }
     }
