@@ -11,6 +11,8 @@
 
 module retrograde.windows.time;
 
+import retrograde.std.result : OperationResult, success, failure;
+
 version (Windows) {
     import core.sys.windows.windows : QueryPerformanceCounter, QueryPerformanceFrequency, LARGE_INTEGER;
 
@@ -25,19 +27,30 @@ version (Windows) {
 
         /** 
          * Starts the timer.
+         * 
+         * Returns:
+         *  OperationResult.success() if the timer was started successfully.
          */
-        void start() {
+        OperationResult start() {
             auto frequencyRes = QueryPerformanceFrequency(&frequency);
-            assert(frequencyRes != 0, "QueryPerformanceFrequency failed");
+            if (frequencyRes == 0) {
+                return failure("QueryPerformanceFrequency failed");
+            }
 
             auto startTimeRes = QueryPerformanceCounter(&startTime);
-            assert(startTimeRes != 0, "QueryPerformanceCounter failed");
+            if (startTimeRes == 0) {
+                return failure("QueryPerformanceCounter failed");
+            }
 
             _isRunning = true;
+            return success();
         }
 
         /** 
-         * Stops the timer and returns the elapsed time in milliseconds.
+         * Stops the timer.
+         *
+         * Returns: 
+         *  The elapsed time in milliseconds.
          */
         double stop() {
             if (_isRunning) {
@@ -52,12 +65,17 @@ version (Windows) {
          * Returns the elapsed time in milliseconds without stopping the timer.
          * If the timer is running, the elapsed time is the time since the timer was started.
          * If the timer is stopped, the elapsed time is the time between the start and stop calls.
+         *
+         * Returns:
+         *  The elapsed time in milliseconds. If getting the time from the system failed, -1 is returned.
          */
         double peek() {
             if (_isRunning) {
                 LARGE_INTEGER peekTime;
                 auto peekTimeRes = QueryPerformanceCounter(&peekTime);
-                assert(peekTimeRes != 0, "QueryPerformanceCounter failed");
+                if (peekTimeRes == 0) {
+                    return -1;
+                }
 
                 double accumulatedMs = (peekTime.QuadPart - startTime.QuadPart) * 1000 / cast(
                     double) frequency.QuadPart;
@@ -69,7 +87,10 @@ version (Windows) {
         }
 
         /** 
-         * Stops and resets the timer and returns the elapsed time in milliseconds.
+         * Stops and resets.
+         *
+         * Returns:
+         *  The elapsed time in milliseconds.
          */
         double reset() {
             double elapsed = stop();
@@ -77,6 +98,9 @@ version (Windows) {
             return elapsed;
         }
 
+        /** 
+         * Returns whether the timer is running.
+         */
         bool isRunning() {
             return _isRunning;
         }

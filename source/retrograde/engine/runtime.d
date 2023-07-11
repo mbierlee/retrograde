@@ -26,12 +26,23 @@ private double lagTimeMs = 0.0;
 
 version (Native) {
     import retrograde.std.time : StopWatch;
+    import retrograde.std.stdio : writeErrLn;
 
     void runLoop() {
         StopWatch sw;
-        sw.start();
+        auto res = sw.start();
+        if (res.isFailure) {
+            writeErrLn(res.errorMessage);
+            return;
+        }
+
         while (!terminateEngineLoop) {
             auto elapsedTimeMs = sw.peek();
+            if (elapsedTimeMs < 0) {
+                writeErrLn("Elapsed time is negative, this should not happen. Stopwatch is broken.");
+                return;
+            }
+
             executeEngineLoopCycle(elapsedTimeMs);
         }
     }
@@ -101,7 +112,7 @@ template DefaultEntryPoint() {
 
             // We do not run the internal engine loop in WebAssembly,
             // the browser is in charge of that.
-            // Also initEngine is called by the web runtime.
+            // Also, initEngine is called by the web runtime.
         }
     } else {
         extern (C) void main() {
