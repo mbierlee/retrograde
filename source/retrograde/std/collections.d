@@ -780,6 +780,10 @@ private struct LinkedListNode(T) {
  *
  * This iterator becomes invalid when the linked list is destroyed.
  * Make sure to not use it anymore.
+ *
+ * Modifying the list while iterating over it using this iterator
+ * can lead to undefined behavior. Be sure to finish any iteration 
+ * before modifying the list and only use this iterator for modification.
  */
 struct LinkedListIterator(T) {
     private alias NodePtr = LinkedListNode!T*;
