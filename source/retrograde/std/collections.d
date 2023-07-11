@@ -362,6 +362,20 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         }
     }
 
+    /** 
+     * Find the index of the first item that matches the given value.
+     * Returns -1 if no item is found.
+     */
+    size_t find(T value) const {
+        for (size_t i = 0; i < _length; i++) {
+            if (items[i] == value) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
     void opOpAssign(string op : "~")(T rhs) {
         add(rhs);
     }
@@ -641,6 +655,25 @@ struct LinkedList(T) {
     /// Create a new iterator for the list.
     LinkedListIterator!T iterator() {
         return LinkedListIterator!T(&this);
+    }
+
+    /** 
+     * Find the index of the first item with the given value.
+     * Returns -1 if the item is not found.
+     */
+    size_t find(T value) const {
+        NodePtr node = cast(NodePtr) head;
+        size_t index = 0;
+        while (node !is null) {
+            if (node.value == value) {
+                return index;
+            }
+
+            node = node.next;
+            index++;
+        }
+
+        return -1;
     }
 
     auto opIndex(size_t i) {
@@ -1303,6 +1336,16 @@ void runArrayTests() {
         assert(array == array2);
     });
 
+    test("Find item in Array", () {
+        Array!int array = [1, 2, 3, 4, 5];
+        assert(array.find(3) == 2);
+    });
+
+    test("Find item in Array returns -1 when not found", () {
+        Array!int array = [1, 2, 3, 4, 5];
+        assert(array.find(10) == -1);
+    });
+
 }
 
 void runLinkedListTests() {
@@ -1604,5 +1647,21 @@ void runLinkedListTests() {
         LinkedList!int list1;
         LinkedList!int list2;
         assert(list1 == list2);
+    });
+
+    test("Find item in LinkedList", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        list.add(3);
+        assert(list.find(2) == 1);
+    });
+
+    test("Find item in LinkedList returns -1 when not found", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        list.add(3);
+        assert(list.find(4) == -1);
     });
 }
