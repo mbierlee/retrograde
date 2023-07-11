@@ -14,6 +14,7 @@ module retrograde.std.collections;
 import retrograde.std.memory : malloc, realloc, free, allocateRaw;
 import retrograde.std.math : ceil;
 import retrograde.std.option : Option, some, none;
+import retrograde.std.hash : hashOf;
 
 private enum defaultChunkSize = 8;
 
@@ -476,6 +477,15 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         return true;
     }
 
+    ulong toHash() nothrow @trusted const {
+        ulong hash = 0;
+        foreach (T item; items[0 .. _length]) {
+            hash = hash * 33 + item.hashOf;
+        }
+
+        return hash;
+    }
+
     private void considerResize() {
         if (items is null) {
             items = cast(T*) malloc(T.sizeof * chunkSize);
@@ -750,6 +760,17 @@ struct LinkedList(T) {
         }
 
         return true;
+    }
+
+    ulong toHash() nothrow @trusted const {
+        ulong hash = 0;
+        NodePtr node = cast(NodePtr) head;
+        while (node !is null) {
+            hash = hash * 33 + node.value.hashOf;
+            node = node.next;
+        }
+
+        return hash;
     }
 
     private void removeItems(T item, bool onlyRemoveFirst) {
@@ -1346,6 +1367,11 @@ void runArrayTests() {
         assert(array.find(10) == -1);
     });
 
+    test("Compare two Arrays by hash", () {
+        Array!int array = [1, 2, 3, 4, 5];
+        Array!int array2 = [1, 2, 3, 4, 5];
+        assert(array.toHash() == array2.toHash());
+    });
 }
 
 void runLinkedListTests() {
@@ -1663,5 +1689,17 @@ void runLinkedListTests() {
         list.add(2);
         list.add(3);
         assert(list.find(4) == -1);
+    });
+
+    test("Compare two LinkedLists by hash", () {
+        LinkedList!int list1;
+        LinkedList!int list2;
+        list1.add(1);
+        list1.add(2);
+        list1.add(3);
+        list2.add(1);
+        list2.add(2);
+        list2.add(3);
+        assert(list1.toHash() == list2.toHash());
     });
 }

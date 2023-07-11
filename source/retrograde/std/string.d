@@ -12,6 +12,7 @@
 module retrograde.std.string;
 
 import retrograde.std.memory : free, calloc, memcpy, realloc, unique, UniquePtr;
+import retrograde.std.hash : hashOf;
 
 /** 
  * A dynamic string that manages its own memory.
@@ -153,12 +154,7 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
     }
 
     ulong toHash() nothrow @trusted const {
-        ulong hash = 0;
-        foreach (i; 0 .. _length) {
-            hash = hash * 33 + ptr[i];
-        }
-
-        return hash;
+        return get().hashOf();
     }
 
     static if (is(T == char)) {
@@ -366,10 +362,10 @@ void runStringTests() {
         assert(str.get == "Hello world");
     });
 
-    test("Create hash for String", {
+    test("Compare two Strings by hash", {
         auto str = "Hello world".s;
         auto str2 = "Hello world".s;
-        assert(str.toHash == str2.toHash);
+        assert(str.toHash() == str2.toHash());
     });
 
 }
