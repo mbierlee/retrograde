@@ -37,6 +37,12 @@ version (Native) {
     }
 }
 
+/** 
+ * Executes a single cycle of the engine loop. 
+ *
+ * Params:
+ *   elapsedTimeMs = The elapsed time in milliseconds since the start of running the engine loop / application.
+ */
 export extern (C) void executeEngineLoopCycle(double elapsedTimeMs) {
     assert(updateFunction != null, "updateFunction cannot be null. Set it before starting the engine loop.");
 
