@@ -227,12 +227,10 @@ struct SharedPtr(T) {
         refCount = null;
     }
 
-    this(ref return scope typeof(this) other) {
-        assert(other._ptr !is null, "Other shared pointer is null and may not be used.");
-        assert(other.refCount !is null, "Other shared pointer reference count is null but pointer is not null.");
-        _ptr = other._ptr;
-        refCount = other.refCount;
-        (*refCount)++;
+    this(ref return scope inout typeof(this) other) {
+        _ptr = cast(T*) other._ptr;
+        refCount = cast(size_t*) other.refCount;
+        incrementRefCount();
     }
 
     /**
@@ -251,17 +249,15 @@ struct SharedPtr(T) {
         return refCount is null ? 0 : *refCount;
     }
 
-    void opAssign(return scope typeof(this) other) {
-        opAssign(other);
-    }
-
     void opAssign(ref return scope typeof(this) other) {
-        assert(other._ptr !is null, "Other shared pointer is null and may not be used.");
-        assert(other.refCount !is null, "Other shared pointer reference count is null but pointer is not null.");
+        if (this is other) {
+            return;
+        }
+
         releaseShare();
         _ptr = other._ptr;
         refCount = other.refCount;
-        (*refCount)++;
+        incrementRefCount();
     }
 
     auto opDispatch(string s)() {
@@ -271,7 +267,7 @@ struct SharedPtr(T) {
 
     auto opDispatch(string s, Args...)(Args args) {
         assert(_ptr !is null, "Shared pointer is null and may not be used.");
-        return mixin("_ptr." ~ s ~ "(args)");
+        return mixin("_ptr." ~ s)(args);
     }
 
     static if (!is(T == void)) {
@@ -293,6 +289,12 @@ struct SharedPtr(T) {
                 free(_ptr);
                 free(refCount);
             }
+        }
+    }
+
+    private void incrementRefCount() {
+        if (refCount !is null) {
+            (*refCount)++;
         }
     }
 }
@@ -335,11 +337,11 @@ private struct TestStruct {
 }
 
 private struct TestContainer {
-    UniquePtr!TestStruct ptr;
+    UniquePtr!TestStruct testStructPtr;
 }
 
 private struct TestSharedContainer {
-    SharedPtr!TestStruct ptr;
+    SharedPtr!TestStruct testStructPtr;
 }
 
 void runStdMemoryTests() {
@@ -591,16 +593,32 @@ void runStdMemoryTests() {
         auto sharedPtr = makeShared!TestStruct;
         auto container = TestSharedContainer(sharedPtr);
         assert(sharedPtr.useCount == 2);
-        assert(container.ptr.useCount == 2);
+        assert(container.testStructPtr.useCount == 2);
 
         {
             auto container2 = TestSharedContainer(sharedPtr);
             assert(sharedPtr.useCount == 3);
-            assert(container.ptr.useCount == 3);
-            assert(container2.ptr.useCount == 3);
+            assert(container.testStructPtr.useCount == 3);
+            assert(container2.testStructPtr.useCount == 3);
         }
 
         assert(sharedPtr.useCount == 2);
-        assert(container.ptr.useCount == 2);
+        assert(container.testStructPtr.useCount == 2);
+    });
+
+    test("Shared pointer in a shared container is properly cleaned up", {
+        ///
+
+        {
+            auto sharedPtr = makeShared!TestStruct;
+            auto container = TestSharedContainer(sharedPtr);
+            auto sharedContainer = makeShared(container);
+            assert(sharedPtr.useCount == 2);
+            assert(sharedContainer.testStructPtr.ptr is sharedPtr.ptr);
+            assert(sharedContainer.testStructPtr.refCount is sharedPtr.refCount);
+            testStructDestroyed = false;
+        }
+
+        assert(testStructDestroyed);
     });
 }
