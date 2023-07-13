@@ -104,10 +104,12 @@ struct UniquePtr(T) {
         return mixin("_ptr." ~ s ~ "(args)");
     }
 
-    auto opIndex(size_t i) {
-        assert(ptr !is null, "Shared pointer is null and may not be used.");
-        //TODO: Bounds checking
-        return ptr[i];
+    static if (!is(T == void)) {
+        auto opIndex(size_t i) {
+            assert(_ptr !is null, "Unique pointer is null and may not be used.");
+            //TODO: Bounds checking
+            return _ptr[i];
+        }
     }
 
     /**
@@ -175,7 +177,7 @@ struct UniquePtr(T) {
             static if (!is(T == void)) {
                 destroy(*_ptr);
             }
-            
+
             free(_ptr);
         }
 
@@ -208,8 +210,8 @@ UniquePtr!T makeUnique(T)(const ref T initial) {
  * The memory is freed when the last owner destroys the shared pointer.
  */
 struct SharedPtr(T) {
-    private T* _ptr;
-    private size_t* refCount;
+    private T* _ptr = null;
+    private size_t* refCount = null;
 
     this(T* ptr) {
         assert(ptr !is null);
@@ -272,10 +274,12 @@ struct SharedPtr(T) {
         return mixin("_ptr." ~ s ~ "(args)");
     }
 
-    auto opIndex(size_t i) {
-        assert(_ptr !is null, "Shared pointer is null and may not be used.");
-        //TODO: Bounds checking
-        return _ptr[i];
+    static if (!is(T == void)) {
+        auto opIndex(size_t i) {
+            assert(_ptr !is null, "Shared pointer is null and may not be used.");
+            //TODO: Bounds checking
+            return _ptr[i];
+        }
     }
 
     private void releaseShare() {
