@@ -205,10 +205,9 @@ export extern (C) void free_sized(void* ptr, size_t size) {
  * Sets the num bytes of the block of memory pointed by ptr to the specified value (interpreted as an unsigned byte).
  * Returns: ptr as-is.
  */
-export extern (C) void* memset(void* ptr, ubyte value, size_t num) {
+export extern (C) void* memset(void* ptr, int value, size_t num) {
     foreach (i; 0 .. num) {
-
-        *(cast(ubyte*)&ptr[i]) = value;
+        *(cast(ubyte*)&ptr[i]) = cast(ubyte) value;
     }
 
     return ptr;
