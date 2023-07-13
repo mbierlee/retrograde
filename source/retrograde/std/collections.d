@@ -427,7 +427,7 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         return slice;
     }
 
-    T opIndexAssign(const T value, size_t i) {
+    T opIndexAssign(T value, size_t i) {
         assert(i >= 0 && i < _length, "Index out of bounds");
         items[i] = value;
         return value;
@@ -479,8 +479,8 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
 
     ulong toHash() nothrow @trusted const {
         ulong hash = 0;
-        foreach (T item; items[0 .. _length]) {
-            hash = hash * 33 + item.hashOf;
+        for(size_t i = 0; i < _length; i++) {
+            hash = hash * 33 + items[i].hashOf;
         }
 
         return hash;
