@@ -12,9 +12,9 @@
 module retrograde.std.stdio;
 
 version (WebAssembly) {
-    public import retrograde.wasm.stdio;
+    import retrograde.wasm.stdio;
 } else version (Native) {
-    public import retrograde.native.stdio;
+    import retrograde.native.stdio;
 } else {
     static assert(false, "No stdio implementation available for target platform. Provide one of these versions: WebAssembly, Native");
 }

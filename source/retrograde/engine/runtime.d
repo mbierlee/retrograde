@@ -86,11 +86,11 @@ export extern (C) void initEngine() {
 
     version (WebAssembly) {
         import retrograde.wasm.memory : initializeHeapMemory;
-        import retrograde.std.stdio : writeErrLnStr;
+        import retrograde.std.stdio : writeErrLn;
 
         auto res = initializeHeapMemory();
         if (res.isFailure) {
-            writeErrLnStr(res.errorMessage);
+            writeErrLn(res.errorMessage);
         }
     }
 
