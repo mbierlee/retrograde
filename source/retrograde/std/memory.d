@@ -338,6 +338,10 @@ private struct TestContainer {
     UniquePtr!TestStruct ptr;
 }
 
+private struct TestSharedContainer {
+    SharedPtr!TestStruct ptr;
+}
+
 void runStdMemoryTests() {
     import retrograde.std.test : test, writeSection;
 
@@ -581,5 +585,22 @@ void runStdMemoryTests() {
         assert(sharedPtr.ptr !is null);
         assert(sharedPtr.useCount == 1);
         assert(*(cast(int*) sharedPtr.ptr) == 42);
+    });
+
+    test("Shared pointer in a container is properly refcounted", {
+        auto sharedPtr = makeShared!TestStruct;
+        auto container = TestSharedContainer(sharedPtr);
+        assert(sharedPtr.useCount == 2);
+        assert(container.ptr.useCount == 2);
+
+        {
+            auto container2 = TestSharedContainer(sharedPtr);
+            assert(sharedPtr.useCount == 3);
+            assert(container.ptr.useCount == 3);
+            assert(container2.ptr.useCount == 3);
+        }
+
+        assert(sharedPtr.useCount == 2);
+        assert(container.ptr.useCount == 2);
     });
 }
