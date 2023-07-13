@@ -39,6 +39,8 @@ void writeln(T)(T value) {
         writelnFloat(value);
     } else static if (is(T == char)) {
         writelnChar(value);
+    } else static if (is(T == immutable(char))) {
+        writelnChar(value);
     } else static if (is(T == wchar)) {
         writelnWChar(value);
     } else static if (is(T == dchar)) {
@@ -50,7 +52,7 @@ void writeln(T)(T value) {
     } else static if (is(T == bool)) {
         writelnBool(value);
     } else {
-        static assert(0, "Unsupported type");
+        static assert(0, "Unsupported type: " ~ T.stringof);
     }
 }
 
@@ -74,6 +76,8 @@ void writeErrLn(T)(T value) {
         writeErrLnFloat(value);
     } else static if (is(T == char)) {
         writeErrLnChar(value);
+    } else static if (is(T == immutable(char))) {
+        writeErrLnChar(value);
     } else static if (is(T == wchar)) {
         writeErrLnWChar(value);
     } else static if (is(T == dchar)) {
@@ -85,6 +89,6 @@ void writeErrLn(T)(T value) {
     } else static if (is(T == bool)) {
         writeErrLnBool(value);
     } else {
-        static assert(0, "Unsupported type");
+        static assert(0, "Unsupported type: " ~ T.stringof);
     }
 }
