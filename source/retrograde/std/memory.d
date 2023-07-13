@@ -172,7 +172,10 @@ struct UniquePtr(T) {
 
     private void cleanup() {
         if (_ptr !is null) {
-            destroy(*_ptr);
+            static if (!is(T == void)) {
+                destroy(*_ptr);
+            }
+            
             free(_ptr);
         }
 
@@ -478,6 +481,12 @@ void runStdMemoryTests() {
         for (size_t i = 0; i < 10; i++) {
             assert(uniquePtr[i] == 42);
         }
+    });
+
+    test("Create and use a unique pointer of a void pointer", {
+        void* ptr = makeRaw!int(88);
+        auto uniquePtr = UniquePtr!void(ptr);
+        assert(*(cast(int*) uniquePtr.ptr) == 88);
     });
 
     test("Create and use a shared pointer", {
