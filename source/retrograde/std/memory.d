@@ -205,29 +205,45 @@ UniquePtr!T makeUnique(T)(const ref T initial) {
  * The memory is freed when the last owner destroys the shared pointer.
  */
 struct SharedPtr(T) {
-    private T* ptr;
+    private T* _ptr;
     private size_t* refCount;
 
     this(T* ptr) {
         assert(ptr !is null);
-        this.ptr = ptr;
+        this._ptr = ptr;
         refCount = makeRaw!size_t;
         *refCount = 1;
     }
 
     ~this() {
-        assert(ptr is null || refCount !is null, "Reference count is null but pointer is not null.");
+        assert(_ptr is null || refCount !is null, "Reference count is null but pointer is not null.");
         releaseShare();
-        ptr = null;
+        _ptr = null;
         refCount = null;
     }
 
     this(ref return scope typeof(this) other) {
-        assert(other.ptr !is null, "Other shared pointer is null and may not be used.");
+        assert(other._ptr !is null, "Other shared pointer is null and may not be used.");
         assert(other.refCount !is null, "Other shared pointer reference count is null but pointer is not null.");
-        ptr = other.ptr;
+        _ptr = other._ptr;
         refCount = other.refCount;
         (*refCount)++;
+    }
+
+    /**
+     * Get the raw pointer.
+     * The pointer is still managed by the shared pointer and should not be freed manually.
+     * Do not use it to create another smart pointer or else it might be double-freed.
+     */
+    T* ptr() {
+        return _ptr;
+    }
+
+    /**
+     * Get the amount of owners of the shared pointer.
+     */
+    size_t useCount() {
+        return refCount is null ? 0 : *refCount;
     }
 
     void opAssign(return scope typeof(this) other) {
@@ -235,40 +251,39 @@ struct SharedPtr(T) {
     }
 
     void opAssign(ref return scope typeof(this) other) {
-        assert(other.ptr !is null, "Other shared pointer is null and may not be used.");
+        assert(other._ptr !is null, "Other shared pointer is null and may not be used.");
         assert(other.refCount !is null, "Other shared pointer reference count is null but pointer is not null.");
         releaseShare();
-        ptr = other.ptr;
+        _ptr = other._ptr;
         refCount = other.refCount;
         (*refCount)++;
     }
 
     auto opDispatch(string s)() {
-        assert(ptr !is null, "Shared pointer is null and may not be used.");
-        return mixin("ptr." ~ s);
+        assert(_ptr !is null, "Shared pointer is null and may not be used.");
+        return mixin("_ptr." ~ s);
     }
 
     auto opDispatch(string s, Args...)(Args args) {
-        assert(ptr !is null, "Shared pointer is null and may not be used.");
-        return mixin("ptr." ~ s ~ "(args)");
+        assert(_ptr !is null, "Shared pointer is null and may not be used.");
+        return mixin("_ptr." ~ s ~ "(args)");
     }
 
     auto opIndex(size_t i) {
-        assert(ptr !is null, "Shared pointer is null and may not be used.");
+        assert(_ptr !is null, "Shared pointer is null and may not be used.");
         //TODO: Bounds checking
-        return ptr[i];
-    }
-
-    size_t useCount() {
-        return refCount is null ? 0 : *refCount;
+        return _ptr[i];
     }
 
     private void releaseShare() {
-        if (ptr !is null && refCount !is null) {
+        if (_ptr !is null && refCount !is null) {
             (*refCount)--;
             if (*refCount <= 0) {
-                destroy(*ptr);
-                free(ptr);
+                static if (!is(T == void)) {
+                    destroy(*_ptr);
+                }
+
+                free(_ptr);
                 free(refCount);
             }
         }
@@ -545,5 +560,13 @@ void runStdMemoryTests() {
         for (size_t i = 0; i < 10; i++) {
             assert(sharedPtr[i] == 42);
         }
+    });
+
+    test("Create and use a shared pointer of a void pointer", {
+        void* ptr = makeRaw!int(42);
+        auto sharedPtr = SharedPtr!void(ptr);
+        assert(sharedPtr.ptr !is null);
+        assert(sharedPtr.useCount == 1);
+        assert(*(cast(int*) sharedPtr.ptr) == 42);
     });
 }
