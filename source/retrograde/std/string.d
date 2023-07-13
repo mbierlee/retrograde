@@ -18,8 +18,8 @@ import retrograde.std.hash : hashOf;
  * A dynamic string that manages its own memory.
  */
 struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
-    private T* ptr;
-    private size_t _length;
+    private T* ptr = null;
+    private size_t _length = 0;
 
     /** 
      * Create a String from a D string
@@ -164,6 +164,12 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
         string get() const {
             return cast(string) ptr[0 .. _length];
         }
+
+        @property string toString() const {
+            return get();
+        }
+
+        alias toString this;
     } else {
         /** 
          * Get a character array of this String

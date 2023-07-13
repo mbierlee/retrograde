@@ -11,6 +11,8 @@
 
 module retrograde.std.stdio;
 
+import retrograde.std.string : String;
+
 version (WebAssembly) {
     import retrograde.wasm.stdio;
 } else version (Native) {
@@ -25,6 +27,8 @@ version (WebAssembly) {
 void writeln(T)(T value) {
     static if (is(T == string)) {
         writelnStr(value);
+    } else static if (is(T == String)) {
+        writelnStr(value.toString());
     } else static if (is(T == uint)) {
         writelnUint(value);
     } else static if (is(T == int)) {
@@ -62,6 +66,8 @@ void writeln(T)(T value) {
 void writeErrLn(T)(T value) {
     static if (is(T == string)) {
         writeErrLnStr(value);
+    } else static if (is(T == String)) {
+        writeErrLnStr(value.toString());
     } else static if (is(T == uint)) {
         writeErrLnUint(value);
     } else static if (is(T == int)) {
