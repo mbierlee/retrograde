@@ -123,6 +123,13 @@ struct UniquePtr(T) {
     }
 
     /**
+     * Check whether the pointer is defined.
+     */
+    bool isDefined() {
+        return _ptr !is null;
+    }
+
+    /**
      * Release the raw pointer.
      * The pointer is no longer managed by the unique pointer and must be freed manually.
      * This instance will become useless and should not be used anymore.
@@ -240,6 +247,13 @@ struct SharedPtr(T) {
      */
     T* ptr() {
         return _ptr;
+    }
+
+    /** 
+     * Check whether the pointer is defined.
+     */
+    bool isDefined() {
+        return _ptr !is null;
     }
 
     /**
@@ -508,6 +522,14 @@ void runStdMemoryTests() {
         assert(*(cast(int*) uniquePtr.ptr) == 88);
     });
 
+    test("Check whether a unique pointer is defined", {
+        auto uniquePtr = makeRaw!TestStruct().unique;
+        assert(uniquePtr.isDefined);
+        free(uniquePtr._ptr);
+        uniquePtr._ptr = null;
+        assert(!uniquePtr.isDefined);
+    });
+
     test("Create and use a shared pointer", {
         auto sharedPtr = SharedPtr!TestStruct(makeRaw!TestStruct);
         assert(sharedPtr.ptr.a == 42);
@@ -629,5 +651,15 @@ void runStdMemoryTests() {
         }
 
         assert(testStructDestroyed);
+    });
+
+    test("Check whether a shared pointer is defined", {
+        auto sharedPtr = makeShared!TestStruct;
+        assert(sharedPtr.isDefined);
+        free(sharedPtr._ptr);
+        free(sharedPtr.refCount);
+        sharedPtr._ptr = null;
+        sharedPtr.refCount = null;
+        assert(!sharedPtr.isDefined);
     });
 }
