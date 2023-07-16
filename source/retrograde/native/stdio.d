@@ -16,7 +16,7 @@ version (Native)  :  //
 import core.stdc.stdio : printf;
 
 void writelnStr(string msg) {
-    printf("%.*s\n", msg.length, msg.ptr);
+    printf("%.*s\n", cast(int) msg.length, msg.ptr);
 }
 
 void writelnUint(uint number) {
@@ -68,7 +68,7 @@ void writelnBool(bool value) {
 }
 
 void writeErrLnStr(string msg) {
-    printf("ERROR: %.*s\n", msg.length, msg.ptr);
+    printf("ERROR: %.*s\n", cast(int) msg.length, msg.ptr);
 }
 
 void writeErrLnUint(uint number) {
