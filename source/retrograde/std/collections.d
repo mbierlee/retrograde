@@ -11,7 +11,7 @@
 
 module retrograde.std.collections;
 
-import retrograde.std.memory : malloc, realloc, free, allocateRaw;
+import retrograde.std.memory : malloc, realloc, free, allocateRaw, memcpy;
 import retrograde.std.math : ceil;
 import retrograde.std.option : Option, some, none;
 import retrograde.std.hash : hashOf;
@@ -479,7 +479,7 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
 
     ulong toHash() nothrow @trusted const {
         ulong hash = 0;
-        for(size_t i = 0; i < _length; i++) {
+        for (size_t i = 0; i < _length; i++) {
             hash = hash * 33 + items[i].hashOf;
         }
 
@@ -487,14 +487,15 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
     }
 
     private void considerResize() {
-        if (items is null) {
-            items = cast(T*) malloc(T.sizeof * chunkSize);
-            if (items !is null) {
-                _capacity = chunkSize;
-            }
-        } else if (_capacity == length) {
+        if (items is null || _capacity == length) {
             items = cast(T*) realloc(items, T.sizeof * (_capacity + chunkSize));
+            assert(items !is null, "Failed to allocate memory during resizing of array");
             _capacity += chunkSize;
+
+            T init;
+            for (size_t i = _capacity - chunkSize; i < _capacity; i++) {
+                memcpy(cast(void*)&items[i], cast(void*)&init, T.sizeof);
+            }
         }
     }
 }
