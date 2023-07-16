@@ -368,9 +368,15 @@ private struct TestSharedContainer {
 }
 
 void runStdMemoryTests() {
+    runRawPointerTests();
+    runUniquePointerTests();
+    runSharedPointerTests();
+}
+
+void runRawPointerTests() {
     import retrograde.std.test : test, writeSection;
 
-    writeSection("-- High-level memory tests --");
+    writeSection("-- Raw-pointer tests --");
 
     test("Create an uninitialized raw pointer", {
         TestStruct* testStruct = allocateRaw!TestStruct;
@@ -418,6 +424,12 @@ void runStdMemoryTests() {
 
         free(slice);
     });
+}
+
+void runUniquePointerTests() {
+    import retrograde.std.test : test, writeSection;
+
+    writeSection("-- Unique-pointer tests --");
 
     test("Create and use a unique pointer", {
         auto uniquePtr = UniquePtr!TestStruct(makeRaw!TestStruct);
@@ -529,6 +541,12 @@ void runStdMemoryTests() {
         uniquePtr._ptr = null;
         assert(!uniquePtr.isDefined);
     });
+}
+
+void runSharedPointerTests() {
+    import retrograde.std.test : test, writeSection;
+
+    writeSection("-- Shared-pointer tests --");
 
     test("Create and use a shared pointer", {
         auto sharedPtr = SharedPtr!TestStruct(makeRaw!TestStruct);
