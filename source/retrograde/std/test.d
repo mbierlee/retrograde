@@ -51,6 +51,7 @@ void runTests() {
     import retrograde.std.math : runMathTests;
     import retrograde.std.collections : runCollectionsTests;
     import retrograde.std.hash : runHashTests;
+    import retrograde.engine.entity : runEntityTests;
 
     runStdMemoryTests();
     runStringTests();
@@ -60,6 +61,7 @@ void runTests() {
     runMathTests();
     runCollectionsTests();
     runHashTests();
+    runEntityTests();
 }
 
 version (unittest) {
