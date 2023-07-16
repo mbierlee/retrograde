@@ -318,6 +318,15 @@ SharedPtr!T makeShared(T)(const ref T initial) {
     return SharedPtr!T(makeRaw(initial));
 }
 
+/**
+ * Create a shared void pointer initialized to the given value.
+ */
+SharedPtr!void makeSharedVoid(T)(const T initial = T.init) {
+    void* rawPtr = cast(void*) makeRaw(initial);
+    SharedPtr!void sharedPtr = SharedPtr!void(rawPtr);
+    return sharedPtr;
+}
+
 version (UnitTesting)  :  ///
 
 private bool testStructDestroyed = false;
