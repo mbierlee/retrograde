@@ -23,6 +23,10 @@ version (WebAssembly) {
      * It behaves like free.
      * It is here because there's a version of it for WASM that does check
      * boundaries.
+     *
+     * Params: 
+     *  ptr: The pointer to the memory block to free.
+     *  size: The size of the memory block. It is ignored but here for compatibility.
      */
     export extern (C) void free_sized(void* ptr, size_t size) {
         free(ptr);
@@ -31,6 +35,9 @@ version (WebAssembly) {
 
 /** 
  * Free an array pointer referenced by a slice.
+ *
+ * Params:
+ *  slice: The slice to free.
  */
 export extern (C) void free(T)(T[] slice) {
     free(slice.ptr);
@@ -39,6 +46,10 @@ export extern (C) void free(T)(T[] slice) {
 /**
  * Allocates memory of the given type.
  * The memory is not initialized.
+ *
+ * Params: 
+ *  T: The type of the memory to allocate.
+ * Returns: A raw pointer to the allocated memory.
  */
 T* allocateRaw(T)() {
     return cast(T*) malloc(T.sizeof);
@@ -47,6 +58,12 @@ T* allocateRaw(T)() {
 /**
  * Allocates memory of the given type.
  * The memory is initialized to the given value.
+ *
+ * Params:
+ *  T: The type of the memory to allocate.
+ *  initial: The initial value to set the memory to.
+ *           When not given, the initial value is the default value of the type.
+ * Returns: A raw pointer to the allocated memory.
  */
 T* makeRaw(T)(const T initial = T.init) {
     return makeRaw(initial);
@@ -62,6 +79,13 @@ T* makeRaw(T)(const ref T initial) {
 /**
  * Allocates an array of the given type.
  * The memory is initialized to given value.
+ *
+ * Params:
+ *  T: The type of the memory to allocate.
+ *  length: The length of the array to allocate.
+ *  initialValue: The initial value to set the memory to.
+ *                When not given, the initial value is the default value of the type.
+ * Returns: A slice to the allocated memory.
  */
 T[] makeRawArray(T)(size_t length, T initialValue = T.init) {
     auto ptr = cast(T*) calloc(length, T.sizeof);
@@ -123,7 +147,7 @@ struct UniquePtr(T) {
     }
 
     /**
-     * Check whether the pointer is defined.
+     * Returns: Whether the pointer is defined.
      */
     bool isDefined() {
         return _ptr !is null;
@@ -133,6 +157,8 @@ struct UniquePtr(T) {
      * Release the raw pointer.
      * The pointer is no longer managed by the unique pointer and must be freed manually.
      * This instance will become useless and should not be used anymore.
+     *
+     * Returns: The raw pointer.
      */
     T* release() {
         auto ptr = _ptr;
@@ -144,6 +170,8 @@ struct UniquePtr(T) {
      * Move the raw pointer to another unique pointer.
      * The original pointer is not freed.
      * This instance will become useless and should not be used anymore.
+     *
+     * Returns: The new unique pointer.
      */
     UniquePtr!T move() {
         return UniquePtr!T(release());
@@ -153,6 +181,8 @@ struct UniquePtr(T) {
      * Move the raw pointer to a shared pointer.
      * The original pointer is not freed.
      * This instance will become useless and should not be used anymore.
+     *
+     * Returns: The new shared pointer.
      */
     SharedPtr!T share() {
         return SharedPtr!T(release());
@@ -161,6 +191,9 @@ struct UniquePtr(T) {
     /**
      * Swap the raw pointer with another unique pointer.
      * If either pointer is null then the other pointer will become null.
+     *
+     * Params:
+     *  other: The other unique pointer to swap with.
      */
     void swap(ref typeof(this) other) {
         auto tmp = _ptr;
@@ -171,8 +204,11 @@ struct UniquePtr(T) {
     /**
      * Reset the raw pointer.
      * The previously owned pointer is freed. 
-     * If no pointer is given then the pointer is set to null, which
+     * If no pointer is given the pointer is set to null, which
      * makes this instance useless.
+     *
+     * Params:
+     *  ptr: The new raw pointer. When not given, the pointer is set to null.
      */
     void reset(T* ptr = null) {
         cleanup();
@@ -194,6 +230,11 @@ struct UniquePtr(T) {
 
 /**
  * Create a unique pointer from a raw pointer.
+ *
+ * Params:
+ *  T: The type of the pointer.
+ *  ptr: The raw pointer.
+ * Returns: A unique pointer.
  */
 UniquePtr!T unique(T)(T* ptr) {
     return UniquePtr!T(ptr);
@@ -201,6 +242,11 @@ UniquePtr!T unique(T)(T* ptr) {
 
 /**
  * Create a unique pointer initialized to the given value.
+ *
+ * Params:
+ *  T: The type of the pointer.
+ *  initial: The initial value. When not given, the initial value is the default value of the type.
+ * Returns: A unique pointer.
  */
 UniquePtr!T makeUnique(T)(const T initial = T.init) {
     return makeUnique(initial);
@@ -212,7 +258,8 @@ UniquePtr!T makeUnique(T)(const ref T initial) {
 }
 
 /**
- * Create a shared pointer from a raw pointer.
+ * A shared pointer to allocated memory.
+ *
  * A shared pointer can be copied and shared between multiple owners.
  * The memory is freed when the last owner destroys the shared pointer.
  */
@@ -250,14 +297,14 @@ struct SharedPtr(T) {
     }
 
     /** 
-     * Check whether the pointer is defined.
+     * Returns: whether the pointer is defined.
      */
     bool isDefined() {
         return _ptr !is null;
     }
 
     /**
-     * Get the amount of owners of the shared pointer.
+     * Returns: The number of owners of the pointer.
      */
     size_t useCount() {
         return refCount is null ? 0 : *refCount;
@@ -315,6 +362,11 @@ struct SharedPtr(T) {
 
 /**
  * Create a shared pointer from a raw pointer.
+ *
+ * Params:
+ *  T: The type of the pointer.
+ *  ptr: The raw pointer.
+ * Returns: A shared pointer.
  */
 SharedPtr!T share(T)(T* ptr) {
     return SharedPtr!T(ptr);
@@ -322,6 +374,11 @@ SharedPtr!T share(T)(T* ptr) {
 
 /**
  * Create a shared pointer initialized to the given value.
+ *
+ * Params:
+ *  T: The type of the pointer.
+ *  initial: The initial value. When not given, the initial value is the default value of the type.
+ * Returns: A shared pointer.
  */
 SharedPtr!T makeShared(T)(const T initial = T.init) {
     return makeShared(initial);
@@ -334,6 +391,11 @@ SharedPtr!T makeShared(T)(const ref T initial) {
 
 /**
  * Create a shared void pointer initialized to the given value.
+ *
+ * Params:
+ *  T: The type of the value to initialize the pointer with. Not the type of the pointer itself.
+ *  initial: The initial value. When not given, the initial value is the default value of the type.
+ * Returns: A shared void pointer.
  */
 SharedPtr!void makeSharedVoid(T)(const T initial = T.init) {
     void* rawPtr = cast(void*) makeRaw(initial);

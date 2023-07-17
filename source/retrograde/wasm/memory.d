@@ -32,6 +32,10 @@ version (LDC) {
 /** 
  * Allocate memory block of size bytes. Returns a pointer to the allocated memory, 
  * or a null pointer if the request fails.
+ *
+ * Params: 
+ *  size: The size of the memory block in bytes.
+ * Returns: A pointer to the allocated memory, or null if allocation failed.
  */
 export extern (C) void* malloc(size_t size) {
     if (size == 0) {
@@ -78,6 +82,11 @@ export extern (C) void* malloc(size_t size) {
  * Allocates a memory block of the given size N times.
  * Unlike with malloc, the allocated memory is cleared upon allocation.
  * When the returned pointer is null, allocation failed.
+ *
+ * Params:
+ *  nitems: The number of items to allocate.
+ *  size: The size of each item.
+ * Returns: A pointer to the allocated memory, or null if allocation failed.
  */
 export extern (C) void* calloc(size_t nitems, size_t size) {
     auto ptr = malloc(nitems * size);
@@ -94,6 +103,11 @@ export extern (C) void* calloc(size_t nitems, size_t size) {
  * Returns a pointer to either the same memory block if the resize fit, otherwise
  * a different pointer to a new block of memory. When the returned pointer is null,
  * something is wrong.
+ *
+ * Params:
+ *  ptr: The pointer to the memory block to resize.
+ *  newSize: The new size of the memory block.
+ * Returns: A pointer to the resized memory block, or null if something went wrong. The same pointer is returned when the resize fit.
  */
 export extern (C) void* realloc(void* ptr, size_t newSize) {
     if (ptr is null) {
@@ -154,6 +168,9 @@ export extern (C) void* realloc(void* ptr, size_t newSize) {
  * Otherwise, or if free(ptr) has already been called before, undefined behavior occurs.
  * If ptr is null, no operation is performed.
  * Make sure to nullify the pointer after freeing it for safety.
+ *
+ * Params:
+ *  ptr: The pointer to the memory block to free.
  */
 export extern (C) void free(void* ptr) {
     if (ptr is null) {
@@ -181,6 +198,10 @@ export extern (C) void free(void* ptr) {
  * Similar to free, the memory space pointed to by ptr is freed.
  * An allocation size check is performed for safety. The given size must match 
  * the size of the memory block when it was allocated.
+ *
+ * Params:
+ *  ptr: The pointer to the memory block to free.
+ *  size: The size of the memory block when it was allocated.
  */
 export extern (C) void free_sized(void* ptr, size_t size) {
     if (ptr is null) {
@@ -203,6 +224,12 @@ export extern (C) void free_sized(void* ptr, size_t size) {
 
 /** 
  * Sets the num bytes of the block of memory pointed by ptr to the specified value (interpreted as an unsigned byte).
+ *
+ * Params:
+ *  ptr: Pointer to the block of memory to fill.
+ *  value: Value to be set. The value is passed as an int, but the function fills the block of memory using the
+ *         unsigned char conversion of this value.
+ *  num: Number of bytes to be set to the value.
  * Returns: ptr as-is.
  */
 export extern (C) void* memset(void* ptr, int value, size_t num) {
@@ -216,6 +243,15 @@ export extern (C) void* memset(void* ptr, int value, size_t num) {
 /**
  * Compares the block of memory pointed by ptr1 to the block of memory pointed by ptr2, returning zero if they are equal
  * or a value different from zero representing which is greater if they are not.
+ *
+ * Params:
+ *  ptr1: Pointer to block of memory.
+ *  ptr2: Pointer to other block of memory.
+ *  num: Number of bytes to compare.
+ * Returns: An integral value indicating the relationship between the content of the memory blocks:
+ *          A zero value indicates that the contents of both memory blocks are equal.
+ *          A value greater than zero indicates that the first byte that does not match in both memory blocks has a greater value in ptr1 than in ptr2
+ *          A value less than zero indicates the opposite.
  */
 export extern (C) int memcmp(const void* ptr1, const void* ptr2, size_t num) {
     const ubyte* p1 = cast(const ubyte*) ptr1;
@@ -235,6 +271,12 @@ export extern (C) int memcmp(const void* ptr1, const void* ptr2, size_t num) {
  * No bounds checking is performed. When count is greated than src or dest's
  * allocated sizes, unintended memory is copied/replaced and corruption may occur.
  * It is faster than memmove, but unsafe.
+ *
+ * Params:
+ *  dest: Pointer to the destination array where the content is to be copied.
+ *  src: Pointer to the source of data to be copied.
+ *  count: Number of bytes to copy.
+ * Returns: dest as-is.
  */
 export extern (C) void* memcpy(void* dest, const void* src, size_t count) {
     for (size_t i; i < count; i++) {
@@ -249,6 +291,12 @@ export extern (C) void* memcpy(void* dest, const void* src, size_t count) {
  * Makes sure that the count is not greater than the size of the source memory
  * and that dest is big enough. If not, dest is resized.
  * If something goes wrong, null is returned.
+ *
+ * Params:
+ *  dest: Pointer to the destination array where the content is to be copied.
+ *  src: Pointer to the source of data to be copied.
+ *  count: Number of bytes to copy.
+ * Returns: dest as-is.
  */
 export extern (C) void* memmove(void* dest, const void* src, size_t count) {
     auto srcBlockRes = src.getBlock;
@@ -316,6 +364,9 @@ OperationResult initializeHeapMemory(size_t _heapOffset = _64KiB) {
     return success();
 }
 
+/** 
+ * Prints debug information about the heap.
+ */
 void printDebugInfo() {
     writeln("--Memory Debug Info--");
     writeln("End of Static Data: ");
@@ -341,6 +392,9 @@ void wipeHeap() {
     memset(heapStart, 0, heapSize);
 }
 
+/** 
+ * Metrics about the heap.
+ */
 struct MemoryMetrics {
     ulong heapSizeBytes;
     ulong usedHeapBytes;
@@ -365,6 +419,9 @@ struct MemoryMetrics {
     }
 }
 
+/** 
+ * Returns: metrics about the heap.
+ */
 MemoryMetrics getMemoryMetrics() {
     MemoryMetrics metrics;
     metrics.heapSizeBytes = heapSize;

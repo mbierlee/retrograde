@@ -21,6 +21,10 @@ debug (ReadableStringId) {
  * Create a StringId from the given string.
  * With debug switch "ReadableStringId" stringids are just regular strings,
  * but in release mode they are actually integer hashes.
+ *
+ * Params:
+ *  idString = The string to create a StringId from.
+ * Returns: The StringId.
  */
 pure StringId sid(string idString) {
     debug (ReadableStringId) {

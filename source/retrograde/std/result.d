@@ -19,26 +19,45 @@ struct Result(T) {
     private bool success;
     private ResultValue!T payload;
 
+    /** 
+     * Returns: Wheter the result is successful or not.
+     */
     bool isSuccessful() {
         return this.success;
     }
 
+    /** 
+     * Returns: Wheter the result is failed or not.
+     */
     bool isFailure() {
         return !this.success;
     }
 
+    /** 
+     * Returns: The value of the result.
+     */
     T value() {
         assert(this.success, "Result is not successful and should not be accessed. Make sure to check isSuccessful() first.");
         return this.payload.value;
     }
 
+    /** 
+     * Returns: The error message of the result if it is failed.
+     */
     string errorMessage() {
         assert(!this.success, "Result is successful so it does not have an error message. Make sure to check isSuccessful() first.");
         return this.payload.errorMessage;
     }
 }
 
-/// Create a successful result with a value.
+/** 
+ * Create a successful result with a value.
+ *
+ * Params:
+ *   T = The type of the value.
+ *   value = The value to return.
+ * Returns: A successful result.
+ */
 Result!T success(T)(T value) if (!is(T == void)) {
     Result!T result;
     result.success = true;
@@ -46,7 +65,14 @@ Result!T success(T)(T value) if (!is(T == void)) {
     return result;
 }
 
-/// Create a failed result with an error message.
+/** 
+ * Create a failed result with an error message.
+ *
+ * Params:
+ *   T = The type of the value. Even though the result is failed, a type is still required.
+ *   errorMessage = The error message to return.
+ * Returns: A failed result.
+ */
 Result!T failure(T)(string errorMessage) if (!is(T == void)) {
     Result!T result;
     result.success = false;
@@ -62,27 +88,46 @@ struct OperationResult {
     private bool success;
     private string _errorMessage;
 
+    /** 
+     * Returns: Wheter the result is successful or not.
+     */
     bool isSuccessful() {
         return this.success;
     }
 
+    /** 
+     * Returns: Wheter the result is failed or not.
+     */
     bool isFailure() {
         return !this.success;
     }
 
+    /** 
+     * Returns: The error message of the result if it is failed.
+     */
     string errorMessage() {
         return this._errorMessage;
     }
 }
 
-/// Create a successful OperationResult.
+/** 
+ * Create a successful OperationResult.
+ *
+ * Returns: A successful OperationResult.
+ */
 OperationResult success() {
     OperationResult result;
     result.success = true;
     return result;
 }
 
-/// Create a failed OperationResult with an error message.
+/** 
+ * Create a failed OperationResult with an error message.
+ *
+ * Params:
+ *   errorMessage = The error message to return.
+ * Returns: A failed OperationResult.
+ */
 OperationResult failure(string errorMessage) {
     OperationResult result;
     result.success = false;

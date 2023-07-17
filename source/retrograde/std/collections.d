@@ -59,6 +59,9 @@ struct Queue(T, size_t chunkSize = defaultChunkSize) {
      * Adds an item to the end of the queue.
      *
      * If the allocated space for the queue is insufficient, more memory will be allocated.
+     *
+     * Params: 
+     *  item - The item to add to the queue.
      */
     void enqueue(T item) {
         considerResize();
@@ -77,6 +80,10 @@ struct Queue(T, size_t chunkSize = defaultChunkSize) {
      * To check whether the queue is empty, use isEmpty().
      *
      * Allocated space is never freed up.
+     *
+     * See_Also: isEmpty, peek
+     * Returns:
+     *  The item at the front of the queue.
      */
     T dequeue() {
         if (!items || _length == 0) {
@@ -94,6 +101,8 @@ struct Queue(T, size_t chunkSize = defaultChunkSize) {
      *
      * If the queue is empty, the default value of T is returned.
      * To check whether the queue is empty, use isEmpty().
+     *
+     * Returns: the item at the front of the queue.
      */
     T peek() {
         if (!items || _length == 0) {
@@ -104,21 +113,21 @@ struct Queue(T, size_t chunkSize = defaultChunkSize) {
     }
 
     /**
-     * Returns the amount of items currently in the queue.
+     * Returns: the amount of items currently in the queue.
      */
     size_t length() {
         return _length;
     }
 
     /**
-     * Returns the allocated capacity of the queue in number of items.
+     * Returns: the allocated capacity of the queue in number of items.
      */
     size_t capacity() {
         return _capacity;
     }
 
     /**
-     * Returns whether the queue is empty.
+     * Returns: whether the queue is empty.
      */
     bool isEmpty() {
         return _length == 0;
@@ -255,14 +264,14 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
     }
 
     /**
-     * Returns the amount of items currently in the array.
+     * Returns: the amount of items currently in the array.
      */
     size_t length() const {
         return _length;
     }
 
     /**
-     * Returns the allocated capacity of the array in number of items.
+     * Returns: the allocated capacity of the array in number of items.
      */
     size_t capacity() const {
         return _capacity;
@@ -271,6 +280,9 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
     /**
      * Change the capacity of the array.
      * This will allocate or deallocate memory as needed.
+     *
+     * Params: 
+     *  newCapacity = the new capacity of the array.
      */
     void capacity(size_t newCapacity) {
         if (newCapacity == _capacity) {
@@ -298,6 +310,9 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
     /** 
      * Add an item to the end of the array.
      * Alternatively, you can use the ~= operator to add an item.
+     *
+     * Params:
+     *  item = the item to add.
      */
     void add(T item) {
         considerResize();
@@ -310,6 +325,9 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
 
     /** 
      * Remove an item specified by index from the array.
+     *
+     * Params:
+     *  index = the index of the item to remove.
      */
     void remove(size_t index) {
         if (index >= _length) {
@@ -331,6 +349,10 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
     /**
      * Replace an item at the given index with a new item.
      * Alternatively, you can use the [] operator to replace an item.
+     *
+     * Params:
+     *  index = the index of the item to replace.
+     *  newItem = the new item to replace with.
      */
     void replace(size_t index, T newItem) {
         if (index >= _length) {
@@ -356,6 +378,10 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
     /**
      * Truncate the array to the given length.
      * Allocated memory will not be deallocated.
+     * If the new length is greater than the current length, nothing will happen.
+     *
+     * Params:
+     *  newLength = the new length of the array.
      */
     void truncate(size_t newLength) {
         if (newLength < _length) {
@@ -365,7 +391,10 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
 
     /** 
      * Find the index of the first item that matches the given value.
-     * Returns -1 if no item is found.
+     *
+     * Params:
+     *  value = the value to search for.
+     * Returns: the index of the first item that matches the given value. -1 if no item is found.
      */
     size_t find(T value) const {
         for (size_t i = 0; i < _length; i++) {
@@ -477,6 +506,9 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         return true;
     }
 
+    /** 
+     * Returns: the hash of the array.
+     */
     ulong toHash() nothrow @trusted const {
         ulong hash = 0;
         for (size_t i = 0; i < _length; i++) {
@@ -521,12 +553,19 @@ struct LinkedList(T) {
         }
     }
 
-    /// The number of items in the list.
+    /** 
+     * Returns: the number of items in the list.
+     */
     size_t length() const {
         return _length;
     }
 
-    /// Add an item to the end of the list.
+    /** 
+     * Add an item to the end of the list.
+     *
+     * Params:
+     *   item = the item to add.
+     */
     void add(T item) {
         NodePtr node = allocateRaw!(LinkedListNode!T);
         node.next = null;
@@ -545,7 +584,9 @@ struct LinkedList(T) {
         _length++;
     }
 
-    /// Remove the first item from the list.
+    /** 
+     * Remove the first item from the list.
+     */
     void removeFirst() {
         if (head is null) {
             return;
@@ -563,7 +604,9 @@ struct LinkedList(T) {
         _length--;
     }
 
-    /// Remove the last item from the list.
+    /** 
+     * Remove the last item from the list.
+     */
     void removeLast() {
         if (tail is null) {
             return;
@@ -581,12 +624,18 @@ struct LinkedList(T) {
         _length--;
     }
 
-    /// Remove all items with the given value from the list.
+    /** 
+     * Remove all items from the list.
+     */
     void removeAll(const T item) {
         removeItems(item, false);
     }
 
-    /// Remove all items that satisfy the given predicate from the list.
+    /** 
+     * Remove all items that satisfy the given predicate from the list.
+     * Params:
+     *   pred = the predicate to use.
+     */
     void removeWhere(bool function(const ref T) pred) {
         NodePtr node = head;
         while (node !is null) {
@@ -612,12 +661,18 @@ struct LinkedList(T) {
         }
     }
 
-    // Remove the first item with the given value from the list.
+    /** 
+     * Remove the first item that satisfies the value equality check.
+     * Params:
+     *   value = the value to remove.
+     */
     void removeFirst(T item) {
         removeItems(item, true);
     }
 
-    /// Remove all items from the list.
+    /** 
+     * Remove all items from the list.
+     */
     void clear() {
         NodePtr node = head;
         while (node !is null) {
@@ -631,7 +686,11 @@ struct LinkedList(T) {
         _length = 0;
     }
 
-    /// Get first item in the list.
+    /** 
+     * Get the first item in the list.
+     *
+     * Returns: The first item in the list, or none if the list is empty.
+     */
     Option!T first() {
         if (head is null) {
             return none!T;
@@ -640,7 +699,11 @@ struct LinkedList(T) {
         return head.value.some;
     }
 
-    /// Get last item in the list.
+    /** 
+     * Get the last item in the list.
+     *
+     * Returns: The last item in the list, or none if the list is empty.
+     */
     Option!T last() {
         if (tail is null) {
             return none!T;
@@ -649,7 +712,13 @@ struct LinkedList(T) {
         return tail.value.some;
     }
 
-    /// Get the item at the given index as Option.
+    /** 
+     * Get the item at the given index.
+     *
+     * Params:
+     *   index = the index of the item to get.
+     * Returns: The item at the given index, or none if the index is out of bounds.
+     */
     Option!T get(size_t index) {
         if (index >= _length) {
             return none!T;
@@ -663,14 +732,19 @@ struct LinkedList(T) {
         return node.value.some;
     }
 
-    /// Create a new iterator for the list.
+    /** 
+     * Returns: An iterator over the list.
+     */
     LinkedListIterator!T iterator() {
         return LinkedListIterator!T(&this);
     }
 
     /** 
      * Find the index of the first item with the given value.
-     * Returns -1 if the item is not found.
+     *
+     * Params:
+     *   value = the value to find.
+     * Returns: The index of the first item with the given value, or -1 if the item is not found.
      */
     size_t find(T value) const {
         NodePtr node = cast(NodePtr) head;
@@ -763,6 +837,9 @@ struct LinkedList(T) {
         return true;
     }
 
+    /** 
+     * Returns: A hash of the list.
+     */
     ulong toHash() nothrow @trusted const {
         ulong hash = 0;
         NodePtr node = cast(NodePtr) head;
@@ -838,15 +915,23 @@ struct LinkedListIterator(T) {
         this.node = list.head;
     }
 
+    /** 
+     * Returns: Whether there is another item in the list.
+     */
     bool hasNext() {
         return node !is null;
     }
 
+    /** 
+     * Returns: Whether there is a previous item in the list.
+     */
     bool hasPrevious() {
         return node !is null && node.prev !is null;
     }
 
-    /// Get the next item in the list and move the iterator forward.
+    /**
+     * Returns: The next item in the list, or none if there is no next item.
+     */
     Option!T next() {
         if (node is null) {
             return none!T;
@@ -857,7 +942,9 @@ struct LinkedListIterator(T) {
         return value.some;
     }
 
-    /// Get the previous item in the list and move the iterator back.
+    /**
+     * Returns: The previous item in the list, or none if there is no previous item.
+     */
     Option!T previous() {
         if (node is null || node.prev is null) {
             return none!T;
@@ -867,12 +954,16 @@ struct LinkedListIterator(T) {
         return node.value.some;
     }
 
-    /// Reset the iterator to the start of the list.
+    /** 
+     * Reset the iterator to the start of the list.
+     */
     void reset() {
         node = list.head;
     }
 
-    /// Remove the item at the current position of the iterator and move forward.
+    /** 
+     * Remove the item at the current position of the iterator and move forward.
+     */
     void remove() {
         if (node is null) {
             return;
@@ -898,7 +989,12 @@ struct LinkedListIterator(T) {
         node = next;
     }
 
-    /// Insert an item at the current position of the iterator.
+    /** 
+     * Insert an item at the current position of the iterator.
+     *
+     * Params:
+     *   value = The value to insert.
+     */
     void insert(T value) {
         NodePtr newNode = allocateRaw!(LinkedListNode!T);
         newNode.value = value;
@@ -917,7 +1013,12 @@ struct LinkedListIterator(T) {
         list._length++;
     }
 
-    /// Replace the item at the current position of the iterator.
+    /** 
+     * Replace the item at the current position of the iterator.
+     *
+     * Params:
+     *   value = The value to replace with.
+     */
     void replace(T value) {
         if (node is null) {
             return;

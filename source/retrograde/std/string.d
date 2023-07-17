@@ -153,18 +153,24 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
         return true;
     }
 
+    /** 
+     * Returns: a hash of this String.
+     */
     ulong toHash() nothrow @trusted const {
         return get().hashOf();
     }
 
     static if (is(T == char)) {
         /** 
-         * Get the D string representation of this String.
+         * Returns: the D string representation of this String.
          */
         string get() const {
             return cast(string) ptr[0 .. _length];
         }
 
+        /** 
+         * Returns: the D string representation of this String.
+         */
         @property string toString() const {
             return get();
         }
@@ -172,19 +178,22 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
         alias toString this;
     } else {
         /** 
-         * Get a character array of this String
+         * Returns: a character array of this String
          */
         const(T)[] get() const {
             return ptr[0 .. _length];
         }
     }
 
+    /** 
+     * Returns: the length of this String.
+     */
     size_t length() const {
         return _length;
     }
 
     /** 
-     * Get a C string representation of this String.
+     * Returns: A copy of this String as a C string, wrapped in a UniquePtr.
      */
     UniquePtr!T cString() const {
         T* cStrPtr = cast(T*) calloc(_length + 1, T.sizeof);
@@ -214,6 +223,10 @@ alias DString = StringT!dchar;
 
 /** 
  * Convenience function for creating a String from a D string.
+ *
+ * Params:
+ *      str = the D string to create a String from.
+ * Returns: a String containing the contents of str.
  */
 String s(string str) {
     return String(str);
@@ -224,6 +237,14 @@ String s(string str) {
  * Strings are compared until a null character is found.
  * If none is found this method may cause a segfault or overlap into other memory.
  * Use String for safer string handling.
+ *
+ * Params:
+ *      ptr1 = the first string to compare.
+ *      ptr2 = the second string to compare.
+ * Returns:
+ *      -1 if ptr1 < ptr2,
+ *      0 if ptr1 == ptr2,
+ *      1 if ptr1 > ptr2
  */
 export extern (C) int strcmp(const void* ptr1, const void* ptr2) {
     auto str1 = cast(const(char)*) ptr1;

@@ -15,6 +15,13 @@ version (UnitTesting)  :  ///
 
 import retrograde.std.stdio : writeln;
 
+/** 
+ * Run a test. 
+ *
+ * Params:
+ *   name = The name of the test.
+ *   testFunc = The function to run.
+ */
 void test(string name, void function() testFunc) {
     version (WasmMemTest) {
         import retrograde.wasm.memory : wipeHeap, initializeHeapMemory;
@@ -28,12 +35,20 @@ void test(string name, void function() testFunc) {
     writeln("  OK!");
 }
 
+/** 
+ * Print a section header.
+ * Params:
+ *   name = The name of the section.
+ */
 void writeSection(string name) {
     writeln("");
     writeln(name);
     writeln("");
 }
 
+/** 
+ * Run all tests.
+ */
 void runTests() {
     version (WebAssembly) {
         version (WasmMemTest) {

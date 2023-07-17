@@ -11,14 +11,49 @@
 
 module retrograde.engine.runtime;
 
+/** 
+ * An alias for a function that is called once when the engine is initialized.
+ */
 alias InitFunction = void function();
+
+/** 
+ * An alias for a function that is called once per engine loop cycle.
+ */
 alias UpdateFunction = void function();
 
+/** 
+ * The function that is called once when the engine is initialized.
+ * Should be set before calling initEngine.
+ *
+ * See_Also: DefaultEntryPoint
+ */
 InitFunction initFunction = null;
+
+/** 
+ * The function that is called once per engine loop cycle.
+ * Should be set before calling initEngine.
+ *
+ * See_Also: DefaultEntryPoint
+ */
 UpdateFunction updateFunction = null;
 
+/** 
+ * The target time in milliseconds for a single engine loop cycle.
+ * The engine's update loop will try to run at this speed, but will not go faster than this.
+ * The default value is 16.666666666666668 (1/60th of a second).
+ */
 double targetTickTimeMs = (1.0 / 60.0) * 1000;
+
+/** 
+ * The maximum number of ticks that can be lagged behind before the engine loop is terminated.
+ * The default value is 100.
+ */
 long lagTickLimit = 100;
+
+/** 
+ * A flag that indicates whether the engine loop should be terminated.
+ * This flag is set to true when the engine loop is terminated.
+ */
 bool terminateEngineLoop = false;
 
 private double lastTimeMs = 0.0;
@@ -28,6 +63,10 @@ version (Native) {
     import retrograde.std.time : StopWatch;
     import retrograde.std.stdio : writeErrLn;
 
+    /** 
+     * Runs the engine loop until terminateEngineLoop is set to true.
+     * This function is only available in the native build.
+     */
     void runLoop() {
         StopWatch sw;
         auto res = sw.start();
@@ -80,6 +119,11 @@ export extern (C) void executeEngineLoopCycle(double elapsedTimeMs) {
     lastTimeMs = elapsedTimeMs;
 }
 
+/** 
+ * Initializes the engine.
+ * This function should be called before calling runLoop.
+ * initFunction and updateFunction should be set before calling this function.
+ */
 export extern (C) void initEngine() {
     assert(initFunction != null, "initFunction cannot be null. Set it before engine initialization.");
     assert(updateFunction != null, "updateFunction cannot be null. Set it before engine initialization.");
@@ -97,6 +141,15 @@ export extern (C) void initEngine() {
     initFunction();
 }
 
+/** 
+ * A template for setting up the required hooks for the engine,
+ * initializing the engine and running the engine loop.
+ *
+ * Make sure that a function name init and update are defined in the module
+ * where this template is used.
+ *
+ * See_Also: InitFunction, UpdateFunction
+ */
 template DefaultEntryPoint() {
     void setupHooks() {
         mixin("

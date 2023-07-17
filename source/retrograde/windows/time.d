@@ -28,8 +28,7 @@ version (Windows) {
         /** 
          * Starts the timer.
          * 
-         * Returns:
-         *  OperationResult.success() if the timer was started successfully.
+         * Returns: OperationResult.success() if the timer was started successfully.
          */
         OperationResult start() {
             auto frequencyRes = QueryPerformanceFrequency(&frequency);
@@ -49,8 +48,7 @@ version (Windows) {
         /** 
          * Stops the timer.
          *
-         * Returns: 
-         *  The elapsed time in milliseconds.
+         * Returns: The elapsed time in milliseconds.
          */
         double stop() {
             if (_isRunning) {
@@ -66,8 +64,7 @@ version (Windows) {
          * If the timer is running, the elapsed time is the time since the timer was started.
          * If the timer is stopped, the elapsed time is the time between the start and stop calls.
          *
-         * Returns:
-         *  The elapsed time in milliseconds. If getting the time from the system failed, -1 is returned.
+         * Returns: The elapsed time in milliseconds. If getting the time from the system failed, -1 is returned.
          */
         double peek() {
             if (_isRunning) {
@@ -89,8 +86,7 @@ version (Windows) {
         /** 
          * Stops and resets.
          *
-         * Returns:
-         *  The elapsed time in milliseconds.
+         * Returns: The elapsed time in milliseconds.
          */
         double reset() {
             double elapsed = stop();
@@ -99,7 +95,7 @@ version (Windows) {
         }
 
         /** 
-         * Returns whether the timer is running.
+         * Returns: whether the timer is running.
          */
         bool isRunning() {
             return _isRunning;

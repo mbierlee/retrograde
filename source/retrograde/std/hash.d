@@ -13,6 +13,10 @@ module retrograde.std.hash;
 
 /** 
  * Calculate the hash of any arbitrary value.
+ *
+ * Params: 
+ *  value - The value to calculate the hash of.
+ * Returns:  The hash of the value.
  */
 ulong hashOf(T)(ref T value) nothrow @trusted {
     auto ptr = cast(ubyte*)&value;
@@ -32,6 +36,10 @@ ulong hashOf(T)(T value) nothrow @trusted {
 
 /** 
  * Calculate the hash of a string.
+ *
+ * Params:
+ *  value - The string to calculate the hash of.
+ * Returns:  The hash of the string.
  */
 ulong hashOf(string value) nothrow @trusted {
     ulong hash = 0;
