@@ -16,11 +16,35 @@ import retrograde.std.stringid : StringId;
 import retrograde.std.memory : SharedPtr;
 import retrograde.std.collections : Array;
 
+/** 
+ * An entity is a container for components. It is a logical object that can be
+ * used to represent a player, a monster, a bullet, etc.
+ */
 struct Entity {
+    /** 
+     * The name of the entity. This is a human-readable name that can be used
+     * to identify the entity debug output.
+     */
     String name;
+
+    /** 
+     * The unique ID of the entity. This is a number that is unique for each
+     * entity in the game. It is used to identify the entity in the game world.
+     * It is assigned by the EntityManager when the entity is created.
+     */
     ulong id = 0;
+
     private Array!Component components;
 
+    /** 
+     * Add a component to the entity. 
+     *
+     * If the entity already has a component of the same type, the existing
+     * component is replaced by the new component.
+     *
+     * Params:
+     *   component = The component to add to the entity.
+     */
     void addComponent(Component component) {
         for (size_t i = 0; i < components.length; i++) {
             if (components[i].type == component.type) {
@@ -32,10 +56,22 @@ struct Entity {
         components.add(component);
     }
 
+    /** 
+     * Remove a component from the entity.
+     *
+     * Params:
+     *   component = The component to remove from the entity.
+     */
     void removeComponent(const ref Component component) {
         removeComponent(component.type);
     }
 
+    /** 
+     * Remove a component from the entity.
+     *
+     * Params:
+     *   componentType = The type of the component to remove from the entity.
+     */
     void removeComponent(StringId componentType) {
         for (size_t i = 0; i < components.length; i++) {
             if (components[i].type == componentType) {
@@ -45,10 +81,28 @@ struct Entity {
         }
     }
 
+    /** 
+     * Check whether the entity has a certain component.
+     *
+     * Params:
+     *   component = The component to check for.
+     *
+     * Returns:
+     *   True if the entity has the component, false otherwise.
+     */
     bool hasComponent(const ref Component component) {
         return hasComponent(component.type);
     }
 
+    /** 
+     * Check whether the entity has a certain component.
+     *
+     * Params:
+     *   componentType = The type of the component to check for.
+     *
+     * Returns:
+     *   True if the entity has the component, false otherwise.
+     */
     bool hasComponent(StringId componentType) {
         for (size_t i = 0; i < components.length; i++) {
             if (components[i].type == componentType) {
@@ -60,8 +114,29 @@ struct Entity {
     }
 }
 
+/** 
+ * A component is a container for data. It is a logical object that can be used
+ * to represent a position, a sprite, a health value, etc.
+ * Components can also be without data, in which case they indicate certain behavior
+ * of the entity, for example a component that indicates that the entity is flammable, 
+ * destructible, etc.
+ */
 struct Component {
+    /** 
+     * The type of the component. 
+     * 
+     * This is a unique ID that is used to identify the component type.
+     */
     StringId type;
+
+    /** 
+     * The data of the component. 
+     * 
+     * This is a smart pointer to the data that is stored in the component. The data
+     * is stored as a SharedPtr!void, so it can be any type of data. When no data is
+     * stored in the component, the component is regarded as a component that indicates
+     * certain behavior of the entity.
+     */
     SharedPtr!void data;
 }
 
