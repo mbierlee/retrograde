@@ -750,8 +750,7 @@ void runSharedPointerTests() {
             auto sharedPtr = makeShared!TestStruct;
             assert(sharedPtr.useCount == 1);
 
-            auto sharedContainer = makeShared!TestSharedContainer;
-            sharedContainer.testStructPtr = sharedPtr;
+            auto sharedContainer = makeShared(TestSharedContainer(sharedPtr));
             assert(sharedPtr.useCount == 2);
             assert(sharedContainer.testStructPtr.ptr is sharedPtr.ptr);
             assert(sharedContainer.testStructPtr.refCount is sharedPtr.refCount);
