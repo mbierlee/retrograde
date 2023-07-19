@@ -36,13 +36,9 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
         freePtr();
     }
 
-    void opAssign(ref typeof(this) other) {
+    void opAssign(ref return scope typeof(this) other) {
         freePtr();
         copyFrom(cast(void*) other.ptr, other._length);
-    }
-
-    void opAssign(typeof(this) other) {
-        this.opAssign(other);
     }
 
     void opAssign(string str) {
