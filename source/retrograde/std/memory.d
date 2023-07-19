@@ -72,7 +72,7 @@ T* makeRaw(T)(inout T initial = T.init) {
 /// ditto
 T* makeRaw(T)(inout ref T initial) {
     T* ptr = allocateRaw!T;
-    memcpy(ptr, &initial, T.sizeof);
+    *ptr = initial;
     return ptr;
 }
 
@@ -389,10 +389,6 @@ SharedPtr!T share(T)(T* ptr) {
 /**
  * Create a shared pointer initialized to the given value.
  *
- * Warning: do not use makeShared with types that themselves contain already initialized shared pointers.
- *          This will cause a double-free. It will fail to increase the shared pointer's refcount since a 
- *          bit by bit copy is made of the provided value without calling the copy constructor of the shared pointer.
- *
  * Params:
  *  T: The type of the pointer.
  *  initial: The initial value. When not given, the initial value is the default value of the type.
@@ -441,10 +437,22 @@ private struct TestStruct {
 
 private struct TestContainer {
     UniquePtr!TestStruct testStructPtr;
+
+    this(ref return scope inout typeof(this) other) {
+        testStructPtr.reset((cast(typeof(this)) other).testStructPtr.release());
+    }
+
+    void opAssign(ref return scope inout typeof(this) other) {
+        testStructPtr.reset((cast(typeof(this)) other).testStructPtr.release());
+    }
 }
 
 private struct TestSharedContainer {
     SharedPtr!TestStruct testStructPtr;
+
+    void opAssign(ref return scope inout typeof(this) other) {
+        testStructPtr = (cast(typeof(this)) other).testStructPtr;
+    }
 }
 
 void runStdMemoryTests() {
