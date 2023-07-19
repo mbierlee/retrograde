@@ -28,6 +28,8 @@ private enum defaultChunkSize = 8;
  * This queue implementation is not thread-safe.
  */
 struct Queue(T, size_t chunkSize = defaultChunkSize) {
+    //TODO: Just use an Array in here instead of a raw pointer.
+
     private T* items = null;
     private size_t _length = 0;
     private size_t _capacity = 0;
@@ -202,6 +204,10 @@ struct Queue(T, size_t chunkSize = defaultChunkSize) {
 
     private void replaceQueue(T* newQueue) {
         if (items) {
+            for (size_t i = 0; i < _length; i++) {
+                items[i].destroy();
+            }
+
             free(items);
         }
 
@@ -367,12 +373,17 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
      * Allocated memory will be deallocated.
      */
     void clear() {
-        _length = 0;
-        _capacity = 0;
         if (items !is null) {
+            for (size_t i = 0; i < _length; i++) {
+                items[i].destroy();
+            }
+
             free(items);
             items = null;
         }
+
+        _length = 0;
+        _capacity = 0;
     }
 
     /**
@@ -556,6 +567,7 @@ struct LinkedList(T) {
         NodePtr node = head;
         while (node !is null) {
             NodePtr next = node.next;
+            node.value.destroy();
             free(node);
             node = next;
         }
