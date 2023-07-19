@@ -15,6 +15,7 @@ import retrograde.std.string : String, s;
 import retrograde.std.stringid : StringId;
 import retrograde.std.memory : SharedPtr;
 import retrograde.std.collections : Array;
+import retrograde.std.result : OperationResult, success, failure;
 
 /** 
  * An entity is a container for components. It is a logical object that can be
@@ -27,19 +28,31 @@ struct Entity {
      */
     String name;
 
-    /** 
-     * The unique ID of the entity. This is a number that is unique for each
-     * entity in the game. It is used to identify the entity in the game world.
-     * It is assigned by the EntityManager when the entity is created.
-     */
-    ulong id = 0;
+    private ulong _id = 0;
 
     private Array!Component components;
 
     this(ref return scope inout typeof(this) other) {
         this.name = other.name;
-        this.id = other.id;
+        this._id = other._id;
         this.components = other.components;
+    }
+
+    void opAssign(ref return scope inout typeof(this) other) {
+        this.name = other.name;
+        this._id = other._id;
+        this.components = other.components;
+    }
+
+    /**
+     * Returns: The unique ID of the entity.
+     *
+     * This is a number that is unique for each entity in the game.
+     * It is used to identify the entity in the game world.
+     * It is assigned by the EntityManager when the entity is created.
+     */
+    ulong id() const {
+        return _id;
     }
 
     /** 
@@ -151,13 +164,38 @@ struct Component {
     }
 }
 
+struct EntityManager {
+    private Array!(SharedPtr!Entity) entities;
+    private ulong nextId = 1;
+
+    OperationResult addEntity(SharedPtr!Entity entity) {
+        if (entity.id != 0) {
+            return failure(
+                "Entity already has an ID, it might already be added to the entity manager");
+        }
+
+        if (!entity.isDefined) {
+            return failure("Entity is not defined");
+        }
+
+        entity.ptr._id = nextId++;
+        entities.add(entity);
+        return success;
+    }
+}
+
 version (UnitTesting)  :  ///
 
-void runEntityTests() {
-    import retrograde.std.test : test, writeSection;
-    import retrograde.std.stringid : sid;
-    import retrograde.std.memory : makeSharedVoid;
+import retrograde.std.test : test, writeSection;
+import retrograde.std.stringid : sid;
+import retrograde.std.memory : makeSharedVoid, makeShared;
 
+void runEntityTests() {
+    runEcsTests();
+    runEntityManagerTests();
+}
+
+void runEcsTests() {
     writeSection("-- Entity tests --");
 
     test("Create entity and add component", {
@@ -224,5 +262,35 @@ void runEntityTests() {
 
         Component compNope = Component("comp_nope".sid);
         assert(!ent.hasComponent(compNope));
+    });
+}
+
+void runEntityManagerTests() {
+    writeSection("-- Entity Manager tests --");
+
+    test("Added entities are assigned an entity ID", {
+        EntityManager em;
+        auto ent1 = makeShared(Entity("ent1_test".s));
+        auto ent2 = makeShared(Entity("ent2_test".s));
+        auto res1 = em.addEntity(ent1);
+        auto res2 = em.addEntity(ent2);
+        assert(ent1.id == 1);
+        assert(ent2.id == 2);
+        assert(res1.isSuccessful);
+        assert(res2.isSuccessful);
+    });
+
+    test("Cannot add entities that already have an entity ID", {
+        EntityManager em;
+        auto ent1 = makeShared(Entity("ent1_test".s));
+        auto ent2 = makeShared(Entity("ent2_test".s));
+        ent1.ptr._id = 1;
+        ent2.ptr._id = 2;
+        auto res1 = em.addEntity(ent1);
+        auto res2 = em.addEntity(ent2);
+        assert(ent1.id == 1);
+        assert(ent2.id == 2);
+        assert(!res1.isSuccessful);
+        assert(!res2.isSuccessful);
     });
 }
