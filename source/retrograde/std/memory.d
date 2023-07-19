@@ -65,12 +65,12 @@ T* allocateRaw(T)() {
  *           When not given, the initial value is the default value of the type.
  * Returns: A raw pointer to the allocated memory.
  */
-T* makeRaw(T)(const T initial = T.init) {
+T* makeRaw(T)(inout T initial = T.init) {
     return makeRaw(initial);
 }
 
 /// ditto
-T* makeRaw(T)(const ref T initial) {
+T* makeRaw(T)(inout ref T initial) {
     T* ptr = allocateRaw!T;
     memcpy(ptr, &initial, T.sizeof);
     return ptr;
@@ -126,6 +126,11 @@ struct UniquePtr(T) {
     auto opDispatch(string s, Args...)(Args args) {
         assert(_ptr !is null, "Unique pointer is null and may not be used.");
         return mixin("_ptr." ~ s ~ "(args)");
+    }
+
+    auto opDispatch(string s, T)(T value) {
+        assert(_ptr !is null, "Shared pointer is null and may not be used.");
+        return mixin("_ptr." ~ s ~ " = value");
     }
 
     static if (!is(T == void)) {
@@ -277,8 +282,6 @@ struct SharedPtr(T) {
     ~this() {
         assert(_ptr is null || refCount !is null, "Reference count is null but pointer is not null.");
         releaseShare();
-        _ptr = null;
-        refCount = null;
     }
 
     this(ref return scope inout typeof(this) other) {
@@ -331,6 +334,11 @@ struct SharedPtr(T) {
         return mixin("_ptr." ~ s)(args);
     }
 
+    auto opDispatch(string s, T)(T value) {
+        assert(_ptr !is null, "Shared pointer is null and may not be used.");
+        return mixin("_ptr." ~ s ~ " = value");
+    }
+
     static if (!is(T == void)) {
         auto opIndex(size_t i) {
             assert(_ptr !is null, "Shared pointer is null and may not be used.");
@@ -341,7 +349,11 @@ struct SharedPtr(T) {
 
     private void releaseShare() {
         if (_ptr !is null && refCount !is null) {
-            (*refCount)--;
+            assert(*refCount > 0, "Reference count is 0 but pointer is not null.");
+            if (*refCount > 0) {
+                (*refCount)--;
+            }
+
             if (*refCount <= 0) {
                 static if (!is(T == void)) {
                     destroy(*_ptr);
@@ -349,6 +361,8 @@ struct SharedPtr(T) {
 
                 free(_ptr);
                 free(refCount);
+                _ptr = null;
+                refCount = null;
             }
         }
     }
@@ -375,17 +389,21 @@ SharedPtr!T share(T)(T* ptr) {
 /**
  * Create a shared pointer initialized to the given value.
  *
+ * Warning: do not use makeShared with types that themselves contain already initialized shared pointers.
+ *          This will cause a double-free. It will fail to increase the shared pointer's refcount since a 
+ *          bit by bit copy is made of the provided value without calling the copy constructor of the shared pointer.
+ *
  * Params:
  *  T: The type of the pointer.
  *  initial: The initial value. When not given, the initial value is the default value of the type.
  * Returns: A shared pointer.
  */
-SharedPtr!T makeShared(T)(const T initial = T.init) {
+SharedPtr!T makeShared(T)(inout T initial = T.init) {
     return makeShared(initial);
 }
 
 /// ditto
-SharedPtr!T makeShared(T)(const ref T initial) {
+SharedPtr!T makeShared(T)(inout ref T initial) {
     return SharedPtr!T(makeRaw(initial));
 }
 
@@ -702,6 +720,7 @@ void runSharedPointerTests() {
 
     test("Shared pointer in a container is properly refcounted", {
         auto sharedPtr = makeShared!TestStruct;
+        assert(sharedPtr.useCount == 1);
         auto container = TestSharedContainer(sharedPtr);
         assert(sharedPtr.useCount == 2);
         assert(container.testStructPtr.useCount == 2);
@@ -719,11 +738,12 @@ void runSharedPointerTests() {
 
     test("Shared pointer in a shared container is properly cleaned up", {
         ///
-
         {
             auto sharedPtr = makeShared!TestStruct;
-            auto container = TestSharedContainer(sharedPtr);
-            auto sharedContainer = makeShared(container);
+            assert(sharedPtr.useCount == 1);
+
+            auto sharedContainer = makeShared!TestSharedContainer;
+            sharedContainer.testStructPtr = sharedPtr;
             assert(sharedPtr.useCount == 2);
             assert(sharedContainer.testStructPtr.ptr is sharedPtr.ptr);
             assert(sharedContainer.testStructPtr.refCount is sharedPtr.refCount);
