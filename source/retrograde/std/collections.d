@@ -242,12 +242,12 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
     private size_t _length = 0;
     private size_t _capacity = 0;
 
-    this(ref return scope typeof(this) other) {
+    this(ref return scope inout typeof(this) other) {
         this(other.items[0 .. other._length]);
         _capacity = other._length;
     }
 
-    this(scope T[] other) {
+    this(scope inout T[] other) {
         items = cast(T*) malloc(T.sizeof * other.length);
         if (items !is null) {
             foreach (T item; other) {
@@ -404,6 +404,14 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         }
 
         return -1;
+    }
+
+    void opAssign(ref return scope inout typeof(this) other) {
+        _length = other._length;
+        _capacity = other._capacity;
+        items = cast(T*) realloc(items, T.sizeof * other._length);
+        assert(items !is null, "Failed to allocate memory during assignment of array");
+        memcpy(items, other.items, T.sizeof * other._length);
     }
 
     void opOpAssign(string op : "~")(T rhs) {
@@ -759,6 +767,22 @@ struct LinkedList(T) {
         }
 
         return -1;
+    }
+
+    void opAssign(ref return scope inout typeof(this) other) {
+        NodePtr node = head;
+        while (node !is null) {
+            NodePtr next = node.next;
+            free(node);
+            node = next;
+        }
+
+        _length = 0;
+        node = cast(NodePtr) other.head;
+        while (node !is null) {
+            add(node.value);
+            node = node.next;
+        }
     }
 
     auto opIndex(size_t i) {
@@ -1474,6 +1498,15 @@ void runArrayTests() {
         Array!int array2 = [1, 2, 3, 4, 5];
         assert(array.toHash() == array2.toHash());
     });
+
+    test("Assign an array to another array", () {
+        Array!int array = [1, 2, 3, 4, 5];
+        Array!int array2 = [6, 7, 8, 9, 10];
+        array = array2;
+        assert(array.length == 5);
+        assert(array.capacity == 5);
+        assert(array[0 .. $] == [6, 7, 8, 9, 10]);
+    });
 }
 
 void runLinkedListTests() {
@@ -1803,5 +1836,15 @@ void runLinkedListTests() {
         list2.add(2);
         list2.add(3);
         assert(list1.toHash() == list2.toHash());
+    });
+
+    test("Assing LinkedList to another LinkedList", () {
+        LinkedList!int list1;
+        LinkedList!int list2;
+        list1.add(1);
+        list1.add(2);
+        list1.add(3);
+        list2 = list1;
+        assert(list1 == list2);
     });
 }

@@ -28,7 +28,7 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
         copyFrom(cast(void*) str.ptr, str.length);
     }
 
-    this(ref return scope typeof(this) other) {
+    this(ref return scope inout typeof(this) other) {
         copyFrom(cast(void*) other.ptr, other._length);
     }
 

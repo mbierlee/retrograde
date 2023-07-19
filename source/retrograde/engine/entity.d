@@ -36,6 +36,12 @@ struct Entity {
 
     private Array!Component components;
 
+    this(ref return scope inout typeof(this) other) {
+        this.name = other.name;
+        this.id = other.id;
+        this.components = other.components;
+    }
+
     /** 
      * Add a component to the entity. 
      *
@@ -138,6 +144,11 @@ struct Component {
      * certain behavior of the entity.
      */
     SharedPtr!void data;
+
+    this(ref return scope inout typeof(this) other) {
+        this.type = other.type;
+        this.data = other.data;
+    }
 }
 
 version (UnitTesting)  :  ///
