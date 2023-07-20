@@ -11,7 +11,7 @@
 
 module retrograde.std.collections;
 
-import retrograde.std.memory : malloc, realloc, free, allocateRaw, memcpy;
+import retrograde.std.memory : malloc, realloc, free, allocateRaw;
 import retrograde.std.math : ceil;
 import retrograde.std.option : Option, some, none;
 import retrograde.std.hash : hashOf;
@@ -418,11 +418,18 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
     }
 
     void opAssign(ref return scope inout typeof(this) other) {
+        if (other._capacity == 0) {
+            clear();
+            return;
+        }
+
         _length = other._length;
         _capacity = other._capacity;
         items = cast(T*) realloc(items, T.sizeof * other._length);
         assert(items !is null, "Failed to allocate memory during assignment of array");
-        memcpy(items, other.items, T.sizeof * other._length);
+        for (size_t i = 0; i < _length; i++) {
+            items[i] = other.items[i];
+        }
     }
 
     void opOpAssign(string op : "~")(T rhs) {
