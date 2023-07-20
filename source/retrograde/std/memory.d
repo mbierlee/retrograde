@@ -72,6 +72,8 @@ T* makeRaw(T)(inout T initial = T.init) {
 /// ditto
 T* makeRaw(T)(inout ref T initial) {
     T* ptr = allocateRaw!T;
+    assert(ptr !is null, "Could not allocate memory in makeRaw.");
+    memset(ptr, 0, T.sizeof);
     *ptr = initial;
     return ptr;
 }
@@ -309,7 +311,7 @@ struct SharedPtr(T) {
     /**
      * Returns: The number of owners of the pointer.
      */
-    size_t useCount() {
+    size_t useCount() const {
         return refCount is null ? 0 : *refCount;
     }
 
@@ -450,8 +452,14 @@ private struct TestContainer {
 private struct TestSharedContainer {
     SharedPtr!TestStruct testStructPtr;
 
+    this(ref return scope inout typeof(this) other) {
+        auto ptr = cast(SharedPtr!TestStruct) other.testStructPtr;
+        testStructPtr = ptr;
+    }
+
     void opAssign(ref return scope inout typeof(this) other) {
-        testStructPtr = (cast(typeof(this)) other).testStructPtr;
+        auto ptr = cast(SharedPtr!TestStruct) other.testStructPtr;
+        testStructPtr = ptr;
     }
 }
 
