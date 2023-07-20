@@ -543,9 +543,9 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
             assert(items !is null, "Failed to allocate memory during resizing of array");
             _capacity += chunkSize;
 
-            T init;
             for (size_t i = _capacity - chunkSize; i < _capacity; i++) {
-                memcpy(cast(void*)&items[i], cast(void*)&init, T.sizeof);
+                auto init = T.init;
+                items[i] = init;
             }
         }
     }

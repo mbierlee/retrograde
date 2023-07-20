@@ -313,14 +313,14 @@ struct SharedPtr(T) {
         return refCount is null ? 0 : *refCount;
     }
 
-    void opAssign(ref return scope typeof(this) other) {
+    void opAssign(ref return scope inout typeof(this) other) {
         if (this is other) {
             return;
         }
 
         releaseShare();
-        _ptr = other._ptr;
-        refCount = other.refCount;
+        _ptr = cast(T*) other._ptr;
+        refCount = cast(size_t*) other.refCount;
         incrementRefCount();
     }
 
