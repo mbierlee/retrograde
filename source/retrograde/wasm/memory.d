@@ -105,13 +105,17 @@ export extern (C) void* calloc(size_t nitems, size_t size) {
  * something is wrong.
  *
  * Params:
- *  ptr: The pointer to the memory block to resize.
- *  newSize: The new size of the memory block.
+ *  ptr: The pointer to the memory block to resize. If null, a new block is allocated.
+ *  newSize: The new size of the memory block. If it is 0, a null pointer is returned and the pointer remains unchanged.
  * Returns: A pointer to the resized memory block, or null if something went wrong. The same pointer is returned when the resize fit.
  */
 export extern (C) void* realloc(void* ptr, size_t newSize) {
     if (ptr is null) {
         return malloc(newSize);
+    }
+
+    if (newSize == 0) {
+        return null;
     }
 
     auto getRes = getBlock(ptr);
@@ -1217,6 +1221,12 @@ void runWasmMemTests() {
         for (size_t i; i < 10; i++) {
             assert(*(cast(ubyte*) newPtr + i) == 0xFF);
         }
+    });
+
+    test("realloc returns a null pointer when newSize is 0", {
+        auto ptr = malloc(10);
+        auto newPtr = realloc(ptr, 0);
+        assert(newPtr is null);
     });
 
     test("memcpy copies src into dest", {
