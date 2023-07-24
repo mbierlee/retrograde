@@ -300,13 +300,7 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
             return;
         }
 
-        if (items is null) {
-            items = cast(T*) malloc(T.sizeof * newCapacity);
-        } else {
-            items = cast(T*) realloc(items, T.sizeof * newCapacity);
-        }
-
-        _capacity = newCapacity;
+        resize(newCapacity - capacity);
 
         if (_length > _capacity) {
             _length = _capacity;
@@ -546,11 +540,17 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
 
     private void considerResize() {
         if (items is null || _capacity == length) {
-            items = cast(T*) realloc(items, T.sizeof * (_capacity + chunkSize));
-            assert(items !is null, "Failed to allocate memory during resizing of array");
-            _capacity += chunkSize;
+            resize();
+        }
+    }
 
-            for (size_t i = _capacity - chunkSize; i < _capacity; i++) {
+    private void resize(size_t growSize = chunkSize) {
+        items = cast(T*) realloc(items, T.sizeof * (_capacity + growSize));
+        assert(items !is null, "Failed to allocate memory during resizing of array");
+        _capacity += growSize;
+
+        if (growSize > 0) {
+            for (size_t i = _capacity - growSize; i < _capacity; i++) {
                 auto init = T.init;
                 items[i] = init;
             }
