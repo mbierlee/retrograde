@@ -162,6 +162,11 @@ struct Component {
         this.type = other.type;
         this.data = other.data;
     }
+
+    void opAssign(ref return scope inout typeof(this) other) {
+        this.type = other.type;
+        this.data = other.data;
+    }
 }
 
 struct EntityManager {
@@ -169,13 +174,17 @@ struct EntityManager {
     private ulong nextId = 1;
 
     OperationResult addEntity(SharedPtr!Entity entity) {
-        if (entity.id != 0) {
-            return failure(
-                "Entity already has an ID, it might already be added to the entity manager");
+        if (nextId == 0) {
+            nextId = 1; // In case someone initializes the entity manager from a raw, zeroed pointer.
         }
 
         if (!entity.isDefined) {
-            return failure("Entity is not defined");
+            return failure("Shared pointer of entity is null.");
+        }
+
+        if (entity.ptr._id != 0) {
+            return failure(
+                "Entity already has an ID, it might already be added to the entity manager.");
         }
 
         entity.ptr._id = nextId++;
