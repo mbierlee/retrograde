@@ -11,7 +11,7 @@
 
 module retrograde.std.collections;
 
-import retrograde.std.memory : malloc, realloc, free, allocateRaw;
+import retrograde.std.memory : malloc, realloc, free, allocateRaw, memset;
 import retrograde.std.math : ceil;
 import retrograde.std.option : Option, some, none;
 import retrograde.std.hash : hashOf;
@@ -35,7 +35,10 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
 
     this(scope inout T[] other) {
         items = cast(T*) malloc(T.sizeof * other.length);
+        assert(items !is null, "Failed to allocate memory during assignment of array");
+
         if (items !is null) {
+            memset(items, 0, T.sizeof * other.length);
             foreach (T item; other) {
                 items[_length] = item;
                 _length++;
@@ -201,8 +204,12 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         _capacity = other._capacity;
         items = cast(T*) realloc(items, T.sizeof * other._length);
         assert(items !is null, "Failed to allocate memory during assignment of array");
-        for (size_t i = 0; i < _length; i++) {
-            items[i] = other.items[i];
+
+        if (items !is null) {
+            memset(items, 0, T.sizeof * other._length);
+            for (size_t i = 0; i < _length; i++) {
+                items[i] = other.items[i];
+            }
         }
     }
 
@@ -331,6 +338,7 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
 
         if (growSize > 0) {
             for (size_t i = _capacity - growSize; i < _capacity; i++) {
+                memset(&items[i], 0, T.sizeof);
                 auto init = T.init;
                 items[i] = init;
             }
