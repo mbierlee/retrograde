@@ -37,12 +37,10 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
     }
 
     void opAssign(ref return scope typeof(this) other) {
-        freePtr();
         copyFrom(cast(void*) other.ptr, other._length);
     }
 
     void opAssign(string str) {
-        freePtr();
         copyFrom(cast(void*) str.ptr, str.length);
     }
 
@@ -199,6 +197,7 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
     }
 
     private void copyFrom(void* ptr, size_t length) {
+        freePtr();
         this.ptr = cast(T*) calloc(length, T.sizeof);
         _length = length;
         memcpy(cast(void*) this.ptr, ptr, length);
