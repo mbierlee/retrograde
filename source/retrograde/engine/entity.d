@@ -169,9 +169,12 @@ struct Component {
     }
 }
 
+alias ProcessorFunc = void delegate(SharedPtr!Entity);
+
 struct EntityManager {
     private Array!(SharedPtr!Entity) entities;
     private ulong nextId = 1;
+    private Array!ProcessorFunc processors;
 
     OperationResult addEntity(SharedPtr!Entity entity) {
         if (nextId == 0) {
@@ -190,6 +193,20 @@ struct EntityManager {
         entity.ptr._id = nextId++;
         entities.add(entity);
         return success;
+    }
+
+    void addProcessor(ProcessorFunc processor) {
+        processors.add(processor);
+    }
+
+    void update() {
+        foreach (processor; processors) {
+            foreach (entity; entities) {
+                if (entity.isDefined) {
+                    processor(entity);
+                }
+            }
+        }
     }
 }
 
@@ -303,5 +320,27 @@ void runEntityManagerTests() {
         SharedPtr!Entity ent;
         auto res = em.addEntity(ent);
         assert(!res.isSuccessful);
+    });
+
+    test("Add entity processor function", {
+        EntityManager em;
+        ProcessorFunc processor = (SharedPtr!Entity ent) {};
+        em.addProcessor(processor);
+        assert(em.processors.length == 1);
+    });
+
+    test("Updating entity manager invokes entity processor", {
+        EntityManager em;
+        static bool testEntityProcessed = false;
+        ProcessorFunc processor = (SharedPtr!Entity ent) {
+            testEntityProcessed = testEntityProcessed || ent.ptr.name == "ent_test".s;
+        };
+
+        auto ent = makeShared(Entity("ent_test".s));
+        em.addEntity(ent);
+
+        em.addProcessor(processor);
+        em.update();
+        assert(testEntityProcessed);
     });
 }
