@@ -195,6 +195,61 @@ struct EntityManager {
         return success;
     }
 
+    OperationResult removeEntity(SharedPtr!Entity entity) {
+        if (!entity.isDefined) {
+            return failure("Shared pointer of entity is null.");
+        }
+
+        return removeEntity(entity.ptr.id);
+    }
+
+    OperationResult removeEntity(ulong entityId) {
+        if (entityId == 0) {
+            return success;
+        }
+
+        foreach (size_t i, entity; entities) {
+            if (entity.ptr.id == entityId) {
+                entities.remove(i);
+                break;
+            }
+        }
+
+        return success;
+    }
+
+    bool hasEntity(SharedPtr!Entity entity) {
+        if (!entity.isDefined) {
+            return false;
+        }
+
+        return hasEntity(entity.ptr.id);
+    }
+
+    bool hasEntity(ulong entityId) {
+        if (entityId == 0) {
+            return false;
+        }
+
+        foreach (size_t i, entity; entities) {
+            if (entity.ptr.id == entityId) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    bool hasEntity(String entityName) {
+        foreach (size_t i, entity; entities) {
+            if (entity.ptr.name == entityName) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void addProcessor(ProcessorFunc processor) {
         processors.add(processor);
     }
@@ -322,6 +377,45 @@ void runEntityManagerTests() {
         assert(!res.isSuccessful);
     });
 
+    test("Remove entity from entity manager", {
+        EntityManager em;
+        auto ent = makeShared(Entity("ent_test".s));
+        em.addEntity(ent);
+        assert(em.entities.length == 1);
+        em.removeEntity(ent);
+        assert(em.entities.length == 0);
+    });
+
+    test("Remove entity from entity manager by ID", {
+        EntityManager em;
+        auto ent = makeShared(Entity("ent_test".s));
+        em.addEntity(ent);
+        assert(em.entities.length == 1);
+        em.removeEntity(ent.id);
+        assert(em.entities.length == 0);
+    });
+
+    test("Check wheter entity manager has entity", {
+        EntityManager em;
+        auto ent = makeShared(Entity("ent_test".s));
+        em.addEntity(ent);
+        assert(em.hasEntity(ent));
+    });
+
+    test("Check wheter entity manager has entity by ID", {
+        EntityManager em;
+        auto ent = makeShared(Entity("ent_test".s));
+        em.addEntity(ent);
+        assert(em.hasEntity(ent.id));
+    });
+
+    test("Check wheter entity manager has entity by name", {
+        EntityManager em;
+        auto ent = makeShared(Entity("ent_test".s));
+        em.addEntity(ent);
+        assert(em.hasEntity("ent_test".s));
+    });
+
     test("Add entity processor function", {
         EntityManager em;
         ProcessorFunc processor = (SharedPtr!Entity ent) {};
@@ -343,4 +437,5 @@ void runEntityManagerTests() {
         em.update();
         assert(testEntityProcessed);
     });
+
 }
