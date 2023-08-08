@@ -291,15 +291,17 @@ void runEntityManagerTests() {
 
     test("Cannot add entities that already have an entity ID", {
         EntityManager em;
-        auto ent1 = makeShared(Entity("ent1_test".s));
-        auto ent2 = makeShared(Entity("ent2_test".s));
-        ent1.ptr._id = 1;
-        ent2.ptr._id = 2;
-        auto res1 = em.addEntity(ent1);
-        auto res2 = em.addEntity(ent2);
-        assert(ent1.id == 1);
-        assert(ent2.id == 2);
-        assert(!res1.isSuccessful);
-        assert(!res2.isSuccessful);
+        auto ent = makeShared(Entity("ent1_test".s));
+        ent.ptr._id = 1;
+        auto res = em.addEntity(ent);
+        assert(ent.id == 1);
+        assert(!res.isSuccessful);
+    });
+
+    test("Cannot add entities with undefined shared pointer", {
+        EntityManager em;
+        SharedPtr!Entity ent;
+        auto res = em.addEntity(ent);
+        assert(!res.isSuccessful);
     });
 }
