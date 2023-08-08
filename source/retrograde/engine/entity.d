@@ -13,7 +13,7 @@ module retrograde.engine.entity;
 
 import retrograde.std.string : String, s;
 import retrograde.std.stringid : StringId;
-import retrograde.std.memory : SharedPtr;
+import retrograde.std.memory : SharedPtr, makeShared;
 import retrograde.std.collections : Array;
 import retrograde.std.result : OperationResult, success, failure;
 
@@ -265,11 +265,15 @@ struct EntityManager {
     }
 }
 
+SharedPtr!Entity makeEntity(string name) {
+    return makeShared(Entity(name.s));
+}
+
 version (UnitTesting)  :  ///
 
 import retrograde.std.test : test, writeSection;
 import retrograde.std.stringid : sid;
-import retrograde.std.memory : makeSharedVoid, makeShared;
+import retrograde.std.memory : makeSharedVoid;
 
 void runEntityTests() {
     runEcsTests();
@@ -351,8 +355,8 @@ void runEntityManagerTests() {
 
     test("Added entities are assigned an entity ID", {
         EntityManager em;
-        auto ent1 = makeShared(Entity("ent1_test".s));
-        auto ent2 = makeShared(Entity("ent2_test".s));
+        auto ent1 = makeEntity("ent1_test");
+        auto ent2 = makeEntity("ent2_test");
         auto res1 = em.addEntity(ent1);
         auto res2 = em.addEntity(ent2);
         assert(ent1.id == 1);
@@ -363,7 +367,7 @@ void runEntityManagerTests() {
 
     test("Cannot add entities that already have an entity ID", {
         EntityManager em;
-        auto ent = makeShared(Entity("ent1_test".s));
+        auto ent = makeEntity("ent1_test");
         ent.ptr._id = 1;
         auto res = em.addEntity(ent);
         assert(ent.id == 1);
@@ -379,7 +383,7 @@ void runEntityManagerTests() {
 
     test("Remove entity from entity manager", {
         EntityManager em;
-        auto ent = makeShared(Entity("ent_test".s));
+        auto ent = makeEntity("ent_test");
         em.addEntity(ent);
         assert(em.entities.length == 1);
         em.removeEntity(ent);
@@ -388,7 +392,7 @@ void runEntityManagerTests() {
 
     test("Remove entity from entity manager by ID", {
         EntityManager em;
-        auto ent = makeShared(Entity("ent_test".s));
+        auto ent = makeEntity("ent_test");
         em.addEntity(ent);
         assert(em.entities.length == 1);
         em.removeEntity(ent.id);
@@ -397,21 +401,21 @@ void runEntityManagerTests() {
 
     test("Check wheter entity manager has entity", {
         EntityManager em;
-        auto ent = makeShared(Entity("ent_test".s));
+        auto ent = makeEntity("ent_test");
         em.addEntity(ent);
         assert(em.hasEntity(ent));
     });
 
     test("Check wheter entity manager has entity by ID", {
         EntityManager em;
-        auto ent = makeShared(Entity("ent_test".s));
+        auto ent = makeEntity("ent_test");
         em.addEntity(ent);
         assert(em.hasEntity(ent.id));
     });
 
     test("Check wheter entity manager has entity by name", {
         EntityManager em;
-        auto ent = makeShared(Entity("ent_test".s));
+        auto ent = makeEntity("ent_test");
         em.addEntity(ent);
         assert(em.hasEntity("ent_test".s));
     });
@@ -430,7 +434,7 @@ void runEntityManagerTests() {
             testEntityProcessed = testEntityProcessed || ent.ptr.name == "ent_test".s;
         };
 
-        auto ent = makeShared(Entity("ent_test".s));
+        auto ent = makeEntity("ent_test");
         em.addEntity(ent);
 
         em.addProcessor(processor);
