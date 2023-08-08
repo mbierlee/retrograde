@@ -76,6 +76,19 @@ struct Entity {
     }
 
     /** 
+     * Add a compontent to the entity with the given type. 
+     *
+     * It is assumed this component has no data. If the entity already has a component of the same type, 
+     * the existing component is replaced.
+     *
+     * Params:
+     *   type = Type of the component to add
+     */
+    void addComponent(StringId type) {
+        addComponent(Component(type));
+    }
+
+    /** 
      * Remove a component from the entity.
      *
      * Params:
@@ -347,6 +360,12 @@ void runEcsTests() {
 
         Component compNope = Component("comp_nope".sid);
         assert(!ent.hasComponent(compNope));
+    });
+
+    test("Add component by type", {
+        Entity ent = Entity("ent_test".s);
+        ent.addComponent("comp_test".sid);
+        assert(ent.hasComponent("comp_test".sid));
     });
 }
 
