@@ -135,6 +135,11 @@ export default class EngineRuntimeModule extends WasmModule {
 
         return program;
       },
+      setViewportFullViewSize: () => {
+        const canvas = document.querySelector("#renderArea");
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+      },
     });
   }
 

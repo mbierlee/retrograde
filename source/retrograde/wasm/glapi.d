@@ -14,3 +14,7 @@ module retrograde.wasm.glapi;
 version (WebAssembly)  :  //
 
 export extern (C) uint compileShaderProgram(string name, string vertexShader, string fragmentShader);
+
+/// Set the rendering viewport to the full with and height of the browser window,
+/// but not fullscreen.
+export extern (C) void setViewportFullViewSize();

@@ -18,10 +18,7 @@ import retrograde.std.stringid : sid;
 
 import retrograde.engine.service : entityManager;
 import retrograde.engine.entity : Entity;
-
-version (WebAssembly) {
-    import retrograde.wasm.glapi;
-}
+import retrograde.engine.glapi : compileShaderProgram;
 
 enum RenderableComponentType = sid("comp_renderable");
 
