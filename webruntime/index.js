@@ -2,6 +2,14 @@ import EngineRuntimeModule from "./src/engine-runtime.js";
 
 document.addEventListener("DOMContentLoaded", function () {
   const engineModule = new EngineRuntimeModule();
+
+  const canvas = document.querySelector("#renderArea");
+  engineModule.glContext = canvas.getContext("webgl2");
+  if (!engineModule.glContext) {
+    console.error("Unable to initialize WebGL 2 context");
+    return;
+  }
+
   engineModule.init().then(() => {
     engineModule.start();
     engineModule.initEngine();

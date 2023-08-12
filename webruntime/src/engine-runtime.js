@@ -1,6 +1,8 @@
 import WasmModule from "./wasm.js";
 
 export default class EngineRuntimeModule extends WasmModule {
+  glContext;
+
   constructor() {
     super("./wasm/retrograde-app.wasm", {
       writelnStr: (msgLength, msgPtr) => {
@@ -88,6 +90,51 @@ export default class EngineRuntimeModule extends WasmModule {
           `Assertion error: ${assertionMessage}\n    at ${srcFile}:${srcLineNumber}`
         );
       },
+      compileShaderProgram: (
+        nameLength,
+        namePtr,
+        vertexShaderLength,
+        vertexShaderPtr,
+        fragmentShaderLength,
+        fragmentShaderPtr
+      ) => {
+        const name = this.getString(namePtr, nameLength);
+
+        if (!this.glContext) {
+          console.error(
+            `failed to compile shader program ${name} GL context is not initialized`
+          );
+        }
+
+        const vertexShaderSource = this.getString(
+          vertexShaderPtr,
+          vertexShaderLength
+        );
+        const fragmentShaderSource = this.getString(
+          fragmentShaderPtr,
+          fragmentShaderLength
+        );
+
+        const vertexShader = this.createShader(
+          this.glContext,
+          this.glContext.VERTEX_SHADER,
+          vertexShaderSource
+        );
+
+        const fragmentShader = this.createShader(
+          this.glContext,
+          this.glContext.FRAGMENT_SHADER,
+          fragmentShaderSource
+        );
+
+        const program = this.createShaderProgram(
+          this.glContext,
+          vertexShader,
+          fragmentShader
+        );
+
+        return program;
+      },
     });
   }
 
@@ -97,5 +144,30 @@ export default class EngineRuntimeModule extends WasmModule {
 
   executeEngineLoopCycle(elapsedTimeMs) {
     this.instance.exports.executeEngineLoopCycle(elapsedTimeMs);
+  }
+
+  createShader(ctx, type, source) {
+    const shader = ctx.createShader(type);
+    ctx.shaderSource(shader, source);
+    ctx.compileShader(shader);
+    if (ctx.getShaderParameter(shader, ctx.COMPILE_STATUS)) {
+      return shader;
+    }
+
+    console.error(ctx.getShaderInfoLog(shader));
+    ctx.deleteShader(shader);
+  }
+
+  createShaderProgram(ctx, vertexShader, fragmentShader) {
+    const program = ctx.createProgram();
+    ctx.attachShader(program, vertexShader);
+    ctx.attachShader(program, fragmentShader);
+    ctx.linkProgram(program);
+    if (ctx.getProgramParameter(program, ctx.LINK_STATUS)) {
+      return program;
+    }
+
+    console.error(ctx.getProgramInfoLog(program));
+    ctx.deleteProgram(program);
   }
 }

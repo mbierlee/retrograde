@@ -24,5 +24,6 @@
       "buildOptions": ["releaseMode"],
       "dflags-ldc2": ["-O3"]
     }
-  }
+  },
+  "stringImportPaths": ["source/retrograde/shaders"]
 }
