@@ -12,12 +12,18 @@
 module retrograde.engine.rendering;
 
 import retrograde.std.stdio : writeln; // temp
-
 import retrograde.std.collections : Array;
+import retrograde.std.memory : SharedPtr;
+import retrograde.std.stringid : sid;
+
+import retrograde.engine.service : entityManager;
+import retrograde.engine.entity : Entity;
 
 version (WebAssembly) {
     import retrograde.wasm.glapi;
 }
+
+enum RenderableComponentType = sid("comp_renderable");
 
 void initRenderer() {
     if (renderPasses.length == 0) {
@@ -38,7 +44,13 @@ void initRenderer() {
 }
 
 void renderFrame() {
-    // writeln("render");
+    entityManager.forEachEntity((SharedPtr!Entity entity) {
+        if (!entity.ptr.hasComponent(RenderableComponentType)) {
+            return;
+        }
+
+        //TODO: the rest
+    });
 }
 
 struct RenderPass {

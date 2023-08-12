@@ -276,6 +276,12 @@ struct EntityManager {
             }
         }
     }
+
+    void forEachEntity(void delegate(SharedPtr!Entity) fn) {
+        foreach (entity; entities) {
+            fn(entity);
+        }
+    }
 }
 
 SharedPtr!Entity makeEntity(string name) {
