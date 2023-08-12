@@ -22,6 +22,11 @@ alias InitFunction = void function();
 alias UpdateFunction = void function();
 
 /** 
+ * An alias for a function that is called once per render cycle.
+ */
+alias RenderFunction = void function();
+
+/** 
  * The function that is called once when the engine is initialized.
  * Should be set before calling initEngine.
  *
@@ -36,6 +41,14 @@ InitFunction initFunction = null;
  * See_Also: DefaultEntryPoint
  */
 UpdateFunction updateFunction = null;
+
+/** 
+ * The function that is called once per render cycle.
+ * Should be set before calling initEngine.
+ *
+ * See_Also: DefaultEntryPoint
+ */
+RenderFunction renderFunction = null;
 
 /** 
  * The target time in milliseconds for a single engine loop cycle.
@@ -95,6 +108,7 @@ version (Native) {
  */
 export extern (C) void executeEngineLoopCycle(double elapsedTimeMs) {
     assert(updateFunction != null, "updateFunction cannot be null. Set it before starting the engine loop.");
+    assert(renderFunction != null, "renderFunction cannot be null. Set it before starting the engine loop.");
 
     double deltaTimeMs = elapsedTimeMs - lastTimeMs;
     if (deltaTimeMs < 0.0) {
@@ -115,7 +129,7 @@ export extern (C) void executeEngineLoopCycle(double elapsedTimeMs) {
         lagTimeMs -= targetTickTimeMs;
     }
 
-    // TODO: Call render function.
+    renderFunction();
     lastTimeMs = elapsedTimeMs;
 }
 
@@ -127,6 +141,7 @@ export extern (C) void executeEngineLoopCycle(double elapsedTimeMs) {
 export extern (C) void initEngine() {
     assert(initFunction != null, "initFunction cannot be null. Set it before engine initialization.");
     assert(updateFunction != null, "updateFunction cannot be null. Set it before engine initialization.");
+    assert(renderFunction != null, "renderFunction cannot be null. Set it before engine initialization.");
 
     version (WebAssembly) {
         import retrograde.wasm.memory : initializeHeapMemory;
@@ -153,9 +168,10 @@ export extern (C) void initEngine() {
 template DefaultEntryPoint() {
     void setupHooks() {
         mixin("
-            import retrograde.engine.runtime : initFunction, updateFunction;
+            import retrograde.engine.runtime : initFunction, updateFunction, renderFunction;
             initFunction = &init;
             updateFunction = &update;
+            renderFunction = &render;
         ");
     }
 
