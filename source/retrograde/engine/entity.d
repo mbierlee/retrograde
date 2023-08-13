@@ -16,6 +16,7 @@ import retrograde.std.stringid : StringId;
 import retrograde.std.memory : SharedPtr, makeShared;
 import retrograde.std.collections : Array;
 import retrograde.std.result : OperationResult, success, failure;
+import retrograde.std.option : Option, some, none;
 
 /** 
  * An entity is a container for components. It is a logical object that can be
@@ -143,6 +144,23 @@ struct Entity {
         }
 
         return false;
+    }
+
+    Option!Component getComponent(StringId componentType) {
+        for (size_t i = 0; i < components.length; i++) {
+            if (components[i].type == componentType) {
+                return some(components[i]);
+            }
+        }
+
+        return none!Component;
+    }
+
+    void withComponent(StringId componentType, void delegate(Component) fn) {
+        auto maybeComponent = getComponent(componentType);
+        if (maybeComponent.isDefined) {
+            fn(maybeComponent.value);
+        }
     }
 }
 
@@ -396,6 +414,43 @@ void runEcsTests() {
         Entity ent = Entity("ent_test".s);
         ent.addComponent("comp_test".sid);
         assert(ent.hasComponent("comp_test".sid));
+    });
+
+    test("Get component by type", {
+        auto componentType = "comp_test".sid;
+        auto data = makeSharedVoid(123);
+        auto expectedComponent = Component(
+            componentType,
+            data
+        );
+
+        Entity ent = Entity("ent_test".s);
+        ent.addComponent(expectedComponent);
+        auto actualComponentOption = ent.getComponent(componentType);
+        assert(actualComponentOption.isDefined);
+
+        auto actualComponent = actualComponentOption.value;
+        assert(actualComponent.type == componentType);
+        assert(*(cast(int*)(actualComponent.data.ptr)) == 123);
+    });
+
+    test("Execute delegate with component by type", {
+        static StringId componentType = "comp_test".sid;
+        auto data = makeSharedVoid(123);
+        auto component = Component(
+            componentType,
+            data
+        );
+
+        Entity ent = Entity("ent_test".s);
+        ent.addComponent(component);
+        static bool executedWithComponent = false;
+        ent.withComponent(componentType, (Component comp) {
+            executedWithComponent =
+            comp.type == componentType && *(cast(int*)(comp.data.ptr)) == 123;
+        });
+
+        assert(executedWithComponent);
     });
 }
 
