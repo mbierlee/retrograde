@@ -20,3 +20,5 @@ version (UnitTesting) {
         return 0;
     }
 }
+
+//TODO: implement for other platforms

@@ -12,7 +12,7 @@
 module retrograde.std.time;
 
 version (Windows) {
-    public import retrograde.windows.time;
+    public import retrograde.native.windows.time;
 }
 
 //TODO: implement for other platforms
