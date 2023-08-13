@@ -60,6 +60,10 @@ void writeln(T)(T value) {
     }
 }
 
+void writeln() {
+    writeln("");
+}
+
 /** 
  * Prints a value to the standard error stream.
  */
@@ -97,4 +101,8 @@ void writeErrLn(T)(T value) {
     } else {
         static assert(0, "Unsupported type: " ~ T.stringof);
     }
+}
+
+void writeErrLn() {
+    writeErrLn("");
 }

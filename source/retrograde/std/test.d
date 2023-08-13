@@ -33,6 +33,7 @@ void test(string name, void function() testFunc) {
     writeln(name);
     testFunc();
     writeln("  OK!");
+    ranTests += 1;
 }
 
 /** 
@@ -79,7 +80,13 @@ void runTests() {
     runHashTests();
     runEntityTests();
     runServiceTests();
+
+    writeln();
+    writeln("Tests ran:");
+    writeln(ranTests);
 }
+
+private uint ranTests;
 
 version (unittest) {
     unittest {
