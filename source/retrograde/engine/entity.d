@@ -182,12 +182,17 @@ struct Component {
     }
 }
 
-alias ProcessorFunc = void delegate(SharedPtr!Entity);
+alias ProcessorFunction = void delegate(SharedPtr!Entity);
+alias EntityAddedHookFunction = void delegate(SharedPtr!Entity);
+alias EntityRemovedHookFunction = void delegate(SharedPtr!Entity);
 
 struct EntityManager {
     private Array!(SharedPtr!Entity) entities;
     private ulong nextId = 1;
-    private Array!ProcessorFunc processors;
+
+    private Array!ProcessorFunction processors;
+    private Array!EntityAddedHookFunction entityAddedHooks;
+    private Array!EntityRemovedHookFunction entityRemovedHooks;
 
     OperationResult addEntity(SharedPtr!Entity entity) {
         if (nextId == 0) {
@@ -205,6 +210,11 @@ struct EntityManager {
 
         entity.ptr._id = nextId++;
         entities.add(entity);
+
+        foreach (hook; entityAddedHooks) {
+            hook(entity);
+        }
+
         return success;
     }
 
@@ -221,11 +231,17 @@ struct EntityManager {
             return success;
         }
 
+        SharedPtr!Entity removedEntity;
         foreach (size_t i, entity; entities) {
             if (entity.ptr.id == entityId) {
+                removedEntity = entity;
                 entities.remove(i);
                 break;
             }
+        }
+
+        foreach (hook; entityRemovedHooks) {
+            hook(removedEntity);
         }
 
         return success;
@@ -263,7 +279,7 @@ struct EntityManager {
         return false;
     }
 
-    void addProcessor(ProcessorFunc processor) {
+    void addProcessor(ProcessorFunction processor) {
         processors.add(processor);
     }
 
@@ -281,6 +297,14 @@ struct EntityManager {
         foreach (entity; entities) {
             fn(entity);
         }
+    }
+
+    void addEntityAddedHook(EntityAddedHookFunction fn) {
+        entityAddedHooks.add(fn);
+    }
+
+    void addEntityRemovedhook(EntityRemovedHookFunction fn) {
+        entityRemovedHooks.add(fn);
     }
 }
 
@@ -447,7 +471,7 @@ void runEntityManagerTests() {
 
     test("Add entity processor function", {
         EntityManager em;
-        ProcessorFunc processor = (SharedPtr!Entity ent) {};
+        ProcessorFunction processor = (SharedPtr!Entity ent) {};
         em.addProcessor(processor);
         assert(em.processors.length == 1);
     });
@@ -455,16 +479,39 @@ void runEntityManagerTests() {
     test("Updating entity manager invokes entity processor", {
         EntityManager em;
         static bool testEntityProcessed = false;
-        ProcessorFunc processor = (SharedPtr!Entity ent) {
+        em.addProcessor((SharedPtr!Entity ent) {
             testEntityProcessed = testEntityProcessed || ent.ptr.name == "ent_test".s;
-        };
+        });
 
         auto ent = makeEntity("ent_test");
         em.addEntity(ent);
 
-        em.addProcessor(processor);
         em.update();
         assert(testEntityProcessed);
     });
 
+    test("entityAdded hook is called when entity is added", {
+        EntityManager em;
+        static bool hookCalled = false;
+        em.addEntityAddedHook((SharedPtr!Entity ent) {
+            hookCalled = hookCalled || ent.ptr.name == "ent_test".s;
+        });
+
+        auto ent = makeEntity("ent_test");
+        em.addEntity(ent);
+        assert(hookCalled);
+    });
+
+    test("entityRemoved hook is called when entity is removed", {
+        EntityManager em;
+        static bool hookCalled = false;
+        em.addEntityRemovedhook((SharedPtr!Entity ent) {
+            hookCalled = hookCalled || ent.ptr.name == "ent_test".s;
+        });
+
+        auto ent = makeEntity("ent_test");
+        em.addEntity(ent);
+        em.removeEntity(ent);
+        assert(hookCalled);
+    });
 }
