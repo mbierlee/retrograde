@@ -27,16 +27,14 @@ void initRenderer() {
         renderPasses.add(genericRenderPass);
     }
 
-    version (WebAssembly) { // Temp to make unit tests still work
-        foreach (renderPass; renderPasses) {
-            auto program = compileShaderProgram(
-                renderPass.passName,
-                renderPass.vertexShader,
-                renderPass.fragmentShader
-            );
+    foreach (renderPass; renderPasses) {
+        auto program = compileShaderProgram(
+            renderPass.passName,
+            renderPass.vertexShader,
+            renderPass.fragmentShader
+        );
 
-            renderPass.program = program;
-        }
+        renderPass.program = program;
     }
 }
 

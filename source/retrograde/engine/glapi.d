@@ -14,3 +14,9 @@ module retrograde.engine.glapi;
 version (WebAssembly) {
     public import retrograde.wasm.glapi;
 }
+
+version (UnitTesting) {
+    uint compileShaderProgram(string name, string vertexShader, string fragmentShader) {
+        return 0;
+    }
+}
