@@ -194,6 +194,20 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         return -1;
     }
 
+    /** 
+     * Returns: Whether the given item exists in the array.
+     */
+    bool exists(T value) const {
+        return find(value) != -1;
+    }
+
+    /** 
+     * Returns: A D array of the array's items.
+     */
+    T[] arr() {
+        return items[0 .. _length];
+    }
+
     void opAssign(ref return scope inout typeof(this) other) {
         if (other._capacity == 0) {
             clear();
@@ -1056,6 +1070,12 @@ void runArrayTests() {
     test("Find item in Array", () {
         Array!int array = [1, 2, 3, 4, 5];
         assert(array.find(3) == 2);
+    });
+
+    test("Exists returns whether items exist in the Array", () {
+        Array!int array = [1, 2, 3, 4, 5];
+        assert(array.exists(4));
+        assert(!array.exists(6));
     });
 
     test("Find item in Array returns -1 when not found", () {

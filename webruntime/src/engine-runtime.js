@@ -2,7 +2,14 @@ import WasmModule from "./wasm.js";
 
 export default class EngineRuntimeModule extends WasmModule {
   glContext;
+
+  displayWidth;
+  displayHeight;
+  viewportNeedsReset = false;
+
   shaderPrograms = [];
+  buffers = [];
+  vertextArrayObjects = [];
 
   constructor() {
     super("./wasm/retrograde-app.wasm", {
@@ -28,13 +35,13 @@ export default class EngineRuntimeModule extends WasmModule {
         console.log(value);
       },
       writelnChar: (value) => {
-        console.log(value);
+        console.log(String.fromCharCode(value));
       },
       writelnWChar: (value) => {
-        console.log(value);
+        console.log(String.fromCharCode(value));
       },
       writelnDChar: (value) => {
-        console.log(value);
+        console.log(String.fromCharCode(value));
       },
       writelnUbyte: (value) => {
         console.log(value);
@@ -67,13 +74,13 @@ export default class EngineRuntimeModule extends WasmModule {
         console.error(value);
       },
       writeErrLnChar: (value) => {
-        console.error(value);
+        console.error(String.fromCharCode(value));
       },
       writeErrLnWChar: (value) => {
-        console.error(value);
+        console.error(String.fromCharCode(value));
       },
       writeErrLnDChar: (value) => {
-        console.error(value);
+        console.error(String.fromCharCode(value));
       },
       writeErrLnUbyte: (value) => {
         console.error(value);
@@ -84,6 +91,7 @@ export default class EngineRuntimeModule extends WasmModule {
       writeErrLnBool: (value) => {
         console.error(value == 1 ? "true" : "false");
       },
+
       __assert: (assertionMsgPtr, srcFilePtr, srcLineNumber) => {
         const assertionMessage = this.getCString(assertionMsgPtr);
         const srcFile = this.getCString(srcFilePtr);
@@ -91,6 +99,7 @@ export default class EngineRuntimeModule extends WasmModule {
           `Assertion error: ${assertionMessage}\n    at ${srcFile}:${srcLineNumber}`
         );
       },
+
       compileShaderProgram: (
         nameLength,
         namePtr,
@@ -137,10 +146,98 @@ export default class EngineRuntimeModule extends WasmModule {
         this.shaderPrograms.push(program);
         return this.shaderPrograms.length;
       },
-      setViewportFullViewSize: () => {
-        const canvas = document.querySelector("#renderArea");
-        canvas.width = canvas.clientWidth;
-        canvas.height = canvas.clientHeight;
+
+      resizeCanvasToDisplaySize: () => {
+        const canvas = this.glContext.canvas;
+        const needResize =
+          canvas.width !== this.displayWidth ||
+          canvas.height !== this.displayHeight;
+
+        if (needResize) {
+          canvas.width = this.displayWidth;
+          canvas.height = this.displayHeight;
+          this.glContext.viewport(0, 0, canvas.width, canvas.height);
+        }
+      },
+
+      glCreateBuffer: () => {
+        const buffer = this.glContext.createBuffer();
+        this.buffers.push(buffer);
+        return this.buffers.length;
+      },
+
+      glBindArrayBuffer: (buffer) => {
+        const bufferObject = this.getGlObject(this.buffers, buffer, "Buffer");
+        this.glContext.bindBuffer(this.glContext.ARRAY_BUFFER, bufferObject);
+      },
+
+      glArrayBufferData: (length, pointer) => {
+        const bufferData = this.getFloat32Array(pointer, length);
+        this.glContext.bufferData(
+          this.glContext.ARRAY_BUFFER,
+          bufferData,
+          this.glContext.STATIC_DRAW
+        );
+      },
+
+      glCreateVertexArray: () => {
+        const vertextArrayObject = this.glContext.createVertexArray();
+        this.vertextArrayObjects.push(vertextArrayObject);
+        return this.vertextArrayObjects.length;
+      },
+
+      glBindVertexArray: (vertextArrayObjectName) => {
+        const vertextArrayObject = this.getGlObject(
+          this.vertextArrayObjects,
+          vertextArrayObjectName,
+          "Vertex Array Object"
+        );
+
+        this.glContext.bindVertexArray(vertextArrayObject);
+      },
+
+      glEnableVertexAttribArray: (index) => {
+        this.glContext.enableVertexAttribArray(index);
+      },
+
+      glVertexAttribPointer: (
+        index,
+        size,
+        type,
+        normalized,
+        stride,
+        offset
+      ) => {
+        this.glContext.vertexAttribPointer(
+          index,
+          size,
+          type,
+          normalized,
+          stride,
+          offset
+        );
+      },
+
+      glClearColor: (red, green, blue, alpha) => {
+        this.glContext.clearColor(red, green, blue, alpha);
+      },
+
+      glClear: (mask) => {
+        this.glContext.clear(mask);
+      },
+
+      glUseProgram: (program) => {
+        const programObject = this.getGlObject(
+          this.shaderPrograms,
+          program,
+          "Shader Program"
+        );
+
+        this.glContext.useProgram(programObject);
+      },
+
+      glDrawArrays: (mode, first, count) => {
+        this.glContext.drawArrays(mode, first, count);
       },
     });
   }
@@ -176,5 +273,14 @@ export default class EngineRuntimeModule extends WasmModule {
 
     console.error(ctx.getProgramInfoLog(program));
     ctx.deleteProgram(program);
+  }
+
+  getGlObject(list, name, type) {
+    const index = name - 1;
+    if (index > list.length - 1) {
+      throw new Error(`${type} ${name} does not exist`);
+    }
+
+    return list[index];
   }
 }

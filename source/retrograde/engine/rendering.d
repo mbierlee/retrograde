@@ -11,41 +11,37 @@
 
 module retrograde.engine.rendering;
 
-import retrograde.std.stdio : writeln; // temp
 import retrograde.std.collections : Array;
 import retrograde.std.memory : SharedPtr;
 import retrograde.std.stringid : sid;
 
 import retrograde.engine.service : entityManager;
 import retrograde.engine.entity : Entity;
-import retrograde.engine.glapi : compileShaderProgram;
+import retrograde.engine.glapi : setClearColor, compileShaderProgram, initFrame, loadEntityModel, unloadEntityModel,
+    drawModel;
+
+import retrograde.data.model : ModelComponentType;
 
 enum RenderableComponentType = sid("comp_renderable");
 
 void initRenderer() {
-    if (renderPasses.length == 0) {
-        renderPasses.add(genericRenderPass);
-    }
-
-    foreach (renderPass; renderPasses) {
-        auto program = compileShaderProgram(
-            renderPass.passName,
-            renderPass.vertexShader,
-            renderPass.fragmentShader
-        );
-
-        renderPass.program = program;
-    }
+    setClearColor(Color(0, 0, 0, 1));
+    initRenderPasses();
+    initEntityManagerHooks();
 }
 
 void renderFrame() {
-    entityManager.forEachEntity((SharedPtr!Entity entity) {
-        if (!entity.ptr.hasComponent(RenderableComponentType)) {
-            return;
-        }
+    initFrame();
 
-        //TODO: the rest
-    });
+    foreach (const ref renderPass; renderPasses) {
+        entityManager.forEachEntity((SharedPtr!Entity entity) {
+            if (!entity.ptr.hasComponent(RenderableComponentType)) {
+                return;
+            }
+
+            drawModel(entity, renderPass);
+        });
+    }
 }
 
 struct RenderPass {
@@ -62,3 +58,45 @@ RenderPass genericRenderPass = RenderPass(
 );
 
 Array!RenderPass renderPasses;
+
+struct Color {
+    /// Red
+    float r;
+
+    /// Green
+    float g;
+
+    /// Blue
+    float b;
+
+    /// Alpha
+    float a;
+}
+
+private void initRenderPasses() {
+    if (renderPasses.length == 0) {
+        renderPasses.add(genericRenderPass);
+    }
+
+    foreach (ref renderPass; renderPasses) {
+        auto program = compileShaderProgram(
+            renderPass.passName,
+            renderPass.vertexShader,
+            renderPass.fragmentShader
+        );
+
+        renderPass.program = program;
+    }
+}
+
+private void initEntityManagerHooks() {
+    entityManager.addEntityAddedHook((SharedPtr!Entity entity) {
+        if (entity.hasComponent(ModelComponentType)) {
+            loadEntityModel(entity);
+        }
+    });
+
+    entityManager.addEntityRemovedhook((SharedPtr!Entity entity) {
+        unloadEntityModel(entity);
+    });
+}

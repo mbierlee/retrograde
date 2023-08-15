@@ -42,4 +42,21 @@ export default class WasmModule {
 
     return this.getString(pointer, length);
   }
+
+  getFloat32Array(pointer, length) {
+    const floatSize = 4;
+    const array = new Float32Array(length);
+    const dataview = new DataView(
+      this.memory.buffer,
+      pointer,
+      length * floatSize
+    );
+
+    for (let i = 0; i < length; i++) {
+      const val = dataview.getFloat32(i * floatSize, true);
+      array[i] = val;
+    }
+
+    return array;
+  }
 }

@@ -16,8 +16,17 @@ version (WebAssembly) {
 }
 
 version (UnitTesting) {
+    import retrograde.engine.entity : Entity;
+    import retrograde.std.memory : SharedPtr;
+
     uint compileShaderProgram(string name, string vertexShader, string fragmentShader) {
         return 0;
+    }
+
+    void loadEntityModel(SharedPtr!Entity entity) {
+    }
+
+    void unloadEntityModel(SharedPtr!Entity entity) {
     }
 }
 

@@ -311,7 +311,7 @@ struct EntityManager {
         }
     }
 
-    void forEachEntity(void delegate(SharedPtr!Entity) fn) {
+    void forEachEntity(scope void delegate(SharedPtr!Entity) fn) {
         foreach (entity; entities) {
             fn(entity);
         }
