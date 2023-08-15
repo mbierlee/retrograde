@@ -17,6 +17,8 @@ version (WebAssembly) {
 
 version (UnitTesting) {
     import retrograde.engine.entity : Entity;
+    import retrograde.engine.rendering : RenderPass, Color;
+
     import retrograde.std.memory : SharedPtr;
 
     uint compileShaderProgram(string name, string vertexShader, string fragmentShader) {
@@ -27,6 +29,15 @@ version (UnitTesting) {
     }
 
     void unloadEntityModel(SharedPtr!Entity entity) {
+    }
+
+    void setClearColor(Color color) {
+    }
+
+    void initFrame() {
+    }
+
+    void drawModel(SharedPtr!Entity entity, const ref RenderPass renderPass) {
     }
 }
 
