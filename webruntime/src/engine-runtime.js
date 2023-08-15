@@ -2,6 +2,7 @@ import WasmModule from "./wasm.js";
 
 export default class EngineRuntimeModule extends WasmModule {
   glContext;
+  shaderPrograms = [];
 
   constructor() {
     super("./wasm/retrograde-app.wasm", {
@@ -133,7 +134,8 @@ export default class EngineRuntimeModule extends WasmModule {
           fragmentShader
         );
 
-        return program;
+        this.shaderPrograms.push(program);
+        return this.shaderPrograms.length;
       },
       setViewportFullViewSize: () => {
         const canvas = document.querySelector("#renderArea");
