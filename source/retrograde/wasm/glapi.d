@@ -12,6 +12,7 @@
 module retrograde.wasm.glapi;
 
 version (WebAssembly)  :  //
+version (WebGl2)  :  //
 
 import retrograde.engine.entity : Entity, Component;
 import retrograde.engine.rendering : Color, RenderPass;
