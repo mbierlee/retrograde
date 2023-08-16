@@ -315,6 +315,17 @@ struct SharedPtr(T) {
         return refCount is null ? 0 : *refCount;
     }
 
+    /** 
+     * Returns: a casted copy of the shared pointer.
+     */
+    SharedPtr!CastT as(CastT)() {
+        SharedPtr!CastT castedPtr;
+        castedPtr._ptr = cast(CastT*) _ptr;
+        castedPtr.refCount = refCount;
+        castedPtr.incrementRefCount();
+        return castedPtr;
+    }
+
     void opAssign(ref return scope inout typeof(this) other) {
         if (this is other) {
             return;
@@ -776,5 +787,16 @@ void runSharedPointerTests() {
         sharedPtr._ptr = null;
         sharedPtr.refCount = null;
         assert(!sharedPtr.isDefined);
+    });
+
+    test("Cast a shared pointer", {
+        auto voidPtr = makeSharedVoid(5);
+        {
+            auto intPtr = voidPtr.as!int;
+            assert(voidPtr.ptr is intPtr.ptr);
+            assert(intPtr.useCount == 2);
+        }
+
+        assert(voidPtr.useCount == 1);
     });
 }
