@@ -321,7 +321,7 @@ struct EntityManager {
         entityAddedHooks.add(fn);
     }
 
-    void addEntityRemovedhook(EntityRemovedHookFunction fn) {
+    void addEntityRemovedHook(EntityRemovedHookFunction fn) {
         entityRemovedHooks.add(fn);
     }
 }
@@ -560,7 +560,7 @@ void runEntityManagerTests() {
     test("entityRemoved hook is called when entity is removed", {
         EntityManager em;
         static bool hookCalled = false;
-        em.addEntityRemovedhook((SharedPtr!Entity ent) {
+        em.addEntityRemovedHook((SharedPtr!Entity ent) {
             hookCalled = hookCalled || ent.ptr.name == "ent_test".s;
         });
 

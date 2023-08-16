@@ -96,7 +96,7 @@ private void initEntityManagerHooks() {
         }
     });
 
-    entityManager.addEntityRemovedhook((SharedPtr!Entity entity) {
+    entityManager.addEntityRemovedHook((SharedPtr!Entity entity) {
         unloadEntityModel(entity);
     });
 }
