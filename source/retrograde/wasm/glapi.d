@@ -114,9 +114,8 @@ void loadEntityModel(SharedPtr!Entity entity) {
     auto vertextArrayObject = glCreateVertexArray();
     glBindVertexArray(vertextArrayObject);
 
-    // TODO: Take attrib locations from global constants
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 4, GlConstant.FLOAT, false, 0, 0);
+    glEnableVertexAttribArray(PositionAttribLocation);
+    glVertexAttribPointer(PositionAttribLocation, 4, GlConstant.FLOAT, false, 0, 0);
 
     auto glModelInfoData = makeSharedVoid(GlModelInfo(
             vertextBufferObject,
@@ -130,7 +129,6 @@ void loadEntityModel(SharedPtr!Entity entity) {
     );
 
     entity.addComponent(glModelInfoComponent);
-
     loadedModels.add(model.name);
 }
 
@@ -162,6 +160,8 @@ void drawModel(SharedPtr!Entity entity, const ref RenderPass renderPass) {
 private enum GlModelInfoComponentType = sid("comp_gl_model_info");
 private Color clearColor = Color(0, 0, 0, 0);
 private Array!StringId loadedModels;
+
+private enum PositionAttribLocation = 0;
 
 private struct GlModelInfo {
     GLuint vertexBufferObject;
