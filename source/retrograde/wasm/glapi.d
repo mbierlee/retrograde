@@ -69,6 +69,11 @@ GLclampf clamp(float val) {
     }
 }
 
+export extern (C) void setViewport(uint width, uint height) {
+    viewportWidth = width;
+    viewportHeight = height;
+}
+
 /// -----------------------
 /// API standard functions.
 /// Other public exports in this module are not part of the standard Retrograde GL api.
@@ -160,6 +165,8 @@ void drawModel(SharedPtr!Entity entity, const ref RenderPass renderPass) {
 private enum GlModelInfoComponentType = sid("comp_gl_model_info");
 private Color clearColor = Color(0, 0, 0, 0);
 private Array!StringId loadedModels;
+private uint viewportWidth = 1;
+private uint viewportHeight = 1;
 
 private enum PositionAttribLocation = 0;
 

@@ -157,6 +157,7 @@ export default class EngineRuntimeModule extends WasmModule {
           canvas.width = this.displayWidth;
           canvas.height = this.displayHeight;
           this.glContext.viewport(0, 0, canvas.width, canvas.height);
+          this.setViewport(canvas.width, canvas.height);
         }
       },
 
@@ -327,5 +328,9 @@ export default class EngineRuntimeModule extends WasmModule {
     } catch (ex) {
       resizeObserver.observe(canvas, { box: "content-box" });
     }
+  }
+
+  setViewport(width, height) {
+    this.instance.exports.setViewport(width, height);
   }
 }
