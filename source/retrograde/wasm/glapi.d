@@ -92,7 +92,7 @@ void loadEntityModel(SharedPtr!Entity entity) {
     }
 
     auto modelComponent = maybeModelComponent.value;
-    Model* model = cast(Model*) modelComponent.data.ptr; //TODO: typecast as shared pointer instead. The share is lost here!
+    auto model = modelComponent.data.as!Model;
     if (loadedModels.exists(model.name)) {
         //TODO: Attach a GlModelInfoComponent to this entity with the loaded model.
         //      Probably need to make loadedModels into a map
@@ -151,11 +151,10 @@ void drawModel(SharedPtr!Entity entity, const ref RenderPass renderPass) {
         return;
     }
 
-    auto modelInfo = cast(GlModelInfo*) entity.ptr.getComponent(
-        GlModelInfoComponentType).value.data.ptr; //TODO: cast sharedpointer
+    auto modelInfo = entity.ptr.getComponent(GlModelInfoComponentType).value.data.as!GlModelInfo;
     glUseProgram(renderPass.program);
-    glBindVertexArray(modelInfo.vertexArrayObject);
-    glDrawArrays(GlConstant.TRIANGLES, 0, modelInfo.vertexCount);
+    glBindVertexArray(modelInfo.ptr.vertexArrayObject);
+    glDrawArrays(GlConstant.TRIANGLES, 0, modelInfo.ptr.vertexCount);
 }
 
 /// ---------------------
