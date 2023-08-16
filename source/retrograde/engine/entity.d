@@ -156,7 +156,7 @@ struct Entity {
         return none!Component;
     }
 
-    void withComponent(StringId componentType, void delegate(Component) fn) {
+    void withComponent(StringId componentType, scope void delegate(Component) fn) {
         auto maybeComponent = getComponent(componentType);
         if (maybeComponent.isDefined) {
             fn(maybeComponent.value);

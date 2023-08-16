@@ -120,7 +120,8 @@ void loadEntityModel(SharedPtr!Entity entity) {
 
     auto glModelInfoData = makeSharedVoid(GlModelInfo(
             vertextBufferObject,
-            vertextArrayObject
+            vertextArrayObject,
+            model.vertices.length
     ));
 
     auto glModelInfoComponent = Component(
@@ -154,7 +155,7 @@ void drawModel(SharedPtr!Entity entity, const ref RenderPass renderPass) {
         GlModelInfoComponentType).value.data.ptr; //TODO: cast sharedpointer
     glUseProgram(renderPass.program);
     glBindVertexArray(modelInfo.vertexArrayObject);
-    glDrawArrays(GlConstant.TRIANGLES, 0, 3); //TODO: get count from modelInfo
+    glDrawArrays(GlConstant.TRIANGLES, 0, modelInfo.vertexCount);
 }
 
 /// ---------------------
@@ -166,5 +167,6 @@ private Array!StringId loadedModels;
 private struct GlModelInfo {
     GLuint vertexBufferObject;
     GLuint vertexArrayObject;
+    GLuint vertexCount;
     //TODO: Add GlMeshInfos 
 }
