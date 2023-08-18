@@ -135,6 +135,9 @@ void loadEntityModel(SharedPtr!Entity entity) {
 
     entity.addComponent(glModelInfoComponent);
     loadedModels.add(model.name);
+
+    glBindArrayBuffer(0);
+    glBindVertexArray(0);
 }
 
 void unloadEntityModel(SharedPtr!Entity entity) {
@@ -158,6 +161,9 @@ void drawModel(SharedPtr!Entity entity, const ref RenderPass renderPass) {
     glUseProgram(renderPass.program);
     glBindVertexArray(modelInfo.ptr.vertexArrayObject);
     glDrawArrays(GlConstant.TRIANGLES, 0, modelInfo.ptr.vertexCount);
+
+    glUseProgram(0);
+    glBindVertexArray(0);
 }
 
 /// ---------------------

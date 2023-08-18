@@ -277,6 +277,10 @@ export default class EngineRuntimeModule extends WasmModule {
   }
 
   getGlObject(list, name, type) {
+    if (name == 0) {
+      return null;
+    }
+
     const index = name - 1;
     if (index > list.length - 1) {
       throw new Error(`${type} ${name} does not exist`);
