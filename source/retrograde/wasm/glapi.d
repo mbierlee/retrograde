@@ -19,7 +19,7 @@ import retrograde.engine.rendering : Color, RenderPass;
 
 import retrograde.data.model : ModelComponentType, Model;
 
-import retrograde.std.memory : SharedPtr, makeSharedVoid;
+import retrograde.std.memory : SharedPtr, makeShared;
 import retrograde.std.collections : Array;
 import retrograde.std.stringid : StringId, sid;
 
@@ -104,33 +104,39 @@ void loadEntityModel(SharedPtr!Entity entity) {
         return;
     }
 
-    auto vertextBufferObject = glCreateBuffer();
-    glBindArrayBuffer(vertextBufferObject);
+    auto modelInfo = makeShared!GlModelInfo;
 
-    Array!GLfloat vertexData;
-    foreach (vertex; model.vertices) {
-        vertexData.add(vertex.x);
-        vertexData.add(vertex.y);
-        vertexData.add(vertex.z);
-        vertexData.add(vertex.w);
+    foreach (ref mesh; model.meshes) {
+        auto vertexBufferObject = glCreateBuffer();
+        glBindArrayBuffer(vertexBufferObject);
+
+        Array!GLfloat vertexData;
+        foreach (vertex; mesh.vertices) {
+            vertexData.add(vertex.x);
+            vertexData.add(vertex.y);
+            vertexData.add(vertex.z);
+            vertexData.add(vertex.w);
+        }
+
+        glArrayBufferData(vertexData.arr);
+        auto vertexArrayObject = glCreateVertexArray();
+        glBindVertexArray(vertexArrayObject);
+
+        glEnableVertexAttribArray(PositionAttribLocation);
+        glVertexAttribPointer(PositionAttribLocation, 4, GlConstant.FLOAT, false, 0, 0);
+
+        auto meshInfo = GlMeshInfo(
+            vertexBufferObject,
+            vertexArrayObject,
+            mesh.vertices.length
+        );
+
+        modelInfo.ptr.meshes.add(meshInfo);
     }
-
-    glArrayBufferData(vertexData.arr);
-    auto vertextArrayObject = glCreateVertexArray();
-    glBindVertexArray(vertextArrayObject);
-
-    glEnableVertexAttribArray(PositionAttribLocation);
-    glVertexAttribPointer(PositionAttribLocation, 4, GlConstant.FLOAT, false, 0, 0);
-
-    auto glModelInfoData = makeSharedVoid(GlModelInfo(
-            vertextBufferObject,
-            vertextArrayObject,
-            model.vertices.length
-    ));
 
     auto glModelInfoComponent = Component(
         GlModelInfoComponentType,
-        glModelInfoData
+        modelInfo.as!void
     );
 
     entity.addComponent(glModelInfoComponent);
@@ -157,10 +163,13 @@ void drawModel(SharedPtr!Entity entity, const ref RenderPass renderPass) {
         return;
     }
 
-    auto modelInfo = entity.ptr.getComponent(GlModelInfoComponentType).value.data.as!GlModelInfo;
     glUseProgram(renderPass.program);
-    glBindVertexArray(modelInfo.ptr.vertexArrayObject);
-    glDrawArrays(GlConstant.TRIANGLES, 0, modelInfo.ptr.vertexCount);
+
+    auto modelInfo = entity.ptr.getComponent(GlModelInfoComponentType).value.data.as!GlModelInfo;
+    foreach (ref meshInfo; modelInfo.ptr.meshes) {
+        glBindVertexArray(meshInfo.vertexArrayObject);
+        glDrawArrays(GlConstant.TRIANGLES, 0, meshInfo.vertexCount);
+    }
 
     glUseProgram(0);
     glBindVertexArray(0);
@@ -176,9 +185,20 @@ private uint viewportHeight = 1;
 
 private enum PositionAttribLocation = 0;
 
-private struct GlModelInfo {
+private struct GlMeshInfo {
     GLuint vertexBufferObject;
     GLuint vertexArrayObject;
     GLuint vertexCount;
-    //TODO: Add GlMeshInfos 
+}
+
+private struct GlModelInfo {
+    Array!GlMeshInfo meshes;
+
+    this(ref return scope inout typeof(this) other) {
+        this.meshes = other.meshes;
+    }
+
+    void opAssign(ref return scope inout typeof(this) other) {
+        this.meshes = other.meshes;
+    }
 }

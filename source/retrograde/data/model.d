@@ -50,21 +50,32 @@ struct Face {
 //     VertexComponent w;
 // }
 
-struct Model {
-    StringId name;
+struct Mesh {
     Array!Vertex vertices;
-    Array!Face faces; 
-    //TODO: use multiple meshes instead
+    Array!Face faces;
 
     this(ref return scope inout typeof(this) other) {
-        this.name = other.name;
         this.vertices = other.vertices;
         this.faces = other.faces;
     }
 
     void opAssign(ref return scope inout typeof(this) other) {
-        this.name = other.name;
         this.vertices = other.vertices;
         this.faces = other.faces;
+    }
+}
+
+struct Model {
+    StringId name;
+    Array!Mesh meshes;
+
+    this(ref return scope inout typeof(this) other) {
+        this.name = other.name;
+        this.meshes = other.meshes;
+    }
+
+    void opAssign(ref return scope inout typeof(this) other) {
+        this.name = other.name;
+        this.meshes = other.meshes;
     }
 }
