@@ -13,6 +13,7 @@ module retrograde.std.string;
 
 import retrograde.std.memory : free, calloc, memcpy, realloc, unique, UniquePtr;
 import retrograde.std.hash : hashOf;
+import retrograde.std.collections : Array;
 
 /** 
  * A dynamic string that manages its own memory.
@@ -257,6 +258,23 @@ export extern (C) int strcmp(const void* ptr1, const void* ptr2) {
     return *str1 - *str2;
 }
 
+private Array!T toArray(T)(string str) {
+    Array!T result;
+    foreach (c; str) {
+        result.add(c);
+    }
+
+    return result;
+}
+
+Array!char toCharArray(string str) {
+    return toArray!char(str);
+}
+
+Array!ubyte toByteArray(string str) {
+    return toArray!ubyte(str);
+}
+
 version (UnitTesting)  :  ///
 
 void runStringTests() {
@@ -390,4 +408,15 @@ void runStringTests() {
         assert(str.toHash() == str2.toHash());
     });
 
+    test("Convert D string to char Array", {
+        Array!char expectedArray = ['h', 'e', 'l', 'l', 'o'];
+        Array!char actualArray = "hello".toCharArray;
+        assert(expectedArray == actualArray);
+    });
+
+    test("Convert D string to ubyte Array", {
+        Array!ubyte expectedArray = ['h', 'e', 'l', 'l', 'o'];
+        Array!ubyte actualArray = "hello".toByteArray;
+        assert(expectedArray == actualArray);
+    });
 }
