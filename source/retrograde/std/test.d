@@ -67,6 +67,7 @@ void runTests() {
     import retrograde.std.math : runMathTests;
     import retrograde.std.collections : runCollectionsTests;
     import retrograde.std.hash : runHashTests;
+    import retrograde.std.storage : runFileTests;
     import retrograde.engine.entity : runEntityTests;
     import retrograde.engine.service : runServiceTests;
 
@@ -80,6 +81,7 @@ void runTests() {
     runHashTests();
     runEntityTests();
     runServiceTests();
+    runFileTests();
 
     writeln();
     writeln("Tests ran:");
