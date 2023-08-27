@@ -326,6 +326,22 @@ Array!ubyte toByteArray(string str) {
     return toArray!ubyte(str);
 }
 
+String stripNonNumeric(inout ref String str) {
+    String result;
+    foreach (char c; str) {
+        if (c.isNumeric) {
+            result ~= c;
+        }
+    }
+
+    return result;
+}
+
+bool isNumeric(char c) {
+    return c == '0' || c == '1' || c == '2' || c == '3' || c == '4'
+        || c == '5' || c == '6' || c == '7' || c == '8' || c == '9';
+}
+
 version (UnitTesting)  :  ///
 
 void runStringTests() {
@@ -505,5 +521,10 @@ void runStringTests() {
         assert(iterator.hasPrevious);
         assert(iterator.previous.value == 'H');
         assert(!iterator.hasPrevious);
+    });
+
+    test("stripNonNumeric gets rid of numbers", {
+        auto input = "1_2.3ignored5".s;
+        assert(input.stripNonNumeric == "1235".s);
     });
 }
