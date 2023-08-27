@@ -64,6 +64,13 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
         memcpy(cast(void*)(ptr + prevLength), cast(void*) rhs.ptr, rhs.length * T.sizeof);
     }
 
+    void opOpAssign(string op : "~")(T rhs) {
+        auto end = _length;
+        _length += 1;
+        ptr = cast(T*) realloc(cast(void*) ptr, _length * T.sizeof);
+        ptr[end] = rhs;
+    }
+
     bool opCast(T : bool)() const {
         return ptr !is null && _length > 0;
     }
@@ -78,6 +85,11 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
 
     typeof(this) opBinary(string op : "~")(typeof(this) rhs) {
         return this.opBinary!op(rhs);
+    }
+
+    typeof(this) opBinary(string op : "~")(T rhs) {
+        this ~= rhs;
+        return this;
     }
 
     T opIndex(size_t index) {
@@ -457,6 +469,16 @@ void runStringTests() {
         Array!ubyte expectedArray = ['h', 'e', 'l', 'l', 'o'];
         Array!ubyte actualArray = "hello".toByteArray;
         assert(expectedArray == actualArray);
+    });
+
+    test("Append char to String", {
+        auto str = String("hi");
+        str ~= '!';
+        assert(str == "hi!");
+
+        auto str2 = String("bye");
+        str2 = str2 ~ '!';
+        assert(str2 == "bye!");
     });
 
     test("String iterator of empty string", {
