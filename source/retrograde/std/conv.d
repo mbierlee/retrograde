@@ -25,8 +25,8 @@ int toInt(string str) {
     return convStr.toInt;
 }
 
-int toInt(inout ref String str) {
-    int result = 0;
+T toIntegralNumber(T)(inout ref String str) if (is(T == int) || is(T == long)) {
+    T result = 0;
     String sanitizedStr = str.stripNonNumeric();
     foreach (size_t i, char c; sanitizedStr) {
         double exp = sanitizedStr.length - i - 1;
@@ -37,10 +37,49 @@ int toInt(inout ref String str) {
     return result;
 }
 
+alias toInt = toIntegralNumber!int;
+alias toLong = toIntegralNumber!long;
+
+float toFloat(string str, char decimalChar = '.') {
+    auto convStr = str.s;
+    return convStr.toFloat(decimalChar);
+}
+
+T toRealNumber(T)(inout ref String str, char decimalChar = '.')
+        if (is(T == float) || is(T == double) || is(T == real)) {
+    String wholePart;
+    String decimalPart;
+    bool foundDecimal = false;
+    foreach (char c; str) {
+        if (c == decimalChar) {
+            foundDecimal = true;
+            continue;
+        }
+
+        if (foundDecimal) {
+            decimalPart ~= c;
+        } else {
+            wholePart ~= c;
+        }
+    }
+
+    decimalPart = decimalPart.stripNonNumeric;
+    T result =
+        cast(T) wholePart.toInt
+        + (cast(T) decimalPart.toInt / pow(10, decimalPart.length));
+
+    return result;
+}
+
+alias toFloat = toRealNumber!float;
+alias toDouble = toRealNumber!double;
+alias toReal = toRealNumber!real;
+
 version (UnitTesting)  :  ///
 
 void runConvTests() {
     import retrograde.std.test : test, writeSection;
+    import retrograde.std.math : approxEqual;
 
     writeSection("-- Conv tests --");
 
@@ -74,5 +113,19 @@ void runConvTests() {
         assert("2,147,483,647".toInt == 2_147_483_647);
         assert("4ignored5".toInt == 45);
         assert("2.78".toInt == 278);
+    });
+
+    test("Convert string to float", {
+        assert("1.0".toFloat.approxEqual(1.0));
+        assert("1.0.0".toFloat.approxEqual(1.0));
+        assert("0.1".toFloat.approxEqual(0.1));
+        assert("123.4".toFloat.approxEqual(123.4));
+        assert("123.4.5bla6".toFloat.approxEqual(123.456));
+
+        assert("1,0".toFloat(',').approxEqual(1.0));
+        assert("1,0.0".toFloat(',').approxEqual(1.0));
+        assert("0,1".toFloat(',').approxEqual(0.1));
+        assert("123,4".toFloat(',').approxEqual(123.4));
+        assert("123,4.5bla6".toFloat(',').approxEqual(123.456));
     });
 }

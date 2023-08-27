@@ -17,6 +17,11 @@ version (Native) {
     public import retrograde.wasm.math;
 }
 
+bool approxEqual(T)(T lhs, T rhs, T deviation = 0.0001)
+        if (is(T == float) || is(T == double) || is(T == real)) {
+    return (lhs - deviation) < rhs && (lhs + deviation) > rhs;
+}
+
 version (UnitTesting)  :  ///
 
 void runMathTests() {
@@ -45,4 +50,12 @@ void runMathTests() {
         assert(pow(5.0, 5.0) == 3125.0);
         assert(pow(10.0, 0.0) == 1.0);
     });
+
+    test("approxEqual", {
+        assert(approxEqual(0.1, 0.1));
+        assert(approxEqual(0.1, 0.10));
+        assert(!approxEqual(0.2, 0.1));
+        assert(!approxEqual(1, 0.1));
+    });
+
 }
