@@ -221,18 +221,34 @@ alias DString = StringT!dchar;
 struct StringIteratorT(T) {
     StringT!T str;
 
-    private size_t index = 0;
+    private size_t _index = 0;
 
     bool hasNext() const {
-        return index < str.length;
+        return _index < str.length;
+    }
+
+    bool hasPrevious() const {
+        return _index > 0;
     }
 
     Option!T next() {
-        if (index >= str.length) {
+        if (_index >= str.length) {
             return none!T;
         }
 
-        return some(str[index++]);
+        return some(str[_index++]);
+    }
+
+    size_t index() {
+        return _index;
+    }
+
+    Option!T previous() {
+        if (_index == 0) {
+            return none!T;
+        }
+
+        return some(str[--_index]);
     }
 }
 
@@ -447,6 +463,7 @@ void runStringTests() {
         auto iterator = StringIterator("".s);
         assert(!iterator.hasNext);
         assert(iterator.next.isEmpty);
+        assert(iterator.previous.isEmpty);
     });
 
     test("String iterator with filled string", {
@@ -459,5 +476,12 @@ void runStringTests() {
         assert(iterator.next.value == '!');
         assert(!iterator.hasNext);
         assert(iterator.next.isEmpty);
+
+        assert(iterator.previous.value == '!');
+        assert(iterator.hasPrevious);
+        assert(iterator.previous.value == 'i');
+        assert(iterator.hasPrevious);
+        assert(iterator.previous.value == 'H');
+        assert(!iterator.hasPrevious);
     });
 }
