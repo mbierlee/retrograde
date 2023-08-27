@@ -11,7 +11,7 @@
 
 module retrograde.std.conv;
 
-import retrograde.std.string : String, stripNonNumeric, s;
+import retrograde.std.string : String, stripNonNumeric, s, isNumeric;
 import retrograde.std.math : pow;
 
 int toInt(char c) {
@@ -56,6 +56,10 @@ T toRealNumber(T)(inout ref String str, char decimalChar = '.')
             continue;
         }
 
+        if (!c.isNumeric) {
+            continue;
+        }
+
         if (foundDecimal) {
             decimalPart ~= c;
         } else {
@@ -63,7 +67,6 @@ T toRealNumber(T)(inout ref String str, char decimalChar = '.')
         }
     }
 
-    decimalPart = decimalPart.stripNonNumeric;
     T result =
         cast(T) wholePart.toInt
         + (cast(T) decimalPart.toInt / pow(10, decimalPart.length));
