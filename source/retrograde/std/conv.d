@@ -75,6 +75,21 @@ alias toFloat = toRealNumber!float;
 alias toDouble = toRealNumber!double;
 alias toReal = toRealNumber!real;
 
+T to(T)(string str) {
+    return str.s.to!T;
+}
+
+//TODO: Find out why "inout ref" crashes.
+T to(T)(String str) {
+    static if (is(T == int) || is(T == long)) {
+        return str.toIntegralNumber!T;
+    } else static if (is(T == float) || is(T == double) || is(T == real)) {
+        return str.toRealNumber!T;
+    } else {
+        static assert(0, "Unsupported conversion");
+    }
+}
+
 version (UnitTesting)  :  ///
 
 void runConvTests() {
@@ -127,5 +142,12 @@ void runConvTests() {
         assert("0,1".toFloat(',').approxEqual(0.1));
         assert("123,4".toFloat(',').approxEqual(123.4));
         assert("123,4.5bla6".toFloat(',').approxEqual(123.456));
+    });
+
+    test("Convert string to types using unversal conv", {
+        assert("1.0".to!float.approxEqual(1.0));
+        assert("123".to!int == 123);
+        assert("123.4".to!long == 1234);
+        assert("11.3".to!double.approxEqual(11.3));
     });
 }
