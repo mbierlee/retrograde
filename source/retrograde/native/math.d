@@ -13,7 +13,7 @@ module retrograde.native.math;
 
 version (Native)  :  //
 
-import core.stdc.math : ceil, ceilf, ceill, floor, floorf, floorl;
+import core.stdc.math : ceil, ceilf, ceill, floor, floorf, floorl, pow, powf, powl;
 
 T ceil(T)(T value) {
     static if (is(T == float)) {
@@ -34,6 +34,18 @@ T floor(T)(T value) {
         return floor(value);
     } else static if (is(T == real)) {
         return floorl(value);
+    } else {
+        static assert(0, "Unsupported type");
+    }
+}
+
+T pow(T)(T base, T exponent) {
+    static if (is(T == float)) {
+        return powf(base, exponent);
+    } else static if (is(T == double)) {
+        return pow(base, exponent);
+    } else static if (is(T == real)) {
+        return powl(base, exponent);
     } else {
         static assert(0, "Unsupported type");
     }

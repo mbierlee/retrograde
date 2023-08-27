@@ -39,4 +39,10 @@ void runMathTests() {
         assert(floor(1.9) == 1.0);
         assert(floor(2.0) == 2.0);
     });
+
+    test("pow", {
+        assert(pow(10.0, 1.0) == 10.0);
+        assert(pow(5.0, 5.0) == 3125.0);
+        assert(pow(10.0, 0.0) == 1.0);
+    });
 }
