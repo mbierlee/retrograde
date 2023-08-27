@@ -96,4 +96,11 @@ void runOptionTests() {
         assert(option.isEmpty());
         assert(!option.isDefined());
     });
+
+    test("Equality Checks", {
+        assert(some(44) == some(44));
+        assert(some(44) != some(45));
+        assert(none!int == none!int);
+        assert(some(77) != none!int);
+    });
 }

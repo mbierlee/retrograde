@@ -17,6 +17,16 @@ import retrograde.std.collections : Array;
 struct File {
     String fileName;
     Array!ubyte data;
+
+    this(ref return scope inout typeof(this) other) {
+        this.fileName = fileName;
+        this.data = data;
+    }
+
+    void opAssign(ref return scope inout typeof(this) other) {
+        this.fileName = fileName;
+        this.data = data;
+    }
 }
 
 version (UnitTesting)  :  ///

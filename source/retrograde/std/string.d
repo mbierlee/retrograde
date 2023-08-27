@@ -14,6 +14,7 @@ module retrograde.std.string;
 import retrograde.std.memory : free, calloc, memcpy, realloc, unique, UniquePtr;
 import retrograde.std.hash : hashOf;
 import retrograde.std.collections : Array;
+import retrograde.std.option : Option, some, none;
 
 /** 
  * A dynamic string that manages its own memory.
@@ -217,6 +218,28 @@ alias String = StringT!char;
 alias WString = StringT!wchar;
 alias DString = StringT!dchar;
 
+struct StringIteratorT(T) {
+    StringT!T str;
+
+    private size_t index = 0;
+
+    bool hasNext() const {
+        return index < str.length;
+    }
+
+    Option!T next() {
+        if (index >= str.length) {
+            return none!T;
+        }
+
+        return some(str[index++]);
+    }
+}
+
+alias StringIterator = StringIteratorT!char;
+alias WStringIterator = StringIteratorT!wchar;
+alias DStringIterator = StringIteratorT!dchar;
+
 /** 
  * Convenience function for creating a String from a D string.
  *
@@ -418,5 +441,23 @@ void runStringTests() {
         Array!ubyte expectedArray = ['h', 'e', 'l', 'l', 'o'];
         Array!ubyte actualArray = "hello".toByteArray;
         assert(expectedArray == actualArray);
+    });
+
+    test("String iterator of empty string", {
+        auto iterator = StringIterator("".s);
+        assert(!iterator.hasNext);
+        assert(iterator.next.isEmpty);
+    });
+
+    test("String iterator with filled string", {
+        auto iterator = StringIterator("Hi!".s);
+        assert(iterator.hasNext);
+        assert(iterator.next.value == 'H');
+        assert(iterator.hasNext);
+        assert(iterator.next.value == 'i');
+        assert(iterator.hasNext);
+        assert(iterator.next.value == '!');
+        assert(!iterator.hasNext);
+        assert(iterator.next.isEmpty);
     });
 }
