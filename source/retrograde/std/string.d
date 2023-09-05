@@ -342,6 +342,24 @@ bool isNumeric(char c) {
         || c == '5' || c == '6' || c == '7' || c == '8' || c == '9';
 }
 
+Array!(StringT!T) split(T)(StringT!T str, T delimiter) {
+    Array!(StringT!T) parts;
+    StringT!T currentPart;
+    foreach (T chr; str) {
+        if (chr == delimiter) {
+            parts.add(currentPart);
+            currentPart = "";
+            continue;
+        }
+
+        currentPart ~= chr;
+    }
+
+    parts.add(currentPart);
+
+    return parts;
+}
+
 version (UnitTesting)  :  ///
 
 void runStringTests() {
@@ -526,5 +544,16 @@ void runStringTests() {
     test("stripNonNumeric gets rid of numbers", {
         auto input = "1_2.3ignored5".s;
         assert(input.stripNonNumeric == "1235".s);
+    });
+
+    test("Split a string", {
+        import retrograde.std.stdio : writeln;
+
+        auto parts = "1 2 3,4".s.split(' ');
+        writeln(parts.length);
+        assert(parts.length == 3);
+        assert(parts[0] == "1");
+        assert(parts[1] == "2");
+        assert(parts[2] == "3,4");
     });
 }
