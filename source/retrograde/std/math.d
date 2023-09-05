@@ -19,7 +19,11 @@ version (Native) {
 
 bool approxEqual(T)(T lhs, T rhs, T deviation = 0.0001)
         if (is(T == float) || is(T == double) || is(T == real)) {
-    return (lhs - deviation) < rhs && (lhs + deviation) > rhs;
+    if (lhs > 0) {
+        return (lhs - deviation) < rhs && (lhs + deviation) > rhs;
+    } else {
+        return (lhs + deviation) > rhs && (lhs - deviation) < rhs;
+    }
 }
 
 version (UnitTesting)  :  ///
@@ -56,6 +60,11 @@ void runMathTests() {
         assert(approxEqual(0.1, 0.10));
         assert(!approxEqual(0.2, 0.1));
         assert(!approxEqual(1, 0.1));
+
+        assert(approxEqual(-0.1, -0.1));
+        assert(approxEqual(-0.1, -0.10));
+        assert(!approxEqual(-0.2, -0.1));
+        assert(!approxEqual(-1, -0.1));
     });
 
 }

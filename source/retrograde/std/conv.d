@@ -27,14 +27,32 @@ int toInt(string str) {
 
 T toIntegralNumber(T)(inout ref String str) if (is(T == int) || is(T == long)) {
     T result = 0;
-    String sanitizedStr = str.stripNonNumeric();
-    foreach (size_t i, char c; sanitizedStr) {
-        double exp = sanitizedStr.length - i - 1;
-        int digit = c.toInt;
-        result += cast(int)(digit * pow(10.0, exp));
+    bool isNegative = false;
+    size_t digits = 0;
+    foreach (char c; str) {
+        if (c.isNumeric) {
+            digits += 1;
+        }
     }
 
-    return result;
+    size_t currentDigit = 0;
+    foreach (char c; str) {
+        if (c == '-' && result == 0) {
+            isNegative = true;
+            continue;
+        }
+
+        if (!c.isNumeric) {
+            continue;
+        }
+
+        double exp = digits - currentDigit - 1;
+        int digit = c.toInt;
+        result += cast(int)(digit * pow(10.0, exp));
+        currentDigit += 1;
+    }
+
+    return isNegative ? result * -1 : result;
 }
 
 alias toInt = toIntegralNumber!int;
@@ -50,7 +68,13 @@ T toRealNumber(T)(inout ref String str, char decimalChar = '.')
     String wholePart;
     String decimalPart;
     bool foundDecimal = false;
+    bool isNegative = false;
     foreach (char c; str) {
+        if (c == '-' && wholePart.length == 0) {
+            isNegative = true;
+            continue;
+        }
+
         if (c == decimalChar) {
             foundDecimal = true;
             continue;
@@ -71,7 +95,7 @@ T toRealNumber(T)(inout ref String str, char decimalChar = '.')
         cast(T) wholePart.toInt
         + (cast(T) decimalPart.toInt / pow(10, decimalPart.length));
 
-    return result;
+    return isNegative ? result * -1 : result;
 }
 
 alias toFloat = toRealNumber!float;
@@ -131,6 +155,11 @@ void runConvTests() {
         assert("2,147,483,647".toInt == 2_147_483_647);
         assert("4ignored5".toInt == 45);
         assert("2.78".toInt == 278);
+
+        assert("-99".toInt == -99);
+        assert("9-9".toInt == 99);
+        assert("99-".toInt == 99);
+        assert("-99-".toInt == -99);
     });
 
     test("Convert string to float", {
@@ -145,6 +174,13 @@ void runConvTests() {
         assert("0,1".toFloat(',').approxEqual(0.1));
         assert("123,4".toFloat(',').approxEqual(123.4));
         assert("123,4.5bla6".toFloat(',').approxEqual(123.456));
+
+        assert("-1.0".toFloat.approxEqual(-1.0));
+        assert("-1.0.0".toFloat.approxEqual(-1.0));
+        assert("-0.1".toFloat.approxEqual(-0.1));
+        assert("-123.4".toFloat.approxEqual(-123.4));
+        assert("-123.4.5bla6".toFloat.approxEqual(-123.456));
+        assert("12-3.4.5bla6".toFloat.approxEqual(123.456));
     });
 
     test("Convert string to types using unversal conv", {
