@@ -342,11 +342,15 @@ bool isNumeric(char c) {
         || c == '5' || c == '6' || c == '7' || c == '8' || c == '9';
 }
 
-Array!(StringT!T) split(T)(StringT!T str, T delimiter) {
+Array!(StringT!T) split(T)(StringT!T str, T delimiter, bool omitEmptyParts = true) {
     Array!(StringT!T) parts;
     StringT!T currentPart;
     foreach (T chr; str) {
         if (chr == delimiter) {
+            if (omitEmptyParts && currentPart.length == 0) {
+                continue;
+            }
+
             parts.add(currentPart);
             currentPart = "";
             continue;
@@ -547,13 +551,16 @@ void runStringTests() {
     });
 
     test("Split a string", {
-        import retrograde.std.stdio : writeln;
-
         auto parts = "1 2 3,4".s.split(' ');
-        writeln(parts.length);
         assert(parts.length == 3);
         assert(parts[0] == "1");
         assert(parts[1] == "2");
         assert(parts[2] == "3,4");
+
+        auto parts2 = "1    2     3,4".s.split(' ', true);
+        assert(parts2.length == 3);
+        assert(parts2[0] == "1");
+        assert(parts2[1] == "2");
+        assert(parts2[2] == "3,4");
     });
 }
