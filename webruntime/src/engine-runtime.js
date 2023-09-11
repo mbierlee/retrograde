@@ -186,13 +186,14 @@ export default class EngineRuntimeModule extends WasmModule {
         this.glContext.bindBuffer(target, bufferObject);
       },
 
-      glBufferData: (target, length, pointer, usage) => {
+      glBufferDataFloat: (target, length, pointer, usage) => {
         const bufferData = this.getFloat32Array(pointer, length);
-        this.glContext.bufferData(
-          target,
-          bufferData,
-          usage
-        );
+        this.glContext.bufferData(target, bufferData, usage);
+      },
+
+      glBufferDataUInt: (target, length, pointer, usage) => {
+        const bufferData = this.getUnsignedInt32Array(pointer, length);
+        this.glContext.bufferData(target, bufferData, usage);
       },
 
       glCreateVertexArray: () => {
@@ -253,6 +254,10 @@ export default class EngineRuntimeModule extends WasmModule {
 
       glDrawArrays: (mode, first, count) => {
         this.glContext.drawArrays(mode, first, count);
+      },
+
+      glDrawElements: (mode, count, type) => {
+        this.glContext.drawElements(mode, count, type, 0);
       },
     });
   }

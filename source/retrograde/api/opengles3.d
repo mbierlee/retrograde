@@ -66,7 +66,7 @@ void loadEntityModel(SharedPtr!Entity entity) {
             vertexData.add(vertex.w);
         }
 
-        glBufferData(GL_ARRAY_BUFFER, vertexData.arr, GL_STATIC_DRAW);
+        glBufferDataFloat(GL_ARRAY_BUFFER, vertexData.arr, GL_STATIC_DRAW);
         auto vertexArrayObject = glCreateVertexArray();
         glBindVertexArray(vertexArrayObject);
 
@@ -76,8 +76,25 @@ void loadEntityModel(SharedPtr!Entity entity) {
         auto meshInfo = GlMeshInfo(
             vertexBufferObject,
             vertexArrayObject,
-            mesh.vertices.length
+            0,
+            mesh.vertices.length,
+            0
         );
+
+        if (mesh.faces.length > 0) {
+            GLuint elementBufferObject = glCreateBuffer();
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBufferObject);
+            Array!GLuint indexData;
+            foreach (face; mesh.faces) {
+                indexData.add(face.vA);
+                indexData.add(face.vB);
+                indexData.add(face.vC);
+            }
+
+            glBufferDataUInt(GL_ELEMENT_ARRAY_BUFFER, indexData.arr, GL_STATIC_DRAW);
+            meshInfo.elementBufferObject = elementBufferObject;
+            meshInfo.elementCount = indexData.length;
+        }
 
         modelInfo.ptr.meshes.add(meshInfo);
     }
@@ -91,6 +108,7 @@ void loadEntityModel(SharedPtr!Entity entity) {
     loadedModels.add(model.name);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
 
@@ -116,7 +134,12 @@ void drawModel(SharedPtr!Entity entity, const ref RenderPass renderPass) {
     auto modelInfo = entity.ptr.getComponent(GlModelInfoComponentType).value.data.as!GlModelInfo;
     foreach (ref meshInfo; modelInfo.ptr.meshes) {
         glBindVertexArray(meshInfo.vertexArrayObject);
-        glDrawArrays(GL_TRIANGLES, 0, meshInfo.vertexCount);
+        if (meshInfo.elementCount > 0) {
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshInfo.elementBufferObject);
+            glDrawElements(GL_TRIANGLES, meshInfo.elementCount, GL_UNSIGNED_INT, null);
+        } else {
+            glDrawArrays(GL_TRIANGLES, 0, meshInfo.vertexCount);
+        }
     }
 
     glUseProgram(0);
@@ -149,7 +172,9 @@ private enum PositionAttribLocation = 0;
 private struct GlMeshInfo {
     GLuint vertexBufferObject;
     GLuint vertexArrayObject;
+    GLuint elementBufferObject;
     GLuint vertexCount;
+    GLuint elementCount;
 }
 
 private struct GlModelInfo {

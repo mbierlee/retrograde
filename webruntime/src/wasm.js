@@ -59,4 +59,21 @@ export default class WasmModule {
 
     return array;
   }
+
+  getUnsignedInt32Array(pointer, length) {
+    const uintSize = 4;
+    const array = new Uint32Array(length);
+    const dataview = new DataView(
+      this.memory.buffer,
+      pointer,
+      length * uintSize
+    );
+
+    for (let i = 0; i < length; i++) {
+      const val = dataview.getUint32(i * uintSize, true);
+      array[i] = val;
+    }
+
+    return array;
+  }
 }

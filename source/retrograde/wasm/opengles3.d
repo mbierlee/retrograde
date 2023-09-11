@@ -36,16 +36,18 @@ enum GL_TRIANGLES = 0x0004;
 // Buffers
 enum GL_STATIC_DRAW = 0x88E4;
 enum GL_ARRAY_BUFFER = 0x8892;
-enum GL_ELEMENT_ARRAY_BUFFER = 0x8892;
+enum GL_ELEMENT_ARRAY_BUFFER = 0x8893;
 
 // Data types
+enum GL_UNSIGNED_INT = 0x1405;
 enum GL_FLOAT = 0x1406;
 
 export extern (C) void resizeCanvasToDisplaySize();
 
 export extern (C) GLuint glCreateBuffer();
 export extern (C) void glBindBuffer(GLenum target, GLuint buffer);
-export extern (C) void glBufferData(GLenum target, GLfloat[] data, GLenum usage);
+export extern (C) void glBufferDataFloat(GLenum target, GLfloat[] data, GLenum usage);
+export extern (C) void glBufferDataUInt(GLenum target, GLuint[] data, GLenum usage);
 export extern (C) GLuint glCreateVertexArray();
 export extern (C) void glBindVertexArray(GLuint vertextArrayObject);
 export extern (C) void glEnableVertexAttribArray(GLuint index);
@@ -55,6 +57,7 @@ export extern (C) void glClearColor(GLclampf red, GLclampf green, GLclampf blue,
 export extern (C) void glClear(GLbitfield mask);
 export extern (C) void glUseProgram(GLuint program);
 export extern (C) void glDrawArrays(GLenum mode, GLint first, GLsizei count);
+export extern (C) void glDrawElements(GLenum mode, GLsizei count, GLenum type, const void* indices);
 
 export extern (C) void setViewport(uint width, uint height) {
     glesSetViewport(width, height);
