@@ -9,7 +9,7 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.engine.opengles3;
+module retrograde.api.opengles3;
 
 version (OpenGLES3)  :  //
 

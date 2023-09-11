@@ -13,7 +13,7 @@ module retrograde.wasm.opengles3;
 
 version (WebAssembly)  :  //
 
-import retrograde.engine.opengles3 : glesSetViewport = setViewport;
+import retrograde.api.opengles3 : glesSetViewport = setViewport;
 
 alias GLuint = uint;
 alias GLint = int;

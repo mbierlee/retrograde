@@ -15,7 +15,7 @@
 module retrograde.engine.glapi;
 
 version (OpenGLES3) {
-    public import retrograde.engine.opengles3;
+    public import retrograde.api.opengles3;
 }
 
 version (UnitTesting) {
