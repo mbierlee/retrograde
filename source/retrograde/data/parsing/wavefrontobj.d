@@ -129,9 +129,9 @@ private void parseFace(ref ParseContext ctx) {
         auto face = Face(0, 0, 0);
 
         if (components.length == 3) {
-            face.vA = components[0].split('/', false)[0].to!size_t;
-            face.vB = components[1].split('/', false)[0].to!size_t;
-            face.vC = components[2].split('/', false)[0].to!size_t;
+            face.vA = components[0].split('/', false)[0].to!size_t - 1;
+            face.vB = components[1].split('/', false)[0].to!size_t - 1;
+            face.vC = components[2].split('/', false)[0].to!size_t - 1;
         }
 
         ctx.currentMesh.value.ptr.faces.add(face);
@@ -244,9 +244,9 @@ void runWavefrontObjTests() {
         assert(vert0.a == 1);
 
         auto face4 = model.meshes[0].faces[4];
-        assert(face4.vA == 1);
-        assert(face4.vB == 4);
-        assert(face4.vC == 2);
+        assert(face4.vA == 0);
+        assert(face4.vB == 3);
+        assert(face4.vC == 1);
     });
 
     test("Parse model without vertices and faces", {
