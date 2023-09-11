@@ -57,7 +57,7 @@ export extern (C) void glClearColor(GLclampf red, GLclampf green, GLclampf blue,
 export extern (C) void glClear(GLbitfield mask);
 export extern (C) void glUseProgram(GLuint program);
 export extern (C) void glDrawArrays(GLenum mode, GLint first, GLsizei count);
-export extern (C) void glDrawElements(GLenum mode, GLsizei count, GLenum type, const void* indices);
+export extern (C) void glDrawElements(GLenum mode, GLsizei count, GLenum type, GLintptr indices);
 
 export extern (C) void setViewport(uint width, uint height) {
     glesSetViewport(width, height);

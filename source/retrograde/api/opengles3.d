@@ -55,26 +55,37 @@ void loadEntityModel(SharedPtr!Entity entity) {
     auto modelInfo = makeShared!GlModelInfo;
 
     foreach (ref mesh; model.meshes) {
-        auto vertexBufferObject = glCreateBuffer();
-        glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
-
-        Array!GLfloat vertexData;
+        Array!GLfloat positionData;
+        Array!GLfloat colorData;
         foreach (vertex; mesh.vertices) {
-            vertexData.add(vertex.x);
-            vertexData.add(vertex.y);
-            vertexData.add(vertex.z);
-            vertexData.add(vertex.w);
+            positionData.add(vertex.x);
+            positionData.add(vertex.y);
+            positionData.add(vertex.z);
+            positionData.add(vertex.w);
+            colorData.add(vertex.r);
+            colorData.add(vertex.g);
+            colorData.add(vertex.b);
+            colorData.add(vertex.a);
         }
 
-        glBufferDataFloat(GL_ARRAY_BUFFER, vertexData.arr, GL_STATIC_DRAW);
         auto vertexArrayObject = glCreateVertexArray();
         glBindVertexArray(vertexArrayObject);
 
+        auto positionBufferObject = glCreateBuffer();
+        glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
+        glBufferDataFloat(GL_ARRAY_BUFFER, positionData.arr, GL_STATIC_DRAW);
         glEnableVertexAttribArray(PositionAttribLocation);
         glVertexAttribPointer(PositionAttribLocation, 4, GL_FLOAT, false, 0, 0);
 
+        auto colorBufferObject = glCreateBuffer();
+        glBindBuffer(GL_ARRAY_BUFFER, colorBufferObject);
+        glBufferDataFloat(GL_ARRAY_BUFFER, colorData.arr, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(ColorAttribLocation);
+        glVertexAttribPointer(ColorAttribLocation, 4, GL_FLOAT, false, 0, 0);
+
         auto meshInfo = GlMeshInfo(
-            vertexBufferObject,
+            positionBufferObject,
+            colorBufferObject,
             vertexArrayObject,
             0,
             mesh.vertices.length,
@@ -136,7 +147,7 @@ void drawModel(SharedPtr!Entity entity, const ref RenderPass renderPass) {
         glBindVertexArray(meshInfo.vertexArrayObject);
         if (meshInfo.elementCount > 0) {
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshInfo.elementBufferObject);
-            glDrawElements(GL_TRIANGLES, meshInfo.elementCount, GL_UNSIGNED_INT, null);
+            glDrawElements(GL_TRIANGLES, meshInfo.elementCount, GL_UNSIGNED_INT, 0);
         } else {
             glDrawArrays(GL_TRIANGLES, 0, meshInfo.vertexCount);
         }
@@ -168,9 +179,11 @@ private uint viewportWidth = 1;
 private uint viewportHeight = 1;
 
 private enum PositionAttribLocation = 0;
+private enum ColorAttribLocation = 1;
 
 private struct GlMeshInfo {
-    GLuint vertexBufferObject;
+    GLuint positionBufferObject;
+    GLuint colorBufferObject;
     GLuint vertexArrayObject;
     GLuint elementBufferObject;
     GLuint vertexCount;
