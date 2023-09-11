@@ -56,7 +56,7 @@ void loadEntityModel(SharedPtr!Entity entity) {
 
     foreach (ref mesh; model.meshes) {
         auto vertexBufferObject = glCreateBuffer();
-        glBindArrayBuffer(vertexBufferObject);
+        glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
 
         Array!GLfloat vertexData;
         foreach (vertex; mesh.vertices) {
@@ -66,7 +66,7 @@ void loadEntityModel(SharedPtr!Entity entity) {
             vertexData.add(vertex.w);
         }
 
-        glArrayBufferData(vertexData.arr);
+        glBufferData(GL_ARRAY_BUFFER, vertexData.arr, GL_STATIC_DRAW);
         auto vertexArrayObject = glCreateVertexArray();
         glBindVertexArray(vertexArrayObject);
 
@@ -90,7 +90,7 @@ void loadEntityModel(SharedPtr!Entity entity) {
     entity.addComponent(glModelInfoComponent);
     loadedModels.add(model.name);
 
-    glBindArrayBuffer(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
 

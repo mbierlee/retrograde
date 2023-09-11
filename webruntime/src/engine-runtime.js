@@ -181,17 +181,17 @@ export default class EngineRuntimeModule extends WasmModule {
         return this.buffers.length;
       },
 
-      glBindArrayBuffer: (buffer) => {
+      glBindBuffer: (target, buffer) => {
         const bufferObject = this.getGlObject(this.buffers, buffer, "Buffer");
-        this.glContext.bindBuffer(this.glContext.ARRAY_BUFFER, bufferObject);
+        this.glContext.bindBuffer(target, bufferObject);
       },
 
-      glArrayBufferData: (length, pointer) => {
+      glBufferData: (target, length, pointer, usage) => {
         const bufferData = this.getFloat32Array(pointer, length);
         this.glContext.bufferData(
-          this.glContext.ARRAY_BUFFER,
+          target,
           bufferData,
-          this.glContext.STATIC_DRAW
+          usage
         );
       },
 
