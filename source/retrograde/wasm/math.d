@@ -15,8 +15,12 @@ version (WebAssembly)  :  //
 
 version (LDC) {
     // https://github.com/ldc-developers/druntime/blob/ldc/src/ldc/intrinsics.di
-    import ldc.intrinsics : llvm_ceil, llvm_floor;
+    import ldc.intrinsics : llvm_ceil, llvm_floor, llvm_pow;
 
     alias ceil = llvm_ceil;
     alias floor = llvm_floor;
+
+    T pow(T)(T base, T exponent) {
+        return cast(T) llvm_pow(cast(float) base, cast(float) exponent);
+    }
 }

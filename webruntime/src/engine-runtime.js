@@ -13,6 +13,8 @@ export default class EngineRuntimeModule extends WasmModule {
 
   constructor() {
     super("./wasm/retrograde-app.wasm", {
+      // STD IO
+
       writelnStr: (msgLength, msgPtr) => {
         console.log(this.getString(msgPtr, msgLength));
       },
@@ -92,6 +94,14 @@ export default class EngineRuntimeModule extends WasmModule {
         console.error(value == 1 ? "true" : "false");
       },
 
+      // Maths
+
+      powf: (base, exponent) => {
+        return Math.pow(base, exponent);
+      },
+
+      // Sanity
+
       __assert: (assertionMsgPtr, srcFilePtr, srcLineNumber) => {
         const assertionMessage = this.getCString(assertionMsgPtr);
         const srcFile = this.getCString(srcFilePtr);
@@ -99,6 +109,8 @@ export default class EngineRuntimeModule extends WasmModule {
           `Assertion error: ${assertionMessage}\n    at ${srcFile}:${srcLineNumber}`
         );
       },
+
+      // GL API
 
       compileShaderProgram: (
         nameLength,
@@ -160,6 +172,8 @@ export default class EngineRuntimeModule extends WasmModule {
           this.setViewport(canvas.width, canvas.height);
         }
       },
+
+      // WebGL API
 
       glCreateBuffer: () => {
         const buffer = this.glContext.createBuffer();
