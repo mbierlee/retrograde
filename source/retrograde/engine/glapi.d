@@ -1,6 +1,9 @@
 /**
  * Retrograde Engine
  *
+ * A GL API is a generic interface for graphics library APIs.
+ * It does NOT neccesarily mean "OpenGL".
+ *
  * Authors:
  *  Mike Bierlee, m.bierlee@lostmoment.com
  * Copyright: 2014-2023 Mike Bierlee
@@ -11,8 +14,8 @@
 
 module retrograde.engine.glapi;
 
-version (WebAssembly) {
-    public import retrograde.wasm.glapi;
+version (OpenGLES3) {
+    public import retrograde.engine.opengles3;
 }
 
 version (UnitTesting) {

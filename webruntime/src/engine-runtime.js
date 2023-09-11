@@ -173,7 +173,7 @@ export default class EngineRuntimeModule extends WasmModule {
         }
       },
 
-      // WebGL API
+      // WebGL2 / GLES3 API
 
       glCreateBuffer: () => {
         const buffer = this.glContext.createBuffer();
