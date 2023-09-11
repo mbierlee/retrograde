@@ -71,6 +71,7 @@ void runTests() {
     import retrograde.std.conv : runConvTests;
     import retrograde.engine.entity : runEntityTests;
     import retrograde.engine.service : runServiceTests;
+    import retrograde.data.parsing.wavefrontobj : runWavefrontObjTests;
 
     runStdMemoryTests();
     runStringTests();
@@ -83,6 +84,7 @@ void runTests() {
     runEntityTests();
     runServiceTests();
     runFileTests();
+    runWavefrontObjTests();
     runConvTests();
 
     writeln();

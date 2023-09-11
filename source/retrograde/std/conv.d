@@ -25,7 +25,8 @@ int toInt(string str) {
     return convStr.toInt;
 }
 
-T toIntegralNumber(T)(inout ref String str) if (is(T == int) || is(T == long)) {
+T toIntegralNumber(T)(inout ref String str)
+        if (is(T == int) || is(T == long) || is(T == size_t)) {
     T result = 0;
     bool isNegative = false;
     size_t digits = 0;
@@ -57,6 +58,7 @@ T toIntegralNumber(T)(inout ref String str) if (is(T == int) || is(T == long)) {
 
 alias toInt = toIntegralNumber!int;
 alias toLong = toIntegralNumber!long;
+alias toSizeT = toIntegralNumber!size_t;
 
 float toFloat(string str, char decimalChar = '.') {
     auto convStr = str.s;
@@ -108,7 +110,7 @@ T to(T)(string str) {
 
 //TODO: Find out why "inout ref" crashes.
 T to(T)(String str) {
-    static if (is(T == int) || is(T == long)) {
+    static if (is(T == int) || is(T == long) || is(T == size_t)) {
         return str.toIntegralNumber!T;
     } else static if (is(T == float) || is(T == double) || is(T == real)) {
         return str.toRealNumber!T;

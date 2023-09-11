@@ -34,9 +34,9 @@ struct Vertex {
     VertexComponent a;
 
     // Texture Coordinate
-    VertexComponent u;
-    VertexComponent v;
-    VertexComponent tw;
+    // VertexComponent u;
+    // VertexComponent v;
+    // VertexComponent tw;
 }
 
 struct Face {
