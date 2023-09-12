@@ -50,14 +50,13 @@ void loadEntityModel(SharedPtr!Entity entity) {
 
     auto modelComponent = maybeModelComponent.value;
     auto model = modelComponent.data.as!Model;
-    if (loadedModels.exists(model.name)) {
-        //TODO: Attach a GlModelInfoComponent to this entity with the loaded model.
-        //      Probably need to make loadedModels into a map
-        return;
-    }
+    // if (loadedModels.exists(model.name)) {
+    //     //TODO: Attach a GlModelInfoComponent to this entity with the loaded model.
+    //     //      Probably need to make loadedModels into a map
+    //     return;
+    // }
 
     auto modelInfo = makeShared!GlModelInfo;
-
     foreach (ref mesh; model.meshes) {
         Array!GLfloat positionData;
         Array!GLfloat colorData;
@@ -120,7 +119,7 @@ void loadEntityModel(SharedPtr!Entity entity) {
     );
 
     entity.addComponent(glModelInfoComponent);
-    loadedModels.add(model.name);
+    // loadedModels.add(model.name);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -139,13 +138,13 @@ void unloadEntityModel(SharedPtr!Entity entity) {
         }
     }
 
-    if (entity.ptr.hasComponent(ModelComponentType)) {
-        auto model = entity.getComponent(ModelComponentType).value.data.as!Model;
-        auto modelNameIndex = loadedModels.find(model.name);
-        if (modelNameIndex != -1) {
-            loadedModels.remove(modelNameIndex);
-        }
-    }
+    // if (entity.ptr.hasComponent(ModelComponentType)) {
+    //     auto model = entity.getComponent(ModelComponentType).value.data.as!Model;
+    //     auto modelNameIndex = loadedModels.find(model.name);
+    //     if (modelNameIndex != -1) {
+    //         loadedModels.remove(modelNameIndex);
+    //     }
+    // }
 }
 
 void setClearColor(Color color) {
@@ -191,7 +190,7 @@ GLclampf clamp(float val) {
 
 private enum GlModelInfoComponentType = sid("comp_gl_model_info");
 private Color clearColor = Color(0, 0, 0, 0);
-private Array!StringId loadedModels;
+// private Array!StringId loadedModels;
 private uint viewportWidth = 1;
 private uint viewportHeight = 1;
 
