@@ -162,6 +162,13 @@ struct Entity {
             fn(maybeComponent.value);
         }
     }
+
+    void withComponentData(T)(StringId componentType, scope void delegate(T*) fn) {
+        auto maybeComponent = getComponent(componentType);
+        if (maybeComponent.isDefined) {
+            fn(cast(T*) maybeComponent.value.data.ptr);
+        }
+    }
 }
 
 /** 
@@ -448,6 +455,24 @@ void runEcsTests() {
         ent.withComponent(componentType, (Component comp) {
             executedWithComponent =
             comp.type == componentType && *(cast(int*)(comp.data.ptr)) == 123;
+        });
+
+        assert(executedWithComponent);
+    });
+
+    test("Execute delegate with component by type directly on the data", {
+        static StringId componentType = "comp_test".sid;
+        auto data = makeSharedVoid(123);
+        auto component = Component(
+            componentType,
+            data
+        );
+
+        Entity ent = Entity("ent_test".s);
+        ent.addComponent(component);
+        static bool executedWithComponent = false;
+        ent.withComponentData!int(componentType, (int* data) {
+            executedWithComponent = *data == 123;
         });
 
         assert(executedWithComponent);
