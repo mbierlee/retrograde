@@ -151,12 +151,18 @@ void setClearColor(Color color) {
     clearColor = color;
 }
 
+void useRenderPassShaderProgram(const ref RenderPass renderPass) {
+    glUseProgram(renderPass.program);
+}
+
+void clearShaderProgram() {
+    glUseProgram(0);
+}
+
 void drawModel(SharedPtr!Entity entity, const ref RenderPass renderPass) {
     if (!entity.ptr.hasComponent(GlModelInfoComponentType)) {
         return;
     }
-
-    glUseProgram(renderPass.program);
 
     auto modelInfo = entity.ptr.getComponent(GlModelInfoComponentType).value.data.as!GlModelInfo;
     foreach (ref meshInfo; modelInfo.ptr.meshes) {
@@ -169,7 +175,6 @@ void drawModel(SharedPtr!Entity entity, const ref RenderPass renderPass) {
         }
     }
 
-    glUseProgram(0);
     glBindVertexArray(0);
 }
 

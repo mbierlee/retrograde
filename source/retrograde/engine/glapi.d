@@ -43,6 +43,12 @@ version (UnitTesting) {
     void initFrame() {
     }
 
+    void useRenderPassShaderProgram(const ref RenderPass renderPass) {
+    }
+
+    void clearShaderProgram() {
+    }
+
     void drawModel(SharedPtr!Entity entity, const ref RenderPass renderPass) {
     }
 }

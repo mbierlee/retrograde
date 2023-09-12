@@ -18,7 +18,7 @@ import retrograde.std.stringid : sid;
 import retrograde.engine.service : entityManager;
 import retrograde.engine.entity : Entity;
 import retrograde.engine.glapi : initRenderApi, setClearColor, compileShaderProgram, initFrame, loadEntityModel, unloadEntityModel,
-    drawModel;
+    useRenderPassShaderProgram, drawModel, clearShaderProgram;
 
 import retrograde.data.model : ModelComponentType;
 
@@ -35,6 +35,7 @@ void renderFrame() {
     initFrame();
 
     foreach (const ref renderPass; renderPasses) {
+        useRenderPassShaderProgram(renderPass);
         entityManager.forEachEntity((SharedPtr!Entity entity) {
             if (!entity.ptr.hasComponent(RenderableComponentType)) {
                 return;
@@ -42,6 +43,8 @@ void renderFrame() {
 
             drawModel(entity, renderPass);
         });
+
+        clearShaderProgram();
     }
 }
 
