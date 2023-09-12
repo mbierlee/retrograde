@@ -175,6 +175,7 @@ void drawModel(SharedPtr!Entity entity, const ref RenderPass renderPass) {
         }
     }
 
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
 
