@@ -22,12 +22,11 @@ import retrograde.data.model : Model, Mesh, Vertex, Face;
 
 SharedPtr!Model parseWavefrontObjModel(String modelSource, StringId name = "".sid) {
     auto model = makeShared!Model;
+    model.ptr.name = name;
 
     ParseContext ctx;
     ctx.model = model;
-    ctx.model.ptr.name = name;
     ctx.iter = StringIterator(modelSource);
-
     if (ctx.iter.hasNext) {
         startParse(ctx);
     }

@@ -12,6 +12,7 @@
 module retrograde.wasm.opengles3;
 
 version (WebAssembly)  :  //
+version (OpenGLES3)  :  //
 
 import retrograde.api.opengles3 : glesSetViewport = setViewport;
 

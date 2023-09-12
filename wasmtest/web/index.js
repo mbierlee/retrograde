@@ -15,6 +15,8 @@ function getCString(pointer) {
   return getString(pointer, length);
 }
 
+//TODO: Get rid of this duplication by reusing the engine's Runtime somehow.
+
 WebAssembly.instantiateStreaming(fetch("bin/wasmmemtest.wasm"), {
   env: {
     writelnStr: (msgLength, msgPtr) => {
@@ -94,6 +96,9 @@ WebAssembly.instantiateStreaming(fetch("bin/wasmmemtest.wasm"), {
     },
     writeErrLnBool: (value) => {
       console.error(value == 1 ? "true" : "false");
+    },
+    powf: (base, exponent) => {
+      return Math.pow(base, exponent);
     },
     __assert: (assertionMsgPtr, srcFilePtr, srcLineNumber) => {
       const assertionMessage = getCString(assertionMsgPtr);
