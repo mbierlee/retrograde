@@ -181,6 +181,11 @@ export default class EngineRuntimeModule extends WasmModule {
         return this.buffers.length;
       },
 
+      glDeleteBuffer: (buffer) => {
+        const bufferObject = this.getGlObject(this.buffers, buffer, "Buffer");
+        this.glContext.deleteBuffer(bufferObject);
+      },
+
       glBindBuffer: (target, buffer) => {
         const bufferObject = this.getGlObject(this.buffers, buffer, "Buffer");
         this.glContext.bindBuffer(target, bufferObject);
@@ -200,6 +205,16 @@ export default class EngineRuntimeModule extends WasmModule {
         const vertextArrayObject = this.glContext.createVertexArray();
         this.vertextArrayObjects.push(vertextArrayObject);
         return this.vertextArrayObjects.length;
+      },
+
+      glDeleteVertexArray: (vertextArrayObjectName) => {
+        const vertextArrayObject = this.getGlObject(
+          this.vertextArrayObjects,
+          vertextArrayObjectName,
+          "Vertex Array Object"
+        );
+
+        this.glContext.deleteVertexArray(vertextArrayObject);
       },
 
       glBindVertexArray: (vertextArrayObjectName) => {

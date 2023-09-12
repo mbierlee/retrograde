@@ -48,10 +48,12 @@ enum GL_FLOAT = 0x1406;
 export extern (C) void resizeCanvasToDisplaySize();
 
 export extern (C) GLuint glCreateBuffer();
+export extern (C) void glDeleteBuffer(GLuint buffer);
 export extern (C) void glBindBuffer(GLenum target, GLuint buffer);
 export extern (C) void glBufferDataFloat(GLenum target, GLfloat[] data, GLenum usage);
 export extern (C) void glBufferDataUInt(GLenum target, GLuint[] data, GLenum usage);
 export extern (C) GLuint glCreateVertexArray();
+export extern (C) void glDeleteVertexArray(GLuint vertextArrayObject);
 export extern (C) void glBindVertexArray(GLuint vertextArrayObject);
 export extern (C) void glEnableVertexAttribArray(GLuint index);
 export extern (C) void glVertexAttribPointer(GLuint index, GLint size, GLenum type, GLbool normalized, GLsizei stride,

@@ -128,11 +128,24 @@ void loadEntityModel(SharedPtr!Entity entity) {
 }
 
 void unloadEntityModel(SharedPtr!Entity entity) {
-    //TODO
-    assert(false, "unloadEntityModel");
+    if (entity.ptr.hasComponent(GlModelInfoComponentType)) {
+        auto modelInfo = entity.ptr.getComponent(GlModelInfoComponentType)
+            .value.data.as!GlModelInfo;
+        foreach (ref meshInfo; modelInfo.meshes) {
+            glDeleteBuffer(meshInfo.positionBufferObject);
+            glDeleteBuffer(meshInfo.colorBufferObject);
+            glDeleteBuffer(meshInfo.elementBufferObject);
+            glDeleteVertexArray(meshInfo.vertexArrayObject);
+        }
+    }
 
-    //TODO: unload model from video mem
-    //TODO: remove GlModelInfoComponent from entity
+    if (entity.ptr.hasComponent(ModelComponentType)) {
+        auto model = entity.getComponent(ModelComponentType).value.data.as!Model;
+        auto modelNameIndex = loadedModels.find(model.name);
+        if (modelNameIndex != -1) {
+            loadedModels.remove(modelNameIndex);
+        }
+    }
 }
 
 void setClearColor(Color color) {
