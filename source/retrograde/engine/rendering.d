@@ -53,8 +53,8 @@ struct RenderPass {
 
 RenderPass genericRenderPass = RenderPass(
     "generic",
-    import("ogles3/generic_vertex.glsl"),
-    import("ogles3/generic_fragment.glsl")
+    import("opengles3/generic_vertex.glsl"),
+    import("opengles3/generic_fragment.glsl")
 );
 
 Array!RenderPass renderPasses;
