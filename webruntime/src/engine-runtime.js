@@ -259,6 +259,10 @@ export default class EngineRuntimeModule extends WasmModule {
       glDrawElements: (mode, count, type) => {
         this.glContext.drawElements(mode, count, type, 0);
       },
+
+      glDisable: (capability) => {
+        this.glContext.disable(capability);
+      },
     });
   }
 

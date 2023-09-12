@@ -24,6 +24,9 @@ version (UnitTesting) {
 
     import retrograde.std.memory : SharedPtr;
 
+    void initRenderApi() {
+    }
+
     uint compileShaderProgram(string name, string vertexShader, string fragmentShader) {
         return 0;
     }

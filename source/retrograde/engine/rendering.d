@@ -17,7 +17,7 @@ import retrograde.std.stringid : sid;
 
 import retrograde.engine.service : entityManager;
 import retrograde.engine.entity : Entity;
-import retrograde.engine.glapi : setClearColor, compileShaderProgram, initFrame, loadEntityModel, unloadEntityModel,
+import retrograde.engine.glapi : initRenderApi, setClearColor, compileShaderProgram, initFrame, loadEntityModel, unloadEntityModel,
     drawModel;
 
 import retrograde.data.model : ModelComponentType;
@@ -25,6 +25,7 @@ import retrograde.data.model : ModelComponentType;
 enum RenderableComponentType = sid("comp_renderable");
 
 void initRenderer() {
+    initRenderApi();
     setClearColor(Color(0, 0, 0, 1));
     initRenderPasses();
     initEntityManagerHooks();

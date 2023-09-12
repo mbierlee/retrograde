@@ -28,6 +28,10 @@ version (WebAssembly) {
     public import retrograde.wasm.opengles3 : compileShaderProgram;
 }
 
+void initRenderApi() {
+    glDisable(GL_DITHER);
+}
+
 void initFrame() {
     resizeCanvasToDisplaySize();
     glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
