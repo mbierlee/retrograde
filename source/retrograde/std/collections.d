@@ -34,6 +34,10 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
     }
 
     this(scope inout T[] other) {
+        if (other.length == 0) {
+            return;
+        }
+
         items = cast(T*) malloc(T.sizeof * other.length);
         assert(items !is null, "Failed to allocate memory during assignment of array");
 
@@ -1096,6 +1100,13 @@ void runArrayTests() {
         assert(array.length == 5);
         assert(array.capacity == 5);
         assert(array[0 .. $] == [6, 7, 8, 9, 10]);
+    });
+
+    test("Copy empty array", () {
+        Array!int empty1;
+        auto empty2 = empty1;
+        assert(empty1.length == 0);
+        assert(empty2.length == 0);
     });
 }
 
