@@ -384,6 +384,21 @@ String toString(char* ptr) {
     return result;
 }
 
+String join(ref Array!String strings, string glue = "") {
+    if (strings.length == 0) {
+        return String();
+    }
+
+    String result;
+    foreach (ref String str; strings[0 .. $ - 1]) {
+        result ~= str;
+        result ~= glue;
+    }
+
+    result ~= strings[$ - 1];
+    return result;
+}
+
 version (UnitTesting)  :  ///
 
 void runStringTests() {
@@ -595,5 +610,14 @@ void runStringTests() {
         free(cString);
 
         assert(str == "hello".s);
+    });
+
+    test("Join an array of Strings", {
+        Array!String strings;
+        strings ~= "a".s;
+        strings ~= "b".s;
+        strings ~= "c".s;
+        assert(strings.join(", ") == "a, b, c".s);
+        assert(strings.join() == "abc".s);
     });
 }
