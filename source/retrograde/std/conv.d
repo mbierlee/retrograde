@@ -11,6 +11,10 @@
 
 module retrograde.std.conv;
 
+version (Native) {
+    public import retrograde.native.conv : toString;
+}
+
 import retrograde.std.string : String, stripNonNumeric, s, isNumeric;
 import retrograde.std.math : pow;
 
@@ -109,11 +113,17 @@ T to(T)(string str) {
 }
 
 //TODO: Find out why "inout ref" crashes.
-T to(T)(String str) {
-    static if (is(T == int) || is(T == long) || is(T == size_t)) {
-        return str.toIntegralNumber!T;
-    } else static if (is(T == float) || is(T == double) || is(T == real)) {
-        return str.toRealNumber!T;
+OutT to(OutT, InT)(InT val) if (!is(InT == string)) {
+    static if (is(InT == String)) {
+        static if (is(OutT == int) || is(OutT == long) || is(OutT == size_t)) {
+            return val.toIntegralNumber!OutT;
+        } else static if (is(OutT == float) || is(OutT == double) || is(OutT == real)) {
+            return val.toRealNumber!OutT;
+        } else {
+            static assert(0, "Unsupported String to T conversion");
+        }
+    } else static if (is(OutT == String)) {
+        return val.toString();
     } else {
         static assert(0, "Unsupported conversion");
     }
@@ -185,10 +195,36 @@ void runConvTests() {
         assert("12-3.4.5bla6".toFloat.approxEqual(123.456));
     });
 
-    test("Convert string to types using unversal conv", {
+    test("Convert string to types using universal conv", {
         assert("1.0".to!float.approxEqual(1.0));
         assert("123".to!int == 123);
         assert("123.4".to!long == 1234);
         assert("11.3".to!double.approxEqual(11.3));
+    });
+
+    test("Convert numbers to String", {
+        assert(1.toString == "1".s);
+        assert(123_456.toString == "123456".s);
+        assert((-666).toString == "-666".s);
+        assert(1234U.toString == "1234".s);
+        assert(778_899L.toString == "778899".s);
+        assert(4455UL.toString == "4455".s);
+
+        assert(1.5.toString == "1.500000".s);
+        assert((-1.5).toString == "-1.500000".s);
+        assert((cast(double) 88.1).toString == "88.100000".s);
+    });
+
+    test("Convert numbers to String using universal conv", {
+        assert(1.to!String == "1".s);
+        assert(123_456.to!String == "123456".s);
+        assert((-666).to!String == "-666".s);
+        assert(1234U.to!String == "1234".s);
+        assert(778_899L.to!String == "778899".s);
+        assert(4455UL.to!String == "4455".s);
+
+        assert(1.5.to!String == "1.500000".s);
+        assert((-1.5).to!String == "-1.500000".s);
+        assert((cast(double) 88.1).to!String == "88.100000".s);
     });
 }

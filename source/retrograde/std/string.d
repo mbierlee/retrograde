@@ -364,6 +364,26 @@ Array!(StringT!T) split(T)(StringT!T str, T delimiter, bool omitEmptyParts = tru
     return parts;
 }
 
+/** 
+ * Converts a C String to a Retrograde String.
+ *
+ * This is very unsafe to do. Avoid at all costs.
+ * The C string has to be zero-terminated, or else...
+ *
+ * Params:
+ *   ptr = Pointer to a zero-terminated C String
+ * Returns: A Retrograde String without the zero-terminator.
+ */
+String toString(char* ptr) {
+    String result;
+    size_t index = 0;
+    while (ptr[index] != '\0') {
+        result ~= ptr[index++];
+    }
+
+    return result;
+}
+
 version (UnitTesting)  :  ///
 
 void runStringTests() {
@@ -562,5 +582,18 @@ void runStringTests() {
         assert(parts2[0] == "1");
         assert(parts2[1] == "2");
         assert(parts2[2] == "3,4");
+    });
+
+    test("Convert C String to String", {
+        import retrograde.std.memory : malloc, free, memcpy;
+
+        string dString = "hello\0";
+        assert(dString.length == 6);
+        char* cString = cast(char*) malloc(char.sizeof * dString.length);
+        memcpy(cString, dString.ptr, dString.length);
+        String str = cString.toString();
+        free(cString);
+
+        assert(str == "hello".s);
     });
 }
