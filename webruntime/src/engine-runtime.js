@@ -182,12 +182,12 @@ export default class EngineRuntimeModule extends WasmModule {
       },
 
       glDeleteBuffer: (buffer) => {
-        const bufferObject = this.getGlObject(this.buffers, buffer, "Buffer");
+        const bufferObject = this.getBufferObject(buffer);
         this.glContext.deleteBuffer(bufferObject);
       },
 
       glBindBuffer: (target, buffer) => {
-        const bufferObject = this.getGlObject(this.buffers, buffer, "Buffer");
+        const bufferObject = this.getBufferObject(buffer);
         this.glContext.bindBuffer(target, bufferObject);
       },
 
@@ -208,20 +208,16 @@ export default class EngineRuntimeModule extends WasmModule {
       },
 
       glDeleteVertexArray: (vertextArrayObjectName) => {
-        const vertextArrayObject = this.getGlObject(
-          this.vertextArrayObjects,
-          vertextArrayObjectName,
-          "Vertex Array Object"
+        const vertextArrayObject = this.getVertexArrayObject(
+          vertextArrayObjectName
         );
 
         this.glContext.deleteVertexArray(vertextArrayObject);
       },
 
       glBindVertexArray: (vertextArrayObjectName) => {
-        const vertextArrayObject = this.getGlObject(
-          this.vertextArrayObjects,
-          vertextArrayObjectName,
-          "Vertex Array Object"
+        const vertextArrayObject = this.getVertexArrayObject(
+          vertextArrayObjectName
         );
 
         this.glContext.bindVertexArray(vertextArrayObject);
@@ -258,12 +254,7 @@ export default class EngineRuntimeModule extends WasmModule {
       },
 
       glUseProgram: (program) => {
-        const programObject = this.getGlObject(
-          this.shaderPrograms,
-          program,
-          "Shader Program"
-        );
-
+        const programObject = this.getProgramObject(program);
         this.glContext.useProgram(programObject);
       },
 
@@ -325,6 +316,22 @@ export default class EngineRuntimeModule extends WasmModule {
     }
 
     return list[index];
+  }
+
+  getProgramObject(name) {
+    return this.getGlObject(this.shaderPrograms, name, "Shader Program");
+  }
+
+  getBufferObject(name) {
+    return this.getGlObject(this.buffers, name, "Buffer");
+  }
+
+  getVertexArrayObject(name) {
+    return this.getGlObject(
+      this.vertextArrayObjects,
+      name,
+      "Vertex Array Object"
+    );
   }
 
   setupCanvas() {
