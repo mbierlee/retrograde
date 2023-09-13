@@ -27,8 +27,7 @@ version (UnitTesting) {
     void initRenderApi() {
     }
 
-    uint compileShaderProgram(string name, string vertexShader, string fragmentShader) {
-        return 0;
+    void initRenderPass(ref RenderPass renderPass) {
     }
 
     void loadEntityModel(SharedPtr!Entity entity) {
@@ -43,13 +42,13 @@ version (UnitTesting) {
     void initFrame() {
     }
 
-    void useRenderPassShaderProgram(const ref RenderPass renderPass) {
+    void useRenderPassShaderProgram(ref RenderPass renderPass) {
     }
 
     void clearShaderProgram() {
     }
 
-    void drawModel(SharedPtr!Entity entity, const ref RenderPass renderPass) {
+    void drawModel(SharedPtr!Entity entity) {
     }
 }
 

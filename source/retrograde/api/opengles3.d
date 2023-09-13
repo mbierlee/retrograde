@@ -18,7 +18,7 @@ import retrograde.engine.rendering : Color, RenderPass;
 
 import retrograde.data.model : ModelComponentType, Model;
 
-import retrograde.std.memory : SharedPtr, makeShared;
+import retrograde.std.memory : SharedPtr, makeShared, makeSharedVoid;
 import retrograde.std.collections : Array;
 import retrograde.std.stringid : StringId, sid;
 
@@ -30,6 +30,20 @@ version (WebAssembly) {
 
 void initRenderApi() {
     glDisable(GL_DITHER);
+}
+
+void initRenderPass(ref RenderPass renderPass) {
+    auto program = compileShaderProgram(
+        renderPass.passName,
+        renderPass.vertexShader,
+        renderPass.fragmentShader
+    );
+
+    GlRenderPassInfo passInfo;
+    passInfo.shaderProgram = program;
+
+    auto voidPtr = makeSharedVoid!GlRenderPassInfo(passInfo);
+    renderPass.apiData = voidPtr;
 }
 
 void initFrame() {
@@ -144,15 +158,17 @@ void setClearColor(Color color) {
     clearColor = color;
 }
 
-void useRenderPassShaderProgram(const ref RenderPass renderPass) {
-    glUseProgram(renderPass.program);
+void useRenderPassShaderProgram(ref RenderPass renderPass) {
+    if (renderPass.apiData.isDefined) {
+        glUseProgram((cast(GlRenderPassInfo*) renderPass.apiData.ptr).shaderProgram);
+    }
 }
 
 void clearShaderProgram() {
     glUseProgram(0);
 }
 
-void drawModel(SharedPtr!Entity entity, const ref RenderPass renderPass) {
+void drawModel(SharedPtr!Entity entity) {
     entity.ptr.withComponentData(GlModelInfoComponentType, (GlModelInfo* modelInfo) {
         foreach (ref meshInfo; modelInfo.meshes) {
             glBindVertexArray(meshInfo.vertexArrayObject);
@@ -212,4 +228,8 @@ private struct GlModelInfo {
     void opAssign(ref return scope inout typeof(this) other) {
         this.meshes = other.meshes;
     }
+}
+
+private struct GlRenderPassInfo {
+    uint shaderProgram;
 }

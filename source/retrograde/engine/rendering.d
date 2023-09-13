@@ -17,8 +17,8 @@ import retrograde.std.stringid : sid, StringId;
 
 import retrograde.engine.service : entityManager;
 import retrograde.engine.entity : Entity;
-import retrograde.engine.glapi : initRenderApi, setClearColor, compileShaderProgram, initFrame, loadEntityModel, unloadEntityModel,
-    useRenderPassShaderProgram, drawModel, clearShaderProgram;
+import retrograde.engine.glapi : initRenderApi, initRenderPass, setClearColor, initFrame, loadEntityModel,
+    unloadEntityModel, useRenderPassShaderProgram, drawModel, clearShaderProgram;
 
 import retrograde.data.model : ModelComponentType;
 
@@ -34,7 +34,7 @@ void initRenderer() {
 void renderFrame() {
     initFrame();
 
-    foreach (const ref renderPass; renderPasses) {
+    foreach (ref renderPass; renderPasses) {
         useRenderPassShaderProgram(renderPass);
 
         //TODO: Optimize? Don't attempt each entity in each pass, but batch them.
@@ -56,7 +56,25 @@ struct RenderPass {
     StringId componentType;
     void delegate(SharedPtr!Entity entity, const ref RenderPass renderPass) render;
 
-    uint program;
+    SharedPtr!void apiData;
+
+    this(ref return scope inout typeof(this) other) {
+        this.passName = other.passName;
+        this.vertexShader = other.vertexShader;
+        this.fragmentShader = other.fragmentShader;
+        this.componentType = other.componentType;
+        this.render = other.render;
+        this.apiData = other.apiData;
+    }
+
+    void opAssign(ref return scope inout typeof(this) other) {
+        this.passName = other.passName;
+        this.vertexShader = other.vertexShader;
+        this.fragmentShader = other.fragmentShader;
+        this.componentType = other.componentType;
+        this.render = other.render;
+        this.apiData = other.apiData;
+    }
 }
 
 RenderPass genericModelRenderPass = RenderPass(
@@ -65,7 +83,7 @@ RenderPass genericModelRenderPass = RenderPass(
     import("opengles3/generic_model_fragment.glsl"),
     ModelComponentType,
     (SharedPtr!Entity entity, const ref RenderPass renderPass) {
-    drawModel(entity, renderPass);
+    drawModel(entity);
 }
 );
 
@@ -91,13 +109,7 @@ private void initRenderPasses() {
     }
 
     foreach (ref renderPass; renderPasses) {
-        auto program = compileShaderProgram(
-            renderPass.passName,
-            renderPass.vertexShader,
-            renderPass.fragmentShader
-        );
-
-        renderPass.program = program;
+        initRenderPass(renderPass);
     }
 }
 

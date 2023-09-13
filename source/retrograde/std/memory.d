@@ -304,7 +304,7 @@ struct SharedPtr(T) {
     /** 
      * Returns: whether the pointer is defined.
      */
-    bool isDefined() {
+    bool isDefined() const {
         return _ptr !is null;
     }
 
