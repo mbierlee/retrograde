@@ -1,9 +1,6 @@
 /**
  * Retrograde Engine
  *
- * Thanks to Adam D. Ruppe's WASM memory allocator for inspiration and help with LLVM intrinsics:
- * https://github.com/adamdruppe/webassembly/blob/master/arsd-webassembly/core/arsd/memory_allocation.d
- *
  * Authors:
  *  Mike Bierlee, m.bierlee@lostmoment.com
  * Copyright: 2014-2023 Mike Bierlee
