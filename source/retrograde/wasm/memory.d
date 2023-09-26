@@ -333,19 +333,6 @@ export extern (C) void* memmove(void* dest, const void* src, size_t count) {
 }
 
 /** 
- * Reimplementation of D Runtime array copy that might be used by LDC in debug mode.
- * Note that bounds checking is only available in debug builds.
- */
-extern (C) void _d_array_slice_copy(void* dest, size_t destlen, void* src, size_t srclen, size_t elemsz) {
-    debug {
-        auto res = memmove(dest, src, destlen * elemsz);
-        assert(res is dest, "Array slice copy failed.");
-    } else {
-        memcpy(dest, src, destlen * elemsz);
-    }
-}
-
-/** 
  * Initializes the heap memoery. 
  * This function must be called before any other memory function.
  * Params: 

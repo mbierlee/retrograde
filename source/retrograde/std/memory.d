@@ -12,10 +12,10 @@
 module retrograde.std.memory;
 
 version (WebAssembly) {
-    public import retrograde.wasm.memory : malloc, free, calloc, realloc, memset, memcmp, memcpy;
+    public import retrograde.wasm.memory : malloc, free, calloc, realloc, memset, memcmp, memcpy, memmove;
 } else {
     public import core.stdc.stdlib : malloc, free, calloc, realloc;
-    public import core.stdc.string : memset, memcmp, memcpy;
+    public import core.stdc.string : memset, memcmp, memcpy, memmove;
 
     /**
      * Normally free_sized checks whether the given size is the size of
