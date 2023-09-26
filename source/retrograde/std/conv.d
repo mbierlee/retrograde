@@ -15,6 +15,10 @@ version (Native) {
     public import retrograde.native.conv : toString;
 }
 
+version (WebAssembly) {
+    public import retrograde.wasm.conv : toString;
+}
+
 import retrograde.std.string : String, stripNonNumeric, s, isNumeric;
 import retrograde.std.math : pow;
 

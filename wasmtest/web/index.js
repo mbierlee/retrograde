@@ -97,6 +97,15 @@ WebAssembly.instantiateStreaming(fetch("bin/wasmmemtest.wasm"), {
     writeErrLnBool: (value) => {
       console.error(value == 1 ? "true" : "false");
     },
+    integralToString: (value) => {
+      return value.toString();
+    },
+    unsignedIntegralToString: (value) => {
+      return value.toString();
+    },
+    scalarToString: (value) => {
+      return value.toString();
+    },
     powf: (base, exponent) => {
       return Math.pow(base, exponent);
     },
