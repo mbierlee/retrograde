@@ -81,7 +81,7 @@ export default class WasmModule {
     const encodedString = new TextEncoder("utf-8").encode(string);
     if (encodedString.length > maxLength) {
       throw new Error(
-        `String too large for storage destination: '${string}' (allocated size: ${maxLength})`
+        `String too large for storage destination: '${string}' (allocated size: ${maxLength}, encoded string size: ${encodedString.length})`
       );
     }
 
