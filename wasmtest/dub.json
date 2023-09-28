@@ -1,6 +1,6 @@
 {
-  "name": "wasmmemtest",
-  "description": "WASM memory tester",
+  "name": "wasmtest",
+  "description": "WASM unit tests",
   "license": "MIT",
   "authors": ["Mike Bierlee"],
   "copyright": "Copyright © 2023, Mike Bierlee",
