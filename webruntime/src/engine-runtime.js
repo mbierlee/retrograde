@@ -11,8 +11,8 @@ export default class EngineRuntimeModule extends WasmModule {
   buffers = [];
   vertextArrayObjects = [];
 
-  constructor() {
-    super("./wasm/retrograde-app.wasm", {
+  constructor(modulePath) {
+    super(modulePath, {
       // STD IO
 
       writelnStr: (msgLength, msgPtr) => {
