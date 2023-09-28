@@ -76,4 +76,18 @@ export default class WasmModule {
 
     return array;
   }
+
+  writeString(string, pointer, maxLength) {
+    const encodedString = new TextEncoder("utf-8").encode(string);
+    if (encodedString.length > maxLength) {
+      throw new Error(
+        `String too large for storage destination: '${string}' (allocated size: ${maxLength})`
+      );
+    }
+
+    const dataview = new DataView(this.memory.buffer, pointer, maxLength);
+    encodedString.forEach((chr, i) => {
+      dataview.setUint8(i, chr);
+    });
+  }
 }

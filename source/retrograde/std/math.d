@@ -444,7 +444,6 @@ struct Vector(T, uint N) if (N > 0) {
 
     string toString() const {
         Array!String componentStrings;
-
         static foreach (i; 0 .. N) {
             componentStrings ~= to!String(this[i]);
         }
@@ -557,7 +556,7 @@ void runVectorTests() {
     });
 
     test("Negate vector with two components", {
-        auto const vector = Vector2U(1, 2);
+        auto const vector = Vector2I(1, 2);
         auto const negatedVector = -vector;
         assert(-1 == negatedVector.x);
         assert(-2 == negatedVector.y);
@@ -567,7 +566,6 @@ void runVectorTests() {
         auto const vector1 = Vector2U(1, 2);
         auto const vector2 = Vector2U(4, 8);
         auto const addedVector = vector1 + vector2;
-
         assert(5 == addedVector.x);
         assert(10 == addedVector.y);
     });
@@ -629,7 +627,7 @@ void runVectorTests() {
     });
 
     test("Negate vector with three components", {
-        auto const vector = Vector3U(1, 2, 3);
+        auto const vector = Vector3I(1, 2, 3);
         auto const negatedVector = -vector;
         assert(-1 == negatedVector.x);
         assert(-2 == negatedVector.y);

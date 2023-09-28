@@ -15,6 +15,20 @@ function getCString(pointer) {
   return getString(pointer, length);
 }
 
+function writeString(string, pointer, maxLength) {
+  const encodedString = new TextEncoder("utf-8").encode(string);
+  if (encodedString.length > maxLength) {
+    throw new Error(
+      `String too large for storage destination: '${string}' (allocated size: ${maxLength})`
+    );
+  }
+
+  const dataview = new DataView(memory.buffer, pointer, maxLength);
+  encodedString.forEach((chr, i) => {
+    dataview.setUint8(i, chr);
+  });
+}
+
 //TODO: Get rid of this duplication by reusing the engine's Runtime somehow.
 
 WebAssembly.instantiateStreaming(fetch("bin/wasmmemtest.wasm"), {
@@ -97,14 +111,15 @@ WebAssembly.instantiateStreaming(fetch("bin/wasmmemtest.wasm"), {
     writeErrLnBool: (value) => {
       console.error(value == 1 ? "true" : "false");
     },
-    integralToString: (value) => {
-      return value.toString();
+    integralToString: (strPtr, ptrLength, val) => {
+      this.writeString(val.toString(), strPtr, ptrLength);
     },
-    unsignedIntegralToString: (value) => {
-      return value.toString();
+    unsignedIntegralToString: (strPtr, ptrLength, val) => {
+      this.writeString(val.toString(), strPtr, ptrLength);
     },
-    scalarToString: (value) => {
-      return value.toString();
+    scalarToString: (strPtr, ptrLength, val) => {
+      const numberString = parseFloat(val).toFixed(6).toString();
+      this.writeString(numberString, strPtr, ptrLength);
     },
     powf: (base, exponent) => {
       return Math.pow(base, exponent);

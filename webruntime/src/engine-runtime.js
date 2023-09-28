@@ -93,14 +93,15 @@ export default class EngineRuntimeModule extends WasmModule {
       writeErrLnBool: (value) => {
         console.error(value == 1 ? "true" : "false");
       },
-      integralToString: (value) => {
-        return value.toString();
+      integralToString: (strPtr, ptrLength, val) => {
+        this.writeString(val.toString(), strPtr, ptrLength);
       },
-      unsignedIntegralToString: (value) => {
-        return value.toString();
+      unsignedIntegralToString: (strPtr, ptrLength, val) => {
+        this.writeString(val.toString(), strPtr, ptrLength);
       },
-      scalarToString: (value) => {
-        return value.toString();
+      scalarToString: (strPtr, ptrLength, val) => {
+        const numberString = parseFloat(val).toFixed(6).toString();
+        this.writeString(numberString, strPtr, ptrLength);
       },
 
       // Maths

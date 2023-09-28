@@ -13,21 +13,29 @@ module retrograde.wasm.conv;
 
 version (WebAssembly)  :  //
 
-import retrograde.std.string : String, s;
+import retrograde.std.string : String, s, cStrToString = toString;
 
 String toString(T)(T val)
-        if ((is(T == int) || is(T == long) || is(T == size_t)) && !is(T == uint) && !is(T == ulong)) {
-    return integralToString(val).s;
+        if (is(T == int) || is(T == long) || is(T == size_t) || is(T == float) || is(T == double)
+        || is(T == uint) || is(T == ulong)) {
+    enum maxDigits = (char.sizeof * T.sizeof - 1) / 3 + 9;
+    char[maxDigits] str = '\0';
+
+    static if (is(T == float) || is(T == double)) {
+        scalarToString(str.ptr, maxDigits, val);
+    }
+
+    static if ((is(T == int) || is(T == long)) && !is(T == uint) && !is(T == ulong)) {
+        integralToString(str.ptr, maxDigits, val);
+    }
+
+    static if (is(T == uint) || is(T == ulong)) {
+        unsignedIntegralToString(str.ptr, maxDigits, val);
+    }
+
+    return str.ptr.cStrToString().s;
 }
 
-String toString(T)(T val) if (is(T == uint) || is(T == ulong)) {
-    return unsignedIntegralToString(val).s;
-}
-
-String toString(T)(T val) if (is(T == float) || is(T == double)) {
-    return scalarToString(val).s;
-}
-
-export extern (C) string integralToString(long val);
-export extern (C) string unsignedIntegralToString(ulong val);
-export extern (C) string scalarToString(double val);
+export extern (C) void integralToString(char* str, uint ptrLength, long val);
+export extern (C) void unsignedIntegralToString(char* str, uint ptrLength, ulong val);
+export extern (C) void scalarToString(char* str, uint ptrLength, double val);

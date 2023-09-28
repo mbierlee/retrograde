@@ -38,7 +38,7 @@ String toString(T)(T val)
 
     //TODO: Figure out how to deal with deprecation warning
 
-    char[maxDigits] str;
+    char[maxDigits] str = '\0';
     sprintf(str.ptr, format, val);
     return str.ptr.cStrToString();
 }
