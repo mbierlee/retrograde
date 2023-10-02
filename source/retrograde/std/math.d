@@ -477,6 +477,48 @@ alias Vector3D = Vector!(double, 3);
 
 alias Vector4D = Vector!(double, 4);
 
+/**
+ * A vector whose length is always 1.
+ */
+struct UnitVector(VectorType) {
+    private VectorType _vector;
+
+    /**
+     * Creates a unit vector from a regular vector. 
+     *
+     * The supplied vector is automatically normalized.
+     */
+    this(const VectorType vector) {
+        this._vector = vector.normalize();
+    }
+
+    /**
+     * Creates a unit vector from the supplied components. 
+     *
+     * The resulting vector is automatically normalized.
+     */
+    this(const VectorType._T[] components...) {
+        assert(components.length == VectorType._N,
+            "Cannot initialize a unit vector with a different amount of components than its vector type has.");
+        this(VectorType(components));
+    }
+
+    /**
+     * Return a copy of the regular, normalized vector represented by this unit vector.
+     */
+    VectorType vector() const {
+        return _vector;
+    }
+}
+
+alias UnitVector2D = UnitVector!Vector2D;
+alias UnitVector2F = UnitVector!Vector2F;
+
+alias UnitVector3D = UnitVector!Vector3D;
+alias UnitVector3F = UnitVector!Vector3F;
+
+alias UnitVector4D = UnitVector!Vector4D;
+
 bool approxEqual(T)(T lhs, T rhs, T deviation = 0.0001)
         if (is(T == float) || is(T == double) || is(T == real)) {
     if (lhs > 0) {
@@ -494,6 +536,7 @@ void runMathTests() {
 
     runMathFunctionsTests();
     runVectorTests();
+    runUnitVectorTests();
 }
 
 void runMathFunctionsTests() {
@@ -913,5 +956,22 @@ void runVectorTests() {
         auto const expectedUpVector = Vector3D(0, 1, 0);
         auto const actualUpVector = Vector3D.upVector();
         assert(expectedUpVector == actualUpVector);
+    });
+}
+
+void runUnitVectorTests() {
+    writeSection("-- Unit Vector tests --");
+
+    test("Create unit vector from other vector", {
+        auto vector = Vector2D(10, 0);
+        assert(vector.magnitude == 10);
+
+        auto unitVector = UnitVector2D(vector);
+        assert(unitVector.vector.magnitude == 1);
+    });
+
+    test("Create unit vector from components", {
+        auto unitVector = UnitVector2D(10, 0);
+        assert(unitVector.vector.magnitude == 1);
     });
 }
