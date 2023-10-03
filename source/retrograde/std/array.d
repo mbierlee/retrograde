@@ -11,9 +11,21 @@
 
 module retrograde.std.array;
 
+import retrograde.std.math : approxEqual;
+
 bool equals(T, size_t N)(const T[N] lhs, const T[N] rhs) {
     for (size_t i = 0; i < N; ++i) {
         if (lhs[i] != rhs[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool approxEquals(T, size_t N)(const T[N] lhs, const T[N] rhs) {
+    for (size_t i = 0; i < N; ++i) {
+        if (!lhs[i].approxEqual(rhs[i])) {
             return false;
         }
     }

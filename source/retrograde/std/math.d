@@ -745,7 +745,231 @@ alias Matrix4D = Matrix!(double, 4, 4);
 alias Matrix3D = Matrix!(double, 3, 3);
 alias Matrix2D = Matrix!(double, 2, 2);
 
-bool approxEqual(T)(T lhs, T rhs, T deviation = 0.0001)
+/**
+ * A complex mathematical number typically used for rotation.
+ * Quaternions prevent gimbal lock.
+ */
+struct Quaternion(T) {
+    private T realPart = 1;
+    private VectorType imaginaryVector = VectorType(0);
+
+    alias _T = T;
+    alias VectorType = Vector!(T, 3);
+
+    /**
+     * The real number component.
+     */
+    T w() const {
+        return realPart;
+    }
+
+    /**
+     * The x component of the vector of imaginary numbers (a.k.a. bi).
+     */
+    T x() const {
+        return imaginaryVector.x;
+    }
+
+    /**
+     * The y component of the vector of imaginary numbers (a.k.a. cj).
+     */
+    T y() const {
+        return imaginaryVector.y;
+    }
+
+    /**
+     * The z component of the vector of imaginary numbers (a.k.a. dk).
+     */
+    T z() const {
+        return imaginaryVector.z;
+    }
+
+    /**
+     * Construct a quaternion from a real number and the products of real and imaginary numbers.
+     * Params:
+     *  w = The real number component.
+     *  x = The product of b * i.
+     *  y = The product of c * j.
+     *  z = The product of d * k.
+     */
+    this(T w, T x, T y, T z) {
+        realPart = w;
+        imaginaryVector = VectorType(x, y, z);
+    }
+
+    /**
+     * Construct a quaternion from a real number and an imaginary vector.
+     * Params:
+     *  r = The real number component.
+     *  v = The imaginary vector.
+     */
+    this(T r, const VectorType v) {
+        realPart = r;
+        imaginaryVector = v;
+    }
+
+    /**
+     * Create a quaternion that rotates around a specified axis.
+     * Params:
+     *  radianAngle = Rotation around the given axis in radians.
+     *  axis = Regular three-dimensional axis to rotate around.
+     */
+    static Quaternion createRotation(double radianAngle, const Vector3D axis) {
+        auto normalizedAxis = axis.normalize();
+        return Quaternion(
+            cos(radianAngle / 2),
+            sin(radianAngle / 2) * normalizedAxis.x,
+            sin(radianAngle / 2) * normalizedAxis.y,
+            sin(radianAngle / 2) * normalizedAxis.z
+        );
+    }
+
+    /**
+     * Multiple two quaternions.
+     */
+    Quaternion opBinary(string op)(const Quaternion rhs) const if (op == "*") {
+        return Quaternion(
+            w * rhs.w - x * rhs.x - y * rhs.y - z * rhs.z,
+            w * rhs.x + x * rhs.w + y * rhs.z - z * rhs.y,
+            w * rhs.y - x * rhs.z + y * rhs.w + z * rhs.x,
+            w * rhs.z + x * rhs.y - y * rhs.x + z * rhs.w
+        );
+    }
+
+    /** 
+     * Multiply or divide quaternion by the given scalar.
+     */
+    Quaternion opBinary(string op)(const scalar rhs) const if (op == "*" || op == "/") {
+        return Quaternion(
+            mixin("w " ~ op ~ " rhs"),
+            mixin("x " ~ op ~ " rhs"),
+            mixin("y " ~ op ~ " rhs"),
+            mixin("z " ~ op ~ " rhs"),
+        );
+    }
+
+    /**
+     * Calculates the dot product of two quaternions.
+     */
+    T dot()(const Quaternion other) const {
+        return x * other.x + y * other.y + z * other.z + w * other.w;
+    }
+
+    /**
+     * Convert quaterion to a four-dimensional rotation matrix.
+     */
+    Matrix4D toRotationMatrix() const {
+        // dfmt off
+        return Matrix4D(
+           1 - 2 * (y * y) - 2 * (z * z), 2 * x * y - 2 * z * w          , (2 * x * z) + (2 * y * w)     , 0,
+           2 * x * y + 2 * z * w        , 1 - 2 * (x * x) - 2 * (z * z)  , 2 * y * z - 2 * x * w         , 0,
+           2 * x * z - 2 * y * w        , 2 * y * z + 2 * x * w          , 1 - 2 * (x * x)  - 2 * (y * y), 0,
+           0                            , 0                              , 0                             , 1
+        );
+        // dfmt on
+    }
+
+    /**
+     * Convert quaterion to a vector of Euler angles.
+     */
+    Vector3D toEulerAngles() const {
+        auto q = this;
+
+        auto sqw = q.w * q.w;
+        auto sqx = q.x * q.x;
+        auto sqy = q.y * q.y;
+        auto sqz = q.z * q.z;
+
+        auto unit = sqx + sqy + sqz + sqw;
+        auto poleTest = q.x * q.y + q.z * q.w;
+
+        if (poleTest > 0.499 * unit) {
+            auto yaw = 2 * atan2(q.x, q.w);
+            auto pitch = PI / 2;
+            return Vector3D(pitch, yaw, 0);
+        }
+
+        if (poleTest < -0.499 * unit) {
+            auto yaw = -2 * atan2(q.x, q.w);
+            auto pitch = -PI / 2;
+            return Vector3D(pitch, yaw, 0);
+        }
+
+        auto pitch = atan2(2 * q.x * q.w - 2 * q.y * q.z, -sqx + sqy - sqz + sqw);
+        auto yaw = atan2(2 * q.y * q.w - 2 * q.x * q.z, sqx - sqy - sqz + sqw);
+        auto roll = asin(2 * poleTest / unit);
+
+        return Vector3D(pitch, yaw, roll);
+    }
+
+    /**
+     * Calculates the squared Euclidian magnitude of the quaternion.
+     */
+    scalar magnitudeSquared() const {
+        return w * w + x * x + y * y + z * z;
+    }
+
+    /**
+     * Calculates the Euclidian magnitude of the quaternion.
+     */
+    scalar magnitude() const {
+        return sqrt(magnitudeSquared);
+    }
+
+    /** 
+     * Returns a normalized form of this Quaternion.
+     */
+    Quaternion normalize() const {
+        return this / magnitude;
+    }
+
+    /**
+     * Return angle of quaternion in radian.
+     */
+    scalar angle() const {
+        return 2 * acos(w);
+    }
+
+    /**
+     * Return Euclidian axis of quaternion.
+     *
+     * In case angle = 0 the axis is (0, 1, 0)
+     */
+    VectorType axis() const {
+        auto q = normalize();
+        auto _angle = q.angle;
+        if (_angle == 0) {
+            return VectorType(0, 1, 0);
+        }
+
+        return VectorType(
+            q.x / sqrt(1 - q.w * q.w),
+            q.y / sqrt(1 - q.w * q.w),
+            q.z / sqrt(1 - q.w * q.w)
+        );
+    }
+
+    /**
+     * Returns a new quaternion that is the conjugate of the current.
+     */
+    Quaternion conjugate() const {
+        return Quaternion(w, -x, -y, -z);
+    }
+
+    /**
+     * Returns a new quaternion that is the inverse of the current.
+     */
+    Quaternion inverse() const {
+        return conjugate / magnitudeSquared;
+    }
+}
+
+alias QuaternionF = Quaternion!float;
+alias QuaternionD = Quaternion!double;
+
+//TODO: matrix utils
+
+bool approxEqual(T)(inout T lhs, inout T rhs, T deviation = 0.0001)
         if (is(T == float) || is(T == double) || is(T == real)) {
     if (lhs > 0) {
         return (lhs - deviation) < rhs && (lhs + deviation) > rhs;
@@ -756,7 +980,7 @@ bool approxEqual(T)(T lhs, T rhs, T deviation = 0.0001)
 
 version (UnitTesting)  :  ///
 import retrograde.std.test : test, writeSection;
-import retrograde.std.array : equals;
+import retrograde.std.array : equals, approxEquals;
 
 void runMathTests() {
     writeSection("-- Math tests --");
@@ -765,6 +989,7 @@ void runMathTests() {
     runVectorTests();
     runUnitVectorTests();
     runMatrixTests();
+    runQuaternionTests();
 }
 
 void runMathFunctionsTests() {
@@ -1509,5 +1734,104 @@ void runMatrixTests() {
         const float[4] actualArray = matrix.getDataArray!float;
 
         assert(expectedArray.equals(actualArray));
+    });
+}
+
+void runQuaternionTests() {
+    writeSection("-- Quaternion tests --");
+
+    test("Create quaternion", {
+        auto const quaternion = QuaternionD();
+        assert(QuaternionD(1, 0, 0, 0) == quaternion);
+
+        auto const quaternion2 = QuaternionD(4, 1, 2, 3);
+        assert(4 == quaternion2.w);
+        assert(1 == quaternion2.x);
+        assert(2 == quaternion2.y);
+        assert(3 == quaternion2.z);
+
+        auto const quaternion3 = QuaternionD(4, Vector3D(1, 2, 3));
+        assert(4 == quaternion3.w);
+        assert(1 == quaternion3.x);
+        assert(2 == quaternion3.y);
+        assert(3 == quaternion3.z);
+    });
+
+    test("Create quaternions", {
+        auto const quaternion1 = QuaternionD(1, 2, 3, 4);
+        auto const quaternion2 = QuaternionD(5, 6, 7, 8);
+        auto const expectedQuaternion = QuaternionD(-60, 12, 30, 24);
+        auto const actualQuaternion = quaternion1 * quaternion2;
+
+        assert(expectedQuaternion == actualQuaternion);
+        assert(quaternion1 * quaternion2 != quaternion2 * quaternion1);
+    });
+
+    test("Create from angle and axis vector", {
+        auto const quaternion = QuaternionD.createRotation(PI, Vector3D(1, 0, 0));
+        assert(quaternion.realPart.approxEqual(6.12303e-17));
+        assert(quaternion.imaginaryVector == Vector3D(1, 0, 0));
+    });
+
+    test("Convert to rotation matrix", {
+        auto const quaternion = QuaternionD(6.12303e-17, 1, 0, 0);
+        auto const actualRotationMatrix = quaternion.toRotationMatrix();
+        assert(actualRotationMatrix.data.approxEquals([
+                1, 0, 0, 0, 0, -1, -1.22461e-16, 0, 0, 1.22461e-16, -1, 0, 0, 0, 0,
+                1
+            ]));
+    });
+
+    test("Convert to euler angles vector", {
+        auto const quaternion = QuaternionD.createRotation(PI, Vector3D(0, 1, 0));
+        auto const expectedToEulerAngles = Vector3D(0, PI, 0);
+        auto const actualEulerAngles = quaternion.toEulerAngles();
+        assert(expectedToEulerAngles == actualEulerAngles);
+
+        auto const quaternion2 = QuaternionD.createRotation(PI, Vector3D(1, 0, 0));
+        auto const expectedToEulerAngles2 = Vector3D(PI, 0, 0);
+        auto const actualEulerAngles2 = quaternion2.toEulerAngles();
+        assert(expectedToEulerAngles2 == actualEulerAngles2);
+    });
+
+    test("Angle", {
+        auto const quaternion = QuaternionD.createRotation(PI, Vector3D(0, 1, 0));
+        assert(quaternion.angle.approxEqual(PI));
+    });
+
+    test("Axis when rotation is zero", {
+        auto const quaternion = QuaternionD.createRotation(0, Vector3D(0, 1, 0));
+        assert(quaternion.axis == Vector3D(0, 1, 0));
+    });
+
+    test("Axis when rotation is non-zero", {
+        auto const quaternion = QuaternionD.createRotation(PI, Vector3D(0, 0, 1));
+        assert(quaternion.axis == Vector3D(0, 0, 1));
+    });
+
+    test("Conjugate", {
+        auto const quaternion = QuaternionD(1, 2, 3, 4);
+        assert(quaternion.conjugate == QuaternionD(1, -2, -3, -4));
+    });
+
+    test("Inverse", {
+        auto const quaternion = QuaternionD(1, 2, 3, 4);
+        auto const inverse = quaternion.inverse;
+        assert(inverse.w.approxEqual(0.0333333, 0.01));
+        assert(inverse.x.approxEqual(-0.0666667, 0.01));
+        assert(inverse.y.approxEqual(-0.1, 0.1));
+        assert(inverse.z.approxEqual(-0.1333333, 0.01));
+    });
+
+    test("Dot product", {
+        auto const quaternion1 = QuaternionD(1, 2, 3, 4);
+        auto const quaternion2 = QuaternionD(5, 6, 7, 8);
+        assert(quaternion1.dot(quaternion2) == 70);
+    });
+
+    test("Multiply", {
+        auto const quaternion1 = QuaternionD(1, 2, 3, 4);
+        auto const quaternion2 = QuaternionD(5, 6, 7, 8);
+        assert(quaternion1 * quaternion2 == QuaternionD(-60, 12, 30, 24));
     });
 }

@@ -13,4 +13,4 @@ module retrograde.native.math;
 
 version (Native)  :  //
 
-public import core.stdc.math : sqrt, atan2, ceil, floor, pow;
+public import core.stdc.math : sqrt, atan2, ceil, floor, pow, sin, cos, asin, acos;

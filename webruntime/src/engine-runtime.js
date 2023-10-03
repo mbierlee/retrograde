@@ -109,6 +109,12 @@ export default class EngineRuntimeModule extends WasmModule {
       powf: (base, exponent) => {
         return Math.pow(base, exponent);
       },
+      cos: (value) => {
+        return Math.cos(value);
+      },
+      sin: (value) => {
+        return Math.sin(value);
+      },
 
       // Sanity
 

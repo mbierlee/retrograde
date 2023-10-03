@@ -15,13 +15,15 @@ version (WebAssembly)  :  //
 
 version (LDC) {
     // https://github.com/ldc-developers/druntime/blob/ldc/src/ldc/intrinsics.di
-    import ldc.intrinsics : llvm_ceil, llvm_floor, llvm_pow, llvm_sqrt;
+    import ldc.intrinsics : llvm_ceil, llvm_floor, llvm_pow, llvm_sqrt, llvm_cos, llvm_sin;
 
     import retrograde.std.math : PI;
 
     alias ceil = llvm_ceil;
     alias floor = llvm_floor;
     alias sqrt = llvm_sqrt;
+    alias cos = llvm_cos;
+    alias sin = llvm_sin;
 
     T pow(T)(T base, T exponent) {
         return cast(T) llvm_pow(cast(float) base, cast(float) exponent);
@@ -60,5 +62,31 @@ version (LDC) {
         }
 
         return result;
+    }
+
+    //TODO: Consider using browser's asin. Benchmark to see if actually faster.
+    T asin(T)(T x) {
+        if (x > 1.0) {
+            // Not defined for x > 1
+            return T.nan;
+        } else if (x < -1.0) {
+            // Not defined for x < -1
+            return T.nan;
+        }
+
+        return atan(x / sqrt(1.0 - x * x));
+    }
+
+    //TODO: Consider using browser's acos. Benchmark to see if actually faster.
+    T acos(T)(T x) {
+        if (x > 1.0) {
+            // Not defined for x > 1
+            return T.nan;
+        } else if (x < -1.0) {
+            // Not defined for x < -1
+            return T.nan;
+        }
+
+        return PI / 2.0 - asin(x);
     }
 }
