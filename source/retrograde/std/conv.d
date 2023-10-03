@@ -128,6 +128,8 @@ OutT to(OutT, InT)(InT val) if (!is(InT == string)) {
         }
     } else static if (is(OutT == String)) {
         return val.toString();
+    } else static if (is(OutT == string)) {
+        return val.toString().get();
     } else {
         static assert(0, "Unsupported conversion");
     }
@@ -230,5 +232,18 @@ void runConvTests() {
         assert(1.5.to!String == "1.500000".s);
         assert((-1.5).to!String == "-1.500000".s);
         assert((cast(double) 88.1).to!String == "88.100000".s);
+    });
+
+    test("Convert numbers to D string using universal conv", {
+        assert(1.to!String == "1");
+        assert(123_456.to!String == "123456");
+        assert((-666).to!String == "-666");
+        assert(1234U.to!String == "1234");
+        assert(778_899L.to!String == "778899");
+        assert(4455UL.to!String == "4455");
+
+        assert(1.5.to!String == "1.500000");
+        assert((-1.5).to!String == "-1.500000");
+        assert((cast(double) 88.1).to!String == "88.100000");
     });
 }
