@@ -25,6 +25,8 @@ version (LDC) {
     alias cos = llvm_cos;
     alias sin = llvm_sin;
 
+    export extern (C) float tan(float value);
+
     T pow(T)(T base, T exponent) {
         return cast(T) llvm_pow(cast(float) base, cast(float) exponent);
     }

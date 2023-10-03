@@ -967,7 +967,307 @@ struct Quaternion(T) {
 alias QuaternionF = Quaternion!float;
 alias QuaternionD = Quaternion!double;
 
-//TODO: matrix utils
+/**
+ * Creates a translation matrix from a 2D vector.
+ */
+Matrix3D toTranslationMatrix(const Vector2D vector) {
+    // dfmt off
+    return Matrix3D(
+        1, 0, vector.x,
+        0, 1, vector.y,
+        0, 0, 1
+    );
+    // dfmt on
+}
+
+/**
+ * Creates a translation matrix from a 3D vector.
+ */
+Matrix4D toTranslationMatrix(const Vector3D vector) {
+    // dfmt off
+    return Matrix4D(
+        1, 0, 0, vector.x,
+        0, 1, 0, vector.y,
+        0, 0, 1, vector.z,
+        0, 0, 0, 1
+    );
+    // dfmt on
+}
+
+/** 
+ * Creates a translation vector from a matrix.
+ */
+Vector3D toTranslationVector(const Matrix4D matrix) {
+    return Vector3D(
+        matrix[0, 3],
+        matrix[1, 3],
+        matrix[2, 3]
+    );
+}
+
+/**
+ * Creates a scaling matrix from a 2D scaling vector.
+ */
+Matrix3D toScalingMatrix(const Vector2D scalingVector) {
+    // dfmt off
+    return Matrix3D(
+        scalingVector.x, 0              , 0,
+        0              , scalingVector.y, 0,
+        0              , 0              , 1
+    );
+    // dfmt on
+}
+
+/**
+ * Creates a scaling matrix from a 3D scaling vector.
+ */
+Matrix4D toScalingMatrix(const Vector3D scalingVector) {
+    // dfmt off
+    return Matrix4D(
+        scalingVector.x, 0                 , 0              , 0,
+        0              , scalingVector.y   , 0              , 0,
+        0              , 0                 , scalingVector.z, 0,
+        0              , 0                 , 0              , 1
+    );
+    // dfmt on
+}
+
+/**
+ * Creates a rotation matrix around axis defined by x, y and z.
+ *
+ * Params:
+ *  radianAngle = Amount of rotation in radian.
+ *  x = X component of the axis to rotate around.
+ *  y = Y component of the axis to rotate around.
+ *  z = Z component of the axis to rotate around.
+ */
+Matrix4D createRotationMatrix(const scalar radianAngle, const double x,
+    const double y, const double z) {
+    const double x2 = x * x;
+    const double y2 = y * y;
+    const double z2 = z * z;
+    auto const cosAngle = cos(radianAngle);
+    auto const sinAngle = sin(radianAngle);
+    auto const omc = 1.0f - cosAngle;
+
+    // dfmt off
+    return Matrix4D(
+        x2 * omc + cosAngle       ,   y * x * omc + z * sinAngle,   x * z * omc - y * sinAngle,   0,
+        x * y * omc - z * sinAngle,   y2 * omc + cosAngle       ,   y * z * omc + x * sinAngle,   0,
+        x * z * omc + y * sinAngle,   y * z * omc - x * sinAngle,   z2 * omc + cosAngle       ,   0,
+        0                         ,   0                         ,   0                         ,   1
+    );
+    // dfmt on
+}
+
+/**
+ * Creates a rotation matrix around the axis defined by a vector.
+ *
+ * Params:
+ *  radianAngle = Amount of rotation in radian.
+ *  axis = Vector that serves as the axis around which to rotate.
+ */
+Matrix4D createRotationMatrix(const scalar radianAngle, const Vector3D axis) {
+    return createRotationMatrix(radianAngle, axis.x, axis.y, axis.z);
+}
+
+/**
+ * Creates a rotation matrix.
+ *
+ * Params:
+ *  radianAngle = Amount of rotation in radian.
+ */
+Matrix3D createRotationMatrix(const scalar radianAngle) {
+    // dfmt off
+    return Matrix3D(
+        cos(radianAngle), -sin(radianAngle), 0,
+        sin(radianAngle),  cos(radianAngle), 0,
+        0               ,  0               , 1
+    );
+    // dfmt on
+}
+
+/**
+ * Creates a rotation matrix around the X-axis.
+ *
+ * Params:
+ *  radianAngle = Amount of rotation in radian.
+ */
+Matrix4D createXRotationMatrix(const scalar radianAngle) {
+    // dfmt off
+    return Matrix4D(
+        1,  0               , 0               , 0,
+        0,  cos(radianAngle), sin(radianAngle), 0,
+        0, -sin(radianAngle), cos(radianAngle), 0,
+        0,  0               , 0               , 1
+    );
+    // dfmt on
+}
+
+/**
+ * Creates a rotation matrix around the Y-axis.
+ *
+ * Params:
+ *  radianAngle = Amount of rotation in radian.
+ */
+Matrix4D createYRotationMatrix(const scalar radianAngle) {
+    // dfmt off
+    return Matrix4D(
+        cos(radianAngle), 0, -sin(radianAngle), 0,
+        0               , 1,  0               , 0,
+        sin(radianAngle), 0,  cos(radianAngle), 0,
+        0               , 0,  0               , 1
+    );
+    // dfmt on
+}
+
+/**
+ * Creates a rotation matrix around the Z-axis.
+ *
+ * Params:
+ *  radianAngle = Amount of rotation in radian.
+ */
+Matrix4D createZRotationMatrix(const scalar radianAngle) {
+    // dfmt off
+    return Matrix4D(
+        cos(radianAngle), -sin(radianAngle), 0, 0,
+        sin(radianAngle),  cos(radianAngle), 0, 0,
+        0               ,  0               , 1, 0,
+        0               ,  0               , 0, 1
+    );
+    // dfmt on
+}
+
+/**
+ * Creates a world transformation matrix that looks at a target vector.
+ */
+Matrix4D createLookatMatrix(const Vector3D eyePosition,
+    const Vector3D targetPosition, const UnitVector3D upVector) {
+
+    auto const forwardVector = (targetPosition - eyePosition).normalize();
+    auto const sideVector = forwardVector.cross(upVector.vector);
+    auto const cameraBasedUpVector = sideVector.cross(forwardVector);
+
+    // dfmt off
+    return Matrix4D(
+         sideVector.x         ,  sideVector.y         ,  sideVector.z         , -eyePosition.x,
+         cameraBasedUpVector.x,  cameraBasedUpVector.y,  cameraBasedUpVector.z, -eyePosition.y,
+        -forwardVector.x      , -forwardVector.y      , -forwardVector.z      , -eyePosition.z,
+         0                    ,  0                    ,  0                    ,  1
+    );
+    // dfmt on
+}
+
+/**
+ * Creates a world transformation matrix that looks at the world with a specified pitch 
+ * (up/down rotation) and yaw (left/right rotation).
+ */
+Matrix4D createViewMatrix(Vector3D eyePosition, scalar pitchInRadian, scalar yawInRadian) {
+    const scalar cosPitch = cos(pitchInRadian);
+    const scalar sinPitch = sin(pitchInRadian);
+    const scalar cosYaw = cos(yawInRadian);
+    const scalar sinYaw = sin(yawInRadian);
+
+    auto const sideVector = Vector3D(cosYaw, 0, -sinYaw);
+    auto const upVector = Vector3D(sinYaw * sinPitch, cosPitch, cosYaw * sinPitch);
+    auto const forwardVector = Vector3D(sinYaw * cosPitch, -sinPitch, cosPitch * cosYaw);
+
+    // dfmt off
+    return Matrix4D(
+        sideVector.x   , sideVector.y   , sideVector.z   , -sideVector.dot(eyePosition),
+        upVector.x     , upVector.y     , upVector.z     , -upVector.dot(eyePosition),
+        forwardVector.x, forwardVector.y, forwardVector.z, -forwardVector.dot(eyePosition),
+        0              , 0              , 0              ,  1
+    );
+    // dfmt on
+}
+
+Matrix4D createViewMatrix(Vector3D eyePosition, QuaternionD eyeOrientation) {
+    return eyeOrientation.inverse.toRotationMatrix * (-eyePosition).toTranslationMatrix;
+}
+
+/**
+ * Creates a perspective projection matrix.
+ * 
+ * Params:
+ *   yfovRadian = Field of view in radian.
+ *   aspectRatio = Aspect ratio of the viewing window, pre-divided (e.g. the result of 4 / 3)
+ *   near = Near clipping plane.
+ *   far = Far clipping plane. If 0, it is considered infinite.
+ * Returns: Perspective Matrix
+ */
+Matrix4D createPerspectiveMatrix(scalar yfovRadian, scalar aspectRatio,
+    scalar near, scalar far) {
+    const scalar A = 1.0 / (aspectRatio * tan(0.5 * yfovRadian));
+    const scalar B = 1.0 / (tan(0.5 * yfovRadian));
+    const scalar C = far == 0 ? -1 : (far + near) / (near - far);
+    const scalar D = far == 0 ? (-2 * near) : (2.0 * far * near) / (near - far);
+
+    // dfmt off
+    return Matrix4D(
+        A, 0,  0, 0,
+        0, B,  0, 0,
+        0, 0,  C, D,
+        0, 0, -1, 0
+    );
+    // dfmt on
+}
+
+/** 
+ * Creates an orthographic projection matrix.
+ *
+ * Params:
+ *   left = Farthest left on the x-axis
+ *   right = Farthest right on the x-axis
+ *   bottom = Farthest down on the y-axis
+ *   top = Farthest up on the y-axis
+ *   near = Distance to the near clipping plane along the -Z axis
+ *   far = Distance to the far clipping plane along the -Z axis
+ * Returns: Orthographic Matrix
+ */
+Matrix4D createOrthographicMatrix(scalar left, scalar right, scalar bottom, scalar top, scalar near, scalar far) {
+    return createOrthographicMatrix(right - left, top - bottom, near, far);
+}
+
+/** 
+ * Creates an orthographic projection matrix.
+ *
+ * Params:
+ *   halfWidth = Half the orthographic width
+ *   halfHeight = Half the orthographic height
+ *   near = Distance to the near clipping plane along the -Z axis
+ *   far = Distance to the far clipping plane along the -Z axis
+ * Returns: Orthographic Matrix
+ */
+Matrix4D createOrthographicMatrix(scalar halfWidth, scalar halfHeight, scalar near, scalar far) {
+    const scalar A = 1 / (halfWidth / 2);
+    const scalar B = 1 / (halfHeight / 2);
+    const scalar C = 2 / (near - far);
+    const scalar D = (far + near) / (near - far);
+
+    // dfmt off
+    return Matrix4D(
+        A, 0 , 0, 0,
+        0, B , 0, 0,
+        0, 0 , C, D,
+        0, 0 , 0, 1
+    );
+    // dfmt on
+}
+
+/**
+ * Converts an angle in degrees to radians.
+ */
+double degreesToRadians(double degrees) {
+    return degrees * (PI / 180);
+}
+
+/**
+ * Converts an angle in radians to degrees.
+ */
+double radiansToDegrees(double radians) {
+    return radians * (180 / PI);
+}
 
 bool approxEqual(T)(inout T lhs, inout T rhs, T deviation = 0.0001)
         if (is(T == float) || is(T == double) || is(T == real)) {
@@ -977,6 +1277,8 @@ bool approxEqual(T)(inout T lhs, inout T rhs, T deviation = 0.0001)
         return (lhs + deviation) > rhs && (lhs - deviation) < rhs;
     }
 }
+
+//TODO: Port bezier curves and splines from old Retrograde?
 
 version (UnitTesting)  :  ///
 import retrograde.std.test : test, writeSection;
@@ -990,6 +1292,8 @@ void runMathTests() {
     runUnitVectorTests();
     runMatrixTests();
     runQuaternionTests();
+    runMatrixUtilTests();
+    runMiscUtilTests();
 }
 
 void runMathFunctionsTests() {
@@ -1833,5 +2137,141 @@ void runQuaternionTests() {
         auto const quaternion1 = QuaternionD(1, 2, 3, 4);
         auto const quaternion2 = QuaternionD(5, 6, 7, 8);
         assert(quaternion1 * quaternion2 == QuaternionD(-60, 12, 30, 24));
+    });
+}
+
+void runMatrixUtilTests() {
+    writeSection("-- Matrix util tests --");
+
+    test("Create translation matrix from 2D vector", {
+        auto const vector = Vector2D(25, 56);
+        // dfmt off
+        auto const expectedMatrix = Matrix3D(
+            1, 0, 25,
+            0, 1, 56,
+            0, 0, 1
+        );
+        // dfmt on
+
+        auto const actualMatrix = vector.toTranslationMatrix();
+        assert(expectedMatrix == actualMatrix);
+    });
+
+    test("Create translation matrix from 3D vector", {
+        auto const vector = Vector3D(2, 5, 6);
+        // dfmt off
+        auto const expectedMatrix = Matrix4D(
+            1, 0, 0, 2,
+            0, 1, 0, 5,
+            0, 0, 1, 6,
+            0, 0, 0, 1
+        );
+        // dfmt on
+
+        auto const actualMatrix = vector.toTranslationMatrix();
+        assert(expectedMatrix == actualMatrix);
+    });
+
+    test("Create scaling matrix from 2D vector", {
+        auto const vector = Vector2D(6, 12);
+        // dfmt off
+        auto const expectedMatrix = Matrix3D(
+            6, 0 , 0,
+            0, 12, 0,
+            0, 0 , 1
+        );
+        // dfmt on
+
+        auto const actualMatrix = vector.toScalingMatrix();
+        assert(expectedMatrix == actualMatrix);
+    });
+
+    test("Create scaling matrix from 3D vector", {
+        auto const vector = Vector3D(1, 2, 5);
+        // dfmt off
+        auto const expectedMatrix = Matrix4D(
+            1, 0, 0, 0,
+            0, 2, 0, 0,
+            0, 0, 5, 0,
+            0, 0, 0, 1
+        );
+        // dfmt on
+
+        auto const actualMatrix = vector.toScalingMatrix();
+        assert(expectedMatrix == actualMatrix);
+    });
+
+    test("Create 4D rotation matrix", {
+        auto const expectedMatrix = Matrix!(double, 4u, 4u)(
+            -1, 0, -1.22461e-16, 0, 0, 1, 0, 0, 1.22461e-16, 0, -1, 0, 0, 0, 0, 1
+        );
+
+        auto actualMatrix1 = createRotationMatrix(PI, 0, 1, 0);
+        assert(expectedMatrix.data.approxEquals(actualMatrix1.data));
+
+        auto actualMatrix2 = createRotationMatrix(PI, Vector3D(0, 1, 0));
+        assert(expectedMatrix.data.approxEquals(actualMatrix2.data));
+        assert(actualMatrix1.data.approxEquals(actualMatrix2.data));
+    });
+
+    test("Create 3D rotation matrix", {
+        auto const expectedMatrix = Matrix!(double, 3u, 3u)(-0.989992, -0.14112, 0, 0.14112, -0.989992, 0, 0, 0, 1);
+        auto actualMatrix = createRotationMatrix(3);
+        assert(expectedMatrix.data.approxEquals(actualMatrix.data));
+    });
+
+    test("Create axis-bound rotation matrices", {
+        auto expectedMatrix = Matrix!(double, 4u, 4u)(1, 0, 0, 0, 0, -1, 1.22461e-16, 0, 0, -1.22461e-16, -1, 0, 0, 0, 0, 1);
+        auto actualMatrix = createXRotationMatrix(PI);
+        assert(expectedMatrix.data.approxEquals(actualMatrix.data));
+
+        expectedMatrix = Matrix!(double, 4u, 4u)(-1, 0, -1.22461e-16, 0, 0, 1, 0, 0, 1.22461e-16, 0, -1, 0, 0, 0, 0, 1);
+        actualMatrix = createYRotationMatrix(PI);
+        assert(expectedMatrix.data.approxEquals(actualMatrix.data));
+
+        expectedMatrix = Matrix!(double, 4u, 4u)(-1, -1.22461e-16, 0, 0, 1.22461e-16, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+        actualMatrix = createZRotationMatrix(PI);
+        assert(expectedMatrix.data.approxEquals(actualMatrix.data));
+    });
+
+    test("Create look-at matrix", {
+        auto const expectedMatrix = Matrix!(double, 4u, 4u)(0, 0, 1, -0, 0, 1, 0, -1, -1, -0, -0, -0, 0, 0, 0, 1);
+        auto actualMatrix = createLookatMatrix(Vector3D(0, 1, 0), Vector3D(1,
+            1, 0), UnitVector3D(0, 1, 0));
+        assert(expectedMatrix.data.approxEquals(actualMatrix.data));
+    });
+
+    test("Create view matrix", {
+        auto const expectedMatrix = Matrix!(double, 4u, 4u)(0.540302, 0, -0.841471, -0.540302, 0.708073, 0.540302, 0.454649, -1.24838, 0.454649, -0.841471, 0.291927, 0.386822, 0, 0, 0, 1);
+        auto actualMatrix = createViewMatrix(Vector3D(1, 1, 0), 1, 1);
+        assert(expectedMatrix.data.approxEquals(actualMatrix.data));
+    });
+
+    test("Create perspective matrix", {
+        auto const expectedMatrix = Matrix!(double, 4u, 4u)(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1.0002, -0.20002, 0, 0, -1, 0);
+        auto actualMatrix = createPerspectiveMatrix(degreesToRadians(90), 1920 / 1080, 0.1, 1000);
+        assert(expectedMatrix.data.approxEquals(actualMatrix.data));
+    });
+
+    test("Create orthographic matrix", {
+        auto const expectedMatrix = Matrix!(double, 4u, 4u)(0.2, 0, 0, 0, 0, 0.2, 0, 0, 0, 0, -0.2, -0, 0, 0, 0, 1);
+        auto actualMatrix = createOrthographicMatrix(-5, 5, -5, 5, -5, 5);
+        assert(expectedMatrix.data.approxEquals(actualMatrix.data));
+    });
+}
+
+void runMiscUtilTests() {
+    writeSection("-- Misc util tests --");
+
+    test("Convert degrees to radians", {
+        assert(PI.approxEqual(degreesToRadians(180)));
+        assert(0f.approxEqual(degreesToRadians(0)));
+        assert((2 * PI).approxEqual(degreesToRadians(360)));
+    });
+
+    test("Convert radians to degrees", {
+        assert(180 == radiansToDegrees(PI));
+        assert(0 == radiansToDegrees(0));
+        assert(360 == radiansToDegrees(2 * PI));
     });
 }
