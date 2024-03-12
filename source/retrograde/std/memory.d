@@ -120,6 +120,10 @@ struct UniquePtr(T) {
     @disable this(ref typeof(this));
     @disable void opAssign(ref typeof(this));
 
+    void opAssign(typeof(null)) {
+        release();
+    }
+
     auto opDispatch(string s)() {
         assert(_ptr !is null, "Unique pointer is null and may not be used.");
         return mixin("_ptr." ~ s);
@@ -335,6 +339,12 @@ struct SharedPtr(T) {
         _ptr = cast(T*) other._ptr;
         refCount = cast(size_t*) other.refCount;
         incrementRefCount();
+    }
+
+    void opAssign(typeof(null)) {
+        releaseShare();
+        _ptr = null;
+        refCount = null;
     }
 
     auto opDispatch(string s)() {
@@ -648,6 +658,17 @@ void runUniquePointerTests() {
         uniquePtr._ptr = null;
         assert(!uniquePtr.isDefined);
     });
+
+    test("Nullify a unique pointer, basically releasing it", {
+        int* intPtr = makeRaw(5);
+        auto ptr = intPtr.unique();
+        assert(ptr.isDefined());
+        assert(ptr._ptr == intPtr);
+
+        ptr = null;
+        assert(!ptr.isDefined());
+        assert(ptr._ptr == null);
+    });
 }
 
 void runSharedPointerTests() {
@@ -798,5 +819,16 @@ void runSharedPointerTests() {
         }
 
         assert(voidPtr.useCount == 1);
+    });
+
+    test("Nullify a shared pointer", {
+        int* intPtr = makeRaw(5);
+        auto ptr = intPtr.share();
+        assert(ptr.isDefined());
+        assert(ptr._ptr == intPtr);
+
+        ptr = null;
+        assert(!ptr.isDefined());
+        assert(ptr._ptr == null);
     });
 }
