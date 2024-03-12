@@ -121,7 +121,8 @@ struct UniquePtr(T) {
     @disable void opAssign(ref typeof(this));
 
     void opAssign(typeof(null)) {
-        release();
+        auto ptr = release();
+        free(ptr);
     }
 
     auto opDispatch(string s)() {
