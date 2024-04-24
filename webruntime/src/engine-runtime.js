@@ -11,6 +11,9 @@ export default class EngineRuntimeModule extends WasmModule {
   buffers = [];
   vertextArrayObjects = [];
 
+  uniformLocations = [];
+  uniformLocationDict = {};
+
   constructor(modulePath) {
     super(modulePath, {
       // STD IO
@@ -294,6 +297,31 @@ export default class EngineRuntimeModule extends WasmModule {
       glDisable: (capability) => {
         this.glContext.disable(capability);
       },
+
+      glGetUniformLocation: (program, nameLength, namePtr) => {
+        const name = this.getString(namePtr, nameLength);
+        const dictKey = `${program}|${name}`;
+        if (this.uniformLocationDict.hasOwnProperty(dictKey)) {
+          return this.uniformLocationDict[dictKey];
+        }
+
+        const programObject = this.getProgramObject(program);
+        const location = this.glContext.getUniformLocation(programObject, name);
+        this.uniformLocations.push(location);
+        return this.uniformLocations.length;
+      },
+
+      glUniformMatrix4fv: (
+        location,
+        count,
+        transpose,
+        valueLength,
+        valuePtr
+      ) => {
+        const valueData = this.getFloat32Array(valuePtr, valueLength);
+        const locationObject = this.getUniformLocationObject(location);
+        this.glContext.uniformMatrix4fv(locationObject, transpose, valueData);
+      },
     });
   }
 
@@ -357,6 +385,10 @@ export default class EngineRuntimeModule extends WasmModule {
       name,
       "Vertex Array Object"
     );
+  }
+
+  getUniformLocationObject(name) {
+    return this.getGlObject(this.uniformLocations, name, "Uniform Location");
   }
 
   setupCanvas() {

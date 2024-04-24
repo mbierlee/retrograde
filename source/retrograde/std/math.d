@@ -30,12 +30,12 @@ enum double PI = 3.141592653589793238462643383279502884197169399375105820974944;
  * A Euclidean vector.
  */
 struct Vector(T, uint N) if (N > 0) {
-    //TODO: In these methods a lot of vectors can be passed by reference, since they're const.
-
-    private T[N] components;
-
     alias _N = N;
     alias _T = T;
+
+    //TODO: In these methods a lot of vectors can be passed by reference, since they're const.
+
+    private T[N] components = 0;
 
     static if (N >= 2) {
         private static Vector!(T, N) _upVector;
@@ -750,11 +750,11 @@ alias Matrix2D = Matrix!(double, 2, 2);
  * Quaternions prevent gimbal lock.
  */
 struct Quaternion(T) {
-    private T realPart = 1;
-    private VectorType imaginaryVector = VectorType(0);
-
     alias _T = T;
     alias VectorType = Vector!(T, 3);
+
+    private T realPart = 1;
+    private VectorType imaginaryVector = VectorType(0);
 
     /**
      * The real number component.
@@ -961,6 +961,12 @@ struct Quaternion(T) {
      */
     Quaternion inverse() const {
         return conjugate / magnitudeSquared;
+    }
+
+    string toString() const {
+        auto realPartString = (cast(T) realPart).to!String();
+        auto vectorString = imaginaryVector.toString().s;
+        return "(".s ~ realPartString ~ ", ".s ~ vectorString ~ ")".s;
     }
 }
 
@@ -1353,6 +1359,13 @@ void runVectorTests() {
         auto const vector4 = Vector2D(3.5);
         assert(3.5 == vector4.x);
         assert(3.5 == vector4.y);
+    });
+
+    test("Create vector by assigning a number", {
+        Vector3U vector = 2;
+        assert(2 == vector.x);
+        assert(2 == vector.y);
+        assert(2 == vector.z);
     });
 
     test("Negate vector with two components", {

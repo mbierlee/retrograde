@@ -41,8 +41,6 @@ private struct ParseContext {
 }
 
 private void startParse(ref ParseContext ctx) {
-    import retrograde.std.stdio : writeln; // temp
-
     while (ctx.iter.hasNext) {
         auto lineType = ctx.parseToNonSpace();
         if (lineType.isEmpty) {

@@ -156,6 +156,15 @@ struct Entity {
         return none!Component;
     }
 
+    Option!(SharedPtr!T) getComponentData(T)(StringId componentType) {
+        auto maybeComponent = getComponent(componentType);
+        if (maybeComponent.isDefined) {
+            return some(maybeComponent.value.data.as!T);
+        }
+
+        return none!(SharedPtr!T);
+    }
+
     void withComponent(StringId componentType, scope void delegate(Component) fn) {
         auto maybeComponent = getComponent(componentType);
         if (maybeComponent.isDefined) {
@@ -476,6 +485,23 @@ void runEcsTests() {
         });
 
         assert(executedWithComponent);
+    });
+
+    test("Directly get data of a component", {
+        static StringId componentType = "comp_test".sid;
+        auto data = makeSharedVoid(123);
+        auto component = Component(
+            componentType,
+            data
+        );
+
+        Entity ent = Entity("ent_test".s);
+        ent.addComponent(component);
+
+        auto actualData = ent.getComponentData!int(componentType);
+
+        assert(actualData.isDefined());
+        assert(*actualData.value.ptr == 123);
     });
 }
 

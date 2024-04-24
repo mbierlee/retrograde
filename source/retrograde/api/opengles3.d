@@ -14,13 +14,15 @@ module retrograde.api.opengles3;
 version (OpenGLES3)  :  //
 
 import retrograde.engine.entity : Entity, Component;
-import retrograde.engine.rendering : Color, RenderPass;
+import retrograde.engine.rendering : Color, RenderPass, Viewport;
 
 import retrograde.data.model : ModelComponentType, Model;
 
 import retrograde.std.memory : SharedPtr, makeShared, makeSharedVoid;
 import retrograde.std.collections : Array;
 import retrograde.std.stringid : StringId, sid;
+import retrograde.std.math : Matrix4D, Vector3D, QuaternionD, toTranslationMatrix, toScalingMatrix;
+import retrograde.std.geometry : PositionComponentType, OrientationComponentType, ScaleComponentType;
 
 version (WebAssembly) {
     import retrograde.wasm.opengles3;
@@ -41,6 +43,7 @@ void initRenderPass(ref RenderPass renderPass) {
 
     GlRenderPassInfo passInfo;
     passInfo.shaderProgram = program;
+    passInfo.mvpMatrixUniformLocation = glGetUniformLocation(program, "modelViewProjectionMatrix");
 
     auto voidPtr = makeSharedVoid!GlRenderPassInfo(passInfo);
     renderPass.apiData = voidPtr;
@@ -168,8 +171,41 @@ void clearShaderProgram() {
     glUseProgram(0);
 }
 
-void drawModel(SharedPtr!Entity entity) {
+void drawModel(SharedPtr!Entity entity, const ref Matrix4D viewProjectionMatrix, const ref RenderPass renderPass) {
     entity.ptr.withComponentData(GlModelInfoComponentType, (GlModelInfo* modelInfo) {
+        Vector3D position;
+        QuaternionD orientation;
+        Vector3D scale = 1;
+
+        auto maybePosition = entity.ptr.getComponentData!Vector3D(PositionComponentType);
+        if (maybePosition.isDefined()) {
+            position = *maybePosition.value.ptr;
+        }
+
+        auto maybeOrientation = entity.ptr.getComponentData!QuaternionD(
+            OrientationComponentType);
+        if (maybeOrientation.isDefined()) {
+            orientation = *maybeOrientation.value.ptr;
+        }
+
+        auto maybeScale = entity.ptr.getComponentData!Vector3D(
+            ScaleComponentType);
+        if (maybeScale.isDefined()) {
+            scale = *maybeScale.value.ptr;
+        }
+
+        auto modelMatrix = position.toTranslationMatrix() * orientation.toRotationMatrix() * scale.toScalingMatrix();
+        auto modelViewProjectionMatrix = viewProjectionMatrix * modelMatrix;
+
+        auto mvpMatrixUniformLocation = (cast(GlRenderPassInfo*)(cast(RenderPass) renderPass)
+            .apiData.ptr)
+            .mvpMatrixUniformLocation;
+
+        if (mvpMatrixUniformLocation >= 0) {
+            auto modelViewProjectionMatrixData = modelViewProjectionMatrix.getDataArray!float;
+            glUniformMatrix4fv(mvpMatrixUniformLocation, 1, true, modelViewProjectionMatrixData);
+        }
+
         foreach (ref meshInfo; modelInfo.meshes) {
             glBindVertexArray(meshInfo.vertexArrayObject);
             if (meshInfo.elementCount > 0) {
@@ -188,6 +224,10 @@ void drawModel(SharedPtr!Entity entity) {
 void setViewport(uint width, uint height) {
     viewportWidth = width;
     viewportHeight = height;
+}
+
+Viewport getViewport() {
+    return Viewport(0, 0, viewportWidth, viewportHeight);
 }
 
 GLclampf clamp(float val) {
@@ -231,5 +271,6 @@ private struct GlModelInfo {
 }
 
 private struct GlRenderPassInfo {
-    uint shaderProgram;
+    GLuint shaderProgram;
+    GLint mvpMatrixUniformLocation;
 }

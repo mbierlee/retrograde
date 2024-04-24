@@ -65,6 +65,8 @@ export extern (C) void glUseProgram(GLuint program);
 export extern (C) void glDrawArrays(GLenum mode, GLint first, GLsizei count);
 export extern (C) void glDrawElements(GLenum mode, GLsizei count, GLenum type, GLintptr indices);
 export extern (C) void glDisable(GLenum cap);
+export extern (C) GLint glGetUniformLocation(GLuint program, string name);
+export extern (C) void glUniformMatrix4fv(GLint location, GLsizei count, GLbool transpose, GLfloat[] value);
 
 export extern (C) void setViewport(uint width, uint height) {
     glesSetViewport(width, height);
