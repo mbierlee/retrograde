@@ -1,10 +1,10 @@
-import EngineRuntimeModule from "./src/engine-runtime.js";
+import RetrogradeRuntime from "./retrograde-runtime.js";
 
 document.addEventListener("DOMContentLoaded", function () {
-  const engineModule = new EngineRuntimeModule("./wasm/retrograde-app.wasm");
+  const engineModule = new RetrogradeRuntime("./wasm/retrograde-app.wasm");
   engineModule.setupCanvas();
-  engineModule.init().then(() => {
-    engineModule.start();
+  engineModule.initWasmModule().then(() => {
+    engineModule.startWasmModule();
     engineModule.initEngine();
 
     function runLoop(elapsedTimeMs) {

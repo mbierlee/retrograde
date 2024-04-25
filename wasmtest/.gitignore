@@ -15,4 +15,4 @@ wasmmemtest-test-*
 *.obj
 *.lst
 /web/bin
-/web/lib
+/web/retrograde-runtime.js

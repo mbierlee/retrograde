@@ -1,6 +1,6 @@
 copy-runtime:
-	rm -rf ./web/lib/*
-	cp -r ../webruntime/src/* ./web/lib
+	rm -f ./web/retrograde-runtime.js
+	cp -r ../webruntime/retrograde-runtime.js ./web/retrograde-runtime.js
 
 build-wasm: copy-runtime
 	dub build --build=debug --compiler=ldc2 --arch=wasm32-unknown-unknown-wasm --build-mode=allAtOnce --combined

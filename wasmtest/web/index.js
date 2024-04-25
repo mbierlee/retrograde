@@ -1,8 +1,8 @@
-import EngineRuntimeModule from "./lib/engine-runtime.js";
+import RetrogradeRuntime from "./retrograde-runtime.js";
 
 document.addEventListener("DOMContentLoaded", function () {
-  const engineModule = new EngineRuntimeModule("/bin/wasmtest.wasm");
-  engineModule.init().then(() => {
-    engineModule.start();
+  const engineModule = new RetrogradeRuntime("/bin/wasmtest.wasm");
+  engineModule.initWasmModule().then(() => {
+    engineModule.startWasmModule();
   });
 });

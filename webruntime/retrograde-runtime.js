@@ -1,6 +1,10 @@
-import WasmModule from "./wasm.js";
 
-export default class EngineRuntimeModule extends WasmModule {
+export default class RetrogradeRuntime {
+  wasmModulePath;
+  memory;
+  instance;
+  imports;
+
   glContext;
 
   displayWidth;
@@ -14,8 +18,12 @@ export default class EngineRuntimeModule extends WasmModule {
   uniformLocations = [];
   uniformLocationDict = {};
 
-  constructor(modulePath) {
-    super(modulePath, {
+  constructor(wasmModulePath) {
+    this.wasmModulePath = wasmModulePath;
+    this.memory = null;
+    this.instance = null;
+
+    this.imports = {
       // STD IO
 
       writelnStr: (msgLength, msgPtr) => {
@@ -322,7 +330,21 @@ export default class EngineRuntimeModule extends WasmModule {
         const locationObject = this.getUniformLocationObject(location);
         this.glContext.uniformMatrix4fv(locationObject, transpose, valueData);
       },
-    });
+    };
+  }
+
+  async initWasmModule() {
+    let importObject = {
+      env: this.imports,
+    };
+
+    const res = await WebAssembly.instantiateStreaming(fetch(this.wasmModulePath), importObject);
+    this.instance = res.instance;
+    this.memory = res.instance.exports.memory;
+  }
+
+  startWasmModule() {
+    this.instance.exports._start();
   }
 
   initEngine() {
@@ -331,6 +353,69 @@ export default class EngineRuntimeModule extends WasmModule {
 
   executeEngineLoopCycle(elapsedTimeMs) {
     this.instance.exports.executeEngineLoopCycle(elapsedTimeMs);
+  }
+
+  getString(pointer, length) {
+    const buffer = new Uint8Array(this.memory.buffer, pointer, length);
+    return new TextDecoder("utf-8").decode(buffer);
+  }
+
+  getCString(pointer) {
+    const buffer = new Uint8Array(this.memory.buffer, pointer);
+    let length = 0;
+    while (buffer[length] != 0) {
+      length++;
+    }
+
+    return this.getString(pointer, length);
+  }
+
+  getFloat32Array(pointer, length) {
+    const floatSize = 4;
+    const array = new Float32Array(length);
+    const dataview = new DataView(
+      this.memory.buffer,
+      pointer,
+      length * floatSize
+    );
+
+    for (let i = 0; i < length; i++) {
+      const val = dataview.getFloat32(i * floatSize, true);
+      array[i] = val;
+    }
+
+    return array;
+  }
+
+  getUnsignedInt32Array(pointer, length) {
+    const uintSize = 4;
+    const array = new Uint32Array(length);
+    const dataview = new DataView(
+      this.memory.buffer,
+      pointer,
+      length * uintSize
+    );
+
+    for (let i = 0; i < length; i++) {
+      const val = dataview.getUint32(i * uintSize, true);
+      array[i] = val;
+    }
+
+    return array;
+  }
+
+  writeString(string, pointer, maxLength) {
+    const encodedString = new TextEncoder("utf-8").encode(string);
+    if (encodedString.length > maxLength) {
+      throw new Error(
+        `String too large for storage destination: '${string}' (allocated size: ${maxLength}, encoded string size: ${encodedString.length})`
+      );
+    }
+
+    const dataview = new DataView(this.memory.buffer, pointer, maxLength);
+    encodedString.forEach((chr, i) => {
+      dataview.setUint8(i, chr);
+    });
   }
 
   createShader(ctx, type, source) {
