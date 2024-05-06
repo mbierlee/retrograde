@@ -32,6 +32,8 @@ version (WebAssembly) {
 
 void initRenderApi() {
     glDisable(GL_DITHER);
+    glCullFace(GL_BACK);
+    glEnable(GL_CULL_FACE);
 }
 
 void initRenderPass(ref RenderPass renderPass) {

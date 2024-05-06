@@ -1,4 +1,3 @@
-
 export default class RetrogradeRuntime {
   wasmModulePath;
   memory;
@@ -302,8 +301,16 @@ export default class RetrogradeRuntime {
         this.glContext.drawElements(mode, count, type, 0);
       },
 
+      glEnable: (capability) => {
+        this.glContext.enable(capability);
+      },
+
       glDisable: (capability) => {
         this.glContext.disable(capability);
+      },
+
+      glCullFace: (mode) => {
+        this.glContext.cullFace(mode);
       },
 
       glGetUniformLocation: (program, nameLength, namePtr) => {
@@ -338,7 +345,11 @@ export default class RetrogradeRuntime {
       env: this.imports,
     };
 
-    const res = await WebAssembly.instantiateStreaming(fetch(this.wasmModulePath), importObject);
+    const res = await WebAssembly.instantiateStreaming(
+      fetch(this.wasmModulePath),
+      importObject
+    );
+
     this.instance = res.instance;
     this.memory = res.instance.exports.memory;
   }

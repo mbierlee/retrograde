@@ -39,6 +39,12 @@ enum GL_STATIC_DRAW = 0x88E4;
 enum GL_ARRAY_BUFFER = 0x8892;
 enum GL_ELEMENT_ARRAY_BUFFER = 0x8893;
 
+// Culling
+enum GL_CULL_FACE = 0x0B44;
+enum GL_FRONT = 0x0404;
+enum GL_BACK = 0x0405;
+enum GL_FRONT_AND_BACK = 0x0408;
+
 // Enabling and disabling
 enum GL_DITHER = 0x0BD0;
 
@@ -64,7 +70,9 @@ export extern (C) void glClear(GLbitfield mask);
 export extern (C) void glUseProgram(GLuint program);
 export extern (C) void glDrawArrays(GLenum mode, GLint first, GLsizei count);
 export extern (C) void glDrawElements(GLenum mode, GLsizei count, GLenum type, GLintptr indices);
+export extern (C) void glEnable(GLenum cap);
 export extern (C) void glDisable(GLenum cap);
+export extern (C) void glCullFace(GLenum mode);
 export extern (C) GLint glGetUniformLocation(GLuint program, string name);
 export extern (C) void glUniformMatrix4fv(GLint location, GLsizei count, GLbool transpose, GLfloat[] value);
 
