@@ -22,6 +22,10 @@ enum GL_COLOR_BUFFER_BIT = 0x00004000;
 // Rendering primitives
 enum GL_TRIANGLES = 0x0004;
 
+// Blending modes
+enum GL_SRC_ALPHA = 0x0302;
+enum GL_ONE_MINUS_SRC_ALPHA = 0x0303;
+
 // Buffers
 enum GL_STATIC_DRAW = 0x88E4;
 enum GL_ARRAY_BUFFER = 0x8892;
@@ -38,6 +42,10 @@ enum GL_BLEND = 0x0BE2;
 enum GL_DEPTH_TEST = 0x0B71;
 enum GL_DITHER = 0x0BD0;
 enum GL_STENCIL_TEST = 0x0B90;
+
+// Depth or stencil tests
+enum GL_EQUAL = 0x0202;
+enum GL_LEQUAL = 0x0203;
 
 // Data types
 enum GL_UNSIGNED_INT = 0x1405;

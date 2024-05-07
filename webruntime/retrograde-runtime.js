@@ -337,6 +337,18 @@ export default class RetrogradeRuntime {
         const locationObject = this.getUniformLocationObject(location);
         this.glContext.uniformMatrix4fv(locationObject, transpose, valueData);
       },
+
+      glDepthFunc: (func) => {
+        this.glContext.depthFunc(func);
+      },
+
+      glStencilFunc: (func, refVal, mask) => {
+        this.glContext.stencilFunc(func, refVal, mask);
+      },
+
+      glBlendFunc: (sfactor, dfactor) => {
+        this.glContext.blendFunc(sfactor, dfactor);
+      },
     };
   }
 

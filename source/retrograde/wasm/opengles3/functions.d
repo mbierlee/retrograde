@@ -34,3 +34,6 @@ export extern (C) void glDisable(GLenum cap);
 export extern (C) void glCullFace(GLenum mode);
 export extern (C) GLint glGetUniformLocation(GLuint program, string name);
 export extern (C) void glUniformMatrix4fv(GLint location, GLsizei count, GLbool transpose, GLfloat[] value);
+export extern (C) void glDepthFunc(GLenum func);
+export extern (C) void glStencilFunc(GLenum func, GLint refVal, GLuint mask);
+export extern (C) void glBlendFunc(GLenum sfactor, GLenum dfactor);
