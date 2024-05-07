@@ -34,7 +34,10 @@ enum GL_BACK = 0x0405;
 enum GL_FRONT_AND_BACK = 0x0408;
 
 // Enabling and disabling
+enum GL_BLEND = 0x0BE2;
+enum GL_DEPTH_TEST = 0x0B71;
 enum GL_DITHER = 0x0BD0;
+enum GL_STENCIL_TEST = 0x0B90;
 
 // Data types
 enum GL_UNSIGNED_INT = 0x1405;
