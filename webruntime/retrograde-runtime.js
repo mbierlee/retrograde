@@ -357,10 +357,14 @@ export default class RetrogradeRuntime {
       env: this.imports,
     };
 
-    const res = await WebAssembly.instantiateStreaming(
-      fetch(this.wasmModulePath),
-      importObject
-    );
+    // const res = await WebAssembly.instantiateStreaming(
+    //   fetch(this.wasmModulePath),
+    //   importObject
+    // );
+
+    const res = await fetch(this.wasmModulePath)
+      .then((response) => response.arrayBuffer())
+      .then((bytes) => WebAssembly.instantiate(bytes, importObject));
 
     this.instance = res.instance;
     this.memory = res.instance.exports.memory;
