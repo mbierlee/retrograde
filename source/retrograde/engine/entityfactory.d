@@ -14,11 +14,11 @@ module retrograde.engine.entityfactory;
 import retrograde.std.memory : SharedPtr, makeShared;
 import retrograde.std.string : s;
 import retrograde.std.stringid : StringId;
-
 import retrograde.std.math : Vector3D, QuaternionD;
 import retrograde.std.geometry : PositionComponentType, OrientationComponentType, ScaleComponentType;
 
 import retrograde.engine.entity : Entity, Component;
+import retrograde.engine.animation.kinetic : RotationComponentType;
 
 SharedPtr!Entity makeEntity(string name) {
     return makeShared(Entity(name.s));
@@ -57,4 +57,10 @@ void addScale(SharedPtr!Entity entity, const Vector3D scale) {
     auto scalePtr = makeShared(scale);
     auto scaleComponent = Component(ScaleComponentType, scalePtr.as!void);
     entity.addComponent(scaleComponent);
+}
+
+void addRotation(SharedPtr!Entity entity, double radianAngle, const Vector3D axis) {
+    auto rotationPtr = makeShared(QuaternionD.createRotation(radianAngle, axis));
+    auto rotationComponent = Component(RotationComponentType, rotationPtr.as!void);
+    entity.addComponent(rotationComponent);
 }
