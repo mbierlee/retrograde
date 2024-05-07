@@ -16,27 +16,28 @@ version (OpenGLES3)  :  //
 
 import retrograde.wasm.opengles3.types;
 
-export extern (C) GLuint glCreateBuffer();
-export extern (C) void glDeleteBuffer(GLuint buffer);
-export extern (C) void glBindBuffer(GLenum target, GLuint buffer);
-export extern (C) void glBufferDataFloat(GLenum target, GLfloat[] data, GLenum usage);
-export extern (C) void glBufferDataUInt(GLenum target, GLuint[] data, GLenum usage);
-export extern (C) GLuint glCreateVertexArray();
-export extern (C) void glDeleteVertexArray(GLuint vertextArrayObject);
-export extern (C) void glBindVertexArray(GLuint vertextArrayObject);
-export extern (C) void glEnableVertexAttribArray(GLuint index);
-export extern (C) void glVertexAttribPointer(GLuint index, GLint size, GLenum type, GLbool normalized, GLsizei stride,
-    GLintptr offset);
-export extern (C) void glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
-export extern (C) void glClear(GLbitfield mask);
-export extern (C) void glUseProgram(GLuint program);
-export extern (C) void glDrawArrays(GLenum mode, GLint first, GLsizei count);
-export extern (C) void glDrawElements(GLenum mode, GLsizei count, GLenum type, GLintptr indices);
-export extern (C) void glEnable(GLenum cap);
-export extern (C) void glDisable(GLenum cap);
-export extern (C) void glCullFace(GLenum mode);
-export extern (C) GLint glGetUniformLocation(GLuint program, string name);
-export extern (C) void glUniformMatrix4fv(GLint location, GLsizei count, GLbool transpose, GLfloat[] value);
-export extern (C) void glDepthFunc(GLenum func);
-export extern (C) void glStencilFunc(GLenum func, GLint refVal, GLuint mask);
-export extern (C) void glBlendFunc(GLenum sfactor, GLenum dfactor);
+export extern (C):
+
+GLuint glCreateBuffer();
+void glDeleteBuffer(GLuint buffer);
+void glBindBuffer(GLenum target, GLuint buffer);
+void glBufferDataFloat(GLenum target, GLfloat[] data, GLenum usage);
+void glBufferDataUInt(GLenum target, GLuint[] data, GLenum usage);
+GLuint glCreateVertexArray();
+void glDeleteVertexArray(GLuint vertextArrayObject);
+void glBindVertexArray(GLuint vertextArrayObject);
+void glEnableVertexAttribArray(GLuint index);
+void glVertexAttribPointer(GLuint index, GLint size, GLenum type, GLbool normalized, GLsizei stride, GLintptr offset);
+void glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
+void glClear(GLbitfield mask);
+void glUseProgram(GLuint program);
+void glDrawArrays(GLenum mode, GLint first, GLsizei count);
+void glDrawElements(GLenum mode, GLsizei count, GLenum type, GLintptr indices);
+void glEnable(GLenum cap);
+void glDisable(GLenum cap);
+void glCullFace(GLenum mode);
+GLint glGetUniformLocation(GLuint program, string name);
+void glUniformMatrix4fv(GLint location, GLsizei count, GLbool transpose, GLfloat[] value);
+void glDepthFunc(GLenum func);
+void glStencilFunc(GLenum func, GLint refVal, GLuint mask);
+void glBlendFunc(GLenum sfactor, GLenum dfactor);
