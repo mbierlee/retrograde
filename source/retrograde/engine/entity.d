@@ -11,9 +11,9 @@
 
 module retrograde.engine.entity;
 
-import retrograde.std.string : String, s;
+import retrograde.std.string : String;
 import retrograde.std.stringid : StringId;
-import retrograde.std.memory : SharedPtr, makeShared;
+import retrograde.std.memory : SharedPtr;
 import retrograde.std.collections : Array;
 import retrograde.std.result : OperationResult, success, failure;
 import retrograde.std.option : Option, some, none;
@@ -342,15 +342,14 @@ struct EntityManager {
     }
 }
 
-SharedPtr!Entity makeEntity(string name) {
-    return makeShared(Entity(name.s));
-}
-
 version (UnitTesting)  :  ///
 
 import retrograde.std.test : test, writeSection;
 import retrograde.std.stringid : sid;
 import retrograde.std.memory : makeSharedVoid;
+import retrograde.std.string : s;
+
+import retrograde.engine.entityfactory : makeEntity;
 
 void runEntityTests() {
     runEcsTests();
