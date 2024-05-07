@@ -20,7 +20,7 @@ import retrograde.std.geometry : PositionComponentType, OrientationComponentType
 
 import retrograde.engine.service : entityManager;
 import retrograde.engine.entity : Entity;
-import retrograde.engine.glapi : initRenderApi, initRenderPass, setClearColor, initFrame, loadEntityModel,
+import retrograde.engine.graphicsapi : initRenderApi, initRenderPass, setClearColor, initFrame, loadEntityModel,
     unloadEntityModel, useRenderPassShaderProgram, drawModel, clearShaderProgram, getViewport;
 
 import retrograde.data.model : ModelComponentType;

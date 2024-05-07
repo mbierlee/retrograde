@@ -11,6 +11,9 @@
 
 module retrograde.wasm.opengles3.functions;
 
+version (WebAssembly)  :  //
+version (OpenGLES3)  :  //
+
 import retrograde.wasm.opengles3.types;
 
 export extern (C) GLuint glCreateBuffer();

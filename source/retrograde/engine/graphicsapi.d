@@ -12,7 +12,7 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.engine.glapi;
+module retrograde.engine.graphicsapi;
 
 version (OpenGLES3) {
     public import retrograde.api.opengles3;
