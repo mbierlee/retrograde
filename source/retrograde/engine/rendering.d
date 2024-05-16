@@ -17,6 +17,7 @@ import retrograde.std.stringid : sid, StringId;
 import retrograde.std.math : degreesToRadians, scalar, Matrix4D, createViewMatrix, createPerspectiveMatrix,
     createOrthographicMatrix, Vector3D, QuaternionD;
 import retrograde.std.geometry : PositionComponentType, OrientationComponentType;
+import retrograde.std.dlang : CopyConstructors;
 
 import retrograde.engine.service : entityManager;
 import retrograde.engine.entity : Entity;
@@ -72,24 +73,6 @@ struct CameraConfiguration {
 
     /// Scaling applied when the projection type is orthographic.
     scalar orthoScale = 1;
-
-    this(ref return scope inout typeof(this) other) {
-        this.horizontalFieldOfView = other.horizontalFieldOfView;
-        this.aspectRatio = other.aspectRatio;
-        this.nearClippingDistance = other.nearClippingDistance;
-        this.farClippingDistance = other.farClippingDistance;
-        this.projectionType = other.projectionType;
-        this.orthoScale = other.orthoScale;
-    }
-
-    void opAssign(ref return scope inout typeof(this) other) {
-        this.horizontalFieldOfView = other.horizontalFieldOfView;
-        this.aspectRatio = other.aspectRatio;
-        this.nearClippingDistance = other.nearClippingDistance;
-        this.farClippingDistance = other.farClippingDistance;
-        this.projectionType = other.projectionType;
-        this.orthoScale = other.orthoScale;
-    }
 
     void setOrthographicProjectionDefaults() {
         nearClippingDistance = 0;
@@ -201,23 +184,7 @@ struct RenderPass {
 
     SharedPtr!void apiData;
 
-    this(ref return scope inout typeof(this) other) {
-        this.passName = other.passName;
-        this.vertexShader = other.vertexShader;
-        this.fragmentShader = other.fragmentShader;
-        this.componentType = other.componentType;
-        this.render = other.render;
-        this.apiData = other.apiData;
-    }
-
-    void opAssign(ref return scope inout typeof(this) other) {
-        this.passName = other.passName;
-        this.vertexShader = other.vertexShader;
-        this.fragmentShader = other.fragmentShader;
-        this.componentType = other.componentType;
-        this.render = other.render;
-        this.apiData = other.apiData;
-    }
+    mixin CopyConstructors!RenderPass;
 }
 
 RenderPass genericModelRenderPass = RenderPass(

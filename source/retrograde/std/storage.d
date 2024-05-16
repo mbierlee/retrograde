@@ -13,20 +13,13 @@ module retrograde.std.storage;
 
 import retrograde.std.string : String, s;
 import retrograde.std.collections : Array;
+import retrograde.std.dlang : CopyConstructors;
 
 struct File {
     String fileName;
     Array!ubyte data;
 
-    this(ref return scope inout typeof(this) other) {
-        this.fileName = fileName;
-        this.data = data;
-    }
-
-    void opAssign(ref return scope inout typeof(this) other) {
-        this.fileName = fileName;
-        this.data = data;
-    }
+    mixin CopyConstructors!File;
 }
 
 version (UnitTesting)  :  ///

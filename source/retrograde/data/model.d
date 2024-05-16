@@ -13,6 +13,7 @@ module retrograde.data.model;
 
 import retrograde.std.collections : Array;
 import retrograde.std.stringid : StringId, sid;
+import retrograde.std.dlang : CopyConstructors;
 
 alias VertexComponent = float;
 alias VertexIndex = size_t;
@@ -54,28 +55,12 @@ struct Mesh {
     Array!Vertex vertices;
     Array!Face faces;
 
-    this(ref return scope inout typeof(this) other) {
-        this.vertices = other.vertices;
-        this.faces = other.faces;
-    }
-
-    void opAssign(ref return scope inout typeof(this) other) {
-        this.vertices = other.vertices;
-        this.faces = other.faces;
-    }
+    mixin CopyConstructors!Mesh;
 }
 
 struct Model {
     StringId name;
     Array!Mesh meshes;
 
-    this(ref return scope inout typeof(this) other) {
-        this.name = other.name;
-        this.meshes = other.meshes;
-    }
-
-    void opAssign(ref return scope inout typeof(this) other) {
-        this.name = other.name;
-        this.meshes = other.meshes;
-    }
+    mixin CopyConstructors!Model;
 }

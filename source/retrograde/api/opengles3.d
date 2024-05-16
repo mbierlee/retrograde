@@ -23,6 +23,7 @@ import retrograde.std.collections : Array;
 import retrograde.std.stringid : StringId, sid;
 import retrograde.std.math : Matrix4D, Vector3D, QuaternionD, toTranslationMatrix, toScalingMatrix;
 import retrograde.std.geometry : PositionComponentType, OrientationComponentType, ScaleComponentType;
+import retrograde.std.dlang : CopyConstructors;
 
 version (WebAssembly) {
     import retrograde.wasm.opengles3;
@@ -273,13 +274,7 @@ private struct GlMeshInfo {
 private struct GlModelInfo {
     Array!GlMeshInfo meshes;
 
-    this(ref return scope inout typeof(this) other) {
-        this.meshes = other.meshes;
-    }
-
-    void opAssign(ref return scope inout typeof(this) other) {
-        this.meshes = other.meshes;
-    }
+    mixin CopyConstructors!GlModelInfo;
 }
 
 private struct GlRenderPassInfo {

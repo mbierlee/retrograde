@@ -17,6 +17,7 @@ import retrograde.std.memory : SharedPtr;
 import retrograde.std.collections : Array;
 import retrograde.std.result : OperationResult, success, failure;
 import retrograde.std.option : Option, some, none;
+import retrograde.std.dlang : CopyConstructors;
 
 /** 
  * An entity is a container for components. It is a logical object that can be
@@ -33,17 +34,7 @@ struct Entity {
 
     private Array!Component components;
 
-    this(ref return scope inout typeof(this) other) {
-        this.name = other.name;
-        this._id = other._id;
-        this.components = other.components;
-    }
-
-    void opAssign(ref return scope inout typeof(this) other) {
-        this.name = other.name;
-        this._id = other._id;
-        this.components = other.components;
-    }
+    mixin CopyConstructors!Entity;
 
     /**
      * Returns: The unique ID of the entity.
@@ -205,15 +196,7 @@ struct Component {
      */
     SharedPtr!void data;
 
-    this(ref return scope inout typeof(this) other) {
-        this.type = other.type;
-        this.data = other.data;
-    }
-
-    void opAssign(ref return scope inout typeof(this) other) {
-        this.type = other.type;
-        this.data = other.data;
-    }
+    mixin CopyConstructors!Component;
 }
 
 alias ProcessorFunction = void delegate(SharedPtr!Entity);
