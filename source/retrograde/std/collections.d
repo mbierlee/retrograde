@@ -213,6 +213,10 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
     }
 
     void opAssign(ref return scope inout typeof(this) other) {
+        if (this is other) {
+            return;
+        }
+
         if (other._capacity == 0) {
             clear();
             return;
@@ -220,15 +224,21 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
 
         _length = other._length;
         _capacity = other._capacity;
-        items = cast(T*) realloc(items, T.sizeof * other._length);
-        assert(items !is null, "Failed to allocate memory during assignment of array");
 
-        if (items !is null) {
-            memset(items, 0, T.sizeof * other._length);
-            for (size_t i = 0; i < _length; i++) {
-                items[i] = other.items[i];
-            }
+        T* newItems = cast(T*) realloc(items, T.sizeof * other._length);
+        if (newItems is null) {
+            assert(0, "Failed to allocate memory during assignment of array");
+            return;
         }
+
+        memset(newItems, 0, T.sizeof * other._length);
+        for (size_t i = 0; i < other._length; i++) {
+            newItems[i] = other.items[i];
+        }
+
+        items = newItems;
+        _length = other._length;
+        _capacity = other._capacity;
     }
 
     void opOpAssign(string op : "~")(T rhs) {
@@ -1107,6 +1117,14 @@ void runArrayTests() {
         auto empty2 = empty1;
         assert(empty1.length == 0);
         assert(empty2.length == 0);
+    });
+
+    test("Assign filled array to empty array", () {
+        Array!ubyte empty;
+        Array!ubyte filled = [0x1, 0x2, 0x3];
+        empty = filled;
+        assert(empty.length == 3);
+        assert(filled.length == 3);
     });
 }
 
