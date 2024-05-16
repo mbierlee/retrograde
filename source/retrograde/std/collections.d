@@ -222,9 +222,6 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
             return;
         }
 
-        _length = other._length;
-        _capacity = other._capacity;
-
         T* newItems = cast(T*) realloc(items, T.sizeof * other._length);
         if (newItems is null) {
             assert(0, "Failed to allocate memory during assignment of array");
@@ -239,6 +236,28 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         items = newItems;
         _length = other._length;
         _capacity = other._capacity;
+    }
+
+    void opAssign(scope inout T[] other) {
+        if (other.length == 0) {
+            clear();
+            return;
+        }
+
+        T* newItems = cast(T*) realloc(items, T.sizeof * other.length);
+        if (newItems is null) {
+            assert(0, "Failed to allocate memory during assignment of array");
+            return;
+        }
+
+        memset(newItems, 0, T.sizeof * other.length);
+        for (size_t i = 0; i < other.length; i++) {
+            newItems[i] = other[i];
+        }
+
+        items = newItems;
+        _length = other.length;
+        _capacity = other.length;
     }
 
     void opOpAssign(string op : "~")(T rhs) {
@@ -1125,6 +1144,13 @@ void runArrayTests() {
         empty = filled;
         assert(empty.length == 3);
         assert(filled.length == 3);
+    });
+
+    test("Assign static array to array", () {
+        Array!int array;
+        array = [0x1, 0x2, 0x3];
+        assert(array.length == 3);
+        assert(array[0 .. $] == [0x1, 0x2, 0x3]);
     });
 }
 
