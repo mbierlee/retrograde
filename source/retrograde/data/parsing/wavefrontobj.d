@@ -11,7 +11,6 @@
 
 module retrograde.data.parsing.wavefrontobj;
 
-import retrograde.std.storage : File;
 import retrograde.std.memory : SharedPtr, makeShared;
 import retrograde.std.string : String, StringIterator, split;
 import retrograde.std.stringid : StringId, sid;
