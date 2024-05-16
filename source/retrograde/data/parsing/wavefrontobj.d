@@ -41,17 +41,17 @@ private struct ParseContext {
 
 private void startParse(ref ParseContext ctx) {
     while (ctx.iter.hasNext) {
-        auto lineType = ctx.parseToNonSpace();
+        auto lineType = ctx.collectTillWhitespaceOrEndOfLine();
         if (lineType.isEmpty) {
             break;
         }
 
         switch (lineType.value) {
-        case '#':
+        case "#":
             ctx.parseToEndLine();
             continue;
 
-        case 'o':
+        case "o":
             if (ctx.currentMesh.isDefined) {
                 ctx.model.ptr.meshes.add(*ctx.currentMesh.value.ptr);
             }
@@ -60,11 +60,11 @@ private void startParse(ref ParseContext ctx) {
             ctx.parseToEndLine();
             continue;
 
-        case 'v':
+        case "v":
             ctx.parseVertex();
             continue;
 
-        case 'f':
+        case "f":
             ctx.parseFace();
             continue;
 
@@ -150,6 +150,10 @@ private Option!String collectTillWhitespace(ref ParseContext ctx) {
 
 private Option!String collectTillEndOfLine(ref ParseContext ctx) {
     return collectTill(ctx, (char c) => !c.isEndOfLine);
+}
+
+private Option!String collectTillWhitespaceOrEndOfLine(ref ParseContext ctx) {
+    return collectTill(ctx, (char c) => !c.isWhite && !c.isEndOfLine);
 }
 
 private Option!String collectTill(ref ParseContext ctx, bool function(char) conditionFn) {
@@ -264,8 +268,8 @@ void runWavefrontObjTests() {
             # Blender 3.6.2
             # www.blender.org
             o Cube
-            v
-            f
+            v 
+            f 
         ";
 
         auto model = parseWavefrontObjModel(modelSource.s, "testModel".sid);
