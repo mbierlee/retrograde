@@ -240,6 +240,10 @@ struct UniquePtr(T) {
     }
 }
 
+void move(T)(ref UniquePtr!T source, ref UniquePtr!T target) {
+    target.reset(source.release());
+}
+
 /**
  * Create a unique pointer from a raw pointer.
  *
@@ -664,12 +668,28 @@ void runUniquePointerTests() {
         int* intPtr = makeRaw(5);
         auto ptr = intPtr.unique();
         assert(ptr.isDefined());
-        assert(ptr._ptr == intPtr);
+        assert(ptr._ptr is intPtr);
 
         ptr = null;
         assert(!ptr.isDefined());
-        assert(ptr._ptr == null);
+        assert(ptr._ptr is null);
     });
+
+    test("Initialize a null unique pointer", {
+        auto ptr = UniquePtr!int();
+        assert(ptr._ptr is null);
+    });
+
+    test("Move unique pointer to another existing one", {
+        int* intPtr = makeRaw(5);
+        UniquePtr!int ptr1 = UniquePtr!int(intPtr);
+        UniquePtr!int ptr2;
+        move(ptr1, ptr2);
+
+        assert(ptr1._ptr is null);
+        assert(ptr2._ptr is intPtr);
+    });
+
 }
 
 void runSharedPointerTests() {
