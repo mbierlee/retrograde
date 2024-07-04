@@ -489,6 +489,12 @@ private struct TestSharedContainer {
     }
 }
 
+UniquePtr!int makeSmart() {
+    int* intPtr = makeRaw(5);
+    UniquePtr!int ptr = UniquePtr!int(intPtr);
+    return ptr;
+}
+
 void runStdMemoryTests() {
     runRawPointerTests();
     runUniquePointerTests();
@@ -688,6 +694,12 @@ void runUniquePointerTests() {
 
         assert(ptr1._ptr is null);
         assert(ptr2._ptr is intPtr);
+    });
+
+    test("Return unique pointer in factory method", {
+        UniquePtr!int result = makeSmart();
+        assert(result.ptr !is null);
+        assert(*result.ptr == 5);
     });
 
 }
