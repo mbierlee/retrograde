@@ -429,7 +429,7 @@ struct Vector(T, uint N) if (N > 0) {
         return components[index] = value;
     }
 
-    string toString() const {
+    String toString() const {
         Array!String componentStrings;
         static foreach (i; 0 .. N) {
             componentStrings ~= to!String(this[i]);
