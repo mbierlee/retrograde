@@ -455,7 +455,7 @@ SharedPtr!void makeSharedVoid(T)(const T initial = T.init) {
  *
  * Result pointers are a combination of UniquePtr and Result types. They contain both a managed pointer
  * and a faillure state for when there is no valid result. 
- * It is recommended to transfer the pointer into a UniquePtr or SharedPtr using unique or share 
+ * It is recommended to transfer the pointer into a UniquePtr or SharedPtr using unique() or share() 
  * as soon as possible.
  */
 struct ResultPtr(T) {
@@ -556,6 +556,17 @@ struct ResultPtr(T) {
      */
     SharedPtr!T share() {
         return SharedPtr!T(release());
+    }
+
+    /**
+     * Move the raw pointer to a unique pointer.
+     * The original pointer is not freed.
+     * This instance will become useless and should not be used anymore.
+     *
+     * Returns: The new unique pointer.
+     */
+    UniquePtr!T unique() {
+        return UniquePtr!T(release());
     }
 
     /**
@@ -1286,5 +1297,29 @@ void runResultPointerTests() {
         assert(result.isSuccessful());
         assert(result.errorMessage == "");
         assert(*result.ptr == 5);
+    });
+
+    test("Convert ResultPtr into a SharedPtr", {
+        int* intPtr = makeRaw(5);
+        ResultPtr!int resultPtr = successPtr!int(intPtr);
+        SharedPtr!int sharedPtr = resultPtr.share();
+
+        assert(resultPtr._ptr is null);
+        assert(resultPtr.isFailure());
+        assert(resultPtr.errorMessage == "Result pointer is released.");
+
+        assert(sharedPtr.ptr is intPtr);
+    });
+
+    test("Convert ResultPtr into a UniquePtr", {
+        int* intPtr = makeRaw(5);
+        ResultPtr!int resultPtr = successPtr!int(intPtr);
+        UniquePtr!int uniquePtr = resultPtr.unique();
+
+        assert(resultPtr._ptr is null);
+        assert(resultPtr.isFailure());
+        assert(resultPtr.errorMessage == "Result pointer is released.");
+
+        assert(uniquePtr.ptr is intPtr);
     });
 }
