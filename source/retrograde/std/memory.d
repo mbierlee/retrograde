@@ -136,7 +136,7 @@ struct UniquePtr(T) {
     }
 
     auto opDispatch(string s, T)(T value) {
-        assert(_ptr !is null, "Shared pointer is null and may not be used.");
+        assert(_ptr !is null, "Unique pointer is null and may not be used.");
         return mixin("_ptr." ~ s ~ " = value");
     }
 
@@ -240,6 +240,11 @@ struct UniquePtr(T) {
     }
 }
 
+/** 
+ * Move a unique pointer from one instance to another. 
+ *
+ * The source is released and becomes unusable.
+ */
 void move(T)(ref UniquePtr!T source, ref UniquePtr!T target) {
     target.reset(source.release());
 }
@@ -445,6 +450,210 @@ SharedPtr!void makeSharedVoid(T)(const T initial = T.init) {
     return sharedPtr;
 }
 
+/** 
+ * A smart pointer used as a return type from functions that can succeed or fail.
+ *
+ * Result pointers are a combination of UniquePtr and Result types. They contain both a managed pointer
+ * and a faillure state for when there is no valid result. 
+ * It is recommended to transfer the pointer into a UniquePtr or SharedPtr using unique or share 
+ * as soon as possible.
+ */
+struct ResultPtr(T) {
+    private bool success;
+    private T* _ptr;
+    string _errorMessage;
+
+    ~this() {
+        cleanup();
+    }
+
+    @disable this(ref typeof(this));
+    @disable void opAssign(ref typeof(this));
+
+    void opAssign(typeof(null)) {
+        auto ptr = release();
+        free(ptr);
+    }
+
+    auto opDispatch(string s)() {
+        assert(_ptr !is null, "Result pointer is null and may not be used.");
+        return mixin("_ptr." ~ s);
+    }
+
+    auto opDispatch(string s, Args...)(Args args) {
+        assert(_ptr !is null, "Result pointer is null and may not be used.");
+        return mixin("_ptr." ~ s ~ "(args)");
+    }
+
+    auto opDispatch(string s, T)(T value) {
+        assert(_ptr !is null, "Result pointer is null and may not be used.");
+        return mixin("_ptr." ~ s ~ " = value");
+    }
+
+    static if (!is(T == void)) {
+        auto opIndex(size_t i) {
+            assert(_ptr !is null, "Result pointer is null and may not be used.");
+            //TODO: Bounds checking
+            return _ptr[i];
+        }
+    }
+
+    /**
+     * Get the raw pointer.
+     * The pointer is still managed by the unique pointer and should not be freed manually.
+     * Do not use it to create another smart pointer, but use one of the other methods instead
+     * such as move or share.
+     */
+    T* ptr() {
+        return _ptr;
+    }
+
+    /**
+     * Returns: Whether the pointer is defined.
+     */
+    bool isDefined() {
+        return _ptr !is null;
+    }
+
+    /**
+     * Release the raw pointer.
+     * The pointer is no longer managed by the unique pointer and must be freed manually.
+     * This instance will become useless and should not be used anymore.
+     * The success of this pointer will be falsified and the faillure message will be made
+     * to state that the pointer is released.
+     *
+     * Returns: The raw pointer.
+     */
+    T* release() {
+        success = false;
+        _errorMessage = "Result pointer is released.";
+        auto ptr = _ptr;
+        _ptr = null;
+        return ptr;
+    }
+
+    /**
+     * Move the raw pointer to another result pointer.
+     * The original pointer is not freed.
+     * This instance will become useless and should not be used anymore.
+     *
+     * Returns: The new result pointer.
+     */
+    ResultPtr!T move() {
+        ResultPtr!T newPtr;
+        newPtr.success = success;
+        newPtr._errorMessage = _errorMessage;
+        newPtr._ptr = release();
+        return newPtr;
+    }
+
+    /**
+     * Move the raw pointer to a shared pointer.
+     * The original pointer is not freed.
+     * This instance will become useless and should not be used anymore.
+     *
+     * Returns: The new shared pointer.
+     */
+    SharedPtr!T share() {
+        return SharedPtr!T(release());
+    }
+
+    /**
+     * Swap the raw pointer with another result pointer.
+     * If either pointer is null then the other pointer will become null.
+     *
+     * Params:
+     *  other: The other result pointer to swap with.
+     */
+    void swap(ref typeof(this) other) {
+        auto tmpPtr = _ptr;
+        auto tmpSuccess = success;
+        auto tmpMessage = _errorMessage;
+
+        _ptr = other._ptr;
+        success = other.success;
+        _errorMessage = other._errorMessage;
+
+        other._ptr = tmpPtr;
+        other.success = tmpSuccess;
+        other._errorMessage = tmpMessage;
+    }
+
+    /**
+     * Reset the raw pointer.
+     * The previously owned pointer is freed. 
+     * If no pointer is given the pointer is set to null, which
+     * makes this instance useless.
+     * The success state and error message remain unchanged.
+     *
+     * Params:
+     *  ptr: The new raw pointer. When not given, the pointer is set to null.
+     */
+    void reset(T* ptr = null) {
+        cleanup();
+        _ptr = ptr;
+    }
+
+    /** 
+     * Returns: Wheter the result is successful or not.
+     */
+    bool isSuccessful() {
+        return this.success;
+    }
+
+    /** 
+     * Returns: Wheter the result is failed or not.
+     */
+    bool isFailure() {
+        return !this.success;
+    }
+
+    /** 
+     * Returns: The error message of the result.
+     */
+    string errorMessage() {
+        return this._errorMessage;
+    }
+
+    private void cleanup() {
+        if (_ptr !is null) {
+            static if (!is(T == void)) {
+                destroy(*_ptr);
+            }
+
+            free(_ptr);
+        }
+
+        _ptr = null;
+    }
+}
+
+ResultPtr!T successPtr(T)(T* ptr) {
+    ResultPtr!T resultPtr;
+    resultPtr._ptr = ptr;
+    resultPtr.success = true;
+    return resultPtr;
+}
+
+ResultPtr!T failedPtr(T)(string errorMessage) {
+    ResultPtr!T resultPtr;
+    resultPtr._ptr = null;
+    resultPtr.success = false;
+    resultPtr._errorMessage = errorMessage;
+    return resultPtr;
+}
+
+/** 
+ * Move a result pointer from one instance to another. 
+ *
+ * The source is released and becomes unusable.
+ */
+void move(T)(ref ResultPtr!T source, ref ResultPtr!T target) {
+    target.success = source.success;
+    target._errorMessage = source._errorMessage;
+    target.reset(source.release());
+}
+
 version (UnitTesting)  :  ///
 
 private bool testStructDestroyed = false;
@@ -475,6 +684,18 @@ private struct TestContainer {
     }
 }
 
+private struct TestResultContainer {
+    ResultPtr!TestStruct testStructPtr;
+
+    this(ref return scope inout typeof(this) other) {
+        testStructPtr.reset((cast(typeof(this)) other).testStructPtr.release());
+    }
+
+    void opAssign(ref return scope inout typeof(this) other) {
+        testStructPtr.reset((cast(typeof(this)) other).testStructPtr.release());
+    }
+}
+
 private struct TestSharedContainer {
     SharedPtr!TestStruct testStructPtr;
 
@@ -495,10 +716,17 @@ UniquePtr!int makeSmart() {
     return ptr;
 }
 
+ResultPtr!int makeSmartResult() {
+    int* intPtr = makeRaw(5);
+    ResultPtr!int ptr = successPtr(intPtr);
+    return ptr;
+}
+
 void runStdMemoryTests() {
     runRawPointerTests();
     runUniquePointerTests();
     runSharedPointerTests();
+    runResultPointerTests();
 }
 
 void runRawPointerTests() {
@@ -701,7 +929,6 @@ void runUniquePointerTests() {
         assert(result.ptr !is null);
         assert(*result.ptr == 5);
     });
-
 }
 
 void runSharedPointerTests() {
@@ -863,5 +1090,201 @@ void runSharedPointerTests() {
         ptr = null;
         assert(!ptr.isDefined());
         assert(ptr._ptr == null);
+    });
+}
+
+void runResultPointerTests() {
+    import retrograde.std.test : test, writeSection;
+
+    writeSection("-- Result-pointer tests --");
+
+    test("Create and use a result pointer with successful result", {
+        auto resultPtr = successPtr(makeRaw!TestStruct);
+        assert(resultPtr.isSuccessful());
+        assert(!resultPtr.isFailure());
+        assert(resultPtr.errorMessage == "");
+        assert(resultPtr.ptr.a == 42);
+        assert(resultPtr.ptr.a == 42);
+        assert(resultPtr.ptr.b == 66);
+
+        resultPtr.doubleValues();
+        assert(resultPtr.a == 84);
+        assert(resultPtr.b == 132);
+    });
+
+    test("Create and use a result pointer with failed result", {
+        auto resultPtr = failedPtr!TestStruct("I do not like it");
+        assert(resultPtr.isFailure());
+        assert(!resultPtr.isSuccessful());
+        assert(resultPtr.errorMessage == "I do not like it");
+    });
+
+    test("A destroyed result pointer will nullify the container pointer", {
+        testStructDestroyed = false;
+        {
+            auto resultPtr = successPtr(makeRaw!TestStruct);
+            testStructDestroyed = false;
+            assert(resultPtr.ptr !is null);
+        }
+
+        assert(testStructDestroyed);
+    });
+
+    test("A destroyed result pointer will destroy the contained pointer", {
+        auto rawPtr = makeRaw!TestStruct();
+        testStructDestroyed = false;
+        {
+            auto resultPtr = successPtr(rawPtr);
+            assert(resultPtr.ptr !is null);
+            assert(!testStructDestroyed);
+        }
+
+        assert(testStructDestroyed);
+    });
+
+    test("A result pointer is destroyed when containing objects are", {
+        testStructDestroyed = false;
+        {
+            TestResultContainer(successPtr(makeRaw!TestStruct));
+        }
+
+        assert(testStructDestroyed);
+    });
+
+    test("A result pointer cannot be copied", {
+        auto resultPtr = successPtr(makeRaw!TestStruct);
+        assert(!__traits(compiles, mixin("auto resultPtr2 = resultPtr")));
+    });
+
+    test("A result pointer's ownership can be moved", {
+        auto rawPtr = makeRaw!TestStruct;
+        auto resultPtr = rawPtr.successPtr;
+        auto resultPtr2 = resultPtr.move;
+
+        assert(resultPtr.ptr is null);
+        assert(resultPtr.isFailure());
+        assert(resultPtr.errorMessage == "Result pointer is released.");
+
+        assert(resultPtr2.ptr is rawPtr);
+        assert(resultPtr2.isSuccessful());
+        assert(resultPtr2.errorMessage == "");
+    });
+
+    test("A result pointer's ownership can be released", {
+        auto rawPtr = makeRaw!TestStruct;
+        auto resultPtr = rawPtr.successPtr;
+        auto rawPtr2 = resultPtr.release;
+
+        assert(resultPtr.ptr is null);
+        assert(resultPtr.isFailure());
+        assert(resultPtr.errorMessage == "Result pointer is released.");
+        assert(rawPtr2 is rawPtr);
+    });
+
+    test("A result pointer's ownership can be swapped", {
+        auto rawPtr = makeRaw!TestStruct;
+        auto resultPtr = rawPtr.successPtr;
+        auto rawPtr2 = makeRaw!TestStruct;
+        auto resultPtr2 = rawPtr2.successPtr;
+
+        resultPtr.swap(resultPtr2);
+
+        assert(resultPtr.ptr is rawPtr2);
+        assert(resultPtr.isSuccessful());
+        assert(resultPtr.errorMessage == "");
+
+        assert(resultPtr2.ptr is rawPtr);
+        assert(resultPtr2.isSuccessful());
+        assert(resultPtr2.errorMessage == "");
+    });
+
+    test("A result pointer's ownership can be swapped when one is failed", {
+        auto rawPtr = makeRaw!TestStruct;
+        auto resultPtr = rawPtr.successPtr;
+        auto resultPtr2 = failedPtr!TestStruct("It is not right");
+
+        resultPtr.swap(resultPtr2);
+
+        assert(resultPtr.ptr is null);
+        assert(resultPtr.isFailure());
+        assert(resultPtr.errorMessage == "It is not right");
+
+        assert(resultPtr2.ptr is rawPtr);
+        assert(resultPtr2.isSuccessful());
+        assert(resultPtr2.errorMessage == "");
+    });
+
+    test("A result pointer can be reset", {
+        auto rawPtr = makeRaw!TestStruct;
+        auto rawPtr2 = makeRaw!TestStruct;
+        auto resultPtr = rawPtr.successPtr;
+
+        resultPtr.reset(rawPtr2);
+
+        assert(resultPtr.ptr is rawPtr2);
+        assert(resultPtr.isSuccessful());
+        assert(resultPtr.errorMessage == "");
+    });
+
+    test("A result pointer pointing to an array can be accessed like one", {
+        auto rawPtr = makeRawArray!int(10, 42);
+        auto resultPtr = rawPtr.ptr.successPtr;
+
+        for (size_t i = 0; i < 10; i++) {
+            assert(resultPtr[i] == 42);
+        }
+    });
+
+    test("Create and use a result pointer of a void pointer", {
+        void* ptr = makeRaw!int(88);
+        auto resultPtr = successPtr!void(ptr);
+        assert(*(cast(int*) resultPtr.ptr) == 88);
+    });
+
+    test("Check whether a result pointer is defined", {
+        auto resultPtr = makeRaw!TestStruct().successPtr;
+        assert(resultPtr.isDefined);
+        free(resultPtr._ptr);
+        resultPtr._ptr = null;
+        assert(!resultPtr.isDefined);
+    });
+
+    test("Nullify a result pointer, basically releasing it", {
+        int* intPtr = makeRaw(5);
+        auto ptr = intPtr.successPtr;
+        assert(ptr.isDefined());
+        assert(ptr._ptr is intPtr);
+
+        ptr = null;
+        assert(!ptr.isDefined());
+        assert(ptr._ptr is null);
+    });
+
+    test("Initialize a null result pointer", {
+        auto ptr = successPtr!int(null);
+        assert(ptr._ptr is null);
+    });
+
+    test("Move result pointer to another existing one", {
+        int* intPtr = makeRaw(5);
+        ResultPtr!int ptr1 = successPtr!int(intPtr);
+        ResultPtr!int ptr2;
+        move(ptr1, ptr2);
+
+        assert(ptr1._ptr is null);
+        assert(ptr1.isFailure());
+        assert(ptr1.errorMessage == "Result pointer is released.");
+
+        assert(ptr2._ptr is intPtr);
+        assert(ptr2.isSuccessful());
+        assert(ptr2.errorMessage == "");
+    });
+
+    test("Return result pointer in factory method", {
+        ResultPtr!int result = makeSmartResult();
+        assert(result.ptr !is null);
+        assert(result.isSuccessful());
+        assert(result.errorMessage == "");
+        assert(*result.ptr == 5);
     });
 }
