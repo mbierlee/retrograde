@@ -288,7 +288,12 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         return result;
     }
 
-    auto opIndex(size_t i) {
+    auto opIndex(size_t i) const {
+        assert(i >= 0 && i < _length, "Index out of bounds");
+        return items[i];
+    }
+
+    auto opIndex(size_t i) { // TODO: maybe get rid and fix const correctness
         assert(i >= 0 && i < _length, "Index out of bounds");
         return items[i];
     }
@@ -299,6 +304,16 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
 
     size_t opDollar() {
         return _length;
+    }
+
+    auto opSlice(size_t i, size_t j) { // TODO: maybe get rid and fix const correctness
+        assert(i >= 0 && j >= 0 && i <= _length && j <= _length, "Index out of bounds");
+        return items[i .. j];
+    }
+
+    auto opSlice(size_t i, size_t j) const {
+        assert(i >= 0 && j >= 0 && i <= _length && j <= _length, "Index out of bounds");
+        return items[i .. j];
     }
 
     T[] opSlice(size_t dim : 0)(size_t i, size_t j) {
