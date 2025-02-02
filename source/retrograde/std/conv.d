@@ -110,7 +110,7 @@ T toRealNumber(T)(inout ref String str, char decimalChar = '.')
 
 alias toFloat = toRealNumber!float;
 alias toDouble = toRealNumber!double;
-alias toReal = toRealNumber!real;
+// alias toReal = toRealNumber!real; // Disabled for now. Causes compilation errors and sudden use of __floatsitf. Possibly to do with the now enabled multi-value return since LDC 1.40.0.
 
 T to(T)(string str) {
     return str.s.to!T;
