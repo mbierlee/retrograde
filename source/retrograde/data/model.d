@@ -21,27 +21,36 @@ alias TextureCoordinateIndex = size_t;
 
 enum ModelComponentType = sid("comp_model");
 
+/**
+ * Represents a vertex in a 3D model.
+ */
 struct Vertex {
-    // Position
-    VertexComponent x;
-    VertexComponent y;
-    VertexComponent z;
-    VertexComponent w;
+    // Position coordinates
+    VertexComponent x; /// X coordinate
+    VertexComponent y; /// Y coordinate
+    VertexComponent z; /// Z coordinate
+    VertexComponent w; /// W coordinate (for homogeneous coordinates)
 
-    // Color
-    VertexComponent r;
-    VertexComponent g;
-    VertexComponent b;
-    VertexComponent a;
+    // Color components
+    VertexComponent r; /// Red component
+    VertexComponent g; /// Green component
+    VertexComponent b; /// Blue component
+    VertexComponent a; /// Alpha component (transparency)
 
-    // Texture Coordinate
+    // Texture Coordinates
     // VertexComponent u;
     // VertexComponent v;
     // VertexComponent tw;
 }
 
+/**
+ * Represents a face in a 3D model, defined by indices of vertices.
+ */
 struct Face {
-    VertexIndex vA, vB, vC;
+    VertexIndex vA; /// Index of the first vertex
+    VertexIndex vB; /// Index of the second vertex
+    VertexIndex vC; /// Index of the third vertex
+    
     // TextureCoordinateIndex vtA, vtB, vtC;
 }
 
@@ -51,6 +60,9 @@ struct Face {
 //     VertexComponent w;
 // }
 
+/**
+ * Represents a mesh in a 3D model, consisting of vertices and faces.
+ */
 struct Mesh {
     Array!Vertex vertices;
     Array!Face faces;
@@ -58,6 +70,9 @@ struct Mesh {
     mixin CopyConstructors!Mesh;
 }
 
+/**
+ * Represents a 3D model, consisting of multiple meshes.
+ */
 struct Model {
     StringId name;
     Array!Mesh meshes;

@@ -72,6 +72,7 @@ void runTests() {
     import retrograde.engine.service : runServiceTests;
     import retrograde.data.parsing.wavefrontobj : runWavefrontObjTests;
     import retrograde.std.endian : runEndianTests;
+    import retrograde.data.assets.rgm : runRgmTests;
 
     runStdMemoryTests();
     runStringTests();
@@ -86,6 +87,7 @@ void runTests() {
     runWavefrontObjTests();
     runConvTests();
     runEndianTests();
+    runRgmTests();
 
     writeln();
     writeln("Tests ran:");
