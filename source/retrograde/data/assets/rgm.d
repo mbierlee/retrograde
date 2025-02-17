@@ -15,6 +15,7 @@ import retrograde.data.model : Model, Vertex, Face, Mesh;
 import retrograde.std.endian : toPlatformEndian, Endian;
 import retrograde.std.memory : ResultPtr, failedPtr, makeRaw, successPtr;
 import retrograde.std.stringid : StringId, sid;
+import retrograde.std.result : OperationResult, success, failure;
 
 private enum byte[] rgmMagicNumber = [0x52, 0x47, 0x4D, 0x20];
 private enum size_t rgmHeaderSize = 10;
@@ -40,78 +41,134 @@ ResultPtr!Model loadModel(ubyte[] data, StringId name = sid("unknown")) {
     uint meshCount = toPlatformEndian!uint(data[6 .. 10], Endian.little);
     size_t offset = rgmHeaderSize;
     for (uint i; i < meshCount; i++) {
-        readMeshData(data, offset, model);
+        OperationResult result = readMeshData(data, offset, model);
+        if (result.isFailure()) {
+            return failedPtr!Model(result.errorMessage());
+        }
     }
 
     return successPtr(model);
 }
 
-private void readMeshData(ubyte[] data, ref size_t offset, Model* model) {
+private OperationResult readMeshData(ubyte[] data, ref size_t offset, Model* model) {
     Mesh mesh = Mesh();
 
     // Read vertex count
+    if (data.length - offset < 4) {
+        return failure("Cannot read vertex count: Unexpected end of data.");
+    }
+
     uint vertexCount = readUInt(data, offset);
     offset += 4;
 
     // Read face count
+    if (data.length - offset < 4) {
+        return failure("Cannot read face count: Unexpected end of data.");
+    }
+
     uint faceCount = readUInt(data, offset);
     offset += 4;
 
     // Read vertices
     for (uint i; i < vertexCount; i++) {
-        readVertexData(data, offset, mesh);
+        OperationResult result = readVertexData(data, offset, mesh);
+        if (result.isFailure()) {
+            return result;
+        }
     }
 
     // Read faces
     for (uint i; i < faceCount; i++) {
-        readFaceData(data, offset, mesh);
+        OperationResult result = readFaceData(data, offset, mesh);
+        if (result.isFailure()) {
+            return result;
+        }
     }
 
     model.meshes ~= mesh;
+    return success();
 }
 
-private void readVertexData(ubyte[] data, ref size_t offset, ref Mesh mesh) {
+private OperationResult readVertexData(ubyte[] data, ref size_t offset, ref Mesh mesh) {
     // Read X coordinate
+    if (data.length - offset < 4) {
+        return failure("Cannot read X coordinate: Unexpected end of data.");
+    }
+
     float x = readFloat(data, offset);
     offset += 4;
 
     // Read Y coordinate
+    if (data.length - offset < 4) {
+        return failure("Cannot read Y coordinate: Unexpected end of data.");
+    }
+
     float y = readFloat(data, offset);
     offset += 4;
 
     // Read Z coordinate
+    if (data.length - offset < 4) {
+        return failure("Cannot read Z coordinate: Unexpected end of data.");
+    }
+
     float z = readFloat(data, offset);
     offset += 4;
 
     // Read R color
+    if (data.length - offset < 4) {
+        return failure("Cannot read R color: Unexpected end of data.");
+    }
+
     float r = readFloat(data, offset);
     offset += 4;
 
     // Read G color
+    if (data.length - offset < 4) {
+        return failure("Cannot read G color: Unexpected end of data.");
+    }
+
     float g = readFloat(data, offset);
     offset += 4;
 
     // Read B color
+    if (data.length - offset < 4) {
+        return failure("Cannot read B color: Unexpected end of data.");
+    }
+
     float b = readFloat(data, offset);
     offset += 4;
 
     mesh.vertices ~= Vertex(x, y, z, 1, r, g, b, 1);
+    return success();
 }
 
-private void readFaceData(ubyte[] data, ref size_t offset, ref Mesh mesh) {
+private OperationResult readFaceData(ubyte[] data, ref size_t offset, ref Mesh mesh) {
     // Read vertex index 1
+    if (data.length - offset < 4) {
+        return failure("Cannot read vertex index 1: Unexpected end of data.");
+    }
+
     uint vertexIndex1 = readUInt(data, offset);
     offset += 4;
 
     // Read vertex index 2
+    if (data.length - offset < 4) {
+        return failure("Cannot read vertex index 2: Unexpected end of data.");
+    }
+
     uint vertexIndex2 = readUInt(data, offset);
     offset += 4;
 
     // Read vertex index 3
+    if (data.length - offset < 4) {
+        return failure("Cannot read vertex index 3: Unexpected end of data.");
+    }
+
     uint vertexIndex3 = readUInt(data, offset);
     offset += 4;
 
     mesh.faces ~= Face(vertexIndex1, vertexIndex2, vertexIndex3);
+    return success();
 }
 
 private uint readUInt(ubyte[] data, ref size_t offset) {
