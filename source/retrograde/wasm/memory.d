@@ -485,16 +485,16 @@ private align(16) struct MemoryBlock {
         return header == BlockHeader && checksum == calculateChecksum();
     }
 
+    ubyte* dataStart() {
+        return (cast(ubyte*)&this) + typeof(this).sizeof;
+    }
+
     ubyte[] blockData() {
-        return ((cast(ubyte*)&this) + typeof(this).sizeof)[0 .. blockSize];
+        return dataStart[0 .. blockSize];
     }
 
     ubyte[] usedData() {
-        return blockData[0 .. usedSize];
-    }
-
-    ubyte* dataStart() {
-        return &blockData[0];
+        return dataStart[0 .. usedSize];
     }
 
     ubyte* blockDataEnd() {
