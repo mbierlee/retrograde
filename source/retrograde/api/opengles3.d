@@ -84,6 +84,11 @@ void loadEntityModel(SharedPtr!Entity entity) {
         foreach (ref mesh; model.meshes) {
             Array!GLfloat positionData;
             Array!GLfloat colorData;
+
+            // Pre-allocate for efficiency
+            positionData.capacity = mesh.vertices.length * 4;
+            colorData.capacity = mesh.vertices.length * 4;
+
             foreach (ref vertex; mesh.vertices) {
                 positionData.add(cast(GLfloat) vertex.x);
                 positionData.add(cast(GLfloat) vertex.y);
