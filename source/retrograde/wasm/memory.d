@@ -118,19 +118,18 @@ export extern (C) void* realloc(void* ptr, size_t newSize) {
         return null;
     }
 
-    auto getRes = getBlock(ptr);
-    if (getRes.isFailure) {
+    auto blockResult = getBlock(ptr);
+    if (blockResult.isFailure) {
         version (MemoryDebug) {
-            writeErrLn(getRes.errorMessage);
+            writeErrLn("Failed to get current memory block while resizing:");
+            writeErrLn(blockResult.errorMessage);
         }
 
         return null;
     }
 
-    auto block = getRes.value;
+    auto block = blockResult.value;
     if (newSize > block.blockSize) {
-        auto previousUsedSize = block.usedSize;
-        freeBlock(block);
         auto newPtr = malloc(newSize);
         if (newPtr is null) {
             version (MemoryDebug) {
@@ -140,8 +139,14 @@ export extern (C) void* realloc(void* ptr, size_t newSize) {
             return null;
         }
 
-        if (ptr !is newPtr) {
-            memcpy(newPtr, ptr, previousUsedSize);
+        memcpy(newPtr, ptr, block.usedSize);
+
+        auto freeResult = freeBlock(block);
+        if (freeResult.isFailure) {
+            version (MemoryDebug) {
+                writeErrLn("Failed to free memory block while resizing:");
+                writeErrLn(freeResult.errorMessage);
+            }
         }
 
         return newPtr;
@@ -468,6 +473,7 @@ private ubyte* heapEnd() {
 }
 
 private align(16) struct MemoryBlock {
+    // private struct MemoryBlock { // TODO: remove unnecesary alignment
     enum BlockHeader = 0x4B4F4C42; // "BLOK"
     enum ChecksumMagic = 0x4B454843; // "CHEK"
 

@@ -84,15 +84,15 @@ void loadEntityModel(SharedPtr!Entity entity) {
         foreach (ref mesh; model.meshes) {
             Array!GLfloat positionData;
             Array!GLfloat colorData;
-            foreach (vertex; mesh.vertices) {
-                positionData.add(vertex.x);
-                positionData.add(vertex.y);
-                positionData.add(vertex.z);
-                positionData.add(vertex.w);
-                colorData.add(vertex.r);
-                colorData.add(vertex.g);
-                colorData.add(vertex.b);
-                colorData.add(vertex.a);
+            foreach (ref vertex; mesh.vertices) {
+                positionData.add(cast(GLfloat) vertex.x);
+                positionData.add(cast(GLfloat) vertex.y);
+                positionData.add(cast(GLfloat) vertex.z);
+                positionData.add(cast(GLfloat) vertex.w);
+                colorData.add(cast(GLfloat) vertex.r);
+                colorData.add(cast(GLfloat) vertex.g);
+                colorData.add(cast(GLfloat) vertex.b);
+                colorData.add(cast(GLfloat) vertex.a);
             }
 
             auto vertexArrayObject = glCreateVertexArray();
