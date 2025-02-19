@@ -255,6 +255,10 @@ struct StringIteratorT(T) {
         return _index;
     }
 
+    size_t strLength() {
+        return str.length;
+    }
+
     Option!T previous() {
         if (_index == 0) {
             return none!T;
