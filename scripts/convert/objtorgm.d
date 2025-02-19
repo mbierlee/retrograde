@@ -53,33 +53,6 @@ void main() {
     writeToByteArray(rgmFile, mesh);
 }
 
-ubyte[] convertToRGM(in Mesh mesh) {
-    ubyte[] rgm;
-    rgm ~= cast(ubyte[]) "RGM "; // Magic number
-    rgm ~= nativeToLittleEndian(cast(ushort) 1); // Version
-    rgm ~= nativeToLittleEndian(cast(uint) 1); // Amount of meshes
-
-    rgm ~= nativeToLittleEndian(cast(uint) mesh.vertices.length); // Vertex count
-    rgm ~= nativeToLittleEndian(cast(uint) mesh.faces.length); // Face count
-
-    foreach (vertex; mesh.vertices) {
-        rgm ~= nativeToLittleEndian(vertex.y);
-        rgm ~= nativeToLittleEndian(vertex.x);
-        rgm ~= nativeToLittleEndian(vertex.z);
-        rgm ~= nativeToLittleEndian(vertex.r);
-        rgm ~= nativeToLittleEndian(vertex.g);
-        rgm ~= nativeToLittleEndian(vertex.b);
-    }
-
-    foreach (face; mesh.faces) {
-        foreach (index; face.indices) {
-            rgm ~= nativeToLittleEndian(cast(uint)(index - 1)); // OBJ indices are 1-based
-        }
-    }
-
-    return rgm;
-}
-
 Mesh parseOBJ(string objFile) {
     Mesh mesh;
     foreach (line; objFile.splitLines()) {
@@ -105,6 +78,33 @@ Mesh parseOBJ(string objFile) {
     }
 
     return mesh;
+}
+
+ubyte[] convertToRGM(in Mesh mesh) {
+    ubyte[] rgm;
+    rgm ~= cast(ubyte[]) "RGM "; // Magic number
+    rgm ~= nativeToLittleEndian(cast(ushort) 1); // Version
+    rgm ~= nativeToLittleEndian(cast(uint) 1); // Amount of meshes
+
+    rgm ~= nativeToLittleEndian(cast(uint) mesh.vertices.length); // Vertex count
+    rgm ~= nativeToLittleEndian(cast(uint) mesh.faces.length); // Face count
+
+    foreach (vertex; mesh.vertices) {
+        rgm ~= nativeToLittleEndian(vertex.y);
+        rgm ~= nativeToLittleEndian(vertex.x);
+        rgm ~= nativeToLittleEndian(vertex.z);
+        rgm ~= nativeToLittleEndian(vertex.r);
+        rgm ~= nativeToLittleEndian(vertex.g);
+        rgm ~= nativeToLittleEndian(vertex.b);
+    }
+
+    foreach (face; mesh.faces) {
+        foreach (index; face.indices) {
+            rgm ~= nativeToLittleEndian(cast(uint)(index - 1)); // OBJ indices are 1-based
+        }
+    }
+
+    return rgm;
 }
 
 void writeToByteArray(ubyte[] rgmFile, in Mesh mesh) {
