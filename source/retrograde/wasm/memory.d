@@ -472,8 +472,7 @@ private ubyte* heapEnd() {
     return heapStart + heapSize;
 }
 
-private align(16) struct MemoryBlock {
-    // private struct MemoryBlock { // TODO: remove unnecesary alignment
+private struct MemoryBlock {
     enum BlockHeader = 0x4B4F4C42; // "BLOK"
     enum ChecksumMagic = 0x4B454843; // "CHEK"
 
