@@ -1182,13 +1182,11 @@ void runWasmMemTests() {
         assert(block2.usedSize == 20);
     });
 
-    test("realloc will consume neighbouring free blocks when it doesn't fit in the current block", {
-        //.. due to the behaviour of malloc
-
+    test("realloc will move to the next free blocks when it doesn't fit in the current block", {
         auto ptr = malloc(10);
         // Rest of the heap is a second, free block now.
         auto newPtr = realloc(ptr, 20);
-        assert(ptr is newPtr);
+        assert(ptr !is newPtr);
         auto block = newPtr.getBlock.value;
         assert(block.isValidBlock);
         assert(block.isAllocated);
