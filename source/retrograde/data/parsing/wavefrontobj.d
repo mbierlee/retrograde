@@ -79,11 +79,11 @@ private void startParse(ref ParseContext ctx) {
 }
 
 private Option!char parseToNonSpace(ref ParseContext ctx) {
-    return parseTill(ctx, (char c) => c.isSpace);
+    return parseTill(ctx, (char c) => !c.isSpace);
 }
 
 private Option!char parseToEndLine(ref ParseContext ctx) {
-    return parseTill(ctx, (char c) => c != '\r' && c != '\n');
+    return parseTill(ctx, (char c) => c.isEndOfLine);
 }
 
 private void parseVertex(ref ParseContext ctx) {
@@ -137,7 +137,7 @@ private void parseFace(ref ParseContext ctx) {
 private Option!char parseTill(ref ParseContext ctx, bool function(char) conditionFn) {
     auto iter = &ctx.iter;
     auto next = iter.next;
-    while (next.isDefined && conditionFn(next.value)) {
+    while (next.isDefined && !conditionFn(next.value)) {
         next = iter.next;
     }
 
@@ -145,15 +145,15 @@ private Option!char parseTill(ref ParseContext ctx, bool function(char) conditio
 }
 
 private Option!String collectTillWhitespace(ref ParseContext ctx) {
-    return collectTill(ctx, (char c) => !c.isWhite);
+    return collectTill(ctx, (char c) => c.isWhite);
 }
 
 private Option!String collectTillEndOfLine(ref ParseContext ctx) {
-    return collectTill(ctx, (char c) => !c.isEndOfLine);
+    return collectTill(ctx, (char c) => c.isEndOfLine);
 }
 
 private Option!String collectTillWhitespaceOrEndOfLine(ref ParseContext ctx) {
-    return collectTill(ctx, (char c) => !c.isWhite && !c.isEndOfLine);
+    return collectTill(ctx, (char c) => c.isWhite || c.isEndOfLine);
 }
 
 private Option!String collectTill(ref ParseContext ctx, bool function(char) conditionFn) {
@@ -164,7 +164,7 @@ private Option!String collectTill(ref ParseContext ctx, bool function(char) cond
     }
 
     String str;
-    while (next.isDefined && conditionFn(next.value)) {
+    while (next.isDefined && !conditionFn(next.value)) {
         str ~= next.value;
         next = iter.next;
     }
