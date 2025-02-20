@@ -179,7 +179,10 @@ private Option!String collectTill(ref ParseContext ctx, bool function(char) cond
                 // I gave up. I left this "fix" here for now.
                 import retrograde.std.debugging : breakpoint;
 
+                // Yes... calling a breakpoint actually fixes it. The breakpoint isn't called.
                 breakpoint();
+
+                // Break for safety. Is the compiler optimizing something crucial away maybe?
                 break;
             }
         }
