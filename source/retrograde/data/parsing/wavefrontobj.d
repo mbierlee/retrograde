@@ -167,6 +167,22 @@ private Option!String collectTill(ref ParseContext ctx, bool function(char) cond
     while (next.isDefined && !conditionFn(next.value)) {
         str ~= next.value;
         next = iter.next;
+
+        version (WebAssembly) {
+            if (iter.index > iter.strLength) {
+                // For some bizarre, stupifying, unknown reason this
+                // fixes an issue where the while loop would go on forever in WASM.
+                // all the logic points to the fact that this while loop should 
+                // terminate at the end of the string, but it doesn't!
+                // There must be something up with the compiler.
+
+                // I gave up. I left this "fix" here for now.
+                import retrograde.std.debugging : breakpoint;
+
+                breakpoint();
+                break;
+            }
+        }
     }
 
     return some(str);
