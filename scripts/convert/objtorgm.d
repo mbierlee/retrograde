@@ -5,6 +5,7 @@ import std.conv;
 import std.range;
 import std.stdio;
 import std.string;
+import std.file;
 
 struct Vertex {
     float x, y, z;
@@ -51,6 +52,7 @@ void main() {
     Mesh mesh = parseOBJ(objFile);
     ubyte[] rgmFile = convertToRGM(mesh);
     writeToByteArray(rgmFile, mesh);
+    writeToFile(rgmFile);
 }
 
 Mesh parseOBJ(string objFile) {
@@ -179,4 +181,10 @@ void writeToByteArray(ubyte[] rgmFile, in Mesh mesh) {
 
     writeln();
     writeln("];");
+}
+
+void writeToFile(in ubyte[] rgmFile) {
+    auto fileName = "output.rgm";
+    std.file.write(fileName, rgmFile);
+    writeln("RGM file written to ", fileName);
 }
