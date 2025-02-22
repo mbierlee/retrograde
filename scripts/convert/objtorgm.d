@@ -92,8 +92,8 @@ ubyte[] convertToRGM(in Mesh mesh) {
     rgm ~= nativeToLittleEndian(cast(uint) mesh.faces.length); // Face count
 
     foreach (vertex; mesh.vertices) {
-        rgm ~= nativeToLittleEndian(vertex.y);
         rgm ~= nativeToLittleEndian(vertex.x);
+        rgm ~= nativeToLittleEndian(vertex.y);
         rgm ~= nativeToLittleEndian(vertex.z);
         rgm ~= nativeToLittleEndian(vertex.r);
         rgm ~= nativeToLittleEndian(vertex.g);
