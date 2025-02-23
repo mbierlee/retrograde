@@ -244,7 +244,7 @@ struct StringIteratorT(T) {
     }
 
     Option!T next() {
-        if (_index >= str.length) {
+        if (_index >= str.length || _index == size_t.max) {
             return none!T;
         }
 
@@ -260,7 +260,7 @@ struct StringIteratorT(T) {
     }
 
     Option!T previous() {
-        if (_index == 0) {
+        if (_index <= 0) {
             return none!T;
         }
 
