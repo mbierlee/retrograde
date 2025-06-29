@@ -13,6 +13,6 @@ module retrograde.std.time;
 
 version (Windows) {
     public import retrograde.native.windows.time;
+} else version (Posix) {
+    public import retrograde.native.linux.time;
 }
-
-//TODO: implement for other platforms
