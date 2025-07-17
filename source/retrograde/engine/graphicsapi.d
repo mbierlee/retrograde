@@ -19,7 +19,7 @@ version (OpenGLES3) {
 }
 
 version (UnitTesting) {
-    import retrograde.engine.entity : EntityId, EntityManager;
+    import retrograde.engine.entity : EntityId;
     import retrograde.engine.rendering : RenderPass, Color, Viewport;
 
     import retrograde.std.math : Matrix4D;
@@ -31,10 +31,10 @@ version (UnitTesting) {
     void initRenderPass(ref RenderPass renderPass) {
     }
 
-    void loadEntityModel(ref EntityManager entityManager, EntityId entityId) {
+    void loadEntityModel(EntityId entity) {
     }
 
-    void unloadEntityModel(ref EntityManager entityManager, EntityId entityId) {
+    void unloadEntityModel(EntityId entity) {
     }
 
     void setClearColor(Color color) {
@@ -49,7 +49,7 @@ version (UnitTesting) {
     void clearShaderProgram() {
     }
 
-    void drawModel(ref EntityManager entityManager, EntityId entityId, const ref Matrix4D viewProjectionMatrix, const ref RenderPass renderPass) {
+    void drawModel(EntityId entity, const ref Matrix4D viewProjectionMatrix, const ref RenderPass renderPass) {
     }
 
     Viewport getViewport() {

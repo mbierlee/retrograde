@@ -13,7 +13,8 @@ module retrograde.api.opengles3;
 
 version (OpenGLES3)  :  //
 
-import retrograde.engine.entity : EntityId, Component, EntityManager;
+import retrograde.engine.entity : EntityId, Component, hasComponent, withComponent, withComponentData, addComponent,
+    getComponentData;
 import retrograde.engine.rendering : Color, RenderPass, Viewport;
 
 import retrograde.data.model : ModelComponentType, Model;
@@ -68,12 +69,12 @@ void initFrame() {
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-void loadEntityModel(ref EntityManager entityManager, EntityId entity) {
-    if (entityManager.hasComponent(entity, GlModelInfoComponentType)) {
+void loadEntityModel(EntityId entity) {
+    if (entity.hasComponent(GlModelInfoComponentType)) {
         return;
     }
 
-    entityManager.withComponentData(entity, ModelComponentType, (Model* model) {
+    entity.withComponentData(ModelComponentType, (Model* model) {
         // if (loadedModels.exists(model.name)) {
         //     //TODO: Attach a GlModelInfoComponent to this entity with the loaded model.
         //     //      Probably need to make loadedModels into a map
@@ -147,7 +148,7 @@ void loadEntityModel(ref EntityManager entityManager, EntityId entity) {
             modelInfo.as!void
         );
 
-        entityManager.addComponent(entity, glModelInfoComponent);
+        entity.addComponent(glModelInfoComponent);
         // loadedModels.add(model.name);
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -156,8 +157,8 @@ void loadEntityModel(ref EntityManager entityManager, EntityId entity) {
     });
 }
 
-void unloadEntityModel(ref EntityManager entityManager, EntityId entity) {
-    entityManager.withComponentData(entity, GlModelInfoComponentType, (GlModelInfo* modelInfo) {
+void unloadEntityModel(EntityId entity) {
+    entity.withComponentData(GlModelInfoComponentType, (GlModelInfo* modelInfo) {
         foreach (ref meshInfo; modelInfo.meshes) {
             glDeleteBuffer(meshInfo.positionBufferObject);
             glDeleteBuffer(meshInfo.colorBufferObject);
@@ -189,23 +190,23 @@ void clearShaderProgram() {
     glUseProgram(0);
 }
 
-void drawModel(ref EntityManager entityManager, EntityId entity, const ref Matrix4D viewProjectionMatrix, const ref RenderPass renderPass) {
-    entityManager.withComponentData(entity, GlModelInfoComponentType, (GlModelInfo* modelInfo) {
+void drawModel(EntityId entity, const ref Matrix4D viewProjectionMatrix, const ref RenderPass renderPass) {
+    entity.withComponentData(GlModelInfoComponentType, (GlModelInfo* modelInfo) {
         Vector3D position;
         QuaternionD orientation;
         Vector3D scale = 1;
 
-        auto maybePosition = entityManager.getComponentData!Vector3D(entity, PositionComponentType);
+        auto maybePosition = entity.getComponentData!Vector3D(PositionComponentType);
         if (maybePosition.isDefined()) {
             position = *maybePosition.value.ptr;
         }
 
-        auto maybeOrientation = entityManager.getComponentData!QuaternionD(entity, OrientationComponentType);
+        auto maybeOrientation = entity.getComponentData!QuaternionD(OrientationComponentType);
         if (maybeOrientation.isDefined()) {
             orientation = *maybeOrientation.value.ptr;
         }
 
-        auto maybeScale = entityManager.getComponentData!Vector3D(entity, ScaleComponentType);
+        auto maybeScale = entity.getComponentData!Vector3D(ScaleComponentType);
         if (maybeScale.isDefined()) {
             scale = *maybeScale.value.ptr;
         }
