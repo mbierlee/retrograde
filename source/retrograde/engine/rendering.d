@@ -20,7 +20,7 @@ import retrograde.std.geometry : PositionComponentType, OrientationComponentType
 import retrograde.std.dlang : CopyConstructors;
 
 import retrograde.engine.service : entityManager;
-import retrograde.engine.entity : Entity;
+import retrograde.engine.entity : EntityId, EntityManager;
 import retrograde.engine.graphicsapi : initRenderApi, initRenderPass, setClearColor, initFrame, loadEntityModel,
     unloadEntityModel, useRenderPassShaderProgram, drawModel, clearShaderProgram, getViewport;
 
@@ -106,19 +106,20 @@ void renderFrame() {
     Vector3D position;
     QuaternionD orientation;
 
-    if (cameraEntity.isDefined()) {
-        auto maybePosition = cameraEntity.ptr.getComponentData!Vector3D(PositionComponentType);
+    if (cameraEntityId != 0) {
+        auto maybePosition = entityManager.getComponentData!Vector3D(cameraEntityId, PositionComponentType);
         if (maybePosition.isDefined()) {
             position = *maybePosition.value.ptr;
         }
 
-        auto maybeOrientation = cameraEntity.ptr.getComponentData!QuaternionD(
+        auto maybeOrientation = entityManager.getComponentData!QuaternionD(cameraEntityId,
             OrientationComponentType);
         if (maybeOrientation.isDefined()) {
             orientation = *maybeOrientation.value.ptr;
         }
 
-        auto maybeCameraConfiguration = cameraEntity.ptr.getComponentData!CameraConfiguration(
+        auto maybeCameraConfiguration = entityManager.getComponentData!CameraConfiguration(
+            cameraEntityId,
             CameraComponentType);
         if (maybeCameraConfiguration.isDefined()) {
             projectionMatrix = createProjectionMatrix(*maybeCameraConfiguration.value.ptr);
@@ -133,10 +134,10 @@ void renderFrame() {
         useRenderPassShaderProgram(renderPass);
 
         //TODO: Optimize? Don't attempt each entity in each pass, but batch them.
-        entityManager.forEachEntity((SharedPtr!Entity entity) {
-            if (entity.ptr.hasComponent(RenderableComponentType) &&
-            entity.ptr.hasComponent(renderPass.componentType)) {
-                renderPass.render(entity, renderPass, viewProjectionMatrix);
+        entityManager.forEachEntity((EntityId entityId) {
+            if (entityManager.hasComponent(entityId, RenderableComponentType) &&
+            entityManager.hasComponent(entityId, renderPass.componentType)) {
+                renderPass.render(entityId, renderPass, viewProjectionMatrix);
             }
         });
 
@@ -180,7 +181,7 @@ struct RenderPass {
     string vertexShader;
     string fragmentShader;
     StringId componentType;
-    void delegate(SharedPtr!Entity entity, const ref RenderPass renderPass, const ref Matrix4D viewProjectionMatrix) render;
+    void delegate(EntityId entityId, const ref RenderPass renderPass, const ref Matrix4D viewProjectionMatrix) render;
 
     SharedPtr!void apiData;
 
@@ -192,8 +193,8 @@ RenderPass genericModelRenderPass = RenderPass(
     import("opengles3/generic_model_vertex.glsl"),
     import("opengles3/generic_model_fragment.glsl"),
     ModelComponentType,
-    (SharedPtr!Entity entity, const ref RenderPass renderPass, const ref Matrix4D viewProjectionMatrix) {
-    drawModel(entity, viewProjectionMatrix, renderPass);
+    (EntityId entityId, const ref RenderPass renderPass, const ref Matrix4D viewProjectionMatrix) {
+    drawModel(entityId, viewProjectionMatrix, renderPass);
 }
 );
 
@@ -213,7 +214,7 @@ struct Color {
     float a;
 }
 
-private SharedPtr!Entity cameraEntity;
+private EntityId cameraEntityId = 0;
 
 private void initRenderPasses() {
     if (renderPasses.length == 0) {
@@ -226,19 +227,19 @@ private void initRenderPasses() {
 }
 
 private void initEntityManagerHooks() {
-    entityManager.addEntityAddedHook((SharedPtr!Entity entity) {
-        if (entity.hasComponent(ModelComponentType)) {
-            loadEntityModel(entity);
-        } else if (entity.hasComponent(CameraComponentType)) {
-            cameraEntity = entity;
+    entityManager.addEntityAddedHook((EntityId entityId) {
+        if (entityManager.hasComponent(entityId, ModelComponentType)) {
+            loadEntityModel(entityId);
+        } else if (entityManager.hasComponent(entityId, CameraComponentType)) {
+            cameraEntityId = entityId;
         }
     });
 
-    entityManager.addEntityRemovedHook((SharedPtr!Entity entity) {
-        if (cameraEntity == entity) {
-            cameraEntity = null;
+    entityManager.addEntityRemovedHook((EntityId entityId) {
+        if (cameraEntityId == entityId) {
+            cameraEntityId = 0;
         }
 
-        unloadEntityModel(entity);
+        unloadEntityModel(entityId);
     });
 }

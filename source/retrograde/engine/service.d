@@ -18,16 +18,14 @@ EntityManager entityManager;
 version (UnitTesting)  :  ///
 
 import retrograde.std.test : test, writeSection;
-import retrograde.engine.entity : Entity;
+import retrograde.engine.entity : EntityId;
 import retrograde.std.string : s;
-import retrograde.std.memory : makeShared;
 
 void runServiceTests() {
     writeSection("-- Service tests --");
 
     test("Use global entity manager", {
-        auto ent = makeShared(Entity("ent_test".s));
-        auto res = entityManager.addEntity(ent);
-        assert(res.isSuccessful);
+        EntityId entityId = entityManager.createEntity("ent_test".s);
+        assert(entityManager.hasEntity(entityId));
     });
 }

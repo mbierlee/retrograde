@@ -19,156 +19,14 @@ import retrograde.std.result : OperationResult, success, failure;
 import retrograde.std.option : Option, some, none;
 import retrograde.std.dlang : CopyConstructors;
 
-/** 
- * An entity is a container for components. It is a logical object that can be
- * used to represent a player, a monster, a bullet, etc.
- */
-struct Entity {
-    /** 
-     * The name of the entity. This is a human-readable name that can be used
-     * to identify the entity debug output.
-     */
+alias EntityId = ulong;
+
+private struct EntityEntry {
+    EntityId id;
     String name;
+    Array!Component components;
 
-    private ulong _id = 0;
-
-    private Array!Component components;
-
-    mixin CopyConstructors!Entity;
-
-    /**
-     * Returns: The unique ID of the entity.
-     *
-     * This is a number that is unique for each entity in the game.
-     * It is used to identify the entity in the game world.
-     * It is assigned by the EntityManager when the entity is created.
-     */
-    ulong id() const {
-        return _id;
-    }
-
-    /** 
-     * Add a component to the entity. 
-     *
-     * If the entity already has a component of the same type, the existing
-     * component is replaced by the new component.
-     *
-     * Params:
-     *   component = The component to add to the entity.
-     */
-    void addComponent(Component component) {
-        for (size_t i = 0; i < components.length; i++) {
-            if (components[i].type == component.type) {
-                components[i] = component;
-                return;
-            }
-        }
-
-        components.add(component);
-    }
-
-    /** 
-     * Add a compontent to the entity with the given type. 
-     *
-     * It is assumed this component has no data. If the entity already has a component of the same type, 
-     * the existing component is replaced.
-     *
-     * Params:
-     *   type = Type of the component to add
-     */
-    void addComponent(StringId type) {
-        addComponent(Component(type));
-    }
-
-    /** 
-     * Remove a component from the entity.
-     *
-     * Params:
-     *   component = The component to remove from the entity.
-     */
-    void removeComponent(const ref Component component) {
-        removeComponent(component.type);
-    }
-
-    /** 
-     * Remove a component from the entity.
-     *
-     * Params:
-     *   componentType = The type of the component to remove from the entity.
-     */
-    void removeComponent(StringId componentType) {
-        for (size_t i = 0; i < components.length; i++) {
-            if (components[i].type == componentType) {
-                components.remove(i);
-                return;
-            }
-        }
-    }
-
-    /** 
-     * Check whether the entity has a certain component.
-     *
-     * Params:
-     *   component = The component to check for.
-     *
-     * Returns:
-     *   True if the entity has the component, false otherwise.
-     */
-    bool hasComponent(const ref Component component) {
-        return hasComponent(component.type);
-    }
-
-    /** 
-     * Check whether the entity has a certain component.
-     *
-     * Params:
-     *   componentType = The type of the component to check for.
-     *
-     * Returns:
-     *   True if the entity has the component, false otherwise.
-     */
-    bool hasComponent(StringId componentType) {
-        for (size_t i = 0; i < components.length; i++) {
-            if (components[i].type == componentType) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    Option!Component getComponent(StringId componentType) {
-        for (size_t i = 0; i < components.length; i++) {
-            if (components[i].type == componentType) {
-                return some(components[i]);
-            }
-        }
-
-        return none!Component;
-    }
-
-    Option!(SharedPtr!T) getComponentData(T)(StringId componentType) {
-        auto maybeComponent = getComponent(componentType);
-        if (maybeComponent.isDefined) {
-            return some(maybeComponent.value.data.as!T);
-        }
-
-        return none!(SharedPtr!T);
-    }
-
-    void withComponent(StringId componentType, scope void delegate(Component) fn) {
-        auto maybeComponent = getComponent(componentType);
-        if (maybeComponent.isDefined) {
-            fn(maybeComponent.value);
-        }
-    }
-
-    void withComponentData(T)(StringId componentType, scope void delegate(T*) fn) {
-        auto maybeComponent = getComponent(componentType);
-        if (maybeComponent.isDefined) {
-            fn(cast(T*) maybeComponent.value.data.ptr);
-        }
-    }
+    mixin CopyConstructors!EntityEntry;
 }
 
 /** 
@@ -199,86 +57,62 @@ struct Component {
     mixin CopyConstructors!Component;
 }
 
-alias ProcessorFunction = void delegate(SharedPtr!Entity);
-alias EntityAddedHookFunction = void delegate(SharedPtr!Entity);
-alias EntityRemovedHookFunction = void delegate(SharedPtr!Entity);
+alias ProcessorFunction = void delegate(EntityId);
+alias EntityAddedHookFunction = void delegate(EntityId);
+alias EntityRemovedHookFunction = void delegate(EntityId);
 
 struct EntityManager {
-    private Array!(SharedPtr!Entity) entities;
+    private Array!EntityEntry entities;
     private ulong nextId = 1;
 
     private Array!ProcessorFunction processors;
     private Array!EntityAddedHookFunction entityAddedHooks;
     private Array!EntityRemovedHookFunction entityRemovedHooks;
 
-    OperationResult addEntity(SharedPtr!Entity entity) {
+    EntityId createEntity(String name = String()) {
         if (nextId == 0) {
-            nextId = 1; // In case someone initializes the entity manager from a raw, zeroed pointer.
+            nextId = 1;
         }
 
-        if (!entity.isDefined) {
-            return failure("Shared pointer of entity is null.");
-        }
-
-        if (entity.ptr._id != 0) {
-            return failure(
-                "Entity already has an ID, it might already be added to the entity manager.");
-        }
-
-        entity.ptr._id = nextId++;
-        entities.add(entity);
+        EntityId entityId = nextId++;
+        EntityEntry entry;
+        entry.id = entityId;
+        entry.name = name;
+        entities.add(entry);
 
         foreach (hook; entityAddedHooks) {
-            hook(entity);
+            hook(entityId);
         }
 
-        return success;
+        return entityId;
     }
 
-    OperationResult removeEntity(SharedPtr!Entity entity) {
-        if (!entity.isDefined) {
-            return failure("Shared pointer of entity is null.");
-        }
-
-        return removeEntity(entity.ptr.id);
-    }
-
-    OperationResult removeEntity(ulong entityId) {
+    OperationResult removeEntity(EntityId entityId) {
         if (entityId == 0) {
             return success;
         }
 
-        SharedPtr!Entity removedEntity;
-        foreach (size_t i, entity; entities) {
-            if (entity.ptr.id == entityId) {
-                removedEntity = entity;
+        for (size_t i = 0; i < entities.length; i++) {
+            if (entities[i].id == entityId) {
                 entities.remove(i);
+                foreach (hook; entityRemovedHooks) {
+                    hook(entityId);
+                }
+
                 break;
             }
-        }
-
-        foreach (hook; entityRemovedHooks) {
-            hook(removedEntity);
         }
 
         return success;
     }
 
-    bool hasEntity(SharedPtr!Entity entity) {
-        if (!entity.isDefined) {
+    bool hasEntity(EntityId entityId) {
+        if (entityId <= 0) {
             return false;
         }
 
-        return hasEntity(entity.ptr.id);
-    }
-
-    bool hasEntity(ulong entityId) {
-        if (entityId == 0) {
-            return false;
-        }
-
-        foreach (size_t i, entity; entities) {
-            if (entity.ptr.id == entityId) {
+        foreach (entity; entities) {
+            if (entity.id == entityId) {
                 return true;
             }
         }
@@ -287,13 +121,26 @@ struct EntityManager {
     }
 
     bool hasEntity(String entityName) {
-        foreach (size_t i, entity; entities) {
-            if (entity.ptr.name == entityName) {
+        if (entityName.length == 0) {
+            return false;
+        }
+        
+        foreach (ref entity; entities) {
+            if (entity.name == entityName) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    Option!EntityId getEntityByName(String entityName) {
+        foreach (ref entity; entities) {
+            if (entity.name == entityName) {
+                return some(entity.id);
+            }
+        }
+        return none!EntityId;
     }
 
     void addProcessor(ProcessorFunction processor) {
@@ -302,17 +149,15 @@ struct EntityManager {
 
     void update() {
         foreach (processor; processors) {
-            foreach (entity; entities) {
-                if (entity.isDefined) {
-                    processor(entity);
-                }
+            foreach (ref entity; entities) {
+                processor(entity.id);
             }
         }
     }
 
-    void forEachEntity(scope void delegate(SharedPtr!Entity) fn) {
+    void forEachEntity(scope void delegate(EntityId) fn) {
         foreach (entity; entities) {
-            fn(entity);
+            fn(entity.id);
         }
     }
 
@@ -323,6 +168,100 @@ struct EntityManager {
     void addEntityRemovedHook(EntityRemovedHookFunction fn) {
         entityRemovedHooks.add(fn);
     }
+
+    void addComponent(EntityId entityId, Component component) {
+        foreach (ref entity; entities) {
+            if (entity.id == entityId) {
+                foreach (ref comp; entity.components) {
+                    if (comp.type == component.type) {
+                        comp = component;
+                        return;
+                    }
+                }
+                entity.components.add(component);
+                return;
+            }
+        }
+    }
+
+    void addComponent(EntityId entityId, StringId type) {
+        addComponent(entityId, Component(type));
+    }
+
+    void removeComponent(EntityId entityId, const ref Component component) {
+        removeComponent(entityId, component.type);
+    }
+
+    void removeComponent(EntityId entityId, StringId componentType) {
+        foreach (ref entity; entities) {
+            if (entity.id == entityId) {
+                foreach (size_t j, ref comp; entity.components) {
+                    if (comp.type == componentType) {
+                        entity.components.remove(j);
+                        return;
+                    }
+                }
+                return;
+            }
+        }
+    }
+
+    bool hasComponent(EntityId entityId, const ref Component component) {
+        return hasComponent(entityId, component.type);
+    }
+
+    bool hasComponent(EntityId entityId, StringId componentType) {
+        for (size_t i = 0; i < entities.length; i++) {
+            if (entities[i].id == entityId) {
+                for (size_t j = 0; j < entities[i].components.length; j++) {
+                    if (entities[i].components[j].type == componentType) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    Option!Component getComponent(EntityId entityId, StringId componentType) {
+        for (size_t i = 0; i < entities.length; i++) {
+            if (entities[i].id == entityId) {
+                for (size_t j = 0; j < entities[i].components.length; j++) {
+                    if (entities[i].components[j].type == componentType) {
+                        return some(entities[i].components[j]);
+                    }
+                }
+                return none!Component;
+            }
+        }
+
+        return none!Component;
+    }
+
+    Option!(SharedPtr!T) getComponentData(T)(EntityId entityId, StringId componentType) {
+        auto maybeComponent = getComponent(entityId, componentType);
+        if (maybeComponent.isDefined) {
+            return some(maybeComponent.value.data.as!T);
+        }
+
+        return none!(SharedPtr!T);
+    }
+
+    void withComponent(EntityId entityId, StringId componentType, scope void delegate(Component) fn) {
+        auto maybeComponent = getComponent(entityId, componentType);
+        if (maybeComponent.isDefined) {
+            fn(maybeComponent.value);
+        }
+    }
+
+    void withComponentData(T)(EntityId entityId, StringId componentType, scope void delegate(T*) fn) {
+        auto maybeComponent = getComponent(entityId, componentType);
+        if (maybeComponent.isDefined) {
+            fn(cast(T*) maybeComponent.value.data.ptr);
+        }
+    }
 }
 
 version (UnitTesting)  :  ///
@@ -332,89 +271,97 @@ import retrograde.std.stringid : sid;
 import retrograde.std.memory : makeSharedVoid;
 import retrograde.std.string : s;
 
-import retrograde.engine.entityfactory : makeEntity;
-
 void runEntityTests() {
     runEcsTests();
     runEntityManagerTests();
 }
 
 void runEcsTests() {
-    writeSection("-- Entity tests --");
+    writeSection("-- Entity Component tests --");
 
     test("Create entity and add component", {
-        Entity ent = Entity("ent_test".s);
+        EntityManager em;
+        EntityId entityId = em.createEntity("ent_test".s);
         Component comp = Component("comp_test".sid);
-        ent.addComponent(comp);
-        assert(ent.components.length == 1);
-        assert(ent.components[0].type == comp.type);
+        em.addComponent(entityId, comp);
+        assert(em.hasComponent(entityId, comp.type));
     });
 
     test("Remove component from entity", {
-        Entity ent = Entity("ent_test".s);
+        EntityManager em;
+        EntityId entityId = em.createEntity("ent_test".s);
         Component comp1 = Component("comp1_test".sid);
         Component comp2 = Component("comp2_test".sid);
         Component comp3 = Component("comp3_test".sid);
-        ent.addComponent(comp1);
-        ent.addComponent(comp2);
-        ent.addComponent(comp3);
-        assert(ent.components.length == 3);
+        em.addComponent(entityId, comp1);
+        em.addComponent(entityId, comp2);
+        em.addComponent(entityId, comp3);
+        assert(em.hasComponent(entityId, comp1.type));
+        assert(em.hasComponent(entityId, comp2.type));
+        assert(em.hasComponent(entityId, comp3.type));
 
-        ent.removeComponent(comp2);
-        assert(ent.components.length == 2);
-        assert(ent.components[0].type == comp1.type);
-        assert(ent.components[1].type == comp3.type);
+        em.removeComponent(entityId, comp2);
+        assert(em.hasComponent(entityId, comp1.type));
+        assert(!em.hasComponent(entityId, comp2.type));
+        assert(em.hasComponent(entityId, comp3.type));
     });
 
     test("Remove component from entity by type", {
-        Entity ent = Entity("ent_test".s);
+        EntityManager em;
+        EntityId entityId = em.createEntity("ent_test".s);
         Component comp1 = Component("comp1_test".sid);
         Component comp2 = Component("comp2_test".sid);
         Component comp3 = Component("comp3_test".sid);
-        ent.addComponent(comp1);
-        ent.addComponent(comp2);
-        ent.addComponent(comp3);
-        assert(ent.components.length == 3);
+        em.addComponent(entityId, comp1);
+        em.addComponent(entityId, comp2);
+        em.addComponent(entityId, comp3);
 
-        ent.removeComponent(comp2.type);
-        assert(ent.components.length == 2);
-        assert(ent.components[0].type == comp1.type);
-        assert(ent.components[1].type == comp3.type);
+        em.removeComponent(entityId, comp2.type);
+        assert(em.hasComponent(entityId, comp1.type));
+        assert(!em.hasComponent(entityId, comp2.type));
+        assert(em.hasComponent(entityId, comp3.type));
     });
 
     test("Component of same type replaces existing component", {
-        Entity ent = Entity("ent_test".s);
+        EntityManager em;
+        EntityId entityId = em.createEntity("ent_test".s);
         auto data1 = makeSharedVoid(1);
         auto data2 = makeSharedVoid(2);
         Component comp1 = Component("comp_test".sid, data1);
         Component comp2 = Component("comp_test".sid, data2);
-        ent.addComponent(comp1);
-        ent.addComponent(comp2);
-        assert(ent.components.length == 1);
-        assert(ent.components[0].type == comp2.type);
-        assert(*(cast(int*) ent.components[0].data.ptr) == 2);
+        em.addComponent(entityId, comp1);
+        em.addComponent(entityId, comp2);
+
+        auto actualComponent = em.getComponent(entityId, comp2.type);
+        assert(actualComponent.isDefined);
+        assert(actualComponent.value.type == comp2.type);
+        assert(*(cast(int*) actualComponent.value.data.ptr) == 2);
     });
 
     test("Check whether entity has a certain component", {
-        Entity ent = Entity("ent_test".s);
+        EntityManager em;
+        EntityId entityId = em.createEntity("ent_test".s);
         Component comp = Component("comp_test".sid);
-        ent.addComponent(comp);
+        em.addComponent(entityId, comp);
 
-        assert(ent.hasComponent(comp));
-        assert(ent.hasComponent(comp.type));
-        assert(!ent.hasComponent("comp_donkey".sid));
+        assert(em.hasComponent(entityId, comp));
+        assert(em.hasComponent(entityId, comp.type));
+        assert(!em.hasComponent(entityId, "comp_donkey".sid));
 
         Component compNope = Component("comp_nope".sid);
-        assert(!ent.hasComponent(compNope));
+        assert(!em.hasComponent(entityId, compNope));
     });
 
     test("Add component by type", {
-        Entity ent = Entity("ent_test".s);
-        ent.addComponent("comp_test".sid);
-        assert(ent.hasComponent("comp_test".sid));
+        EntityManager em;
+        EntityId entityId = em.createEntity("ent_test".s);
+        em.addComponent(entityId, "comp_test".sid);
+        assert(em.hasComponent(entityId, "comp_test".sid));
     });
 
     test("Get component by type", {
+        EntityManager em;
+        EntityId entityId = em.createEntity("ent_test".s);
         auto componentType = "comp_test".sid;
         auto data = makeSharedVoid(123);
         auto expectedComponent = Component(
@@ -422,9 +369,8 @@ void runEcsTests() {
             data
         );
 
-        Entity ent = Entity("ent_test".s);
-        ent.addComponent(expectedComponent);
-        auto actualComponentOption = ent.getComponent(componentType);
+        em.addComponent(entityId, expectedComponent);
+        auto actualComponentOption = em.getComponent(entityId, componentType);
         assert(actualComponentOption.isDefined);
 
         auto actualComponent = actualComponentOption.value;
@@ -433,6 +379,8 @@ void runEcsTests() {
     });
 
     test("Execute delegate with component by type", {
+        EntityManager em;
+        EntityId entityId = em.createEntity("ent_test".s);
         static StringId componentType = "comp_test".sid;
         auto data = makeSharedVoid(123);
         auto component = Component(
@@ -440,10 +388,9 @@ void runEcsTests() {
             data
         );
 
-        Entity ent = Entity("ent_test".s);
-        ent.addComponent(component);
+        em.addComponent(entityId, component);
         static bool executedWithComponent = false;
-        ent.withComponent(componentType, (Component comp) {
+        em.withComponent(entityId, componentType, (Component comp) {
             executedWithComponent =
             comp.type == componentType && *(cast(int*)(comp.data.ptr)) == 123;
         });
@@ -452,6 +399,8 @@ void runEcsTests() {
     });
 
     test("Execute delegate with component by type directly on the data", {
+        EntityManager em;
+        EntityId entityId = em.createEntity("ent_test".s);
         static StringId componentType = "comp_test".sid;
         auto data = makeSharedVoid(123);
         auto component = Component(
@@ -459,10 +408,9 @@ void runEcsTests() {
             data
         );
 
-        Entity ent = Entity("ent_test".s);
-        ent.addComponent(component);
+        em.addComponent(entityId, component);
         static bool executedWithComponent = false;
-        ent.withComponentData!int(componentType, (int* data) {
+        em.withComponentData!int(entityId, componentType, (int* data) {
             executedWithComponent = *data == 123;
         });
 
@@ -470,6 +418,8 @@ void runEcsTests() {
     });
 
     test("Directly get data of a component", {
+        EntityManager em;
+        EntityId entityId = em.createEntity("ent_test".s);
         static StringId componentType = "comp_test".sid;
         auto data = makeSharedVoid(123);
         auto component = Component(
@@ -477,10 +427,9 @@ void runEcsTests() {
             data
         );
 
-        Entity ent = Entity("ent_test".s);
-        ent.addComponent(component);
+        em.addComponent(entityId, component);
 
-        auto actualData = ent.getComponentData!int(componentType);
+        auto actualData = em.getComponentData!int(entityId, componentType);
 
         assert(actualData.isDefined());
         assert(*actualData.value.ptr == 123);
@@ -490,116 +439,89 @@ void runEcsTests() {
 void runEntityManagerTests() {
     writeSection("-- Entity Manager tests --");
 
-    test("Added entities are assigned an entity ID", {
+    test("Created entities are assigned an entity ID", {
         EntityManager em;
-        auto ent1 = makeEntity("ent1_test");
-        auto ent2 = makeEntity("ent2_test");
-        auto res1 = em.addEntity(ent1);
-        auto res2 = em.addEntity(ent2);
-        assert(ent1.id == 1);
-        assert(ent2.id == 2);
-        assert(res1.isSuccessful);
-        assert(res2.isSuccessful);
-    });
-
-    test("Cannot add entities that already have an entity ID", {
-        EntityManager em;
-        auto ent = makeEntity("ent1_test");
-        ent.ptr._id = 1;
-        auto res = em.addEntity(ent);
-        assert(ent.id == 1);
-        assert(!res.isSuccessful);
-    });
-
-    test("Cannot add entities with undefined shared pointer", {
-        EntityManager em;
-        SharedPtr!Entity ent;
-        auto res = em.addEntity(ent);
-        assert(!res.isSuccessful);
-    });
-
-    test("Remove entity from entity manager", {
-        EntityManager em;
-        auto ent = makeEntity("ent_test");
-        em.addEntity(ent);
-        assert(em.entities.length == 1);
-        em.removeEntity(ent);
-        assert(em.entities.length == 0);
+        EntityId ent1 = em.createEntity("ent1_test".s);
+        EntityId ent2 = em.createEntity("ent2_test".s);
+        assert(ent1 == 1);
+        assert(ent2 == 2);
+        assert(em.hasEntity(ent1));
+        assert(em.hasEntity(ent2));
     });
 
     test("Remove entity from entity manager by ID", {
         EntityManager em;
-        auto ent = makeEntity("ent_test");
-        em.addEntity(ent);
-        assert(em.entities.length == 1);
-        em.removeEntity(ent.id);
-        assert(em.entities.length == 0);
+        EntityId entityId = em.createEntity("ent_test".s);
+        assert(em.hasEntity(entityId));
+        em.removeEntity(entityId);
+        assert(!em.hasEntity(entityId));
     });
 
-    test("Check wheter entity manager has entity", {
+    test("Check whether entity manager has entity by ID", {
         EntityManager em;
-        auto ent = makeEntity("ent_test");
-        em.addEntity(ent);
-        assert(em.hasEntity(ent));
+        EntityId entityId = em.createEntity("ent_test".s);
+        assert(em.hasEntity(entityId));
+        assert(!em.hasEntity(999));
     });
 
-    test("Check wheter entity manager has entity by ID", {
+    test("Check whether entity manager has entity by name", {
         EntityManager em;
-        auto ent = makeEntity("ent_test");
-        em.addEntity(ent);
-        assert(em.hasEntity(ent.id));
-    });
-
-    test("Check wheter entity manager has entity by name", {
-        EntityManager em;
-        auto ent = makeEntity("ent_test");
-        em.addEntity(ent);
+        EntityId entityId = em.createEntity("ent_test".s);
         assert(em.hasEntity("ent_test".s));
+        assert(!em.hasEntity("nonexistent".s));
+    });
+
+    test("Get entity by name", {
+        EntityManager em;
+        EntityId entityId = em.createEntity("ent_test".s);
+        auto foundEntity = em.getEntityByName("ent_test".s);
+        assert(foundEntity.isDefined);
+        assert(foundEntity.value == entityId);
+
+        auto notFound = em.getEntityByName("nonexistent".s);
+        assert(!notFound.isDefined);
     });
 
     test("Add entity processor function", {
         EntityManager em;
-        ProcessorFunction processor = (SharedPtr!Entity ent) {};
+        ProcessorFunction processor = (EntityId) {};
         em.addProcessor(processor);
         assert(em.processors.length == 1);
     });
 
     test("Updating entity manager invokes entity processor", {
         EntityManager em;
-        static bool testEntityProcessed = false;
-        em.addProcessor((SharedPtr!Entity ent) {
-            testEntityProcessed = testEntityProcessed || ent.ptr.name == "ent_test".s;
-        });
+        static EntityId processedEntityId = 0;
+        em.addProcessor((EntityId entityId) { processedEntityId = entityId; });
 
-        auto ent = makeEntity("ent_test");
-        em.addEntity(ent);
-
+        EntityId entityId = em.createEntity("ent_test".s);
         em.update();
-        assert(testEntityProcessed);
+        assert(processedEntityId == entityId);
     });
 
-    test("entityAdded hook is called when entity is added", {
+    test("entityAdded hook is called when entity is created", {
         EntityManager em;
-        static bool hookCalled = false;
-        em.addEntityAddedHook((SharedPtr!Entity ent) {
-            hookCalled = hookCalled || ent.ptr.name == "ent_test".s;
-        });
+        static EntityId hookedEntityId = 0;
+        em.addEntityAddedHook((EntityId entityId) { hookedEntityId = entityId; });
 
-        auto ent = makeEntity("ent_test");
-        em.addEntity(ent);
-        assert(hookCalled);
+        EntityId entityId = em.createEntity("ent_test".s);
+        assert(hookedEntityId == entityId);
     });
 
     test("entityRemoved hook is called when entity is removed", {
         EntityManager em;
-        static bool hookCalled = false;
-        em.addEntityRemovedHook((SharedPtr!Entity ent) {
-            hookCalled = hookCalled || ent.ptr.name == "ent_test".s;
-        });
+        static EntityId hookedEntityId = 0;
+        em.addEntityRemovedHook((EntityId entityId) { hookedEntityId = entityId; });
 
-        auto ent = makeEntity("ent_test");
-        em.addEntity(ent);
-        em.removeEntity(ent);
-        assert(hookCalled);
+        EntityId entityId = em.createEntity("ent_test".s);
+        em.removeEntity(entityId);
+        assert(hookedEntityId == entityId);
+    });
+
+    test("Entity creation without name", {
+        EntityManager em;
+        EntityId entityId = em.createEntity();
+        assert(em.hasEntity(entityId));
+        assert(!em.hasEntity("".s));
     });
 }

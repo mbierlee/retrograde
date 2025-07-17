@@ -387,6 +387,28 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         return hash;
     }
 
+    int opApply(int delegate(ref T) dg) {
+        foreach (size_t i; 0 .. _length) {
+            auto result = dg(items[i]);
+            if (result) {
+                return result;
+            }
+        }
+
+        return 0;
+    }
+
+    int opApply(int delegate(size_t, ref T) dg) {
+        foreach (size_t i; 0 .. _length) {
+            auto result = dg(i, items[i]);
+            if (result) {
+                return result;
+            }
+        }
+
+        return 0;
+    }
+
     private void considerResize() {
         if (items is null || _capacity == length) {
             resize();
