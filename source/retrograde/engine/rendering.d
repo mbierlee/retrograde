@@ -227,7 +227,7 @@ private void initRenderPasses() {
 }
 
 private void initEntityManagerHooks() {
-    entityManager.addEntityAddedHook((EntityId entityId) {
+    entityManager.addEntityAddedHook((ref EntityManager entityManager, EntityId entityId) {
         if (entityManager.hasComponent(entityId, ModelComponentType)) {
             loadEntityModel(entityId);
         } else if (entityManager.hasComponent(entityId, CameraComponentType)) {
@@ -235,7 +235,7 @@ private void initEntityManagerHooks() {
         }
     });
 
-    entityManager.addEntityRemovedHook((EntityId entityId) {
+    entityManager.addEntityRemovedHook((ref EntityManager entityManager, EntityId entityId) {
         if (cameraEntityId == entityId) {
             cameraEntityId = 0;
         }
