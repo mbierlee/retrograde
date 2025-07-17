@@ -16,14 +16,15 @@ import retrograde.std.stringid : sid;
 import retrograde.std.math : QuaternionD;
 import retrograde.std.geometry : OrientationComponentType;
 
-import retrograde.engine.entity : EntityId, EntityManager;
+import retrograde.engine.entity : EntityId, withComponentData, hasComponent;
 
 enum RotationComponentType = sid("comp_rotation");
 
-enum RotationProcessor = delegate(ref EntityManager entityManager, EntityId entityId) {
-    entityManager.withComponentData!QuaternionD(entityId, RotationComponentType, (QuaternionD* rotation) {
-        if (entityManager.hasComponent(entityId, OrientationComponentType)) {
-            entityManager.withComponentData!QuaternionD(entityId, OrientationComponentType, (QuaternionD* orientation) {
+enum RotationProcessor = delegate(EntityId entity) {
+    entity.withComponentData!QuaternionD(RotationComponentType, (QuaternionD* rotation) {
+        if (entity.hasComponent(OrientationComponentType)) {
+            entity.withComponentData!QuaternionD(OrientationComponentType, (
+                QuaternionD* orientation) {
                 auto newOrientation = *orientation * *rotation;
                 *orientation = newOrientation;
             });
