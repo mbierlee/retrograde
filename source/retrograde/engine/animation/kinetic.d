@@ -20,7 +20,7 @@ import retrograde.engine.entity : EntityId, EntityManager;
 
 enum RotationComponentType = sid("comp_rotation");
 
-void processRotation(ref EntityManager entityManager, EntityId entityId) {
+enum RotationProcessor = delegate(ref EntityManager entityManager, EntityId entityId) {
     entityManager.withComponentData!QuaternionD(entityId, RotationComponentType, (QuaternionD* rotation) {
         if (entityManager.hasComponent(entityId, OrientationComponentType)) {
             entityManager.withComponentData!QuaternionD(entityId, OrientationComponentType, (QuaternionD* orientation) {
@@ -29,4 +29,4 @@ void processRotation(ref EntityManager entityManager, EntityId entityId) {
             });
         }
     });
-}
+};

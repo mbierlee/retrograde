@@ -57,9 +57,9 @@ struct Component {
     mixin CopyConstructors!Component;
 }
 
-alias ProcessorFunction = void delegate(EntityId);
-alias EntityAddedHookFunction = void delegate(EntityId);
-alias EntityRemovedHookFunction = void delegate(EntityId);
+alias ProcessorFunction = void delegate(ref EntityManager, EntityId);
+alias EntityAddedHookFunction = void delegate(ref EntityManager, EntityId);
+alias EntityRemovedHookFunction = void delegate(ref EntityManager, EntityId);
 
 struct EntityManager {
     private Array!EntityEntry entities;
@@ -81,7 +81,7 @@ struct EntityManager {
         entities.add(entry);
 
         foreach (hook; entityAddedHooks) {
-            hook(entityId);
+            hook(this, entityId);
         }
 
         return entityId;
@@ -96,7 +96,7 @@ struct EntityManager {
             if (entities[i].id == entityId) {
                 entities.remove(i);
                 foreach (hook; entityRemovedHooks) {
-                    hook(entityId);
+                    hook(this, entityId);
                 }
 
                 break;
@@ -124,7 +124,7 @@ struct EntityManager {
         if (entityName.length == 0) {
             return false;
         }
-        
+
         foreach (ref entity; entities) {
             if (entity.name == entityName) {
                 return true;
@@ -150,7 +150,7 @@ struct EntityManager {
     void update() {
         foreach (processor; processors) {
             foreach (ref entity; entities) {
-                processor(entity.id);
+                processor(this, entity.id);
             }
         }
     }
@@ -484,7 +484,7 @@ void runEntityManagerTests() {
 
     test("Add entity processor function", {
         EntityManager em;
-        ProcessorFunction processor = (EntityId) {};
+        ProcessorFunction processor = (ref EntityManager, EntityId) {};
         em.addProcessor(processor);
         assert(em.processors.length == 1);
     });
@@ -492,7 +492,9 @@ void runEntityManagerTests() {
     test("Updating entity manager invokes entity processor", {
         EntityManager em;
         static EntityId processedEntityId = 0;
-        em.addProcessor((EntityId entityId) { processedEntityId = entityId; });
+        em.addProcessor((ref EntityManager entityManager, EntityId entityId) {
+            processedEntityId = entityId;
+        });
 
         EntityId entityId = em.createEntity("ent_test".s);
         em.update();
@@ -502,7 +504,9 @@ void runEntityManagerTests() {
     test("entityAdded hook is called when entity is created", {
         EntityManager em;
         static EntityId hookedEntityId = 0;
-        em.addEntityAddedHook((EntityId entityId) { hookedEntityId = entityId; });
+        em.addEntityAddedHook((ref EntityManager entityManager, EntityId entityId) {
+            hookedEntityId = entityId;
+        });
 
         EntityId entityId = em.createEntity("ent_test".s);
         assert(hookedEntityId == entityId);
@@ -511,7 +515,9 @@ void runEntityManagerTests() {
     test("entityRemoved hook is called when entity is removed", {
         EntityManager em;
         static EntityId hookedEntityId = 0;
-        em.addEntityRemovedHook((EntityId entityId) { hookedEntityId = entityId; });
+        em.addEntityRemovedHook((ref EntityManager entityManager, EntityId entityId) {
+            hookedEntityId = entityId;
+        });
 
         EntityId entityId = em.createEntity("ent_test".s);
         em.removeEntity(entityId);
