@@ -137,7 +137,7 @@ void renderFrame() {
         entityManager.forEachEntity((EntityId entityId) {
             if (entityManager.hasComponent(entityId, RenderableComponentType) &&
             entityManager.hasComponent(entityId, renderPass.componentType)) {
-                renderPass.render(entityId, renderPass, viewProjectionMatrix);
+                renderPass.render(entityManager, entityId, renderPass, viewProjectionMatrix);
             }
         });
 
@@ -181,7 +181,7 @@ struct RenderPass {
     string vertexShader;
     string fragmentShader;
     StringId componentType;
-    void delegate(EntityId entityId, const ref RenderPass renderPass, const ref Matrix4D viewProjectionMatrix) render;
+    void delegate(ref EntityManager entityManager, EntityId entityId, const ref RenderPass renderPass, const ref Matrix4D viewProjectionMatrix) render;
 
     SharedPtr!void apiData;
 
@@ -193,8 +193,8 @@ RenderPass genericModelRenderPass = RenderPass(
     import("opengles3/generic_model_vertex.glsl"),
     import("opengles3/generic_model_fragment.glsl"),
     ModelComponentType,
-    (EntityId entityId, const ref RenderPass renderPass, const ref Matrix4D viewProjectionMatrix) {
-    drawModel(entityId, viewProjectionMatrix, renderPass);
+    (ref EntityManager entityManager, EntityId entityId, const ref RenderPass renderPass, const ref Matrix4D viewProjectionMatrix) {
+    drawModel(entityManager, entityId, viewProjectionMatrix, renderPass);
 }
 );
 
@@ -229,7 +229,7 @@ private void initRenderPasses() {
 private void initEntityManagerHooks() {
     entityManager.addEntityAddedHook((ref EntityManager entityManager, EntityId entityId) {
         if (entityManager.hasComponent(entityId, ModelComponentType)) {
-            loadEntityModel(entityId);
+            loadEntityModel(entityManager, entityId);
         } else if (entityManager.hasComponent(entityId, CameraComponentType)) {
             cameraEntityId = entityId;
         }
@@ -240,6 +240,6 @@ private void initEntityManagerHooks() {
             cameraEntityId = 0;
         }
 
-        unloadEntityModel(entityId);
+        unloadEntityModel(entityManager, entityId);
     });
 }

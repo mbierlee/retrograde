@@ -11,7 +11,7 @@
 
 module retrograde.engine.entity;
 
-import retrograde.std.string : String;
+import retrograde.std.string : String, s;
 import retrograde.std.stringid : StringId;
 import retrograde.std.memory : SharedPtr;
 import retrograde.std.collections : Array;
@@ -87,6 +87,10 @@ struct EntityManager {
         return entityId;
     }
 
+    EntityId createEntity(string name) {
+        return createEntity(name.s);
+    }
+
     OperationResult removeEntity(EntityId entityId) {
         if (entityId == 0) {
             return success;
@@ -134,6 +138,10 @@ struct EntityManager {
         return false;
     }
 
+    bool hasEntity(string entityName) {
+        return hasEntity(entityName.s);
+    }
+
     Option!EntityId getEntityByName(String entityName) {
         foreach (ref entity; entities) {
             if (entity.name == entityName) {
@@ -141,6 +149,10 @@ struct EntityManager {
             }
         }
         return none!EntityId;
+    }
+
+    Option!EntityId getEntityByName(string entityName) {
+        return getEntityByName(entityName.s);
     }
 
     void addProcessor(ProcessorFunction processor) {
@@ -529,5 +541,16 @@ void runEntityManagerTests() {
         EntityId entityId = em.createEntity();
         assert(em.hasEntity(entityId));
         assert(!em.hasEntity("".s));
+    });
+
+    test("Entity creation with name of native string type", {
+        EntityManager em;
+        EntityId entityId = em.createEntity("ent_test");
+        assert(em.hasEntity(entityId));
+        assert(em.hasEntity("ent_test"));
+
+        auto foundEntity = em.getEntityByName("ent_test");
+        assert(foundEntity.isDefined);
+        assert(foundEntity.value == entityId);
     });
 }
