@@ -3,7 +3,7 @@
   "description": "The Retrograde Game Engine",
   "authors": ["Mike Bierlee", "Lostmoment"],
   "license": "MIT",
-  "copyright": "Copyright Mike Bierlee 2014-2023",
+  "copyright": "Copyright Mike Bierlee 2014-2025",
   "dflags": ["-betterC"],
   "targetPath": "bin",
   "configurations": [

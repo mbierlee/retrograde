@@ -1,6 +1,6 @@
 # The Retrograde Game Engine
 
-Copyright Mike Bierlee 2014-2023  
+Copyright Mike Bierlee 2014-2025  
 Version 0.0.0  
 Licensed under the terms of the MIT license - See [LICENSE.txt](LICENSE.txt)
 
