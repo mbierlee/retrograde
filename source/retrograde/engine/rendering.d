@@ -19,7 +19,7 @@ import retrograde.std.math : degreesToRadians, scalar, Matrix4D, createViewMatri
 import retrograde.std.geometry : PositionComponentType, OrientationComponentType;
 import retrograde.std.dlang : CopyConstructors;
 
-import retrograde.engine.entity : EntityId, forEachEntity, addEntityAddedHook, addEntityRemovedHook, getComponentData,
+import retrograde.engine.entity : EntityId, forEachEntity, addEntityFinalizedHook, addEntityRemovedHook, getComponentData,
     hasComponent;
 import retrograde.engine.graphicsapi : initRenderApi, initRenderPass, setClearColor, initFrame, loadEntityModel,
     unloadEntityModel, useRenderPassShaderProgram, drawModel, clearShaderProgram, getViewport;
@@ -226,7 +226,7 @@ private void initRenderPasses() {
 }
 
 private void initEntityManagerHooks() {
-    addEntityAddedHook((EntityId entity) {
+    addEntityFinalizedHook((EntityId entity) {
         if (entity.hasComponent(ModelComponentType)) {
             loadEntityModel(entity);
         } else if (entity.hasComponent(CameraComponentType)) {
