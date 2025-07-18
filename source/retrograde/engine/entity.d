@@ -59,6 +59,7 @@ struct Component {
 
 alias ProcessorFunction = void delegate(EntityId);
 alias EntityAddedHookFunction = void delegate(EntityId);
+alias EntityFinalizedHookFunction = void delegate(EntityId);
 alias EntityRemovedHookFunction = void delegate(EntityId);
 
 private Array!EntityEntry entities;
@@ -66,6 +67,7 @@ private ulong nextId = 1;
 
 private Array!ProcessorFunction processors;
 private Array!EntityAddedHookFunction entityAddedHooks;
+private Array!EntityFinalizedHookFunction entityFinalizedHooks;
 private Array!EntityRemovedHookFunction entityRemovedHooks;
 
 EntityId createEntity(String name = String()) {
@@ -88,6 +90,17 @@ EntityId createEntity(String name = String()) {
 
 EntityId createEntity(string name) {
     return createEntity(name.s);
+}
+
+/** 
+ * Called when all components are added to an entity.
+ */
+void finalizeEntity(EntityId entityId) {
+    //TODO: prevent double finalization
+    //TODO: do not update non-finalized entities
+    foreach (hook; entityFinalizedHooks) {
+        hook(entityId);
+    }
 }
 
 OperationResult removeEntity(EntityId entityId) {
@@ -174,6 +187,10 @@ void forEachEntity(scope void delegate(EntityId) fn) {
 
 void addEntityAddedHook(EntityAddedHookFunction fn) {
     entityAddedHooks.add(fn);
+}
+
+void addEntityFinalizedHook(EntityFinalizedHookFunction fn) {
+    entityFinalizedHooks.add(fn);
 }
 
 void addEntityRemovedHook(EntityRemovedHookFunction fn) {
@@ -515,6 +532,7 @@ void runEntityTests() {
         addEntityAddedHook((EntityId entityId) { hookedEntityId = entityId; });
 
         EntityId entityId = createEntity("ent_test".s);
+        finalizeEntity(entityId);
         assert(hookedEntityId == entityId);
     });
 
