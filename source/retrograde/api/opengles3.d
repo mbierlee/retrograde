@@ -15,7 +15,7 @@ module retrograde.api.opengles3;
 
 version (OpenGLES3)  :  //
 
-import retrograde.engine.entity : EntityId, Component, hasComponent, withComponent, withComponentData, addComponent,
+import retrograde.engine.entity : EntityId, hasComponent, withComponentData, addComponent,
     getComponentData;
 import retrograde.engine.rendering : Color, RenderPass, Viewport;
 
@@ -200,17 +200,17 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
 
         auto maybePosition = entity.getComponentData!Vector3D(PositionComponentType);
         if (maybePosition.isDefined()) {
-            position = *maybePosition.value.ptr;
+            position = *maybePosition.value;
         }
 
         auto maybeOrientation = entity.getComponentData!QuaternionD(OrientationComponentType);
         if (maybeOrientation.isDefined()) {
-            orientation = *maybeOrientation.value.ptr;
+            orientation = *maybeOrientation.value;
         }
 
         auto maybeScale = entity.getComponentData!Vector3D(ScaleComponentType);
         if (maybeScale.isDefined()) {
-            scale = *maybeScale.value.ptr;
+            scale = *maybeScale.value;
         }
 
         auto modelMatrix = position.toTranslationMatrix() * orientation.toRotationMatrix() * scale.toScalingMatrix();

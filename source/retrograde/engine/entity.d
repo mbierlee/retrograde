@@ -29,29 +29,8 @@ private struct EntityEntry {
     mixin CopyConstructors!EntityEntry;
 }
 
-/** 
- * A component is a container for data. It is a logical object that can be used
- * to represent a position, a sprite, a health value, etc.
- * Components can also be without data, in which case they indicate certain behavior
- * of the entity, for example a component that indicates that the entity is flammable, 
- * destructible, etc.
- */
-struct Component {
-    /** 
-     * The type of the component. 
-     * 
-     * This is a unique ID that is used to identify the component type.
-     */
+private struct Component {
     StringId type;
-
-    /** 
-     * The data of the component. 
-     * 
-     * This is a smart pointer to the data that is stored in the component. The data
-     * is stored as a SharedPtr!void, so it can be any type of data. When no data is
-     * stored in the component, the component is regarded as a component that indicates
-     * certain behavior of the entity.
-     */
     SharedPtr!void data;
 
     mixin CopyConstructors!Component;
@@ -197,7 +176,15 @@ void addEntityRemovedHook(EntityRemovedHookFunction fn) {
     entityRemovedHooks.add(fn);
 }
 
-void addComponent(EntityId entityId, Component component) {
+void addComponent(EntityId entityId, StringId componentType) {
+    addComponent(entityId, Component(componentType));
+}
+
+void addComponent(EntityId entityId, StringId componentType, SharedPtr!void data) {
+    addComponent(entityId, Component(componentType, data));
+}
+
+private void addComponent(EntityId entityId, Component component) {
     foreach (ref entity; entities) {
         if (entity.id == entityId) {
             foreach (ref comp; entity.components) {
@@ -206,18 +193,11 @@ void addComponent(EntityId entityId, Component component) {
                     return;
                 }
             }
+
             entity.components.add(component);
             return;
         }
     }
-}
-
-void addComponent(EntityId entityId, StringId type) {
-    addComponent(entityId, Component(type));
-}
-
-void removeComponent(EntityId entityId, const ref Component component) {
-    removeComponent(entityId, component.type);
 }
 
 void removeComponent(EntityId entityId, StringId componentType) {
@@ -229,13 +209,10 @@ void removeComponent(EntityId entityId, StringId componentType) {
                     return;
                 }
             }
+
             return;
         }
     }
-}
-
-bool hasComponent(EntityId entityId, const ref Component component) {
-    return hasComponent(entityId, component.type);
 }
 
 bool hasComponent(EntityId entityId, StringId componentType) {
@@ -246,6 +223,7 @@ bool hasComponent(EntityId entityId, StringId componentType) {
                     return true;
                 }
             }
+
             return false;
         }
     }
@@ -253,41 +231,26 @@ bool hasComponent(EntityId entityId, StringId componentType) {
     return false;
 }
 
-Option!Component getComponent(EntityId entityId, StringId componentType) {
+Option!(T*) getComponentData(T)(EntityId entityId, StringId componentType) {
     for (size_t i = 0; i < entities.length; i++) {
         if (entities[i].id == entityId) {
             for (size_t j = 0; j < entities[i].components.length; j++) {
                 if (entities[i].components[j].type == componentType) {
-                    return some(entities[i].components[j]);
+                    return some(cast(T*) entities[i].components[j].data.ptr);
                 }
             }
-            return none!Component;
+
+            return none!(T*);
         }
     }
 
-    return none!Component;
-}
-
-Option!(SharedPtr!T) getComponentData(T)(EntityId entityId, StringId componentType) {
-    auto maybeComponent = getComponent(entityId, componentType);
-    if (maybeComponent.isDefined) {
-        return some(maybeComponent.value.data.as!T);
-    }
-
-    return none!(SharedPtr!T);
-}
-
-void withComponent(EntityId entityId, StringId componentType, scope void delegate(Component) fn) {
-    auto maybeComponent = getComponent(entityId, componentType);
-    if (maybeComponent.isDefined) {
-        fn(maybeComponent.value);
-    }
+    return none!(T*);
 }
 
 void withComponentData(T)(EntityId entityId, StringId componentType, scope void delegate(T*) fn) {
-    auto maybeComponent = getComponent(entityId, componentType);
-    if (maybeComponent.isDefined) {
-        fn(cast(T*) maybeComponent.value.data.ptr);
+    auto maybeData = getComponentData!T(entityId, componentType);
+    if (maybeData.isDefined) {
+        fn(maybeData.value);
     }
 }
 
@@ -312,44 +275,44 @@ void runEntityTests() {
     test("Create entity and add component", {
         resetEcs();
         EntityId entityId = createEntity("ent_test".s);
-        Component comp = Component("comp_test".sid);
-        addComponent(entityId, comp);
-        assert(hasComponent(entityId, comp.type));
+        auto componentType = "comp_test".sid;
+        addComponent(entityId, componentType);
+        assert(hasComponent(entityId, componentType));
     });
 
     test("Remove component from entity", {
         resetEcs();
         EntityId entityId = createEntity("ent_test".s);
-        Component comp1 = Component("comp1_test".sid);
-        Component comp2 = Component("comp2_test".sid);
-        Component comp3 = Component("comp3_test".sid);
-        addComponent(entityId, comp1);
-        addComponent(entityId, comp2);
-        addComponent(entityId, comp3);
-        assert(hasComponent(entityId, comp1.type));
-        assert(hasComponent(entityId, comp2.type));
-        assert(hasComponent(entityId, comp3.type));
+        auto comp1Type = "comp1_test".sid;
+        auto comp2Type = "comp2_test".sid;
+        auto comp3Type = "comp3_test".sid;
+        addComponent(entityId, comp1Type);
+        addComponent(entityId, comp2Type);
+        addComponent(entityId, comp3Type);
+        assert(hasComponent(entityId, comp1Type));
+        assert(hasComponent(entityId, comp2Type));
+        assert(hasComponent(entityId, comp3Type));
 
-        removeComponent(entityId, comp2);
-        assert(hasComponent(entityId, comp1.type));
-        assert(!hasComponent(entityId, comp2.type));
-        assert(hasComponent(entityId, comp3.type));
+        removeComponent(entityId, comp2Type);
+        assert(hasComponent(entityId, comp1Type));
+        assert(!hasComponent(entityId, comp2Type));
+        assert(hasComponent(entityId, comp3Type));
     });
 
     test("Remove component from entity by type", {
         resetEcs();
         EntityId entityId = createEntity("ent_test".s);
-        Component comp1 = Component("comp1_test".sid);
-        Component comp2 = Component("comp2_test".sid);
-        Component comp3 = Component("comp3_test".sid);
-        addComponent(entityId, comp1);
-        addComponent(entityId, comp2);
-        addComponent(entityId, comp3);
+        auto comp1Type = "comp1_test".sid;
+        auto comp2Type = "comp2_test".sid;
+        auto comp3Type = "comp3_test".sid;
+        addComponent(entityId, comp1Type);
+        addComponent(entityId, comp2Type);
+        addComponent(entityId, comp3Type);
 
-        removeComponent(entityId, comp2.type);
-        assert(hasComponent(entityId, comp1.type));
-        assert(!hasComponent(entityId, comp2.type));
-        assert(hasComponent(entityId, comp3.type));
+        removeComponent(entityId, comp2Type);
+        assert(hasComponent(entityId, comp1Type));
+        assert(!hasComponent(entityId, comp2Type));
+        assert(hasComponent(entityId, comp3Type));
     });
 
     test("Component of same type replaces existing component", {
@@ -357,29 +320,23 @@ void runEntityTests() {
         EntityId entityId = createEntity("ent_test".s);
         auto data1 = makeSharedVoid(1);
         auto data2 = makeSharedVoid(2);
-        Component comp1 = Component("comp_test".sid, data1);
-        Component comp2 = Component("comp_test".sid, data2);
-        addComponent(entityId, comp1);
-        addComponent(entityId, comp2);
+        auto componentType = "comp_test".sid;
+        addComponent(entityId, componentType, data1);
+        addComponent(entityId, componentType, data2);
 
-        auto actualComponent = getComponent(entityId, comp2.type);
-        assert(actualComponent.isDefined);
-        assert(actualComponent.value.type == comp2.type);
-        assert(*(cast(int*) actualComponent.value.data.ptr) == 2);
+        auto actualData = getComponentData!int(entityId, componentType);
+        assert(actualData.isDefined());
+        assert(*actualData.value == 2);
     });
 
     test("Check whether entity has a certain component", {
         resetEcs();
         EntityId entityId = createEntity("ent_test".s);
-        Component comp = Component("comp_test".sid);
-        addComponent(entityId, comp);
+        auto componentType = "comp_test".sid;
+        addComponent(entityId, componentType);
 
-        assert(hasComponent(entityId, comp));
-        assert(hasComponent(entityId, comp.type));
+        assert(hasComponent(entityId, componentType));
         assert(!hasComponent(entityId, "comp_donkey".sid));
-
-        Component compNope = Component("comp_nope".sid);
-        assert(!hasComponent(entityId, compNope));
     });
 
     test("Add component by type", {
@@ -389,56 +346,13 @@ void runEntityTests() {
         assert(hasComponent(entityId, "comp_test".sid));
     });
 
-    test("Get component by type", {
-        resetEcs();
-        EntityId entityId = createEntity("ent_test".s);
-        auto componentType = "comp_test".sid;
-        auto data = makeSharedVoid(123);
-        auto expectedComponent = Component(
-            componentType,
-            data
-        );
-
-        addComponent(entityId, expectedComponent);
-        auto actualComponentOption = getComponent(entityId, componentType);
-        assert(actualComponentOption.isDefined);
-
-        auto actualComponent = actualComponentOption.value;
-        assert(actualComponent.type == componentType);
-        assert(*(cast(int*)(actualComponent.data.ptr)) == 123);
-    });
-
-    test("Execute delegate with component by type", {
-        resetEcs();
-        EntityId entityId = createEntity("ent_test".s);
-        static StringId componentType = "comp_test".sid;
-        auto data = makeSharedVoid(123);
-        auto component = Component(
-            componentType,
-            data
-        );
-
-        addComponent(entityId, component);
-        static bool executedWithComponent = false;
-        withComponent(entityId, componentType, (Component comp) {
-            executedWithComponent =
-            comp.type == componentType && *(cast(int*)(comp.data.ptr)) == 123;
-        });
-
-        assert(executedWithComponent);
-    });
-
     test("Execute delegate with component by type directly on the data", {
         resetEcs();
         EntityId entityId = createEntity("ent_test".s);
         static StringId componentType = "comp_test".sid;
         auto data = makeSharedVoid(123);
-        auto component = Component(
-            componentType,
-            data
-        );
 
-        addComponent(entityId, component);
+        addComponent(entityId, componentType, data);
         static bool executedWithComponent = false;
         withComponentData!int(entityId, componentType, (int* data) {
             executedWithComponent = *data == 123;
@@ -452,17 +366,13 @@ void runEntityTests() {
         EntityId entityId = createEntity("ent_test".s);
         static StringId componentType = "comp_test".sid;
         auto data = makeSharedVoid(123);
-        auto component = Component(
-            componentType,
-            data
-        );
 
-        addComponent(entityId, component);
+        addComponent(entityId, componentType, data);
 
         auto actualData = getComponentData!int(entityId, componentType);
 
         assert(actualData.isDefined());
-        assert(*actualData.value.ptr == 123);
+        assert(*actualData.value == 123);
     });
 
     test("Created entities are assigned an entity ID", {

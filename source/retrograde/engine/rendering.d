@@ -109,19 +109,19 @@ void renderFrame() {
     if (cameraEntity != 0) {
         auto maybePosition = cameraEntity.getComponentData!Vector3D(PositionComponentType);
         if (maybePosition.isDefined()) {
-            position = *maybePosition.value.ptr;
+            position = *maybePosition.value;
         }
 
         auto maybeOrientation = cameraEntity.getComponentData!QuaternionD(
             OrientationComponentType);
         if (maybeOrientation.isDefined()) {
-            orientation = *maybeOrientation.value.ptr;
+            orientation = *maybeOrientation.value;
         }
 
         auto maybeCameraConfiguration = cameraEntity.getComponentData!CameraConfiguration(
             CameraComponentType);
         if (maybeCameraConfiguration.isDefined()) {
-            projectionMatrix = createProjectionMatrix(*maybeCameraConfiguration.value.ptr);
+            projectionMatrix = createProjectionMatrix(*maybeCameraConfiguration.value);
         }
 
     }

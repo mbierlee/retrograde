@@ -16,7 +16,7 @@ import retrograde.std.stringid : StringId;
 import retrograde.std.math : Vector3D, QuaternionD;
 import retrograde.std.geometry : PositionComponentType, OrientationComponentType, ScaleComponentType;
 
-import retrograde.engine.entity : EntityId, Component, addComponent;
+import retrograde.engine.entity : EntityId, addComponent;
 import retrograde.engine.animation.kinetic : RotationComponentType;
 
 void addPosition(EntityId entity, const double x, const double y, const double z) {
@@ -25,14 +25,12 @@ void addPosition(EntityId entity, const double x, const double y, const double z
 
 void addPosition(EntityId entity, const Vector3D position) {
     auto positionPtr = makeShared(position);
-    auto positionComponent = Component(PositionComponentType, positionPtr.as!void);
-    entity.addComponent(positionComponent);
+    entity.addComponent(PositionComponentType, positionPtr.as!void);
 }
 
 void addOrientation(EntityId entity, double radianAngle, const Vector3D axis) {
     auto orientationPtr = makeShared(QuaternionD.createRotation(radianAngle, axis));
-    auto orientationComponent = Component(OrientationComponentType, orientationPtr.as!void);
-    entity.addComponent(orientationComponent);
+    entity.addComponent(OrientationComponentType, orientationPtr.as!void);
 }
 
 void addScale(EntityId entity, const double scale) {
@@ -45,12 +43,10 @@ void addScale(EntityId entity, const double xScale, const double yScale, const d
 
 void addScale(EntityId entity, const Vector3D scale) {
     auto scalePtr = makeShared(scale);
-    auto scaleComponent = Component(ScaleComponentType, scalePtr.as!void);
-    entity.addComponent(scaleComponent);
+    entity.addComponent(ScaleComponentType, scalePtr.as!void);
 }
 
 void addRotation(EntityId entity, double radianAngle, const Vector3D axis) {
     auto rotationPtr = makeShared(QuaternionD.createRotation(radianAngle, axis));
-    auto rotationComponent = Component(RotationComponentType, rotationPtr.as!void);
-    entity.addComponent(rotationComponent);
+    entity.addComponent(RotationComponentType, rotationPtr.as!void);
 }
