@@ -1,6 +1,8 @@
 /**
  * Retrograde Engine
  *
+ * This module implements an OpenGL ES 3 based render API.
+ *
  * Authors:
  *  Mike Bierlee, m.bierlee@lostmoment.com
  * Copyright: 2014-2025 Mike Bierlee
@@ -190,7 +192,7 @@ void clearShaderProgram() {
     glUseProgram(0);
 }
 
-void drawModel(EntityId entity, const ref Matrix4D viewProjectionMatrix, const ref RenderPass renderPass) {
+void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matrix4D viewProjectionMatrix) {
     entity.withComponentData(GlModelInfoComponentType, (GlModelInfo* modelInfo) {
         Vector3D position;
         QuaternionD orientation;

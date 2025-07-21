@@ -49,7 +49,7 @@ version (UnitTesting) {
     void clearShaderProgram() {
     }
 
-    void drawModel(EntityId entity, const ref Matrix4D viewProjectionMatrix, const ref RenderPass renderPass) {
+    void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matrix4D viewProjectionMatrix) {
     }
 
     Viewport getViewport() {
