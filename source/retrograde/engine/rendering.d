@@ -193,7 +193,7 @@ RenderPass genericModelRenderPass = RenderPass(
     import("opengles3/generic_model_fragment.glsl"),
     ModelComponentType,
     (EntityId entity, const ref RenderPass renderPass, const ref Matrix4D viewProjectionMatrix) {
-    drawModel(entity, viewProjectionMatrix, renderPass);
+    drawModel(entity, renderPass, viewProjectionMatrix);
 }
 );
 
