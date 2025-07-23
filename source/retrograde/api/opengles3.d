@@ -145,12 +145,7 @@ void loadEntityModel(EntityId entity) {
             modelInfo.ptr.meshes.add(meshInfo);
         }
 
-        auto glModelInfoComponent = Component(
-            GlModelInfoComponentType,
-            modelInfo.as!void
-        );
-
-        entity.addComponent(glModelInfoComponent);
+        entity.addComponent(GlModelInfoComponentType, modelInfo.as!void);
         // loadedModels.add(model.name);
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
