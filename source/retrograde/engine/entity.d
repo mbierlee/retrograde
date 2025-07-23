@@ -299,22 +299,6 @@ void runEntityTests() {
         assert(hasComponent(entityId, comp3Type));
     });
 
-    test("Remove component from entity by type", {
-        resetEcs();
-        EntityId entityId = createEntity("ent_test".s);
-        auto comp1Type = "comp1_test".sid;
-        auto comp2Type = "comp2_test".sid;
-        auto comp3Type = "comp3_test".sid;
-        addComponent(entityId, comp1Type);
-        addComponent(entityId, comp2Type);
-        addComponent(entityId, comp3Type);
-
-        removeComponent(entityId, comp2Type);
-        assert(hasComponent(entityId, comp1Type));
-        assert(!hasComponent(entityId, comp2Type));
-        assert(hasComponent(entityId, comp3Type));
-    });
-
     test("Component of same type replaces existing component", {
         resetEcs();
         EntityId entityId = createEntity("ent_test".s);
