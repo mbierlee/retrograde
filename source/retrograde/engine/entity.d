@@ -13,7 +13,7 @@ module retrograde.engine.entity;
 
 import retrograde.std.string : String, s;
 import retrograde.std.stringid : StringId;
-import retrograde.std.memory : SharedPtr;
+import retrograde.std.memory : UniquePtr, free;
 import retrograde.std.collections : Array;
 import retrograde.std.result : OperationResult, success, failure;
 import retrograde.std.option : Option, some, none;
@@ -31,9 +31,17 @@ private struct EntityEntry {
 
 private struct Component {
     StringId type;
-    SharedPtr!void data;
+    void* data;
 
-    mixin CopyConstructors!Component;
+    this(ref return scope const typeof(this) other) {
+        type = other.type;
+        data = cast(void*) other.data;
+    }
+
+    void opAssign(ref const typeof(this) other) {
+        type = other.type;
+        data = cast(void*) other.data;
+    }
 }
 
 alias ProcessorFunction = void delegate(EntityId);
@@ -89,6 +97,13 @@ OperationResult removeEntity(EntityId entityId) {
 
     for (size_t i = 0; i < entities.length; i++) {
         if (entities[i].id == entityId) {
+            // Free all component data
+            foreach (ref comp; entities[i].components) {
+                if (comp.data !is null) {
+                    free(comp.data);
+                }
+            }
+            
             entities.remove(i);
             foreach (hook; entityRemovedHooks) {
                 hook(entityId);
@@ -180,8 +195,11 @@ void addComponent(EntityId entityId, StringId componentType) {
     addComponent(entityId, Component(componentType));
 }
 
-void addComponent(EntityId entityId, StringId componentType, SharedPtr!void data) {
-    addComponent(entityId, Component(componentType, data));
+void addComponent(EntityId entityId, StringId componentType, UniquePtr!void data) {
+    Component component;
+    component.type = componentType;
+    component.data = data.release();
+    addComponent(entityId, component);
 }
 
 private void addComponent(EntityId entityId, Component component) {
@@ -189,7 +207,11 @@ private void addComponent(EntityId entityId, Component component) {
         if (entity.id == entityId) {
             foreach (ref comp; entity.components) {
                 if (comp.type == component.type) {
-                    comp = component;
+                    // Free old data
+                    if (comp.data !is null) {
+                        free(comp.data);
+                    }
+                    comp.data = component.data;
                     return;
                 }
             }
@@ -205,6 +227,10 @@ void removeComponent(EntityId entityId, StringId componentType) {
         if (entity.id == entityId) {
             foreach (size_t j, ref comp; entity.components) {
                 if (comp.type == componentType) {
+                    // Free the component data
+                    if (comp.data !is null) {
+                        free(comp.data);
+                    }
                     entity.components.remove(j);
                     return;
                 }
@@ -236,7 +262,7 @@ Option!(T*) getComponentData(T)(EntityId entityId, StringId componentType) {
         if (entities[i].id == entityId) {
             for (size_t j = 0; j < entities[i].components.length; j++) {
                 if (entities[i].components[j].type == componentType) {
-                    return some(cast(T*) entities[i].components[j].data.ptr);
+                    return some(cast(T*) entities[i].components[j].data);
                 }
             }
 
@@ -258,7 +284,7 @@ version (UnitTesting)  :  ///
 
 import retrograde.std.test : test, writeSection;
 import retrograde.std.stringid : sid;
-import retrograde.std.memory : makeSharedVoid;
+import retrograde.std.memory : makeUniqueVoid;
 import retrograde.std.string : s;
 
 void resetEcs() {
@@ -302,11 +328,11 @@ void runEntityTests() {
     test("Component of same type replaces existing component", {
         resetEcs();
         EntityId entityId = createEntity("ent_test".s);
-        auto data1 = makeSharedVoid(1);
-        auto data2 = makeSharedVoid(2);
+        auto data1 = makeUniqueVoid(1);
+        auto data2 = makeUniqueVoid(2);
         auto componentType = "comp_test".sid;
-        addComponent(entityId, componentType, data1);
-        addComponent(entityId, componentType, data2);
+        addComponent(entityId, componentType, data1.move());
+        addComponent(entityId, componentType, data2.move());
 
         auto actualData = getComponentData!int(entityId, componentType);
         assert(actualData.isDefined());
@@ -334,9 +360,9 @@ void runEntityTests() {
         resetEcs();
         EntityId entityId = createEntity("ent_test".s);
         static StringId componentType = "comp_test".sid;
-        auto data = makeSharedVoid(123);
+        auto data = makeUniqueVoid(123);
 
-        addComponent(entityId, componentType, data);
+        addComponent(entityId, componentType, data.move());
         static bool executedWithComponent = false;
         withComponentData!int(entityId, componentType, (int* data) {
             executedWithComponent = *data == 123;
@@ -349,9 +375,9 @@ void runEntityTests() {
         resetEcs();
         EntityId entityId = createEntity("ent_test".s);
         static StringId componentType = "comp_test".sid;
-        auto data = makeSharedVoid(123);
+        auto data = makeUniqueVoid(123);
 
-        addComponent(entityId, componentType, data);
+        addComponent(entityId, componentType, data.move());
 
         auto actualData = getComponentData!int(entityId, componentType);
 

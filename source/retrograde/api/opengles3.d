@@ -21,7 +21,7 @@ import retrograde.engine.rendering : Color, RenderPass, Viewport;
 
 import retrograde.data.model : ModelComponentType, Model;
 
-import retrograde.std.memory : SharedPtr, makeShared, makeSharedVoid;
+import retrograde.std.memory : SharedPtr, makeShared, makeSharedVoid, makeUnique, makeUniqueVoid, makeRaw, UniquePtr;
 import retrograde.std.collections : Array;
 import retrograde.std.stringid : StringId, sid;
 import retrograde.std.math : Matrix4D, Vector3D, QuaternionD, toTranslationMatrix, toScalingMatrix;
@@ -83,7 +83,7 @@ void loadEntityModel(EntityId entity) {
         //     return;
         // }
 
-        auto modelInfo = makeShared!GlModelInfo;
+        auto modelInfo = makeRaw!GlModelInfo;
         foreach (ref mesh; model.meshes) {
             Array!GLfloat positionData;
             Array!GLfloat colorData;
@@ -142,10 +142,10 @@ void loadEntityModel(EntityId entity) {
                 meshInfo.elementCount = indexData.length;
             }
 
-            modelInfo.ptr.meshes.add(meshInfo);
+            modelInfo.meshes.add(meshInfo);
         }
 
-        entity.addComponent(GlModelInfoComponentType, modelInfo.as!void);
+        entity.addComponent(GlModelInfoComponentType, UniquePtr!void(cast(void*) modelInfo));
         // loadedModels.add(model.name);
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
