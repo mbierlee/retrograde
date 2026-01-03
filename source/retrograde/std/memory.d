@@ -279,6 +279,20 @@ UniquePtr!T makeUnique(T)(const ref T initial) {
 }
 
 /**
+ * Create a unique void pointer initialized to the given value.
+ *
+ * Params:
+ *  T: The type of the value to initialize the pointer with. Not the type of the pointer itself.
+ *  initial: The initial value. When not given, the initial value is the default value of the type.
+ * Returns: A unique void pointer.
+ */
+UniquePtr!void makeUniqueVoid(T)(const T initial = T.init) {
+    void* rawPtr = cast(void*) makeRaw(initial);
+    UniquePtr!void uniquePtr = UniquePtr!void(rawPtr);
+    return uniquePtr;
+}
+
+/**
  * A shared pointer to allocated memory.
  *
  * A shared pointer can be copied and shared between multiple owners.

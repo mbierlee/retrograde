@@ -11,7 +11,7 @@
 
 module retrograde.engine.entityfactory;
 
-import retrograde.std.memory : SharedPtr, makeShared;
+import retrograde.std.memory : makeUniqueVoid;
 import retrograde.std.stringid : StringId;
 import retrograde.std.math : Vector3D, QuaternionD;
 import retrograde.std.geometry : PositionComponentType, OrientationComponentType, ScaleComponentType;
@@ -24,13 +24,11 @@ void addPosition(EntityId entity, const double x, const double y, const double z
 }
 
 void addPosition(EntityId entity, const Vector3D position) {
-    auto positionPtr = makeShared(position);
-    entity.addComponent(PositionComponentType, positionPtr.as!void);
+    entity.addComponent(PositionComponentType, makeUniqueVoid(position));
 }
 
 void addOrientation(EntityId entity, double radianAngle, const Vector3D axis) {
-    auto orientationPtr = makeShared(QuaternionD.createRotation(radianAngle, axis));
-    entity.addComponent(OrientationComponentType, orientationPtr.as!void);
+    entity.addComponent(OrientationComponentType, makeUniqueVoid(QuaternionD.createRotation(radianAngle, axis)));
 }
 
 void addScale(EntityId entity, const double scale) {
@@ -42,11 +40,9 @@ void addScale(EntityId entity, const double xScale, const double yScale, const d
 }
 
 void addScale(EntityId entity, const Vector3D scale) {
-    auto scalePtr = makeShared(scale);
-    entity.addComponent(ScaleComponentType, scalePtr.as!void);
+    entity.addComponent(ScaleComponentType, makeUniqueVoid(scale));
 }
 
 void addRotation(EntityId entity, double radianAngle, const Vector3D axis) {
-    auto rotationPtr = makeShared(QuaternionD.createRotation(radianAngle, axis));
-    entity.addComponent(RotationComponentType, rotationPtr.as!void);
+    entity.addComponent(RotationComponentType, makeUniqueVoid(QuaternionD.createRotation(radianAngle, axis)));
 }
