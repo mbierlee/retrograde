@@ -20,8 +20,6 @@ import retrograde.std.result : success, failure, Result, OperationResult;
 import retrograde.std.option : some, none, Option;
 import retrograde.std.stdio : writeln;
 
-import ldc.attributes : optStrategy;
-
 version (MemoryDebug) {
     import retrograde.std.stdio : writeErrLn;
 }
@@ -29,6 +27,7 @@ version (MemoryDebug) {
 version (LDC) {
     // https://github.com/ldc-developers/druntime/blob/ldc/src/ldc/intrinsics.di
     import ldc.intrinsics : llvm_wasm_memory_grow, llvm_wasm_memory_size;
+    import ldc.attributes : optStrategy;
 }
 
 /** 
@@ -90,7 +89,7 @@ export extern (C) void* malloc(size_t size) {
  *  size: The size of each item.
  * Returns: A pointer to the allocated memory, or null if allocation failed.
  */
-@optStrategy("none")
+version (LDC) @optStrategy("none")
 export extern (C) void* calloc(size_t nitems, size_t size) {
     auto ptr = malloc(nitems * size);
     if (ptr is null) {
@@ -244,7 +243,7 @@ export extern (C) void free_sized(void* ptr, size_t size) {
  *  num: Number of bytes to be set to the value.
  * Returns: ptr as-is.
  */
-@optStrategy("none")
+version (LDC) @optStrategy("none")
 export extern (C) void* memset(void* ptr, int value, size_t num) {
     foreach (i; 0 .. num) {
         *(cast(ubyte*)&ptr[i]) = cast(ubyte) value;
