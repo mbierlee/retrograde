@@ -29,14 +29,18 @@ String toString(T)(T val)
     } else static if (is(T == uint)) {
         enum format = "%u";
     } else static if (is(T == ulong)) {
-        enum format = "%lu";
-    } else static if (is(T == long) || is(T == size_t)) {
-        enum format = "%ld";
+        enum format = "%llu";
+    } else static if (is(T == long)) {
+        enum format = "%lld";
+    } else static if (is(T == size_t)) {
+        static if (size_t.sizeof == 8) {
+            enum format = "%llu";
+        } else {
+            enum format = "%u";
+        }
     } else static if (is(T == float) || is(T == double)) {
         enum format = "%f";
     }
-
-    //TODO: Figure out how to deal with deprecation warning
 
     char[maxDigits] str = '\0';
     sprintf(str.ptr, format, val);
