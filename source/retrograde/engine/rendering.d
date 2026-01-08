@@ -223,8 +223,6 @@ struct RenderPass {
     void delegate(EntityId entity, const ref RenderPass renderPass, const ref Matrix4D viewProjectionMatrix) render;
 
     SharedPtr!void apiData;
-
-    mixin CopyConstructors!RenderPass;
 }
 
 RenderPass genericModelRenderPass = RenderPass(
