@@ -37,9 +37,22 @@ static const scalar autoAspectRatio = 0;
 
 /** 
  * Type of projection to be used when rendering an active camera.
+ * 
+ * Projection determines how 3D world coordinates are mapped to 2D screen coordinates.
+ * 
+ * Orthographic projection maintains parallel lines and constant object sizes regardless
+ * of distance from the camera. It's ideal for 2D games, CAD applications, isometric views,
+ * and technical drawings where accurate measurements and proportions are important.
+ * 
+ * Perspective projection simulates realistic depth by making objects appear smaller as they
+ * move farther from the camera. It's the standard choice for 3D games and applications
+ * where realistic spatial representation is desired.
  */
 enum ProjectionType {
+    /// Orthographic projection - parallel lines stay parallel, no foreshortening
     ortographic,
+
+    /// Perspective projection - simulates realistic depth with foreshortening
     perspective
 }
 
@@ -48,7 +61,7 @@ enum ProjectionType {
  */
 struct CameraConfiguration {
     /// Y FOV in radians
-    scalar horizontalFieldOfView = degreesToRadians(55);
+    scalar horizontalFieldOfViewRadian = degreesToRadians(55);
 
     /// Aspect ratio (width over height).
     scalar aspectRatio = autoAspectRatio;
@@ -83,14 +96,30 @@ struct CameraConfiguration {
 
 /**
  * Viewport dimensions, typically used by a renderer to determine framebuffer size.
+ * 
+ * The viewport defines the rectangular region of the rendering surface where graphics
+ * will be drawn. It is used to calculate aspect ratios for camera projection matrices
+ * and to configure the graphics API's rendering region.
  */
 struct Viewport {
+    /// X coordinate of the viewport's origin (typically left edge)
     int x;
+
+    /// Y coordinate of the viewport's origin (typically top edge)
     int y;
+
+    /// Width of the viewport in pixels
     int width;
+
+    /// Height of the viewport in pixels
     int height;
 }
 
+/**
+ * Initializes the renderer and graphics API.
+ * 
+ * Set up render passes before calling this function, otherwise the default render pass will be used.
+ */
 void initRenderer() {
     initRenderApi();
     setClearColor(Color(0, 0, 0, 1));
@@ -154,7 +183,7 @@ private Matrix4D createProjectionMatrix(const ref CameraConfiguration cameraConf
 
     if (cameraConfiguration.projectionType == ProjectionType.perspective) {
         return createPerspectiveMatrix(
-            cameraConfiguration.horizontalFieldOfView,
+            cameraConfiguration.horizontalFieldOfViewRadian,
             aspectRatio,
             cameraConfiguration.nearClippingDistance,
             cameraConfiguration.farClippingDistance
@@ -175,6 +204,17 @@ private Matrix4D createProjectionMatrix(const ref CameraConfiguration cameraConf
     return Matrix4D();
 }
 
+/**
+ * A render pass represents a single rendering operation in the frame rendering pipeline.
+ * 
+ * Render passes are used to organize rendering by grouping entities with specific components
+ * and rendering them with a particular shader program. During frame rendering, each render pass
+ * is executed in sequence, processing all entities that have both the RenderableComponentType
+ * and the pass's specific componentType.
+ * 
+ * This allows for flexible rendering pipelines where different types of objects (models, particles,
+ * UI elements, etc.) can be rendered with different shaders and techniques.
+ */
 struct RenderPass {
     string passName;
     string vertexShader;
