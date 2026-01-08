@@ -21,9 +21,9 @@ import retrograde.engine.rendering : Color, RenderPass, Viewport;
 
 import retrograde.data.model : ModelComponentType, Model;
 
-import retrograde.std.memory : SharedPtr, makeShared, makeSharedVoid, makeUnique, makeUniqueVoid, makeRaw, UniquePtr;
+import retrograde.std.memory : makeSharedVoid, makeRaw, UniquePtr;
 import retrograde.std.collections : Array;
-import retrograde.std.stringid : StringId, sid;
+import retrograde.std.stringid : sid;
 import retrograde.std.math : Matrix4D, Vector3D, QuaternionD, toTranslationMatrix, toScalingMatrix;
 import retrograde.std.geometry : PositionComponentType, OrientationComponentType, ScaleComponentType;
 import retrograde.std.dlang : CopyConstructors;

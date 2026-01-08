@@ -23,7 +23,6 @@ version (UnitTesting) {
     import retrograde.engine.rendering : RenderPass, Color, Viewport;
 
     import retrograde.std.math : Matrix4D;
-    import retrograde.std.memory : SharedPtr;
 
     void initRenderApi() {
     }

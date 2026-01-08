@@ -11,7 +11,6 @@
 
 module retrograde.engine.animation.kinetic;
 
-import retrograde.std.memory : SharedPtr;
 import retrograde.std.stringid : sid;
 import retrograde.std.math : QuaternionD;
 import retrograde.std.geometry : OrientationComponentType;
