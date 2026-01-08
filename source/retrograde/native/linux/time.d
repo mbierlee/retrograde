@@ -3,7 +3,7 @@
  *
  * Authors:
  *  Mike Bierlee, m.bierlee@lostmoment.com
- * Copyright: 2014-2025 Mike Bierlee
+ * Copyright: 2014-2026 Mike Bierlee
  * License:
  *  This software is licensed under the terms of the MIT license.
 
