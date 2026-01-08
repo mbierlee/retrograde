@@ -43,11 +43,12 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
 
         if (items !is null) {
             memset(items, 0, T.sizeof * other.length);
-            foreach (T item; other) {
-                items[_length] = item;
-                _length++;
+            // Cast away inout to allow assignment
+            T[] mutableOther = cast(T[]) other;
+            foreach (size_t i, ref T item; mutableOther) {
+                items[i] = item;
             }
-
+            _length = other.length;
             _capacity = other.length;
         }
     }
@@ -229,8 +230,10 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         }
 
         memset(newItems, 0, T.sizeof * other._length);
+        // Cast away inout to allow assignment
+        T* mutableOtherItems = cast(T*) other.items;
         for (size_t i = 0; i < other._length; i++) {
-            newItems[i] = other.items[i];
+            newItems[i] = mutableOtherItems[i];
         }
 
         items = newItems;
@@ -251,8 +254,10 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         }
 
         memset(newItems, 0, T.sizeof * other.length);
+        // Cast away inout to allow assignment
+        T[] mutableOther = cast(T[]) other;
         for (size_t i = 0; i < other.length; i++) {
-            newItems[i] = other[i];
+            newItems[i] = mutableOther[i];
         }
 
         items = newItems;
