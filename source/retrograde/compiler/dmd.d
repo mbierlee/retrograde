@@ -13,8 +13,6 @@ module retrograde.compiler.dmd;
 
 version (DigitalMars)  :  //
 
-import retrograde.std.memory : memset;
-
 /** 
  * Implementation of a mystically missing function used by the compiler. 
  *

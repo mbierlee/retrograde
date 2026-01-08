@@ -15,7 +15,7 @@ import retrograde.std.string : String, s;
 import retrograde.std.stringid : StringId;
 import retrograde.std.memory : UniquePtr, free;
 import retrograde.std.collections : Array;
-import retrograde.std.result : OperationResult, success, failure;
+import retrograde.std.result : OperationResult, success;
 import retrograde.std.option : Option, some, none;
 import retrograde.std.dlang : CopyConstructors;
 

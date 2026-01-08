@@ -12,7 +12,6 @@
 module retrograde.engine.entityfactory;
 
 import retrograde.std.memory : makeUniqueVoid;
-import retrograde.std.stringid : StringId;
 import retrograde.std.math : Vector3D, QuaternionD;
 import retrograde.std.geometry : PositionComponentType, OrientationComponentType, ScaleComponentType;
 
