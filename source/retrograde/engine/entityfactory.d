@@ -12,36 +12,36 @@
 module retrograde.engine.entityfactory;
 
 import retrograde.std.memory : makeUniqueVoid;
-import retrograde.std.math : Vector3D, QuaternionD;
+import retrograde.std.math : Vector3, Quaternion;
 import retrograde.std.geometry : PositionComponentType, OrientationComponentType, ScaleComponentType;
 
 import retrograde.engine.entity : EntityId, addComponent;
 import retrograde.engine.animation.kinetic : RotationComponentType;
 
 void addPosition(EntityId entity, const double x, const double y, const double z) {
-    entity.addPosition(Vector3D(x, y, z));
+    entity.addPosition(Vector3(x, y, z));
 }
 
-void addPosition(EntityId entity, const Vector3D position) {
+void addPosition(EntityId entity, const Vector3 position) {
     entity.addComponent(PositionComponentType, makeUniqueVoid(position));
 }
 
-void addOrientation(EntityId entity, double radianAngle, const Vector3D axis) {
-    entity.addComponent(OrientationComponentType, makeUniqueVoid(QuaternionD.createRotation(radianAngle, axis)));
+void addOrientation(EntityId entity, double radianAngle, const Vector3 axis) {
+    entity.addComponent(OrientationComponentType, makeUniqueVoid(Quaternion.createRotation(radianAngle, axis)));
 }
 
 void addScale(EntityId entity, const double scale) {
-    entity.addScale(Vector3D(scale));
+    entity.addScale(Vector3(scale));
 }
 
 void addScale(EntityId entity, const double xScale, const double yScale, const double zScale) {
-    entity.addScale(Vector3D(xScale, yScale, zScale));
+    entity.addScale(Vector3(xScale, yScale, zScale));
 }
 
-void addScale(EntityId entity, const Vector3D scale) {
+void addScale(EntityId entity, const Vector3 scale) {
     entity.addComponent(ScaleComponentType, makeUniqueVoid(scale));
 }
 
-void addRotation(EntityId entity, double radianAngle, const Vector3D axis) {
-    entity.addComponent(RotationComponentType, makeUniqueVoid(QuaternionD.createRotation(radianAngle, axis)));
+void addRotation(EntityId entity, double radianAngle, const Vector3 axis) {
+    entity.addComponent(RotationComponentType, makeUniqueVoid(Quaternion.createRotation(radianAngle, axis)));
 }

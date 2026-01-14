@@ -14,8 +14,8 @@ module retrograde.engine.rendering;
 import retrograde.std.collections : Array;
 import retrograde.std.memory : SharedPtr;
 import retrograde.std.stringid : sid, StringId;
-import retrograde.std.math : degreesToRadians, scalar, Matrix4D, createViewMatrix, createPerspectiveMatrix,
-    createOrthographicMatrix, Vector3D, QuaternionD;
+import retrograde.std.math : degreesToRadians, scalar, Matrix4, createViewMatrixQ, createPerspectiveMatrix,
+    createOrthographicMatrix, Vector3, Quaternion;
 import retrograde.std.geometry : PositionComponentType, OrientationComponentType;
 import retrograde.std.dlang : CopyConstructors;
 
@@ -130,18 +130,18 @@ void initRenderer() {
 void renderFrame() {
     initFrame();
 
-    Matrix4D viewMatrix;
-    Matrix4D projectionMatrix;
-    Vector3D position;
-    QuaternionD orientation;
+    Matrix4 viewMatrix;
+    Matrix4 projectionMatrix;
+    Vector3 position;
+    Quaternion orientation;
 
     if (cameraEntity != 0) {
-        auto maybePosition = cameraEntity.getComponentData!Vector3D(PositionComponentType);
+        auto maybePosition = cameraEntity.getComponentData!Vector3(PositionComponentType);
         if (maybePosition.isDefined()) {
             position = *maybePosition.value;
         }
 
-        auto maybeOrientation = cameraEntity.getComponentData!QuaternionD(
+        auto maybeOrientation = cameraEntity.getComponentData!Quaternion(
             OrientationComponentType);
         if (maybeOrientation.isDefined()) {
             orientation = *maybeOrientation.value;
@@ -155,8 +155,8 @@ void renderFrame() {
 
     }
 
-    viewMatrix = createViewMatrix(position, orientation);
-    const Matrix4D viewProjectionMatrix = projectionMatrix * viewMatrix;
+    viewMatrix = createViewMatrixQ(position, orientation);
+    const Matrix4 viewProjectionMatrix = projectionMatrix * viewMatrix;
 
     foreach (ref renderPass; renderPasses) {
         useRenderPassShaderProgram(renderPass);
@@ -173,7 +173,7 @@ void renderFrame() {
     }
 }
 
-private Matrix4D createProjectionMatrix(const ref CameraConfiguration cameraConfiguration) {
+private Matrix4 createProjectionMatrix(const ref CameraConfiguration cameraConfiguration) {
     auto viewport = getViewport();
 
     auto aspectRatio =
@@ -201,7 +201,7 @@ private Matrix4D createProjectionMatrix(const ref CameraConfiguration cameraConf
         );
     }
 
-    return Matrix4D();
+    return Matrix4();
 }
 
 /**
@@ -220,7 +220,7 @@ struct RenderPass {
     string vertexShader;
     string fragmentShader;
     StringId componentType;
-    void delegate(EntityId entity, const ref RenderPass renderPass, const ref Matrix4D viewProjectionMatrix) render;
+    void delegate(EntityId entity, const ref RenderPass renderPass, const ref Matrix4 viewProjectionMatrix) render;
 
     SharedPtr!void apiData;
 }
@@ -230,7 +230,7 @@ RenderPass genericModelRenderPass = RenderPass(
     import("opengles3/generic_model_vertex.glsl"),
     import("opengles3/generic_model_fragment.glsl"),
     ModelComponentType,
-    (EntityId entity, const ref RenderPass renderPass, const ref Matrix4D viewProjectionMatrix) {
+    (EntityId entity, const ref RenderPass renderPass, const ref Matrix4 viewProjectionMatrix) {
     drawModel(entity, renderPass, viewProjectionMatrix);
 }
 );

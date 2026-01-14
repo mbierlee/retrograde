@@ -22,7 +22,7 @@ version (UnitTesting) {
     import retrograde.engine.entity : EntityId;
     import retrograde.engine.rendering : RenderPass, Color, Viewport;
 
-    import retrograde.std.math : Matrix4D;
+    import retrograde.std.math : Matrix4;
 
     void initRenderApi() {
     }
@@ -48,7 +48,7 @@ version (UnitTesting) {
     void clearShaderProgram() {
     }
 
-    void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matrix4D viewProjectionMatrix) {
+    void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matrix4 viewProjectionMatrix) {
     }
 
     Viewport getViewport() {

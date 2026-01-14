@@ -22,30 +22,32 @@ import retrograde.std.conv : to;
 import retrograde.std.collections : Array;
 import retrograde.std.hash : hashOf;
 
-alias scalar = float;
-
-enum double PI = 3.141592653589793238462643383279502884197169399375105820974944;
+version (DoublePrecision) {
+    alias scalar = double;
+    enum double PI = 3.141592653589793238462643383279502884197169399375105820974944;
+} else {
+    alias scalar = float;
+    enum float PI = 3.141592653589793238462643383279502884197169399375105820974944;
+}
 
 /**
  * A Euclidean vector.
  */
-struct Vector(T, uint N) if (N > 0) {
+struct VectorT(T, uint N) if (N > 0) {
     alias _N = N;
     alias _T = T;
-
-    //TODO: In these methods a lot of vectors can be passed by reference, since they're const.
 
     private T[N] components = 0;
 
     static if (N >= 2) {
-        private static Vector!(T, N) _upVector;
+        private static VectorT!(T, N) _upVector;
 
         /**
          * Returns the engine's standard up vector, which is +y.
          */
         static upVector() {
             if (_upVector[1] != 1) {
-                _upVector = Vector!(T, N)(0);
+                _upVector = VectorT!(T, N)(0);
                 _upVector[1] = 1;
             }
 
@@ -75,14 +77,13 @@ struct Vector(T, uint N) if (N > 0) {
      * Throws: AssertionError when amount of supplied components is not the same as that of the vector.
      */
     this(const T[] components...) {
-        assert(components.length == N,
-            "Cannot initialize a vector with a different amount of components than available.");
+        assert(components.length == N, "Cannot initialize a vector with a different amount of components than available.");
         this.components = components;
     }
 
     static if (N >= 2) {
         /**
-         * Constructs a vector from a smaller vector and an extra.
+         * Constructs a vector from a smaller vector and an extra component.
          *
          * The smaller vector must exactly be one component smaller. For example:
          * you can supply a Vector2U and an extra component to create a Vector3U.
@@ -96,7 +97,7 @@ struct Vector(T, uint N) if (N > 0) {
          *  smallerVector = A vector that is one component smaller than the current.
          *  extraComponent = Value of the extra component to be added.
          */
-        this(Vector!(T, N - 1) smallerVector, T extraComponent) {
+        this(VectorT!(T, N - 1) smallerVector, T extraComponent) {
             static foreach (i; 0 .. N - 1) {
                 this.components[i] = smallerVector.components[i];
             }
@@ -173,19 +174,19 @@ struct Vector(T, uint N) if (N > 0) {
          *
          * The current vector is not changed.
          */
-        Vector normalize() const {
+        VectorT normalize() const {
             // Prevent magnitude calculation over and over
             auto const currentMagnitude = magnitude;
 
             if (currentMagnitude == 0) {
-                return Vector(0);
+                return VectorT(0);
             }
 
             if (currentMagnitude == 1) {
                 return this;
             }
 
-            Vector normalizedVector;
+            VectorT normalizedVector;
             static foreach (i; 0 .. N) {
                 normalizedVector[i] = cast(T)(this[i] / currentMagnitude);
             }
@@ -206,7 +207,11 @@ struct Vector(T, uint N) if (N > 0) {
                 powSum += components[i] * components[i];
             }
 
-            return sqrt(powSum);
+            static if (is(scalar == float)) {
+                return sqrtf(powSum);
+            } else {
+                return sqrt(powSum);
+            }
         }
     }
 
@@ -215,7 +220,12 @@ struct Vector(T, uint N) if (N > 0) {
          * Returns the angle in degrees of this vector in two-dimentionsal space.
          */
         scalar angle() const {
-            auto angle = atan2(cast(scalar) y, cast(scalar) x);
+            static if (is(scalar == float)) {
+                alias _atan2 = atan2f;
+            } else {
+                alias _atan2 = atan2;
+            }
+            auto angle = _atan2(cast(scalar) y, cast(scalar) x);
             if (angle < 0) {
                 angle = (2 * PI) + angle;
             }
@@ -226,16 +236,16 @@ struct Vector(T, uint N) if (N > 0) {
     /**
      * Returns an inverse copy of this vector.
      */
-    Vector opUnary(string s)() const if (s == "-") {
+    VectorT opUnary(string s)() const if (s == "-") {
         return this * -1;
     }
 
     /**
      * Returns a copy of this and another vector added/substracted together.
      */
-    Vector opBinary(string op)(const Vector rhs) const
+    VectorT opBinary(string op)(const VectorT rhs) const
     if (rhs._N == N && (op == "+" || op == "-")) {
-        Vector vec;
+        VectorT vec;
         static foreach (i; 0 .. N) {
             mixin("vec[i] = cast(T) (components[i] " ~ op ~ " rhs[i]);");
         }
@@ -246,8 +256,8 @@ struct Vector(T, uint N) if (N > 0) {
     /**
      * Returns a copy of this vector multiplied/divided by the given scalar.
      */
-    Vector opBinary(string op)(const scalar rhs) const if (op == "*" || op == "/") {
-        Vector vec;
+    VectorT opBinary(string op)(const scalar rhs) const if (op == "*" || op == "/") {
+        VectorT vec;
         static foreach (i; 0 .. N) {
             mixin("vec[i] = cast(T) (components[i] " ~ op ~ " rhs);");
         }
@@ -258,11 +268,11 @@ struct Vector(T, uint N) if (N > 0) {
     /**
      * Returns a copy of this vector multiplied/divided by the given scalar.
      */
-    Vector opBinaryRight(string op)(const scalar lhs) const if (op == "*") {
+    VectorT opBinaryRight(string op)(const scalar lhs) const if (op == "*") {
         return this * lhs;
     }
 
-    bool opEquals()(auto ref const Vector other) const if (other._N == N) {
+    bool opEquals()(auto ref const VectorT other) const if (other._N == N) {
         foreach (i; 0 .. N) {
             if (this[i] != other[i]) {
                 return false;
@@ -279,7 +289,7 @@ struct Vector(T, uint N) if (N > 0) {
     /**
      * Calculates the dot product of two vectors.
      */
-    T dot()(const Vector other) const if (other._N == N) {
+    T dot()(const VectorT other) const if (other._N == N) {
         T dotProduct = 0;
         static foreach (i; 0 .. N) {
             dotProduct += this[i] * other[i];
@@ -291,9 +301,9 @@ struct Vector(T, uint N) if (N > 0) {
     /**
      * Calculates the cross product of two vectors.
      */
-    Vector cross()(const Vector other) const if (N == 3 && other._N == N) {
+    VectorT cross()(const VectorT other) const if (N == 3 && other._N == N) {
         // dfmt off
-        return Vector(
+        return VectorT(
             (this.y * other.z) - (this.z * other.y),
             (this.z * other.x) - (this.x * other.z),
             (this.x * other.y) - (this.y * other.x)
@@ -308,7 +318,7 @@ struct Vector(T, uint N) if (N > 0) {
      * Params:
      *  normal = A normal used to determine the direction of the reflection.
      */
-    Vector reflect()(const Vector normal) const if (N >= 2 && normal._N == N) {
+    VectorT reflect()(const VectorT normal) const if (N >= 2 && normal._N == N) {
         auto const normalizedNormal = normal.normalize();
         return this - (((2 * normalizedNormal).dot(this)) * normalizedNormal);
     }
@@ -320,7 +330,7 @@ struct Vector(T, uint N) if (N > 0) {
      *  refractionIndex = Intensity of the refraction.
      *  normal = A normal used to determine the direction of the reflection.
      */
-    Vector refract()(const T refractionIndex, const Vector normal) const
+    VectorT refract()(const T refractionIndex, const VectorT normal) const
     if (N >= 2 && normal._N == N) {
 
         auto const normalizedThis = this.normalize();
@@ -329,11 +339,16 @@ struct Vector(T, uint N) if (N > 0) {
         auto const k = 1 - (refractionIndex * refractionIndex) * (1 - (dotProduct * dotProduct));
 
         if (k < 0) {
-            return Vector(0);
+            return VectorT(0);
         }
 
+        static if (is(scalar == float)) {
+            alias _sqrt = sqrtf;
+        } else {
+            alias _sqrt = sqrt;
+        }
         return refractionIndex * normalizedThis - (refractionIndex * normalizedNormal.dot(
-                normalizedThis) + sqrt(k)) * normalizedNormal;
+                normalizedThis) + _sqrt(k)) * normalizedNormal;
     }
 
     /** 
@@ -345,7 +360,7 @@ struct Vector(T, uint N) if (N > 0) {
      *
      * Returns: A vector that is the result of the interpolation factor. 
      */
-    Vector interpolate(const Vector other, scalar t) const {
+    VectorT interpolate(const VectorT other, scalar t) const {
         return (1 - t) * this + t * other;
     }
 
@@ -354,11 +369,11 @@ struct Vector(T, uint N) if (N > 0) {
      * 
      * Params:
      *  other = The other vector to extrapolate with.
-     *  t = Extrapolation factor greater than 1. If t is less than 1, the result is the same as interplate.
+     *  t = Extrapolation factor greater than 1. If t is less than 1, the result is the same as interpolate.
      *
      * Returns: A vector that is the result of the extrapolation factor. 
      */
-    Vector extrapolate(const Vector other, scalar t) const {
+    VectorT extrapolate(const VectorT other, scalar t) const {
         return interpolate(other, t); // Deal with it
     }
 
@@ -374,7 +389,7 @@ struct Vector(T, uint N) if (N > 0) {
      *
      * Returns: Point on curve at t
      */
-    Vector quadraticBezierCurvePoint(const Vector B, const Vector C, const scalar t) const {
+    VectorT quadraticBezierCurvePoint(const VectorT B, const VectorT C, const scalar t) const {
         auto const D = this.interpolate(B, t);
         auto const E = B.interpolate(C, t);
         return D.interpolate(E, t);
@@ -393,7 +408,7 @@ struct Vector(T, uint N) if (N > 0) {
      *
      * Returns: Point on curve at t
      */
-    Vector cubicBezierCurvePoint(const Vector B, const Vector C, const Vector D, const scalar t) const {
+    VectorT cubicBezierCurvePoint(const VectorT B, const VectorT C, const VectorT D, const scalar t) const {
         auto const E = this.interpolate(B, t);
         auto const F = B.interpolate(C, t);
         auto const G = C.interpolate(D, t);
@@ -442,40 +457,48 @@ struct Vector(T, uint N) if (N > 0) {
         /**
          * Returns a copy of this vector that has one component less.
          */
-        Vector!(T, N - 1) downgrade() const {
-            return Vector!(T, N - 1)(this.components[0 .. $ - 1]);
+        VectorT!(T, N - 1) downgrade() const {
+            return VectorT!(T, N - 1)(this.components[0 .. $ - 1]);
         }
     }
 }
 
-alias Vector2I = Vector!(int, 2);
-alias Vector2U = Vector!(uint, 2);
-alias Vector2L = Vector!(long, 2);
-alias Vector2UL = Vector!(ulong, 2);
-alias Vector2F = Vector!(float, 2);
-alias Vector2D = Vector!(double, 2);
+alias Vector2I = VectorT!(int, 2);
+alias Vector2U = VectorT!(uint, 2);
+alias Vector2L = VectorT!(long, 2);
+alias Vector2UL = VectorT!(ulong, 2);
+alias Vector2F = VectorT!(float, 2);
+alias Vector2D = VectorT!(double, 2);
 
-alias Vector3I = Vector!(int, 3);
-alias Vector3U = Vector!(uint, 3);
-alias Vector3L = Vector!(long, 3);
-alias Vector3UL = Vector!(ulong, 3);
-alias Vector3F = Vector!(float, 3);
-alias Vector3D = Vector!(double, 3);
+alias Vector3I = VectorT!(int, 3);
+alias Vector3U = VectorT!(uint, 3);
+alias Vector3L = VectorT!(long, 3);
+alias Vector3UL = VectorT!(ulong, 3);
+alias Vector3F = VectorT!(float, 3);
+alias Vector3D = VectorT!(double, 3);
+alias Vector4F = VectorT!(float, 4);
+alias Vector4D = VectorT!(double, 4);
 
-alias Vector4D = Vector!(double, 4);
+version (DoublePrecision) {
+    alias Vector3 = Vector3D;
+    alias Vector4 = Vector4D;
+} else {
+    alias Vector3 = Vector3F;
+    alias Vector4 = Vector4F;
+}
 
 /**
  * A vector whose length is always 1.
  */
-struct UnitVector(VectorType) {
-    private VectorType _vector;
+struct UnitVector(VecT) {
+    private VecT _vector;
 
     /**
      * Creates a unit vector from a regular vector. 
      *
      * The supplied vector is automatically normalized.
      */
-    this(const VectorType vector) {
+    this(const VecT vector) {
         this._vector = vector.normalize();
     }
 
@@ -484,26 +507,26 @@ struct UnitVector(VectorType) {
      *
      * The resulting vector is automatically normalized.
      */
-    this(const VectorType._T[] components...) {
-        assert(components.length == VectorType._N,
-            "Cannot initialize a unit vector with a different amount of components than its vector type has.");
-        this(VectorType(components));
+    this(const VecT._T[] components...) {
+        assert(components.length == VecT._N, "Cannot initialize a unit vector with a different amount of components than its vector type has.");
+        this(VecT(components));
     }
 
     /**
      * Return a copy of the regular, normalized vector represented by this unit vector.
      */
-    VectorType vector() const {
+    VecT vector() const {
         return _vector;
     }
 }
 
-alias UnitVector2D = UnitVector!Vector2D;
 alias UnitVector2F = UnitVector!Vector2F;
+alias UnitVector2D = UnitVector!Vector2D;
 
-alias UnitVector3D = UnitVector!Vector3D;
 alias UnitVector3F = UnitVector!Vector3F;
+alias UnitVector3D = UnitVector!Vector3D;
 
+alias UnitVector4F = UnitVector!Vector4F;
 alias UnitVector4D = UnitVector!Vector4D;
 
 /**
@@ -511,13 +534,13 @@ alias UnitVector4D = UnitVector!Vector4D;
  *
  * The data is laid out in a row-major order.
  */
-struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
+struct MatrixT(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
     private T[Columns * Rows] data;
 
     alias _T = T;
     alias _Rows = Rows;
     alias _Columns = Columns;
-    alias _VectorType = Vector!(T, Rows);
+    alias _VecT = VectorT!(T, Rows);
 
     /**
      * Creates a matrix where all its values are set to the initial value.
@@ -541,18 +564,17 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
      * Throws: AssertionError when amount of supplied values is not the same as that of the matrix.
      */
     this(const T[] initialValues...) {
-        assert(initialValues.length == data.length,
-            "Cannot initialize a matrix with a different size of data than available.");
+        assert(initialValues.length == data.length, "Cannot initialize a matrix with a different size of data than available.");
         data = initialValues;
     }
 
     static if (Rows == Columns) {
-        private static Matrix identityMatrix;
+        private static MatrixT identityMatrix;
 
         /**
          * Returns an identity matrix.
          */
-        static Matrix identity() {
+        static MatrixT identity() {
             if (identityMatrix[0] != 1) {
                 static foreach (row; 0 .. Rows) {
                     static foreach (column; 0 .. Columns) {
@@ -596,15 +618,15 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
     /**
      * Returns a copy of this matrix where all values are the inverse.
      */
-    Matrix opUnary(string s)() const if (s == "-") {
+    MatrixT opUnary(string s)() const if (s == "-") {
         return this * -1;
     }
 
     /**
      * Returns a vector where this matrix is multiplied by a vector.
      */
-    _VectorType opBinary(string op)(const _VectorType rhs) const if (op == "*") {
-        _VectorType vector = _VectorType(0);
+    _VecT opBinary(string op)(const _VecT rhs) const if (op == "*") {
+        _VecT vector = _VecT(0);
         static foreach (row; 0 .. Rows) {
             static foreach (column; 0 .. Columns) {
                 vector[row] = vector[row] + this[row, column] * rhs[column];
@@ -617,8 +639,8 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
     /**
      * Returns a copy of this matrix where all values are multiplied by a scalar.
      */
-    Matrix opBinary(string op)(const scalar rhs) const if (op == "*") {
-        Matrix matrix;
+    MatrixT opBinary(string op)(const scalar rhs) const if (op == "*") {
+        MatrixT matrix;
         static foreach (index; 0 .. Rows * Columns) {
             matrix[index] = this[index] * rhs;
         }
@@ -629,18 +651,18 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
     /**
      * Returns a copy of this matrix where all values are multiplied by a scalar.
      */
-    Matrix opBinaryRight(string op)(const scalar lhs) const if (op == "*") {
+    MatrixT opBinaryRight(string op)(const scalar lhs) const if (op == "*") {
         return this * lhs;
     }
 
     /**
      * Returns a copy of this matrix that is multiplied by another matrix.
      */
-    Matrix!(T, Rows, OtherColumns) opBinary(string op, uint OtherRows, uint OtherColumns)(
-        const Matrix!(T, OtherRows, OtherColumns) rhs) const
+    MatrixT!(T, Rows, OtherColumns) opBinary(string op, uint OtherRows, uint OtherColumns)(
+        const MatrixT!(T, OtherRows, OtherColumns) rhs) const
     if (op == "*" && Columns == OtherRows) {
 
-        Matrix!(T, Rows, OtherColumns) resultMatrix;
+        MatrixT!(T, Rows, OtherColumns) resultMatrix;
 
         uint rowStartIdx;
         T sum;
@@ -662,9 +684,9 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
     /**
      * Returns a copy of this matrix that adds or subtracts another matrix.
      */
-    Matrix opBinary(string op)(const Matrix rhs) const
+    MatrixT opBinary(string op)(const MatrixT rhs) const
     if ((op == "+" || op == "-") && Columns == rhs._Columns && Rows == rhs._Rows) {
-        Matrix resultMatrix;
+        MatrixT resultMatrix;
         static foreach (i; 0 .. Rows * Columns) {
             mixin("resultMatrix[i] = this[i] " ~ op ~ " rhs[i];");
         }
@@ -672,7 +694,7 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
         return resultMatrix;
     }
 
-    bool opEquals()(auto ref const Matrix other) const {
+    bool opEquals()(auto ref const MatrixT other) const {
         static if (other._Rows != this._Rows || other._Columns != this._Columns) {
             return false;
         } else {
@@ -693,8 +715,8 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
     /**
      * Returns a copy of this matrix whjere all rows and columns are flipped.
      */
-    Matrix!(T, Columns, Rows) transpose() const {
-        Matrix!(T, Columns, Rows) result;
+    MatrixT!(T, Columns, Rows) transpose() const {
+        MatrixT!(T, Columns, Rows) result;
         static foreach (row; 0 .. Rows) {
             static foreach (column; 0 .. Columns) {
                 result.data[column * Rows + row] = cast(T) this.data[row * Columns + column];
@@ -707,15 +729,15 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
     /**
      * Returns: a certain row of this matrix as vector.
      */
-    Vector!(T, Columns) getRowVector(const size_t row) const {
-        return Vector!(T, Columns)(data[row * Columns .. (row * Columns) + Columns]);
+    VectorT!(T, Columns) getRowVector(const size_t row) const {
+        return VectorT!(T, Columns)(data[row * Columns .. (row * Columns) + Columns]);
     }
 
     /** 
      * Returns: a certain column of this matrix as vector.
      */
-    Vector!(T, Rows) getColumnVector(const size_t col) const {
-        Vector!(T, Rows) columnVector;
+    VectorT!(T, Rows) getColumnVector(const size_t col) const {
+        VectorT!(T, Rows) columnVector;
         for (size_t i = 0; i < Rows; ++i) {
             columnVector[i] = data[i * Columns + col];
         }
@@ -741,20 +763,34 @@ struct Matrix(T, uint Rows, uint Columns) if (Rows > 0 && Columns > 0) {
     }
 }
 
-alias Matrix4D = Matrix!(double, 4, 4);
-alias Matrix3D = Matrix!(double, 3, 3);
-alias Matrix2D = Matrix!(double, 2, 2);
+alias Matrix2F = MatrixT!(float, 2, 2);
+alias Matrix3F = MatrixT!(float, 3, 3);
+alias Matrix4F = MatrixT!(float, 4, 4);
+
+alias Matrix2D = MatrixT!(double, 2, 2);
+alias Matrix3D = MatrixT!(double, 3, 3);
+alias Matrix4D = MatrixT!(double, 4, 4);
+
+version (DoublePrecision) {
+    alias Matrix2 = Matrix2D;
+    alias Matrix3 = Matrix3D;
+    alias Matrix4 = Matrix4D;
+} else {
+    alias Matrix2 = Matrix2F;
+    alias Matrix3 = Matrix3F;
+    alias Matrix4 = Matrix4F;
+}
 
 /**
  * A complex mathematical number typically used for rotation.
  * Quaternions prevent gimbal lock.
  */
-struct Quaternion(T) {
+struct QuaternionT(T) {
     alias _T = T;
-    alias VectorType = Vector!(T, 3);
+    alias VecT = VectorT!(T, 3);
 
     private T realPart = 1;
-    private VectorType imaginaryVector = VectorType(0);
+    private VecT imaginaryVector = VecT(0);
 
     /**
      * The real number component.
@@ -794,7 +830,7 @@ struct Quaternion(T) {
      */
     this(T w, T x, T y, T z) {
         realPart = w;
-        imaginaryVector = VectorType(x, y, z);
+        imaginaryVector = VecT(x, y, z);
     }
 
     /**
@@ -803,7 +839,7 @@ struct Quaternion(T) {
      *  r = The real number component.
      *  v = The imaginary vector.
      */
-    this(T r, const VectorType v) {
+    this(T r, const VecT v) {
         realPart = r;
         imaginaryVector = v;
     }
@@ -814,21 +850,32 @@ struct Quaternion(T) {
      *  radianAngle = Rotation around the given axis in radians.
      *  axis = Regular three-dimensional axis to rotate around.
      */
-    static Quaternion createRotation(double radianAngle, const Vector3D axis) {
+    static QuaternionT createRotation(VecT)(T radianAngle, const VecT axis) {
         auto normalizedAxis = axis.normalize();
-        return Quaternion(
-            cos(radianAngle / 2),
-            sin(radianAngle / 2) * normalizedAxis.x,
-            sin(radianAngle / 2) * normalizedAxis.y,
-            sin(radianAngle / 2) * normalizedAxis.z
+        static if (is(T == float)) {
+            alias _cos = cosf;
+            alias _sin = sinf;
+        } else {
+            alias _cos = cos;
+            alias _sin = sin;
+        }
+
+        T halfAngle = radianAngle / 2;
+        T sinHalf = _sin(halfAngle);
+
+        return QuaternionT(
+            _cos(halfAngle),
+            sinHalf * normalizedAxis.x,
+            sinHalf * normalizedAxis.y,
+            sinHalf * normalizedAxis.z
         );
     }
 
     /**
      * Multiple two quaternions.
      */
-    Quaternion opBinary(string op)(const Quaternion rhs) const if (op == "*") {
-        return Quaternion(
+    QuaternionT opBinary(string op)(const QuaternionT rhs) const if (op == "*") {
+        return QuaternionT(
             w * rhs.w - x * rhs.x - y * rhs.y - z * rhs.z,
             w * rhs.x + x * rhs.w + y * rhs.z - z * rhs.y,
             w * rhs.y - x * rhs.z + y * rhs.w + z * rhs.x,
@@ -839,8 +886,8 @@ struct Quaternion(T) {
     /** 
      * Multiply or divide quaternion by the given scalar.
      */
-    Quaternion opBinary(string op)(const scalar rhs) const if (op == "*" || op == "/") {
-        return Quaternion(
+    QuaternionT opBinary(string op)(const scalar rhs) const if (op == "*" || op == "/") {
+        return QuaternionT(
             mixin("w " ~ op ~ " rhs"),
             mixin("x " ~ op ~ " rhs"),
             mixin("y " ~ op ~ " rhs"),
@@ -851,16 +898,16 @@ struct Quaternion(T) {
     /**
      * Calculates the dot product of two quaternions.
      */
-    T dot()(const Quaternion other) const {
+    T dot()(const QuaternionT other) const {
         return x * other.x + y * other.y + z * other.z + w * other.w;
     }
 
     /**
      * Convert quaterion to a four-dimensional rotation matrix.
      */
-    Matrix4D toRotationMatrix() const {
+    MatrixT!(T, 4, 4) toRotationMatrix() const {
         // dfmt off
-        return Matrix4D(
+        return MatrixT!(T, 4, 4)(
            1 - 2 * (y * y) - 2 * (z * z), 2 * x * y - 2 * z * w          , (2 * x * z) + (2 * y * w)     , 0,
            2 * x * y + 2 * z * w        , 1 - 2 * (x * x) - 2 * (z * z)  , 2 * y * z - 2 * x * w         , 0,
            2 * x * z - 2 * y * w        , 2 * y * z + 2 * x * w          , 1 - 2 * (x * x)  - 2 * (y * y), 0,
@@ -870,36 +917,63 @@ struct Quaternion(T) {
     }
 
     /**
-     * Convert quaterion to a vector of Euler angles.
+     * Convert quaternion to a vector of Euler angles using the YZX rotation order.
+     *
+     * This method extracts Euler angles from a quaternion for a right-handed
+     * coordinate system with Y-up. The rotation order is YZX (intrinsic), meaning
+     * rotations are applied as: first yaw (Y), then roll (Z), then pitch (X).
+     *
+     * Returns:
+     *   A Vector3 containing (pitch, yaw, roll) in radians where:
+     *   - pitch = rotation around X-axis (looking up/down)
+     *   - yaw = rotation around Y-axis (turning left/right)
+     *   - roll = rotation around Z-axis (tilting side to side)
+     *
+     * Note: Gimbal lock occurs when roll approaches ±π/2.
      */
-    Vector3D toEulerAngles() const {
+    VectorT!(T, 3) toEulerAngles() const {
         auto q = this;
+
+        static if (is(T == float)) {
+            alias _atan2 = atan2f;
+            alias _asin = asinf;
+        } else {
+            alias _atan2 = atan2;
+            alias _asin = asin;
+        }
+
+        // Gimbal lock test for YZX rotation order
+        // sinRoll = 2(xy + zw), gimbal lock when |sinRoll| ≈ 1
+        auto sinRoll = 2 * (q.x * q.y + q.z * q.w);
+
+        if (sinRoll > 0.9999) {
+            // Gimbal lock at roll = +π/2
+            // Pitch and yaw become coupled; set pitch = 0
+            auto pitch = cast(T) 0;
+            auto yaw = 2 * _atan2(q.x, q.w);
+            auto roll = cast(T) (PI / 2);
+            return VectorT!(T, 3)(pitch, yaw, roll);
+        }
+
+        if (sinRoll < -0.9999) {
+            // Gimbal lock at roll = -π/2
+            // Pitch and yaw become coupled; set pitch = 0
+            auto pitch = cast(T) 0;
+            auto yaw = -2 * _atan2(q.x, q.w);
+            auto roll = cast(T) (-PI / 2);
+            return VectorT!(T, 3)(pitch, yaw, roll);
+        }
 
         auto sqw = q.w * q.w;
         auto sqx = q.x * q.x;
         auto sqy = q.y * q.y;
         auto sqz = q.z * q.z;
 
-        auto unit = sqx + sqy + sqz + sqw;
-        auto poleTest = q.x * q.y + q.z * q.w;
+        auto pitch = _atan2(2 * (q.x * q.w - q.y * q.z), sqw - sqx + sqy - sqz);
+        auto yaw = _atan2(2 * (q.y * q.w - q.x * q.z), sqw + sqx - sqy - sqz);
+        auto roll = _asin(sinRoll);
 
-        if (poleTest > 0.499 * unit) {
-            auto yaw = 2 * atan2(q.x, q.w);
-            auto pitch = PI / 2;
-            return Vector3D(pitch, yaw, 0);
-        }
-
-        if (poleTest < -0.499 * unit) {
-            auto yaw = -2 * atan2(q.x, q.w);
-            auto pitch = -PI / 2;
-            return Vector3D(pitch, yaw, 0);
-        }
-
-        auto pitch = atan2(2 * q.x * q.w - 2 * q.y * q.z, -sqx + sqy - sqz + sqw);
-        auto yaw = atan2(2 * q.y * q.w - 2 * q.x * q.z, sqx - sqy - sqz + sqw);
-        auto roll = asin(2 * poleTest / unit);
-
-        return Vector3D(pitch, yaw, roll);
+        return VectorT!(T, 3)(pitch, yaw, roll);
     }
 
     /**
@@ -913,13 +987,17 @@ struct Quaternion(T) {
      * Calculates the Euclidian magnitude of the quaternion.
      */
     scalar magnitude() const {
-        return sqrt(magnitudeSquared);
+        static if (is(scalar == float)) {
+            return sqrtf(magnitudeSquared);
+        } else {
+            return sqrt(magnitudeSquared);
+        }
     }
 
     /** 
      * Returns a normalized form of this Quaternion.
      */
-    Quaternion normalize() const {
+    QuaternionT normalize() const {
         return this / magnitude;
     }
 
@@ -927,7 +1005,12 @@ struct Quaternion(T) {
      * Return angle of quaternion in radian.
      */
     scalar angle() const {
-        return 2 * acos(w);
+        static if (is(scalar == float)) {
+            alias _acos = acosf;
+        } else {
+            alias _acos = acos;
+        }
+        return 2 * _acos(w);
     }
 
     /**
@@ -935,31 +1018,37 @@ struct Quaternion(T) {
      *
      * In case angle = 0 the axis is (0, 1, 0)
      */
-    VectorType axis() const {
+    VecT axis() const {
         auto q = normalize();
-        auto _angle = q.angle;
-        if (_angle == 0) {
-            return VectorType(0, 1, 0);
-        }
 
-        return VectorType(
-            q.x / sqrt(1 - q.w * q.w),
-            q.y / sqrt(1 - q.w * q.w),
-            q.z / sqrt(1 - q.w * q.w)
+        static if (is(scalar == float)) {
+            alias _sqrt = sqrtf;
+        } else {
+            alias _sqrt = sqrt;
+        }
+        auto denominatorSquared = 1 - q.w * q.w;
+        if (denominatorSquared < scalar.epsilon) {
+            return VecT(0, 1, 0);
+        }
+        auto denominator = _sqrt(denominatorSquared);
+        return VecT(
+            q.x / denominator,
+            q.y / denominator,
+            q.z / denominator
         );
     }
 
     /**
      * Returns a new quaternion that is the conjugate of the current.
      */
-    Quaternion conjugate() const {
-        return Quaternion(w, -x, -y, -z);
+    QuaternionT conjugate() const {
+        return QuaternionT(w, -x, -y, -z);
     }
 
     /**
      * Returns a new quaternion that is the inverse of the current.
      */
-    Quaternion inverse() const {
+    QuaternionT inverse() const {
         return conjugate / magnitudeSquared;
     }
 
@@ -970,15 +1059,21 @@ struct Quaternion(T) {
     }
 }
 
-alias QuaternionF = Quaternion!float;
-alias QuaternionD = Quaternion!double;
+alias QuaternionF = QuaternionT!float;
+alias QuaternionD = QuaternionT!double;
+
+version (DoublePrecision) {
+    alias Quaternion = QuaternionD;
+} else {
+    alias Quaternion = QuaternionF;
+}
 
 /**
- * Creates a translation matrix from a 2D vector.
+ * Creates a translation matrix from a vector.
  */
-Matrix3D toTranslationMatrix(const Vector2D vector) {
+MatT toTranslationMatrix3T(VecT, MatT)(const VecT vector) {
     // dfmt off
-    return Matrix3D(
+    return MatT(
         1, 0, vector.x,
         0, 1, vector.y,
         0, 0, 1
@@ -986,12 +1081,21 @@ Matrix3D toTranslationMatrix(const Vector2D vector) {
     // dfmt on
 }
 
+alias toTranslationMatrix3F = toTranslationMatrix3T!(Vector2F, Matrix3F);
+alias toTranslationMatrix3D = toTranslationMatrix3T!(Vector2D, Matrix3D);
+
+version (DoublePrecision) {
+    alias toTranslationMatrix3 = toTranslationMatrix3D;
+} else {
+    alias toTranslationMatrix3 = toTranslationMatrix3F;
+}
+
 /**
- * Creates a translation matrix from a 3D vector.
+ * Creates a translation matrix from a vector.
  */
-Matrix4D toTranslationMatrix(const Vector3D vector) {
+MatT toTranslationMatrix4T(VecT, MatT)(const VecT vector) {
     // dfmt off
-    return Matrix4D(
+    return MatT(
         1, 0, 0, vector.x,
         0, 1, 0, vector.y,
         0, 0, 1, vector.z,
@@ -1000,23 +1104,41 @@ Matrix4D toTranslationMatrix(const Vector3D vector) {
     // dfmt on
 }
 
+alias toTranslationMatrix4F = toTranslationMatrix4T!(Vector3F, Matrix4F);
+alias toTranslationMatrix4D = toTranslationMatrix4T!(Vector3D, Matrix4D);
+
+version (DoublePrecision) {
+    alias toTranslationMatrix4 = toTranslationMatrix4D;
+} else {
+    alias toTranslationMatrix4 = toTranslationMatrix4F;
+}
+
 /** 
  * Creates a translation vector from a matrix.
  */
-Vector3D toTranslationVector(const Matrix4D matrix) {
-    return Vector3D(
+VecT toTranslationVectorT(MatT, VecT)(const MatT matrix) {
+    return VecT(
         matrix[0, 3],
         matrix[1, 3],
         matrix[2, 3]
     );
 }
 
+alias toTranslationVector3F = toTranslationVectorT!(Matrix4F, Vector3F);
+alias toTranslationVector3D = toTranslationVectorT!(Matrix4D, Vector3D);
+
+version (DoublePrecision) {
+    alias toTranslationVector = toTranslationVector3D;
+} else {
+    alias toTranslationVector = toTranslationVector3F;
+}
+
 /**
- * Creates a scaling matrix from a 2D scaling vector.
+ * Creates a scaling matrix from a scaling vector.
  */
-Matrix3D toScalingMatrix(const Vector2D scalingVector) {
+MatT toScalingMatrix2T(VecT, MatT)(const VecT scalingVector) {
     // dfmt off
-    return Matrix3D(
+    return MatT(
         scalingVector.x, 0              , 0,
         0              , scalingVector.y, 0,
         0              , 0              , 1
@@ -1024,18 +1146,36 @@ Matrix3D toScalingMatrix(const Vector2D scalingVector) {
     // dfmt on
 }
 
+alias toScalingMatrix3F = toScalingMatrix2T!(Vector2F, Matrix3F);
+alias toScalingMatrix3D = toScalingMatrix2T!(Vector2D, Matrix3D);
+
+version (DoublePrecision) {
+    alias toScalingMatrix3 = toScalingMatrix3D;
+} else {
+    alias toScalingMatrix3 = toScalingMatrix3F;
+}
+
 /**
- * Creates a scaling matrix from a 3D scaling vector.
+ * Creates a scaling matrix from a scaling vector.
  */
-Matrix4D toScalingMatrix(const Vector3D scalingVector) {
+MatT toScalingMatrix3T(VecT, MatT)(const VecT scalingVector) {
     // dfmt off
-    return Matrix4D(
+    return MatT(
         scalingVector.x, 0                 , 0              , 0,
         0              , scalingVector.y   , 0              , 0,
         0              , 0                 , scalingVector.z, 0,
         0              , 0                 , 0              , 1
     );
     // dfmt on
+}
+
+alias toScalingMatrix4F = toScalingMatrix3T!(Vector3F, Matrix4F);
+alias toScalingMatrix4D = toScalingMatrix3T!(Vector3D, Matrix4D);
+
+version (DoublePrecision) {
+    alias toScalingMatrix4 = toScalingMatrix4D;
+} else {
+    alias toScalingMatrix4 = toScalingMatrix4F;
 }
 
 /**
@@ -1047,23 +1187,39 @@ Matrix4D toScalingMatrix(const Vector3D scalingVector) {
  *  y = Y component of the axis to rotate around.
  *  z = Z component of the axis to rotate around.
  */
-Matrix4D createRotationMatrix(const scalar radianAngle, const double x,
-    const double y, const double z) {
-    const double x2 = x * x;
-    const double y2 = y * y;
-    const double z2 = z * z;
-    auto const cosAngle = cos(radianAngle);
-    auto const sinAngle = sin(radianAngle);
+MatT createRotationMatrixScalarT(MatT, ScalarT)(const scalar radianAngle, const ScalarT x,
+    const ScalarT y, const ScalarT z) {
+    const ScalarT x2 = x * x;
+    const ScalarT y2 = y * y;
+    const ScalarT z2 = z * z;
+    static if (is(scalar == float)) {
+        alias _cos = cosf;
+        alias _sin = sinf;
+    } else {
+        alias _cos = cos;
+        alias _sin = sin;
+    }
+    auto const cosAngle = _cos(radianAngle);
+    auto const sinAngle = _sin(radianAngle);
     auto const omc = 1.0f - cosAngle;
 
     // dfmt off
-    return Matrix4D(
+    return MatT(
         x2 * omc + cosAngle       ,   y * x * omc + z * sinAngle,   x * z * omc - y * sinAngle,   0,
         x * y * omc - z * sinAngle,   y2 * omc + cosAngle       ,   y * z * omc + x * sinAngle,   0,
         x * z * omc + y * sinAngle,   y * z * omc - x * sinAngle,   z2 * omc + cosAngle       ,   0,
         0                         ,   0                         ,   0                         ,   1
     );
     // dfmt on
+}
+
+alias createRotationMatrix4F = createRotationMatrixScalarT!(Matrix4F, float);
+alias createRotationMatrix4D = createRotationMatrixScalarT!(Matrix4D, double);
+
+version (DoublePrecision) {
+    alias createRotationMatrix4 = createRotationMatrix4D;
+} else {
+    alias createRotationMatrix4 = createRotationMatrix4F;
 }
 
 /**
@@ -1073,8 +1229,17 @@ Matrix4D createRotationMatrix(const scalar radianAngle, const double x,
  *  radianAngle = Amount of rotation in radian.
  *  axis = Vector that serves as the axis around which to rotate.
  */
-Matrix4D createRotationMatrix(const scalar radianAngle, const Vector3D axis) {
-    return createRotationMatrix(radianAngle, axis.x, axis.y, axis.z);
+MatT createRotationMatrixT(VecT, MatT)(const scalar radianAngle, const VecT axis) {
+    return createRotationMatrixScalarT!MatT(radianAngle, axis.x, axis.y, axis.z);
+}
+
+alias createRotationMatrix4VF = createRotationMatrixT!(Vector3F, Matrix4F);
+alias createRotationMatrix4VD = createRotationMatrixT!(Vector3D, Matrix4D);
+
+version (DoublePrecision) {
+    alias createRotationMatrix4V = createRotationMatrix4VD;
+} else {
+    alias createRotationMatrix4V = createRotationMatrix4VF;
 }
 
 /**
@@ -1083,14 +1248,31 @@ Matrix4D createRotationMatrix(const scalar radianAngle, const Vector3D axis) {
  * Params:
  *  radianAngle = Amount of rotation in radian.
  */
-Matrix3D createRotationMatrix(const scalar radianAngle) {
+MatT createRotationMatrixRadianT(MatT)(const scalar radianAngle) {
+    static if (is(scalar == float)) {
+        alias _cos = cosf;
+        alias _sin = sinf;
+    } else {
+        alias _cos = cos;
+        alias _sin = sin;
+    }
+
     // dfmt off
-    return Matrix3D(
-        cos(radianAngle), -sin(radianAngle), 0,
-        sin(radianAngle),  cos(radianAngle), 0,
-        0               ,  0               , 1
+    return MatT(
+        _cos(radianAngle), -_sin(radianAngle), 0,
+        _sin(radianAngle),  _cos(radianAngle), 0,
+        0                ,  0                , 1
     );
     // dfmt on
+}
+
+alias createRotationRadianMatrix3F = createRotationMatrixRadianT!Matrix3F;
+alias createRotationRadianMatrix3D = createRotationMatrixRadianT!Matrix3D;
+
+version (DoublePrecision) {
+    alias createRotationRadianMatrix3 = createRotationRadianMatrix3D;
+} else {
+    alias createRotationRadianMatrix3 = createRotationRadianMatrix3F;
 }
 
 /**
@@ -1099,9 +1281,9 @@ Matrix3D createRotationMatrix(const scalar radianAngle) {
  * Params:
  *  radianAngle = Amount of rotation in radian.
  */
-Matrix4D createXRotationMatrix(const scalar radianAngle) {
+MatT createXRotationMatrixT(MatT)(const scalar radianAngle) {
     // dfmt off
-    return Matrix4D(
+    return MatT(
         1,  0               , 0               , 0,
         0,  cos(radianAngle), sin(radianAngle), 0,
         0, -sin(radianAngle), cos(radianAngle), 0,
@@ -1110,15 +1292,24 @@ Matrix4D createXRotationMatrix(const scalar radianAngle) {
     // dfmt on
 }
 
+alias createXRotationMatrix4F = createXRotationMatrixT!Matrix4F;
+alias createXRotationMatrix4D = createXRotationMatrixT!Matrix4D;
+
+version (DoublePrecision) {
+    alias createXRotationMatrix = createXRotationMatrix4D;
+} else {
+    alias createXRotationMatrix = createXRotationMatrix4F;
+}
+
 /**
  * Creates a rotation matrix around the Y-axis.
  *
  * Params:
  *  radianAngle = Amount of rotation in radian.
  */
-Matrix4D createYRotationMatrix(const scalar radianAngle) {
+MatT createYRotationMatrixT(MatT)(const scalar radianAngle) {
     // dfmt off
-    return Matrix4D(
+    return MatT(
         cos(radianAngle), 0, -sin(radianAngle), 0,
         0               , 1,  0               , 0,
         sin(radianAngle), 0,  cos(radianAngle), 0,
@@ -1127,15 +1318,24 @@ Matrix4D createYRotationMatrix(const scalar radianAngle) {
     // dfmt on
 }
 
+alias createYRotationMatrix4F = createYRotationMatrixT!Matrix4F;
+alias createYRotationMatrix4D = createYRotationMatrixT!Matrix4D;
+
+version (DoublePrecision) {
+    alias createYRotationMatrix = createYRotationMatrix4D;
+} else {
+    alias createYRotationMatrix = createYRotationMatrix4F;
+}
+
 /**
  * Creates a rotation matrix around the Z-axis.
  *
  * Params:
  *  radianAngle = Amount of rotation in radian.
  */
-Matrix4D createZRotationMatrix(const scalar radianAngle) {
+MatT createZRotationMatrixT(MatT)(const scalar radianAngle) {
     // dfmt off
-    return Matrix4D(
+    return MatT(
         cos(radianAngle), -sin(radianAngle), 0, 0,
         sin(radianAngle),  cos(radianAngle), 0, 0,
         0               ,  0               , 1, 0,
@@ -1144,18 +1344,27 @@ Matrix4D createZRotationMatrix(const scalar radianAngle) {
     // dfmt on
 }
 
+alias createZRotationMatrix4F = createZRotationMatrixT!Matrix4F;
+alias createZRotationMatrix4D = createZRotationMatrixT!Matrix4D;
+
+version (DoublePrecision) {
+    alias createZRotationMatrix = createZRotationMatrix4D;
+} else {
+    alias createZRotationMatrix = createZRotationMatrix4F;
+}
+
 /**
  * Creates a world transformation matrix that looks at a target vector.
  */
-Matrix4D createLookatMatrix(const Vector3D eyePosition,
-    const Vector3D targetPosition, const UnitVector3D upVector) {
+MatT createLookatMatrixT(VecT, UnitVecT, MatT)(const VecT eyePosition,
+    const VecT targetPosition, const UnitVecT upVector) {
 
     auto const forwardVector = (targetPosition - eyePosition).normalize();
     auto const sideVector = forwardVector.cross(upVector.vector);
     auto const cameraBasedUpVector = sideVector.cross(forwardVector);
 
     // dfmt off
-    return Matrix4D(
+    return MatT(
          sideVector.x         ,  sideVector.y         ,  sideVector.z         , -eyePosition.x,
          cameraBasedUpVector.x,  cameraBasedUpVector.y,  cameraBasedUpVector.z, -eyePosition.y,
         -forwardVector.x      , -forwardVector.y      , -forwardVector.z      , -eyePosition.z,
@@ -1164,22 +1373,31 @@ Matrix4D createLookatMatrix(const Vector3D eyePosition,
     // dfmt on
 }
 
+alias createLookatMatrix4F = createLookatMatrixT!(Vector3F, UnitVector3F, Matrix4F);
+alias createLookatMatrix4D = createLookatMatrixT!(Vector3D, UnitVector3D, Matrix4D);
+
+version (DoublePrecision) {
+    alias createLookatMatrix = createLookatMatrix4D;
+} else {
+    alias createLookatMatrix = createLookatMatrix4F;
+}
+
 /**
  * Creates a world transformation matrix that looks at the world with a specified pitch 
  * (up/down rotation) and yaw (left/right rotation).
  */
-Matrix4D createViewMatrix(Vector3D eyePosition, scalar pitchInRadian, scalar yawInRadian) {
+MatT createViewMatrixT(VecT, MatT)(VecT eyePosition, scalar pitchInRadian, scalar yawInRadian) {
     const scalar cosPitch = cos(pitchInRadian);
     const scalar sinPitch = sin(pitchInRadian);
     const scalar cosYaw = cos(yawInRadian);
     const scalar sinYaw = sin(yawInRadian);
 
-    auto const sideVector = Vector3D(cosYaw, 0, -sinYaw);
-    auto const upVector = Vector3D(sinYaw * sinPitch, cosPitch, cosYaw * sinPitch);
-    auto const forwardVector = Vector3D(sinYaw * cosPitch, -sinPitch, cosPitch * cosYaw);
+    auto const sideVector = VecT(cosYaw, 0, -sinYaw);
+    auto const upVector = VecT(sinYaw * sinPitch, cosPitch, cosYaw * sinPitch);
+    auto const forwardVector = VecT(sinYaw * cosPitch, -sinPitch, cosPitch * cosYaw);
 
     // dfmt off
-    return Matrix4D(
+    return MatT(
         sideVector.x   , sideVector.y   , sideVector.z   , -sideVector.dot(eyePosition),
         upVector.x     , upVector.y     , upVector.z     , -upVector.dot(eyePosition),
         forwardVector.x, forwardVector.y, forwardVector.z, -forwardVector.dot(eyePosition),
@@ -1188,8 +1406,27 @@ Matrix4D createViewMatrix(Vector3D eyePosition, scalar pitchInRadian, scalar yaw
     // dfmt on
 }
 
-Matrix4D createViewMatrix(Vector3D eyePosition, QuaternionD eyeOrientation) {
-    return eyeOrientation.inverse.toRotationMatrix * (-eyePosition).toTranslationMatrix;
+alias createViewMatrix4F = createViewMatrixT!(Vector3F, Matrix4F);
+alias createViewMatrix4D = createViewMatrixT!(Vector3D, Matrix4D);
+
+version (DoublePrecision) {
+    alias createViewMatrix = createViewMatrix4D;
+} else {
+    alias createViewMatrix = createViewMatrix4F;
+}
+
+MatT createViewMatrixQT(VecT, QuatT, MatT)(VecT eyePosition, QuatT eyeOrientation) {
+    return eyeOrientation.inverse.toRotationMatrix * (-eyePosition)
+        .toTranslationMatrix4T!(VecT, MatT);
+}
+
+alias createViewMatrix4QF = createViewMatrixQT!(Vector3F, QuaternionF, Matrix4F);
+alias createViewMatrix4QD = createViewMatrixQT!(Vector3D, QuaternionD, Matrix4D);
+
+version (DoublePrecision) {
+    alias createViewMatrixQ = createViewMatrix4QD;
+} else {
+    alias createViewMatrixQ = createViewMatrix4QF;
 }
 
 /**
@@ -1202,7 +1439,7 @@ Matrix4D createViewMatrix(Vector3D eyePosition, QuaternionD eyeOrientation) {
  *   far = Far clipping plane. If 0, it is considered infinite.
  * Returns: Perspective Matrix
  */
-Matrix4D createPerspectiveMatrix(scalar yfovRadian, scalar aspectRatio,
+MatT createPerspectiveMatrixT(MatT)(scalar yfovRadian, scalar aspectRatio,
     scalar near, scalar far) {
     const scalar A = 1.0 / (aspectRatio * tan(0.5 * yfovRadian));
     const scalar B = 1.0 / (tan(0.5 * yfovRadian));
@@ -1210,13 +1447,22 @@ Matrix4D createPerspectiveMatrix(scalar yfovRadian, scalar aspectRatio,
     const scalar D = far == 0 ? (-2 * near) : (2.0 * far * near) / (near - far);
 
     // dfmt off
-    return Matrix4D(
+    return MatT(
         A, 0,  0, 0,
         0, B,  0, 0,
         0, 0,  C, D,
         0, 0, -1, 0
     );
     // dfmt on
+}
+
+alias createPerspectiveMatrix4F = createPerspectiveMatrixT!Matrix4F;
+alias createPerspectiveMatrix4D = createPerspectiveMatrixT!Matrix4D;
+
+version (DoublePrecision) {
+    alias createPerspectiveMatrix = createPerspectiveMatrix4D;
+} else {
+    alias createPerspectiveMatrix = createPerspectiveMatrix4F;
 }
 
 /** 
@@ -1231,8 +1477,17 @@ Matrix4D createPerspectiveMatrix(scalar yfovRadian, scalar aspectRatio,
  *   far = Distance to the far clipping plane along the -Z axis
  * Returns: Orthographic Matrix
  */
-Matrix4D createOrthographicMatrix(scalar left, scalar right, scalar bottom, scalar top, scalar near, scalar far) {
-    return createOrthographicMatrix(right - left, top - bottom, near, far);
+MatT createOrthographicMatrixT(MatT)(scalar left, scalar right, scalar bottom, scalar top, scalar near, scalar far) {
+    return createOrthographicMatrixHT!MatT(right - left, top - bottom, near, far);
+}
+
+alias createOrthographicMatrix4F = createOrthographicMatrixT!Matrix4F;
+alias createOrthographicMatrix4D = createOrthographicMatrixT!Matrix4D;
+
+version (DoublePrecision) {
+    alias createOrthographicMatrix = createOrthographicMatrix4D;
+} else {
+    alias createOrthographicMatrix = createOrthographicMatrix4F;
 }
 
 /** 
@@ -1245,14 +1500,14 @@ Matrix4D createOrthographicMatrix(scalar left, scalar right, scalar bottom, scal
  *   far = Distance to the far clipping plane along the -Z axis
  * Returns: Orthographic Matrix
  */
-Matrix4D createOrthographicMatrix(scalar halfWidth, scalar halfHeight, scalar near, scalar far) {
+MatT createOrthographicMatrixHT(MatT)(scalar halfWidth, scalar halfHeight, scalar near, scalar far) {
     const scalar A = 1 / (halfWidth / 2);
     const scalar B = 1 / (halfHeight / 2);
     const scalar C = 2 / (near - far);
     const scalar D = (far + near) / (near - far);
 
     // dfmt off
-    return Matrix4D(
+    return MatT(
         A, 0 , 0, 0,
         0, B , 0, 0,
         0, 0 , C, D,
@@ -1261,18 +1516,45 @@ Matrix4D createOrthographicMatrix(scalar halfWidth, scalar halfHeight, scalar ne
     // dfmt on
 }
 
+alias createOrthographicMatrix4HF = createOrthographicMatrixHT!Matrix4F;
+alias createOrthographicMatrix4HD = createOrthographicMatrixHT!Matrix4D;
+
+version (DoublePrecision) {
+    alias createOrthographicMatrixH = createOrthographicMatrix4HD;
+} else {
+    alias createOrthographicMatrixH = createOrthographicMatrix4HF;
+}
+
 /**
  * Converts an angle in degrees to radians.
  */
-double degreesToRadians(double degrees) {
+T degreesToRadiansT(T)(T degrees) {
     return degrees * (PI / 180);
+}
+
+alias degreesToRadiansF = degreesToRadiansT!float;
+alias degreesToRadiansD = degreesToRadiansT!double;
+
+version (DoublePrecision) {
+    alias degreesToRadians = degreesToRadiansD;
+} else {
+    alias degreesToRadians = degreesToRadiansF;
 }
 
 /**
  * Converts an angle in radians to degrees.
  */
-double radiansToDegrees(double radians) {
+T radiansToDegreesT(T)(T radians) {
     return radians * (180 / PI);
+}
+
+alias radiansToDegreesF = radiansToDegreesT!float;
+alias radiansToDegreesD = radiansToDegreesT!double;
+
+version (DoublePrecision) {
+    alias radiansToDegrees = radiansToDegreesD;
+} else {
+    alias radiansToDegrees = radiansToDegreesF;
 }
 
 bool approxEqual(T)(inout T lhs, inout T rhs, T deviation = 0.0001)
@@ -1615,14 +1897,14 @@ void runVectorTests() {
     });
 
     test("Convert vectors to string representation", {
-        assert("(1.000000)" == Vector!(double, 1)(1).toString());
+        assert("(1.000000)" == VectorT!(double, 1)(1).toString());
         assert("(1.000000, 2.000000)" == Vector2D(1, 2).toString());
         assert("(1.000000, 2.000000, 3.000000)" == Vector3D(1, 2, 3).toString());
-        assert("(5)" == Vector!(int, 1)(5).toString());
+        assert("(5)" == VectorT!(int, 1)(5).toString());
         assert("(5, 6)" == Vector2I(5, 6).toString());
         assert("(5, 6, 7)" == Vector3I(5, 6, 7).toString());
         assert("(0.000000, 0.000000, 0.000000)" == Vector3D(0).toString());
-        assert("(1.600000)" == Vector!(double, 1)(1.6).toString());
+        assert("(1.600000)" == VectorT!(double, 1)(1.6).toString());
         assert("(1.840000, 2.400000)" == Vector2D(1.84, 2.4).toString());
         assert("(1.300000, 2.750000, 3.782000)" == Vector3D(1.3, 2.75, 3.782).toString());
     });
@@ -1631,7 +1913,7 @@ void runVectorTests() {
         auto const vector1Hash = Vector2D(1.2, 3.4).toHash;
         auto const vector2Hash = Vector2D(1.2, 3.4).toHash;
         auto const vector3Hash = Vector3U(1, 2, 3).toHash;
-        auto const vector4Hash = Vector!(ulong, 1)(7).toHash;
+        auto const vector4Hash = VectorT!(ulong, 1)(7).toHash;
         auto const vector5Hash = Vector3U(3, 2, 1).toHash;
 
         assert(vector1Hash == vector2Hash);
@@ -1751,7 +2033,7 @@ void runMatrixTests() {
     writeSection("-- Matrix tests --");
 
     test("Create and use matrix", {
-        auto matrix1 = Matrix!(double, 4, 3)(0);
+        auto matrix1 = MatrixT!(double, 4, 3)(0);
         assert(0 == matrix1[0, 0]);
 
         matrix1[0, 2] = 2;
@@ -1785,7 +2067,7 @@ void runMatrixTests() {
     });
 
     test("Create 4x1 matrix", {
-        auto const matrix = Matrix!(double, 4, 1)(1, 2, 3, 4);
+        auto const matrix = MatrixT!(double, 4, 1)(1, 2, 3, 4);
         assert(1 == matrix[0, 0]);
         assert(2 == matrix[1, 0]);
         assert(3 == matrix[2, 0]);
@@ -1864,12 +2146,12 @@ void runMatrixTests() {
 
     test("Multiply matrices of different dimensions", {
         // dfmt off
-        auto const matrix1 = Matrix!(double, 2, 3)(
+        auto const matrix1 = MatrixT!(double, 2, 3)(
             1, 2, 3,
             4, 5, 6
         );
 
-        auto const matrix2 = Matrix!(double, 3, 2)(
+        auto const matrix2 = MatrixT!(double, 3, 2)(
             7 , 8,
             9 , 10,
             11, 12
@@ -1907,12 +2189,12 @@ void runMatrixTests() {
 
     test("Transpose matrix", {
         // dfmt off
-        auto const matrix = Matrix!(double, 2, 3)(
+        auto const matrix = MatrixT!(double, 2, 3)(
             1, 2, 3,
             4, 5, 6
         );
 
-        auto const expectedMatrix = Matrix!(double, 3, 2)(
+        auto const expectedMatrix = MatrixT!(double, 3, 2)(
             1, 4,
             2, 5,
             3, 6
@@ -2058,98 +2340,180 @@ void runQuaternionTests() {
     writeSection("-- Quaternion tests --");
 
     test("Create quaternion", {
-        auto const quaternion = QuaternionD();
-        assert(QuaternionD(1, 0, 0, 0) == quaternion);
+        auto const quaternionD = QuaternionD();
+        assert(QuaternionD(1, 0, 0, 0) == quaternionD);
 
-        auto const quaternion2 = QuaternionD(4, 1, 2, 3);
-        assert(4 == quaternion2.w);
-        assert(1 == quaternion2.x);
-        assert(2 == quaternion2.y);
-        assert(3 == quaternion2.z);
+        auto const quaternionF = QuaternionF();
+        assert(QuaternionF(1, 0, 0, 0) == quaternionF);
 
-        auto const quaternion3 = QuaternionD(4, Vector3D(1, 2, 3));
-        assert(4 == quaternion3.w);
-        assert(1 == quaternion3.x);
-        assert(2 == quaternion3.y);
-        assert(3 == quaternion3.z);
+        auto const quaternion = Quaternion();
+        assert(Quaternion(1, 0, 0, 0) == quaternion);
+
+        auto const quaternion2D = QuaternionD(4, 1, 2, 3);
+        assert(4 == quaternion2D.w);
+        assert(1 == quaternion2D.x);
+        assert(2 == quaternion2D.y);
+        assert(3 == quaternion2D.z);
+
+        auto const quaternion2F = QuaternionF(4, 1, 2, 3);
+        assert(4 == quaternion2F.w);
+        assert(1 == quaternion2F.x);
+        assert(2 == quaternion2F.y);
+        assert(3 == quaternion2F.z);
+
+        auto const quaternion3D = QuaternionD(4, Vector3D(1, 2, 3));
+        assert(4 == quaternion3D.w);
+        assert(1 == quaternion3D.x);
+        assert(2 == quaternion3D.y);
+        assert(3 == quaternion3D.z);
+
+        auto const quaternion3F = QuaternionF(4, Vector3F(1, 2, 3));
+        assert(4 == quaternion3F.w);
+        assert(1 == quaternion3F.x);
+        assert(2 == quaternion3F.y);
+        assert(3 == quaternion3F.z);
     });
 
     test("Create quaternions", {
-        auto const quaternion1 = QuaternionD(1, 2, 3, 4);
-        auto const quaternion2 = QuaternionD(5, 6, 7, 8);
-        auto const expectedQuaternion = QuaternionD(-60, 12, 30, 24);
-        auto const actualQuaternion = quaternion1 * quaternion2;
+        auto const quaternion1D = QuaternionD(1, 2, 3, 4);
+        auto const quaternion2D = QuaternionD(5, 6, 7, 8);
+        auto const expectedQuaternionD = QuaternionD(-60, 12, 30, 24);
+        auto const actualQuaternionD = quaternion1D * quaternion2D;
+        assert(expectedQuaternionD == actualQuaternionD);
+        assert(quaternion1D * quaternion2D != quaternion2D * quaternion1D);
 
-        assert(expectedQuaternion == actualQuaternion);
-        assert(quaternion1 * quaternion2 != quaternion2 * quaternion1);
+        auto const quaternion1F = QuaternionF(1, 2, 3, 4);
+        auto const quaternion2F = QuaternionF(5, 6, 7, 8);
+        auto const expectedQuaternionF = QuaternionF(-60, 12, 30, 24);
+        auto const actualQuaternionF = quaternion1F * quaternion2F;
+        assert(expectedQuaternionF == actualQuaternionF);
+        assert(quaternion1F * quaternion2F != quaternion2F * quaternion1F);
     });
 
     test("Create from angle and axis vector", {
-        auto const quaternion = QuaternionD.createRotation(PI, Vector3D(1, 0, 0));
-        assert(quaternion.realPart.approxEqual(6.12303e-17));
-        assert(quaternion.imaginaryVector == Vector3D(1, 0, 0));
+        auto const quaternionD = QuaternionD.createRotation(PI, Vector3D(1, 0, 0));
+        assert(quaternionD.realPart.approxEqual(6.12303e-17));
+        assert(quaternionD.imaginaryVector == Vector3D(1, 0, 0));
+
+        auto const quaternionF = QuaternionF.createRotation(PI, Vector3F(1, 0, 0));
+        assert(quaternionF.realPart.approxEqual(6.12303e-17, 0.0001));
+        assert(quaternionF.imaginaryVector == Vector3F(1, 0, 0));
     });
 
     test("Convert to rotation matrix", {
-        auto const quaternion = QuaternionD(6.12303e-17, 1, 0, 0);
-        auto const actualRotationMatrix = quaternion.toRotationMatrix();
-        assert(actualRotationMatrix.data.approxEquals([
+        auto const quaternionD = QuaternionD(6.12303e-17, 1, 0, 0);
+        auto const actualRotationMatrixD = quaternionD.toRotationMatrix();
+        assert(actualRotationMatrixD.data.approxEquals([
                 1, 0, 0, 0, 0, -1, -1.22461e-16, 0, 0, 1.22461e-16, -1, 0, 0, 0, 0,
                 1
+            ]));
+
+        auto const quaternionF = QuaternionF(6.12303e-17, 1, 0, 0);
+        auto const actualRotationMatrixF = quaternionF.toRotationMatrix();
+        assert(actualRotationMatrixF.data.approxEquals([
+                1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, -1.22461e-16f, 0.0f, 0.0f,
+                1.22461e-16f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+                1.0f
             ]));
     });
 
     test("Convert to euler angles vector", {
-        auto const quaternion = QuaternionD.createRotation(PI, Vector3D(0, 1, 0));
-        auto const expectedToEulerAngles = Vector3D(0, PI, 0);
-        auto const actualEulerAngles = quaternion.toEulerAngles();
-        assert(expectedToEulerAngles == actualEulerAngles);
+        auto const quaternionD = QuaternionD.createRotation(PI, Vector3D(0, 1, 0));
+        auto const expectedToEulerAnglesD = Vector3D(0, PI, 0);
+        auto const actualEulerAnglesD = quaternionD.toEulerAngles();
+        assert(expectedToEulerAnglesD == actualEulerAnglesD);
 
-        auto const quaternion2 = QuaternionD.createRotation(PI, Vector3D(1, 0, 0));
-        auto const expectedToEulerAngles2 = Vector3D(PI, 0, 0);
-        auto const actualEulerAngles2 = quaternion2.toEulerAngles();
-        assert(expectedToEulerAngles2 == actualEulerAngles2);
+        auto const quaternion2D = QuaternionD.createRotation(PI, Vector3D(1, 0, 0));
+        auto const expectedToEulerAngles2D = Vector3D(PI, 0, 0);
+        auto const actualEulerAngles2D = quaternion2D.toEulerAngles();
+        assert(expectedToEulerAngles2D == actualEulerAngles2D);
+
+        // Float precision requires larger tolerance for near-singular cases
+        auto const quaternionF = QuaternionF.createRotation(PI, Vector3F(0, 1, 0));
+        auto const actualEulerAnglesF = quaternionF.toEulerAngles();
+        assert(actualEulerAnglesF.x.approxEqual(0, 0.001));
+        // atan2 can return PI or -PI for 180° rotation, both are equivalent
+        assert(actualEulerAnglesF.y.approxEqual(PI, 0.001) || actualEulerAnglesF.y.approxEqual(-PI, 0.001));
+        assert(actualEulerAnglesF.z.approxEqual(0, 0.001));
+
+        auto const quaternion2F = QuaternionF.createRotation(PI, Vector3F(1, 0, 0));
+        auto const actualEulerAngles2F = quaternion2F.toEulerAngles();
+        // atan2 can return PI or -PI for 180° rotation, both are equivalent
+        assert(actualEulerAngles2F.x.approxEqual(PI, 0.001) || actualEulerAngles2F.x.approxEqual(-PI, 0.001));
+        assert(actualEulerAngles2F.y.approxEqual(0, 0.001));
+        assert(actualEulerAngles2F.z.approxEqual(0, 0.001));
     });
 
     test("Angle", {
-        auto const quaternion = QuaternionD.createRotation(PI, Vector3D(0, 1, 0));
-        assert(quaternion.angle.approxEqual(PI));
+        auto const quaternionD = QuaternionD.createRotation(PI, Vector3D(0, 1, 0));
+        assert(quaternionD.angle.approxEqual(PI));
+
+        auto const quaternionF = QuaternionF.createRotation(PI, Vector3F(0, 1, 0));
+        assert(quaternionF.angle.approxEqual(PI, 0.0001));
     });
 
     test("Axis when rotation is zero", {
-        auto const quaternion = QuaternionD.createRotation(0, Vector3D(0, 1, 0));
-        assert(quaternion.axis == Vector3D(0, 1, 0));
+        auto const quaternionD = QuaternionD.createRotation(0, Vector3D(0, 1, 0));
+        assert(quaternionD.axis == Vector3D(0, 1, 0));
+
+        auto const quaternionF = QuaternionF.createRotation(0, Vector3F(0, 1, 0));
+        import retrograde.std.stdio : writeln;
+        writeln(quaternionF.axis.x);
+        writeln(quaternionF.axis.y);
+        writeln(quaternionF.axis.z);
+        assert(quaternionF.axis == Vector3F(0, 1, 0));
     });
 
     test("Axis when rotation is non-zero", {
-        auto const quaternion = QuaternionD.createRotation(PI, Vector3D(0, 0, 1));
-        assert(quaternion.axis == Vector3D(0, 0, 1));
+        auto const quaternionD = QuaternionD.createRotation(PI, Vector3D(0, 0, 1));
+        assert(quaternionD.axis == Vector3D(0, 0, 1));
+
+        auto const quaternionF = QuaternionF.createRotation(PI, Vector3F(0, 0, 1));
+        assert(quaternionF.axis == Vector3F(0, 0, 1));
     });
 
     test("Conjugate", {
-        auto const quaternion = QuaternionD(1, 2, 3, 4);
-        assert(quaternion.conjugate == QuaternionD(1, -2, -3, -4));
+        auto const quaternionD = QuaternionD(1, 2, 3, 4);
+        assert(quaternionD.conjugate == QuaternionD(1, -2, -3, -4));
+
+        auto const quaternionF = QuaternionF(1, 2, 3, 4);
+        assert(quaternionF.conjugate == QuaternionF(1, -2, -3, -4));
     });
 
     test("Inverse", {
-        auto const quaternion = QuaternionD(1, 2, 3, 4);
-        auto const inverse = quaternion.inverse;
-        assert(inverse.w.approxEqual(0.0333333, 0.01));
-        assert(inverse.x.approxEqual(-0.0666667, 0.01));
-        assert(inverse.y.approxEqual(-0.1, 0.1));
-        assert(inverse.z.approxEqual(-0.1333333, 0.01));
+        auto const quaternionD = QuaternionD(1, 2, 3, 4);
+        auto const inverseD = quaternionD.inverse;
+        assert(inverseD.w.approxEqual(0.0333333, 0.01));
+        assert(inverseD.x.approxEqual(-0.0666667, 0.01));
+        assert(inverseD.y.approxEqual(-0.1, 0.1));
+        assert(inverseD.z.approxEqual(-0.1333333, 0.01));
+
+        auto const quaternionF = QuaternionF(1, 2, 3, 4);
+        auto const inverseF = quaternionF.inverse;
+        assert(inverseF.w.approxEqual(0.0333333, 0.01));
+        assert(inverseF.x.approxEqual(-0.0666667, 0.01));
+        assert(inverseF.y.approxEqual(-0.1, 0.1));
+        assert(inverseF.z.approxEqual(-0.1333333, 0.01));
     });
 
     test("Dot product", {
-        auto const quaternion1 = QuaternionD(1, 2, 3, 4);
-        auto const quaternion2 = QuaternionD(5, 6, 7, 8);
-        assert(quaternion1.dot(quaternion2) == 70);
+        auto const quaternion1D = QuaternionD(1, 2, 3, 4);
+        auto const quaternion2D = QuaternionD(5, 6, 7, 8);
+        assert(quaternion1D.dot(quaternion2D) == 70);
+
+        auto const quaternion1F = QuaternionF(1, 2, 3, 4);
+        auto const quaternion2F = QuaternionF(5, 6, 7, 8);
+        assert(quaternion1F.dot(quaternion2F) == 70);
     });
 
     test("Multiply", {
-        auto const quaternion1 = QuaternionD(1, 2, 3, 4);
-        auto const quaternion2 = QuaternionD(5, 6, 7, 8);
-        assert(quaternion1 * quaternion2 == QuaternionD(-60, 12, 30, 24));
+        auto const quaternion1D = QuaternionD(1, 2, 3, 4);
+        auto const quaternion2D = QuaternionD(5, 6, 7, 8);
+        assert(quaternion1D * quaternion2D == QuaternionD(-60, 12, 30, 24));
+
+        auto const quaternion1F = QuaternionF(1, 2, 3, 4);
+        auto const quaternion2F = QuaternionF(5, 6, 7, 8);
+        assert(quaternion1F * quaternion2F == QuaternionF(-60, 12, 30, 24));
     });
 }
 
@@ -2157,119 +2521,201 @@ void runMatrixUtilTests() {
     writeSection("-- Matrix util tests --");
 
     test("Create translation matrix from 2D vector", {
-        auto const vector = Vector2D(25, 56);
+        auto const vectorD = Vector2D(25, 56);
         // dfmt off
-        auto const expectedMatrix = Matrix3D(
+        auto const expectedMatrixD = Matrix3D(
             1, 0, 25,
             0, 1, 56,
             0, 0, 1
         );
         // dfmt on
+        auto const actualMatrixD = vectorD.toTranslationMatrix3D();
+        assert(expectedMatrixD == actualMatrixD);
 
-        auto const actualMatrix = vector.toTranslationMatrix();
-        assert(expectedMatrix == actualMatrix);
+        auto const vectorF = Vector2F(25, 56);
+        // dfmt off
+        auto const expectedMatrixF = Matrix3F(
+            1, 0, 25,
+            0, 1, 56,
+            0, 0, 1
+        );
+        // dfmt on
+        auto const actualMatrixF = vectorF.toTranslationMatrix3F();
+        assert(expectedMatrixF == actualMatrixF);
     });
 
     test("Create translation matrix from 3D vector", {
-        auto const vector = Vector3D(2, 5, 6);
+        auto const vectorD = Vector3D(2, 5, 6);
         // dfmt off
-        auto const expectedMatrix = Matrix4D(
+        auto const expectedMatrixD = Matrix4D(
             1, 0, 0, 2,
             0, 1, 0, 5,
             0, 0, 1, 6,
             0, 0, 0, 1
         );
         // dfmt on
+        auto const actualMatrixD = vectorD.toTranslationMatrix4D();
+        assert(expectedMatrixD == actualMatrixD);
 
-        auto const actualMatrix = vector.toTranslationMatrix();
-        assert(expectedMatrix == actualMatrix);
+        auto const vectorF = Vector3F(2, 5, 6);
+        // dfmt off
+        auto const expectedMatrixF = Matrix4F(
+            1, 0, 0, 2,
+            0, 1, 0, 5,
+            0, 0, 1, 6,
+            0, 0, 0, 1
+        );
+        // dfmt on
+        auto const actualMatrixF = vectorF.toTranslationMatrix4F();
+        assert(expectedMatrixF == actualMatrixF);
     });
 
     test("Create scaling matrix from 2D vector", {
-        auto const vector = Vector2D(6, 12);
+        auto const vectorD = Vector2D(6, 12);
         // dfmt off
-        auto const expectedMatrix = Matrix3D(
+        auto const expectedMatrixD = Matrix3D(
             6, 0 , 0,
             0, 12, 0,
             0, 0 , 1
         );
         // dfmt on
+        auto const actualMatrixD = vectorD.toScalingMatrix3D();
+        assert(expectedMatrixD == actualMatrixD);
 
-        auto const actualMatrix = vector.toScalingMatrix();
-        assert(expectedMatrix == actualMatrix);
+        auto const vectorF = Vector2F(6, 12);
+        // dfmt off
+        auto const expectedMatrixF = Matrix3F(
+            6, 0 , 0,
+            0, 12, 0,
+            0, 0 , 1
+        );
+        // dfmt on
+        auto const actualMatrixF = vectorF.toScalingMatrix3F();
+        assert(expectedMatrixF == actualMatrixF);
     });
 
     test("Create scaling matrix from 3D vector", {
-        auto const vector = Vector3D(1, 2, 5);
+        auto const vectorD = Vector3D(1, 2, 5);
         // dfmt off
-        auto const expectedMatrix = Matrix4D(
+        auto const expectedMatrixD = Matrix4D(
             1, 0, 0, 0,
             0, 2, 0, 0,
             0, 0, 5, 0,
             0, 0, 0, 1
         );
         // dfmt on
+        auto const actualMatrixD = vectorD.toScalingMatrix4D();
+        assert(expectedMatrixD == actualMatrixD);
 
-        auto const actualMatrix = vector.toScalingMatrix();
-        assert(expectedMatrix == actualMatrix);
+        auto const vectorF = Vector3F(1, 2, 5);
+        // dfmt off
+        auto const expectedMatrixF = Matrix4F(
+            1, 0, 0, 0,
+            0, 2, 0, 0,
+            0, 0, 5, 0,
+            0, 0, 0, 1
+        );
+        // dfmt on
+        auto const actualMatrixF = vectorF.toScalingMatrix4F();
+        assert(expectedMatrixF == actualMatrixF);
     });
 
     test("Create 4D rotation matrix", {
-        auto const expectedMatrix = Matrix!(double, 4u, 4u)(
+        auto const expectedMatrixD = MatrixT!(double, 4u, 4u)(
             -1, 0, -1.22461e-16, 0, 0, 1, 0, 0, 1.22461e-16, 0, -1, 0, 0, 0, 0, 1
         );
+        auto actualMatrix1D = createRotationMatrix4D(PI, 0, 1, 0);
+        assert(expectedMatrixD.data.approxEquals(actualMatrix1D.data));
+        auto actualMatrix2D = createRotationMatrix4VD(PI, Vector3D(0, 1, 0));
+        assert(expectedMatrixD.data.approxEquals(actualMatrix2D.data));
+        assert(actualMatrix1D.data.approxEquals(actualMatrix2D.data));
 
-        auto actualMatrix1 = createRotationMatrix(PI, 0, 1, 0);
-        assert(expectedMatrix.data.approxEquals(actualMatrix1.data));
-
-        auto actualMatrix2 = createRotationMatrix(PI, Vector3D(0, 1, 0));
-        assert(expectedMatrix.data.approxEquals(actualMatrix2.data));
-        assert(actualMatrix1.data.approxEquals(actualMatrix2.data));
+        auto const expectedMatrixF = MatrixT!(float, 4u, 4u)(
+            -1, 0, -1.22461e-16, 0, 0, 1, 0, 0, 1.22461e-16, 0, -1, 0, 0, 0, 0, 1
+        );
+        auto actualMatrix1F = createRotationMatrix4F(PI, 0, 1, 0);
+        assert(expectedMatrixF.data.approxEquals(actualMatrix1F.data));
+        auto actualMatrix2F = createRotationMatrix4VF(PI, Vector3F(0, 1, 0));
+        assert(expectedMatrixF.data.approxEquals(actualMatrix1F.data));
+        assert(actualMatrix1F.data.approxEquals(actualMatrix2F.data));
     });
 
     test("Create 3D rotation matrix", {
-        auto const expectedMatrix = Matrix!(double, 3u, 3u)(-0.989992, -0.14112, 0, 0.14112, -0.989992, 0, 0, 0, 1);
-        auto actualMatrix = createRotationMatrix(3);
-        assert(expectedMatrix.data.approxEquals(actualMatrix.data));
+        auto const expectedMatrixD = MatrixT!(double, 3u, 3u)(-0.989992, -0.14112, 0, 0.14112, -0.989992, 0, 0, 0, 1);
+        auto actualMatrixD = createRotationRadianMatrix3D(3);
+        assert(expectedMatrixD.data.approxEquals(actualMatrixD.data));
+
+        auto const expectedMatrixF = MatrixT!(float, 3u, 3u)(-0.989992, -0.14112, 0, 0.14112, -0.989992, 0, 0, 0, 1);
+        auto actualMatrixF = createRotationRadianMatrix3F(3);
+        assert(expectedMatrixF.data.approxEquals(actualMatrixF.data));
     });
 
     test("Create axis-bound rotation matrices", {
-        auto expectedMatrix = Matrix!(double, 4u, 4u)(1, 0, 0, 0, 0, -1, 1.22461e-16, 0, 0, -1.22461e-16, -1, 0, 0, 0, 0, 1);
-        auto actualMatrix = createXRotationMatrix(PI);
-        assert(expectedMatrix.data.approxEquals(actualMatrix.data));
+        auto expectedMatrixD = MatrixT!(double, 4u, 4u)(1, 0, 0, 0, 0, -1, 1.22461e-16, 0, 0, -1.22461e-16, -1, 0, 0, 0, 0, 1);
+        auto actualMatrixD = createXRotationMatrix4D(PI);
+        assert(expectedMatrixD.data.approxEquals(actualMatrixD.data));
 
-        expectedMatrix = Matrix!(double, 4u, 4u)(-1, 0, -1.22461e-16, 0, 0, 1, 0, 0, 1.22461e-16, 0, -1, 0, 0, 0, 0, 1);
-        actualMatrix = createYRotationMatrix(PI);
-        assert(expectedMatrix.data.approxEquals(actualMatrix.data));
+        expectedMatrixD = MatrixT!(double, 4u, 4u)(-1, 0, -1.22461e-16, 0, 0, 1, 0, 0, 1.22461e-16, 0, -1, 0, 0, 0, 0, 1);
+        actualMatrixD = createYRotationMatrix4D(PI);
+        assert(expectedMatrixD.data.approxEquals(actualMatrixD.data));
 
-        expectedMatrix = Matrix!(double, 4u, 4u)(-1, -1.22461e-16, 0, 0, 1.22461e-16, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
-        actualMatrix = createZRotationMatrix(PI);
-        assert(expectedMatrix.data.approxEquals(actualMatrix.data));
+        expectedMatrixD = MatrixT!(double, 4u, 4u)(-1, -1.22461e-16, 0, 0, 1.22461e-16, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+        actualMatrixD = createZRotationMatrix4D(PI);
+        assert(expectedMatrixD.data.approxEquals(actualMatrixD.data));
+
+        auto expectedMatrixF = MatrixT!(float, 4u, 4u)(1, 0, 0, 0, 0, -1, 1.22461e-16, 0, 0, -1.22461e-16, -1, 0, 0, 0, 0, 1);
+        auto actualMatrixF = createXRotationMatrix4F(PI);
+        assert(expectedMatrixF.data.approxEquals(actualMatrixF.data));
+
+        expectedMatrixF = MatrixT!(float, 4u, 4u)(-1, 0, -1.22461e-16, 0, 0, 1, 0, 0, 1.22461e-16, 0, -1, 0, 0, 0, 0, 1);
+        actualMatrixF = createYRotationMatrix4F(PI);
+        assert(expectedMatrixF.data.approxEquals(actualMatrixF.data));
+
+        expectedMatrixF = MatrixT!(float, 4u, 4u)(-1, -1.22461e-16, 0, 0, 1.22461e-16, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+        actualMatrixF = createZRotationMatrix4F(PI);
+        assert(expectedMatrixF.data.approxEquals(actualMatrixF.data));
     });
 
     test("Create look-at matrix", {
-        auto const expectedMatrix = Matrix!(double, 4u, 4u)(0, 0, 1, -0, 0, 1, 0, -1, -1, -0, -0, -0, 0, 0, 0, 1);
-        auto actualMatrix = createLookatMatrix(Vector3D(0, 1, 0), Vector3D(1,
+        auto const expectedMatrixD = MatrixT!(double, 4u, 4u)(0, 0, 1, -0, 0, 1, 0, -1, -1, -0, -0, -0, 0, 0, 0, 1);
+        auto actualMatrixD = createLookatMatrix4D(Vector3D(0, 1, 0), Vector3D(1,
             1, 0), UnitVector3D(0, 1, 0));
-        assert(expectedMatrix.data.approxEquals(actualMatrix.data));
+        assert(expectedMatrixD.data.approxEquals(actualMatrixD.data));
+
+        auto const expectedMatrixF = MatrixT!(float, 4u, 4u)(0, 0, 1, -0, 0, 1, 0, -1, -1, -0, -0, -0, 0, 0, 0, 1);
+        auto actualMatrixF = createLookatMatrix4F(Vector3F(0, 1, 0), Vector3F(1,
+            1, 0), UnitVector3F(0, 1, 0));
+        assert(expectedMatrixF.data.approxEquals(actualMatrixF.data));
     });
 
     test("Create view matrix", {
-        auto const expectedMatrix = Matrix!(double, 4u, 4u)(0.540302, 0, -0.841471, -0.540302, 0.708073, 0.540302, 0.454649, -1.24838, 0.454649, -0.841471, 0.291927, 0.386822, 0, 0, 0, 1);
-        auto actualMatrix = createViewMatrix(Vector3D(1, 1, 0), 1, 1);
-        assert(expectedMatrix.data.approxEquals(actualMatrix.data));
+        auto const expectedMatrixD = MatrixT!(double, 4u, 4u)(0.540302, 0, -0.841471, -0.540302, 0.708073, 0.540302, 0.454649, -1.24838, 0.454649, -0.841471, 0.291927, 0.386822, 0, 0, 0, 1);
+        auto actualMatrixD = createViewMatrix4D(Vector3D(1, 1, 0), 1, 1);
+        assert(expectedMatrixD.data.approxEquals(actualMatrixD.data));
+
+        auto const expectedMatrixF = MatrixT!(float, 4u, 4u)(0.540302, 0, -0.841471, -0.540302, 0.708073, 0.540302, 0.454649, -1.24838, 0.454649, -0.841471, 0.291927, 0.386822, 0, 0, 0, 1);
+        auto actualMatrixF = createViewMatrix4F(Vector3F(1, 1, 0), 1, 1);
+        assert(expectedMatrixF.data.approxEquals(actualMatrixF.data));
     });
 
     test("Create perspective matrix", {
-        auto const expectedMatrix = Matrix!(double, 4u, 4u)(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1.0002, -0.20002, 0, 0, -1, 0);
-        auto actualMatrix = createPerspectiveMatrix(degreesToRadians(90), 1920 / 1080, 0.1, 1000);
-        assert(expectedMatrix.data.approxEquals(actualMatrix.data));
+        auto const expectedMatrixD = MatrixT!(double, 4u, 4u)(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1.0002, -0.20002, 0, 0, -1, 0);
+        auto actualMatrixD = createPerspectiveMatrix4D(degreesToRadiansD(90), 1920 / 1080, 0.1, 1000);
+        assert(expectedMatrixD.data.approxEquals(actualMatrixD.data));
+
+        auto const expectedMatrixF = MatrixT!(float, 4u, 4u)(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1.0002, -0.20002, 0, 0, -1, 0);
+        auto actualMatrixF = createPerspectiveMatrix4F(degreesToRadiansF(90), 1920 / 1080, 0.1, 1000);
+        assert(expectedMatrixF.data.approxEquals(actualMatrixF.data));
     });
 
     test("Create orthographic matrix", {
-        auto const expectedMatrix = Matrix!(double, 4u, 4u)(0.2, 0, 0, 0, 0, 0.2, 0, 0, 0, 0, -0.2, -0, 0, 0, 0, 1);
-        auto actualMatrix = createOrthographicMatrix(-5, 5, -5, 5, -5, 5);
-        assert(expectedMatrix.data.approxEquals(actualMatrix.data));
+        auto const expectedMatrixD = MatrixT!(double, 4u, 4u)(0.2, 0, 0, 0, 0, 0.2, 0, 0, 0, 0, -0.2, -0, 0, 0, 0, 1);
+        auto actualMatrixD = createOrthographicMatrix4D(-5, 5, -5, 5, -5, 5);
+        assert(expectedMatrixD.data.approxEquals(actualMatrixD.data));
+
+        auto const expectedMatrixF = MatrixT!(float, 4u, 4u)(0.2, 0, 0, 0, 0, 0.2, 0, 0, 0, 0, -0.2, -0, 0, 0, 0, 1);
+        auto actualMatrixF = createOrthographicMatrix4F(-5, 5, -5, 5, -5, 5);
+        assert(expectedMatrixF.data.approxEquals(actualMatrixF.data));
     });
 }
 
@@ -2277,14 +2723,22 @@ void runMiscUtilTests() {
     writeSection("-- Misc util tests --");
 
     test("Convert degrees to radians", {
-        assert(PI.approxEqual(degreesToRadians(180)));
-        assert(0f.approxEqual(degreesToRadians(0)));
-        assert((2 * PI).approxEqual(degreesToRadians(360)));
+        assert(PI.approxEqual(degreesToRadiansD(180)));
+        assert(0.0.approxEqual(degreesToRadiansD(0)));
+        assert((2 * PI).approxEqual(degreesToRadiansD(360)));
+
+        assert(PI.approxEqual(degreesToRadiansF(180), 0.0001));
+        assert(0f.approxEqual(degreesToRadiansF(0)));
+        assert((2 * PI).approxEqual(degreesToRadiansF(360), 0.0001));
     });
 
     test("Convert radians to degrees", {
-        assert(180 == radiansToDegrees(PI));
-        assert(0 == radiansToDegrees(0));
-        assert(360 == radiansToDegrees(2 * PI));
+        assert(180 == radiansToDegreesD(PI));
+        assert(0 == radiansToDegreesD(0));
+        assert(360 == radiansToDegreesD(2 * PI));
+
+        assert(180.0f.approxEqual(radiansToDegreesF(PI), 0.0001));
+        assert(0 == radiansToDegreesF(0));
+        assert(360.0f.approxEqual(radiansToDegreesF(2 * PI), 0.0001));
     });
 }
