@@ -12,7 +12,7 @@
 module retrograde.engine.animation.kinetic;
 
 import retrograde.std.stringid : sid;
-import retrograde.std.math : QuaternionD;
+import retrograde.std.math : Quaternion;
 import retrograde.std.geometry : OrientationComponentType;
 
 import retrograde.engine.entity : EntityId, withComponentData, hasComponent;
@@ -20,10 +20,10 @@ import retrograde.engine.entity : EntityId, withComponentData, hasComponent;
 enum RotationComponentType = sid("comp_rotation");
 
 enum RotationProcessor = delegate(EntityId entity) {
-    entity.withComponentData!QuaternionD(RotationComponentType, (QuaternionD* rotation) {
+    entity.withComponentData!Quaternion(RotationComponentType, (Quaternion* rotation) {
         if (entity.hasComponent(OrientationComponentType)) {
-            entity.withComponentData!QuaternionD(OrientationComponentType, (
-                QuaternionD* orientation) {
+            entity.withComponentData!Quaternion(OrientationComponentType, (
+                Quaternion* orientation) {
                 auto newOrientation = *orientation * *rotation;
                 *orientation = newOrientation;
             });

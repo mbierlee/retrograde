@@ -24,7 +24,7 @@ import retrograde.data.model : ModelComponentType, Model;
 import retrograde.std.memory : makeSharedVoid, makeRaw, UniquePtr;
 import retrograde.std.collections : Array;
 import retrograde.std.stringid : sid;
-import retrograde.std.math : Matrix4D, Vector3D, QuaternionD, toTranslationMatrix, toScalingMatrix;
+import retrograde.std.math : Matrix4, Vector3, Quaternion, toTranslationMatrix4, toScalingMatrix4;
 import retrograde.std.geometry : PositionComponentType, OrientationComponentType, ScaleComponentType;
 import retrograde.std.dlang : CopyConstructors;
 
@@ -187,28 +187,28 @@ void clearShaderProgram() {
     glUseProgram(0);
 }
 
-void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matrix4D viewProjectionMatrix) {
+void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matrix4 viewProjectionMatrix) {
     entity.withComponentData(GlModelInfoComponentType, (GlModelInfo* modelInfo) {
-        Vector3D position;
-        QuaternionD orientation;
-        Vector3D scale = 1;
+        Vector3 position;
+        Quaternion orientation;
+        Vector3 scale = 1;
 
-        auto maybePosition = entity.getComponentData!Vector3D(PositionComponentType);
+        auto maybePosition = entity.getComponentData!Vector3(PositionComponentType);
         if (maybePosition.isDefined()) {
             position = *maybePosition.value;
         }
 
-        auto maybeOrientation = entity.getComponentData!QuaternionD(OrientationComponentType);
+        auto maybeOrientation = entity.getComponentData!Quaternion(OrientationComponentType);
         if (maybeOrientation.isDefined()) {
             orientation = *maybeOrientation.value;
         }
 
-        auto maybeScale = entity.getComponentData!Vector3D(ScaleComponentType);
+        auto maybeScale = entity.getComponentData!Vector3(ScaleComponentType);
         if (maybeScale.isDefined()) {
             scale = *maybeScale.value;
         }
 
-        auto modelMatrix = position.toTranslationMatrix() * orientation.toRotationMatrix() * scale.toScalingMatrix();
+        auto modelMatrix = position.toTranslationMatrix4() * orientation.toRotationMatrix() * scale.toScalingMatrix4();
         auto modelViewProjectionMatrix = viewProjectionMatrix * modelMatrix;
 
         auto mvpMatrixUniformLocation = (cast(GlRenderPassInfo*)(cast(RenderPass) renderPass)

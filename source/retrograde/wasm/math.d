@@ -22,14 +22,19 @@ version (LDC) {
     alias ceil = llvm_ceil;
     alias floor = llvm_floor;
     alias sqrt = llvm_sqrt;
+    alias sqrtf = llvm_sqrt;
     alias cos = llvm_cos;
+    alias cosf = llvm_cos;
     alias sin = llvm_sin;
+    alias sinf = llvm_sin;
 
     export extern (C) float tan(float value);
 
     T pow(T)(T base, T exponent) {
         return cast(T) llvm_pow(cast(float) base, cast(float) exponent);
     }
+
+    alias powf = pow;
 
     //TODO: Consider using browser's atan2. Benchmark to see if actually faster.
     T atan2(T)(T y, T x) {
@@ -45,6 +50,8 @@ version (LDC) {
             return 0.0; // x and y are 0, undefined case, returning 0 for simplicity.
         }
     }
+
+    alias atan2f = atan2;
 
     //TODO: Consider using browser's atan. Benchmark to see if actually faster.
     T atan(T)(T x) {
@@ -66,6 +73,8 @@ version (LDC) {
         return result;
     }
 
+    alias atanf = atan;
+
     //TODO: Consider using browser's asin. Benchmark to see if actually faster.
     T asin(T)(T x) {
         if (x > 1.0) {
@@ -79,6 +88,8 @@ version (LDC) {
         return atan(x / sqrt(1.0 - x * x));
     }
 
+    alias asinf = asin;
+
     //TODO: Consider using browser's acos. Benchmark to see if actually faster.
     T acos(T)(T x) {
         if (x > 1.0) {
@@ -91,4 +102,6 @@ version (LDC) {
 
         return PI / 2.0 - asin(x);
     }
+
+    alias acosf = acos;
 }
