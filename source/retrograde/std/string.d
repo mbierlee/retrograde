@@ -406,6 +406,11 @@ String join(ref Array!String strings, string glue = "") {
 version (UnitTesting)  :  ///
 
 void runStringTests() {
+    runStringBasicTests();
+    runStringIteratorTests();
+}
+
+void runStringBasicTests() {
     import retrograde.std.test : test, writeSection;
     import retrograde.std.memory : memcmp;
 
@@ -558,32 +563,6 @@ void runStringTests() {
         assert(str2 == "bye!");
     });
 
-    test("String iterator of empty string", {
-        auto iterator = StringIterator("".s);
-        assert(!iterator.hasNext);
-        assert(iterator.next.isEmpty);
-        assert(iterator.previous.isEmpty);
-    });
-
-    test("String iterator with filled string", {
-        auto iterator = StringIterator("Hi!".s);
-        assert(iterator.hasNext);
-        assert(iterator.next.value == 'H');
-        assert(iterator.hasNext);
-        assert(iterator.next.value == 'i');
-        assert(iterator.hasNext);
-        assert(iterator.next.value == '!');
-        assert(!iterator.hasNext);
-        assert(iterator.next.isEmpty);
-
-        assert(iterator.previous.value == '!');
-        assert(iterator.hasPrevious);
-        assert(iterator.previous.value == 'i');
-        assert(iterator.hasPrevious);
-        assert(iterator.previous.value == 'H');
-        assert(!iterator.hasPrevious);
-    });
-
     test("stripNonNumeric gets rid of numbers", {
         auto input = "1_2.3ignored5".s;
         assert(input.stripNonNumeric == "1235".s);
@@ -623,5 +602,38 @@ void runStringTests() {
         strings ~= "c".s;
         assert(strings.join(", ") == "a, b, c".s);
         assert(strings.join() == "abc".s);
+    });
+}
+
+
+void runStringIteratorTests() {
+    import retrograde.std.test : test, writeSection;
+
+    writeSection("-- StringIterator tests --");
+
+    test("String iterator of empty string", {
+        auto iterator = StringIterator("".s);
+        assert(!iterator.hasNext);
+        assert(iterator.next.isEmpty);
+        assert(iterator.previous.isEmpty);
+    });
+
+    test("String iterator with filled string", {
+        auto iterator = StringIterator("Hi!".s);
+        assert(iterator.hasNext);
+        assert(iterator.next.value == 'H');
+        assert(iterator.hasNext);
+        assert(iterator.next.value == 'i');
+        assert(iterator.hasNext);
+        assert(iterator.next.value == '!');
+        assert(!iterator.hasNext);
+        assert(iterator.next.isEmpty);
+
+        assert(iterator.previous.value == '!');
+        assert(iterator.hasPrevious);
+        assert(iterator.previous.value == 'i');
+        assert(iterator.hasPrevious);
+        assert(iterator.previous.value == 'H');
+        assert(!iterator.hasPrevious);
     });
 }
