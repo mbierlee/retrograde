@@ -12,6 +12,7 @@
 module retrograde.std.stdio;
 
 import retrograde.std.string : String;
+import retrograde.std.conv : to;
 
 version (WebAssembly) {
     import retrograde.wasm.stdio;
@@ -105,4 +106,36 @@ void writeErrLn(T)(T value) {
 
 void writeErrLn() {
     writeErrLn("");
+}
+
+/**
+ * Prints multiple values concatenated to the standard output stream.
+ */
+void writeln(T...)(T args) if (T.length >= 2) {
+    String res;
+    static foreach (arg; args) {
+        static if (is(typeof(arg) == string) || is(typeof(arg) == String)) {
+            res ~= arg;
+        } else {
+            res ~= to!String(arg);
+        }
+    }
+
+    writeln(res);
+}
+
+/**
+ * Prints multiple values concatenated to the standard error stream.
+ */
+void writeErrLn(T...)(T args) if (T.length >= 2) {
+    String res;
+    static foreach (arg; args) {
+        static if (is(typeof(arg) == string) || is(typeof(arg) == String)) {
+            res ~= arg;
+        } else {
+            res ~= to!String(arg);
+        }
+    }
+
+    writeErrLn(res);
 }
