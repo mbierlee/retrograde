@@ -15,6 +15,8 @@ version (UnitTesting)  :  ///
 
 import retrograde.std.stdio : writeln;
 
+uint testCount;
+
 /** 
  * Run a test. 
  *
@@ -33,7 +35,7 @@ void test(string name, void function() testFunc) {
     writeln(name);
     testFunc();
     writeln("  OK!");
-    ranTests += 1;
+    testCount += 1;
 }
 
 /** 
@@ -45,55 +47,4 @@ void writeSection(string name) {
     writeln("");
     writeln(name);
     writeln("");
-}
-
-/** 
- * Run all tests.
- */
-void runTests() {
-    version (WebAssembly) {
-        version (WasmMemTest) {
-            import retrograde.wasm.memory : runWasmMemTests;
-
-            runWasmMemTests();
-        }
-    }
-
-    import retrograde.std.memory : runStdMemoryTests;
-    import retrograde.std.string : runStringTests;
-    import retrograde.std.stringid : runStringIdTests;
-    import retrograde.std.option : runOptionTests;
-    import retrograde.std.result : runResultTests;
-    import retrograde.std.math : runMathTests;
-    import retrograde.std.collections : runCollectionsTests;
-    import retrograde.std.hash : runHashTests;
-    import retrograde.std.conv : runConvTests;
-    import retrograde.engine.entity : runEntityTests;
-    import retrograde.std.endian : runEndianTests;
-    import retrograde.data.assets.rgm : runRgmTests;
-
-    runStdMemoryTests();
-    runStringTests();
-    runStringIdTests();
-    runOptionTests();
-    runResultTests();
-    runMathTests();
-    runCollectionsTests();
-    runHashTests();
-    runEntityTests();
-    runConvTests();
-    runEndianTests();
-    runRgmTests();
-
-    writeln();
-    writeln("Tests ran:");
-    writeln(ranTests);
-}
-
-private uint ranTests;
-
-version (unittest) {
-    unittest {
-        runTests();
-    }
 }

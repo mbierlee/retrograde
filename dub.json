@@ -20,6 +20,10 @@
     }
   ],
   "buildTypes": {
+    "debug": {
+      "buildOptions": ["debugMode", "debugInfo"],
+      "buildOptions-windows": ["debugInfoC"]
+    },
     "release-O3": {
       "buildOptions": ["releaseMode"],
       "dflags-ldc2": ["-O3"]
