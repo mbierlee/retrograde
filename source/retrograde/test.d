@@ -41,8 +41,7 @@ void runTests() {
     runRgmTests();
 
     writeln();
-    writeln("Tests run:");
-    writeln(testCount);
+    writeln("Tests run: ", testCount);
 }
 
 version (unittest) {

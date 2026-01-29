@@ -129,7 +129,7 @@ OutT to(OutT, InT)(InT val) if (!is(InT == string)) {
     } else static if (is(OutT == String)) {
         return val.toString();
     } else static if (is(OutT == string)) {
-        return val.toString().get();
+        static assert(0, "Cannot convert to D string in BetterC mode. Use String instead.");
     } else {
         static assert(0, "Unsupported conversion");
     }
