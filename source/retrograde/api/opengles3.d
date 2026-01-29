@@ -61,8 +61,7 @@ void initRenderPass(ref RenderPass renderPass) {
     passInfo.shaderProgram = program;
     passInfo.mvpMatrixUniformLocation = glGetUniformLocation(program, "modelViewProjectionMatrix");
 
-    auto voidPtr = makeSharedVoid!GlRenderPassInfo(passInfo);
-    renderPass.apiData = voidPtr;
+    renderPass.apiData = makeSharedVoid!GlRenderPassInfo(passInfo);
 }
 
 void initFrame() {
