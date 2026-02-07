@@ -101,14 +101,19 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
      *
      * Params:
      *  item = the item to add.
+     * Returns: the index of the added item, or -1 if the operation failed.
      */
-    void add(T item) {
+    size_t add(T item) {
         considerResize();
 
         if (items !is null) {
-            items[_length] = item;
+            size_t index = _length;
+            items[index] = item;
             _length++;
+            return index;
         }
+
+        return -1;
     }
 
     /** 
@@ -968,7 +973,8 @@ void runArrayTests() {
 
     test("Add item to an Array", () {
         Array!int array;
-        array.add(1);
+        auto index = array.add(1);
+        assert(index == 0);
         assert(array.length == 1);
         assert(array.capacity == defaultChunkSize);
         assert(array[0] == 1);
@@ -1195,12 +1201,23 @@ void runArrayTests() {
         assert(array[0 .. $] == [0x1, 0x2, 0x3]);
     });
 
+    test("Add returns correct index", () {
+        Array!int array;
+        assert(array.add(10) == 0);
+        assert(array.add(20) == 1);
+        assert(array.add(30) == 2);
+        assert(array[0] == 10);
+        assert(array[1] == 20);
+        assert(array[2] == 30);
+    });
+
     test("Continuously growing array", () {
         // To test memory reallocation
 
         Array!int array;
         for (int i = 0; i < 128; i++) {
-            array.add(i);
+            auto index = array.add(i);
+            assert(index == i);
         }
 
         assert(array[0 .. $] == [
