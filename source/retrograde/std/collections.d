@@ -15,6 +15,7 @@ import retrograde.std.memory : malloc, realloc, free, allocateRaw, memset;
 import retrograde.std.math : ceil;
 import retrograde.std.option : Option, some, none;
 import retrograde.std.hash : hashOf;
+import retrograde.std.result : Result, success, failure;
 
 private enum defaultChunkSize = 8;
 
@@ -435,6 +436,584 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
                 memset(&items[i], 0, T.sizeof);
                 auto init = T.init;
                 items[i] = init;
+            }
+        }
+    }
+}
+
+struct Slot {
+    size_t index;
+    int serialNumber;
+}
+
+/** 
+ * A dynamic sparse array that tracks item validity using serial numbers.
+ * Items are stored in a contiguous memory block alongside their serial numbers.
+ * 
+ * Each slot has an associated serial number:
+ * - Serial numbers start at 1 and increment with each addition
+ * - A serial number of 0 indicates an empty/unused slot
+ * - Items can be removed without shifting the array (creating gaps)
+ * - Compact can be called to defragment and reclaim space
+ *
+ * This implementation is not thread-safe.
+ */
+struct SlotList(T, size_t chunkSize = defaultChunkSize) {
+    private T* items = null;
+    private int* serials = null;
+    private size_t _length = 0;
+    private size_t _capacity = 0;
+    private int nextSerial = 1;
+
+    this(ref return scope inout typeof(this) other) {
+        if (other._length == 0) {
+            return;
+        }
+
+        items = cast(T*) malloc(T.sizeof * other._length);
+        serials = cast(int*) malloc(int.sizeof * other._length);
+        assert(items !is null && serials !is null, "Failed to allocate memory during copy construction");
+
+        if (items !is null && serials !is null) {
+            memset(items, 0, T.sizeof * other._length);
+            memset(serials, 0, int.sizeof * other._length);
+            
+            T* mutableOtherItems = cast(T*) other.items;
+            int* mutableOtherSerials = cast(int*) other.serials;
+            
+            for (size_t i = 0; i < other._length; i++) {
+                items[i] = mutableOtherItems[i];
+                serials[i] = mutableOtherSerials[i];
+            }
+            
+            _length = other._length;
+            _capacity = other._length;
+            nextSerial = other.nextSerial;
+        }
+    }
+
+    ~this() {
+        clear();
+    }
+
+    /**
+     * Returns: the number of non-empty items in the slot list.
+     */
+    size_t length() const {
+        size_t c = 0;
+        for (size_t i = 0; i < _length; i++) {
+            if (serials[i] != 0) {
+                c++;
+            }
+        }
+
+        return c;
+    }
+
+    /**
+     * Returns: the physical length of the slot list (including empty slots).
+     */
+    size_t physicalLength() const {
+        return _length;
+    }
+
+    /**
+     * Returns: the allocated capacity of the slot list in number of slots.
+     */
+    size_t capacity() const {
+        return _capacity;
+    }
+
+    /**
+     * Change the capacity of the slot list.
+     * This will allocate or deallocate memory as needed.
+     *
+     * Params: 
+     *  newCapacity = the new capacity of the slot list.
+     */
+    void capacity(size_t newCapacity) {
+        if (newCapacity == _capacity) {
+            return;
+        }
+
+        if (newCapacity == 0) {
+            clear();
+            return;
+        }
+
+        resize(newCapacity - _capacity);
+
+        if (_length > _capacity) {
+            _length = _capacity;
+        }
+    }
+
+    /** 
+     * Add an item to the slot list.
+     * The item will receive a new serial number.
+     *
+     * Params:
+     *  item = the item to add.
+     * Returns: a Result containing the Slot referencing the added item, or a failure if the operation failed.
+     */
+    Result!Slot add(T item) {
+        // First try to find an empty slot
+        for (size_t i = 0; i < _length; i++) {
+            if (serials[i] == 0) {
+                items[i] = item;
+                serials[i] = nextSerial++;
+                return success(Slot(i, serials[i]));
+            }
+        }
+
+        // No empty slot found, add at the end
+        considerResize();
+
+        if (items !is null && serials !is null) {
+            size_t index = _length;
+            items[index] = item;
+            serials[index] = nextSerial++;
+            _length++;
+            return success(Slot(index, serials[index]));
+        }
+
+        return failure!Slot("Failed to allocate memory for slot list");
+    }
+
+    /** 
+     * Remove an item at the specified index.
+     * This marks the slot as empty but doesn't shift other items.
+     *
+     * Params:
+     *  index = the index of the item to remove.
+     */
+    void remove(size_t index) {
+        if (index >= _length) {
+            return;
+        }
+
+        serials[index] = 0;
+        items[index] = T.init;
+    }
+
+    /** 
+     * Remove an item at the specified slot.
+     * This marks the slot as empty but doesn't shift other items.
+     * If the slot's serial number doesn't match, this does nothing.
+     *
+     * Params:
+     *  slot = the slot of the item to remove.
+     */
+    void remove(Slot slot) {
+        if (slot.index >= _length || serials[slot.index] != slot.serialNumber) {
+            return;
+        }
+
+        serials[slot.index] = 0;
+        items[slot.index] = T.init;
+    }
+
+    /**
+     * Replace an item at the given index with a new item.
+     * The serial number remains unchanged.
+     * If the slot is empty, this does nothing.
+     *
+     * Params:
+     *  index = the index of the item to replace.
+     *  newItem = the new item to replace with.
+     */
+    void replace(size_t index, T newItem) {
+        if (index >= _length || serials[index] == 0) {
+            return;
+        }
+
+        items[index] = newItem;
+    }
+
+    /**
+     * Replace an item at the given slot with a new item.
+     * The serial number remains unchanged.
+     * If the slot's serial number doesn't match, this does nothing.
+     *
+     * Params:
+     *  slot = the slot of the item to replace.
+     *  newItem = the new item to replace with.
+     */
+    void replace(Slot slot, T newItem) {
+        if (slot.index >= _length || serials[slot.index] != slot.serialNumber) {
+            return;
+        }
+
+        items[slot.index] = newItem;
+    }
+
+    /** 
+     * Clear all items in the slot list.
+     * Allocated memory will be deallocated.
+     */
+    void clear() {
+        if (items !is null) {
+            for (size_t i = 0; i < _length; i++) {
+                items[i].destroy();
+            }
+            free(items);
+            items = null;
+        }
+
+        if (serials !is null) {
+            free(serials);
+            serials = null;
+        }
+
+        _length = 0;
+        _capacity = 0;
+        nextSerial = 1;
+    }
+
+    /**
+     * Truncate the slot list to the given length.
+     * Allocated memory will not be deallocated.
+     * If the new length is greater than the current length, nothing will happen.
+     *
+     * Params:
+     *  newLength = the new length of the slot list.
+     */
+    void truncate(size_t newLength) {
+        if (newLength < _length) {
+            // Clear the truncated slots
+            for (size_t i = newLength; i < _length; i++) {
+                serials[i] = 0;
+                items[i] = T.init;
+            }
+            _length = newLength;
+        }
+    }
+
+    /**
+     * Defragment the slot list by moving all valid items to the front
+     * and truncating the list to remove empty slots at the end.
+     * 
+     * WARNING: After calling compact(), previously returned indices are no longer valid!
+     * The physical positions of items will have changed.
+     */
+    void compact() {
+        if (_length == 0) {
+            return;
+        }
+
+        size_t writeIndex = 0;
+        for (size_t readIndex = 0; readIndex < _length; readIndex++) {
+            if (serials[readIndex] != 0) {
+                if (writeIndex != readIndex) {
+                    items[writeIndex] = items[readIndex];
+                    serials[writeIndex] = serials[readIndex];
+                    items[readIndex] = T.init;
+                    serials[readIndex] = 0;
+                }
+                writeIndex++;
+            }
+        }
+
+        _length = writeIndex;
+    }
+
+    /** 
+     * Find the slot of the first item that matches the given value.
+     * Only searches non-empty slots.
+     *
+     * Params:
+     *  value = the value to search for.
+     * Returns: a Result containing the Slot of the first matching item, or a failure if not found.
+     */
+    Result!Slot find(T value) const {
+        for (size_t i = 0; i < _length; i++) {
+            if (serials[i] != 0 && items[i] == value) {
+                return success(Slot(i, serials[i]));
+            }
+        }
+
+        return failure!Slot("Item not found");
+    }
+
+    /** 
+     * Find the index of the item with the given serial number.
+     *
+     * Params:
+     *  serial = the serial number to search for.
+     * Returns: the index of the item with the given serial number. -1 if not found.
+     */
+    size_t findIndexBySerial(int serial) const {
+        if (serial == 0) {
+            return -1;
+        }
+
+        for (size_t i = 0; i < _length; i++) {
+            if (serials[i] == serial) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /** 
+     * Find the item with the given serial number.
+     *
+     * Params:
+     *  serial = the serial number to search for.
+     * Returns: the item with the given serial number, or none if not found.
+     */
+    Option!T findItemBySerial(int serial) const {
+        size_t index = findIndexBySerial(serial);
+        if (index == -1) {
+            return none!T;
+        }
+
+        return some(cast(T) items[index]);
+    }
+
+    /** 
+     * Find the slot with the given serial number.
+     *
+     * Params:
+     *  serial = the serial number to search for.
+     * Returns: the slot with the given serial number, or none if not found.
+     */
+    Option!Slot findSlotBySerial(int serial) const {
+        size_t index = findIndexBySerial(serial);
+        if (index == -1) {
+            return none!Slot;
+        }
+
+        return some(Slot(index, serials[index]));
+    }
+
+    /** 
+     * Find the slot at the given index.
+     * This validates that the index is in range and not empty.
+     *
+     * Params:
+     *  index = the index to look up.
+     * Returns: the slot at the given index, or none if index is out of range or empty.
+     */
+    Option!Slot findSlotByIndex(size_t index) const {
+        if (index >= _length || serials[index] == 0) {
+            return none!Slot;
+        }
+
+        return some(Slot(index, serials[index]));
+    }
+
+    /** 
+     * Returns: Whether the given item exists in the slot list (in a non-empty slot).
+     */
+    bool exists(T value) const {
+        return find(value).isSuccessful;
+    }
+
+    /**
+     * Get the item at the given slot.
+     * This performs a serial number check to ensure the slot is still valid.
+     *
+     * Params:
+     *  slot = the slot to retrieve.
+     * Returns: the item at the slot, or none if the slot is invalid or serial doesn't match.
+     */
+    Option!T get(Slot slot) const {
+        if (slot.index >= _length || serials[slot.index] != slot.serialNumber) {
+            return none!T;
+        }
+
+        return some(cast(T) items[slot.index]);
+    }
+
+    /**
+     * Check if a slot is still valid.
+     * This verifies both that the index is in range and the serial number matches.
+     *
+     * Params:
+     *  slot = the slot to check.
+     * Returns: true if the slot is valid and its serial matches.
+     */
+    bool isValid(Slot slot) const {
+        if (slot.index >= _length) {
+            return false;
+        }
+        return serials[slot.index] == slot.serialNumber;
+    }
+
+    /** 
+     * Get the serial number at the given index.
+     *
+     * Params:
+     *  index = the index to query.
+     * Returns: the serial number at the index, or 0 if index is out of bounds.
+     */
+    int getSerial(size_t index) const {
+        if (index >= _length) {
+            return 0;
+        }
+        return serials[index];
+    }
+
+    /** 
+     * Check if a slot is empty.
+     *
+     * Params:
+     *  index = the index to check.
+     * Returns: true if the slot is empty (serial is 0), false otherwise.
+     */
+    bool isEmpty(size_t index) const {
+        if (index >= _length) {
+            return true;
+        }
+
+        return serials[index] == 0;
+    }
+
+    void opAssign(ref return scope inout typeof(this) other) {
+        if (this is other) {
+            return;
+        }
+
+        if (other._length == 0) {
+            clear();
+            return;
+        }
+
+        T* newItems = cast(T*) realloc(items, T.sizeof * other._length);
+        int* newSerials = cast(int*) realloc(serials, int.sizeof * other._length);
+        
+        if (newItems is null || newSerials is null) {
+            assert(0, "Failed to allocate memory during assignment of slot list");
+            return;
+        }
+
+        memset(newItems, 0, T.sizeof * other._length);
+        memset(newSerials, 0, int.sizeof * other._length);
+        
+        T* mutableOtherItems = cast(T*) other.items;
+        int* mutableOtherSerials = cast(int*) other.serials;
+        
+        for (size_t i = 0; i < other._length; i++) {
+            newItems[i] = mutableOtherItems[i];
+            newSerials[i] = mutableOtherSerials[i];
+        }
+
+        items = newItems;
+        serials = newSerials;
+        _length = other._length;
+        _capacity = other._capacity;
+        nextSerial = other.nextSerial;
+    }
+
+    auto opIndex(size_t i) const {
+        assert(i >= 0 && i < _length, "Index out of bounds");
+        return items[i];
+    }
+
+    auto opIndex(size_t i) {
+        assert(i >= 0 && i < _length, "Index out of bounds");
+        return items[i];
+    }
+
+    size_t opDollar() {
+        return _length;
+    }
+
+    auto opSlice(size_t i, size_t j) {
+        assert(i >= 0 && j >= 0 && i <= _length && j <= _length, "Index out of bounds");
+        return items[i .. j];
+    }
+
+    auto opSlice(size_t i, size_t j) const {
+        assert(i >= 0 && j >= 0 && i <= _length && j <= _length, "Index out of bounds");
+        return items[i .. j];
+    }
+
+    T opIndexAssign(T value, size_t i) {
+        assert(i >= 0 && i < _length, "Index out of bounds");
+        items[i] = value;
+        return value;
+    }
+
+    bool opEquals(const typeof(this) other) const {
+        return opEquals(other);
+    }
+
+    bool opEquals(ref const typeof(this) other) const {
+        if (other._length != _length) {
+            return false;
+        }
+
+        for (size_t i = 0; i < _length; i++) {
+            if (serials[i] != other.serials[i] || items[i] != other.items[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** 
+     * Returns: the hash of the slot list.
+     */
+    ulong toHash() nothrow @trusted const {
+        ulong hash = 0;
+        for (size_t i = 0; i < _length; i++) {
+            if (serials[i] != 0) {
+                hash = hash * 33 + items[i].hashOf;
+                hash = hash * 33 + serials[i];
+            }
+        }
+
+        return hash;
+    }
+
+    int opApply(int delegate(ref T) dg) {
+        foreach (size_t i; 0 .. _length) {
+            if (serials[i] != 0) {
+                auto result = dg(items[i]);
+                if (result) {
+                    return result;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    int opApply(int delegate(size_t, ref T) dg) {
+        foreach (size_t i; 0 .. _length) {
+            if (serials[i] != 0) {
+                auto result = dg(i, items[i]);
+                if (result) {
+                    return result;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    private void considerResize() {
+        if (items is null || serials is null || _capacity == _length) {
+            resize();
+        }
+    }
+
+    private void resize(size_t growSize = chunkSize) {
+        items = cast(T*) realloc(items, T.sizeof * (_capacity + growSize));
+        serials = cast(int*) realloc(serials, int.sizeof * (_capacity + growSize));
+        assert(items !is null && serials !is null, "Failed to allocate memory during resizing of slot list");
+        _capacity += growSize;
+
+        if (growSize > 0) {
+            for (size_t i = _capacity - growSize; i < _capacity; i++) {
+                memset(&items[i], 0, T.sizeof);
+                auto init = T.init;
+                items[i] = init;
+                serials[i] = 0;
             }
         }
     }
@@ -957,6 +1536,7 @@ version (UnitTesting)  :  ///
 
 void runCollectionsTests() {
     runArrayTests();
+    runSlotListTests();
     runLinkedListTests();
 }
 
@@ -1570,5 +2150,527 @@ void runLinkedListTests() {
         list1.add(3);
         list2 = list1;
         assert(list1 == list2);
+    });
+}
+
+void runSlotListTests() {
+    import retrograde.std.test : test, writeSection;
+
+    writeSection("-- SlotList tests --");
+
+    test("Create a SlotList", () {
+        SlotList!int list;
+        assert(list.length == 0);
+        assert(list.physicalLength == 0);
+        assert(list.capacity == 0);
+    });
+
+    test("Add item to a SlotList", () {
+        SlotList!int list;
+        auto result = list.add(42);
+        assert(result.isSuccessful);
+        auto slot = result.value;
+        assert(slot.index == 0);
+        assert(slot.serialNumber == 1);
+        assert(list.length == 1);
+        assert(list.physicalLength == 1);
+        assert(list.capacity == defaultChunkSize);
+        assert(list[0] == 42);
+        assert(list.getSerial(0) == 1);
+    });
+
+    test("Add multiple items to SlotList", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.add(30);
+        assert(list.length == 3);
+        assert(list.physicalLength == 3);
+        assert(list[0] == 10);
+        assert(list[1] == 20);
+        assert(list[2] == 30);
+        assert(list.getSerial(0) == 1);
+        assert(list.getSerial(1) == 2);
+        assert(list.getSerial(2) == 3);
+    });
+
+    test("Remove item from SlotList", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.add(30);
+        list.remove(1);
+        assert(list.length == 2); // Non-empty count
+        assert(list.physicalLength == 3); // Physical length unchanged
+        assert(list[0] == 10);
+        assert(list[2] == 30);
+        assert(list.getSerial(0) == 1);
+        assert(list.getSerial(1) == 0); // Serial is 0 for removed item
+        assert(list.getSerial(2) == 3);
+        assert(list.isEmpty(1));
+        assert(!list.isEmpty(0));
+        assert(!list.isEmpty(2));
+    });
+
+    test("Add item to slot after removal", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.add(30);
+        list.remove(1);
+        auto result = list.add(99);
+        assert(result.isSuccessful);
+        auto slot = result.value;
+        assert(slot.index == 1); // Reuses the empty slot
+        assert(slot.serialNumber == 4); // New serial number
+        assert(list.length == 3);
+        assert(list.physicalLength == 3);
+        assert(list[1] == 99);
+        assert(list.getSerial(1) == 4);
+    });
+
+    test("Replace item in SlotList", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.add(30);
+        list.replace(1, 99);
+        assert(list[1] == 99);
+        assert(list.getSerial(1) == 2); // Serial unchanged
+    });
+
+    test("Replace item in empty slot does nothing", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.remove(1);
+        list.replace(1, 99);
+        assert(list.getSerial(1) == 0); // Still empty
+        assert(list.isEmpty(1));
+    });
+
+    test("Find item in SlotList", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.add(30);
+        auto result = list.find(20);
+        assert(result.isSuccessful);
+        assert(result.value.index == 1);
+        assert(!list.find(99).isSuccessful);
+    });
+
+    test("Find skips empty slots", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.add(10);
+        list.remove(0);
+        auto result = list.find(10);
+        assert(result.isSuccessful);
+        assert(result.value.index == 2); // Finds the second 10, not the removed one
+    });
+
+    test("Exists checks for item in SlotList", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        assert(list.exists(10));
+        assert(list.exists(20));
+        assert(!list.exists(99));
+    });
+
+    test("FindItemBySerial returns item with given serial", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.add(30);
+        auto item = list.findItemBySerial(2);
+        assert(item.isDefined);
+        assert(item.value == 20);
+    });
+
+    test("FindItemBySerial returns none for non-existent serial", () {
+        SlotList!int list;
+        list.add(10);
+        auto item = list.findItemBySerial(99);
+        assert(item.isEmpty);
+    });
+
+    test("FindIndexBySerial returns index of item with given serial", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.add(30);
+        assert(list.findIndexBySerial(1) == 0);
+        assert(list.findIndexBySerial(2) == 1);
+        assert(list.findIndexBySerial(3) == 2);
+        assert(list.findIndexBySerial(99) == -1);
+    });
+
+    test("FindIndexBySerial works after removal", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.add(30);
+        auto serial2 = list.getSerial(1);
+        list.remove(1);
+        assert(list.findIndexBySerial(serial2) == -1); // Removed item not found
+        assert(list.findIndexBySerial(3) == 2); // Other items still found
+    });
+
+    test("FindSlotBySerial returns slot with given serial", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.add(30);
+        auto slot = list.findSlotBySerial(2);
+        assert(slot.isDefined);
+        assert(slot.value.index == 1);
+        assert(slot.value.serialNumber == 2);
+    });
+
+    test("FindSlotBySerial returns none for non-existent serial", () {
+        SlotList!int list;
+        list.add(10);
+        auto slot = list.findSlotBySerial(99);
+        assert(slot.isEmpty);
+    });
+
+    test("FindSlotByIndex returns slot for valid index", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.add(30);
+        auto slot = list.findSlotByIndex(1);
+        assert(slot.isDefined);
+        assert(slot.value.index == 1);
+        assert(slot.value.serialNumber == 2);
+    });
+
+    test("FindSlotByIndex returns none for empty slot", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.add(30);
+        list.remove(1);
+        auto slot = list.findSlotByIndex(1);
+        assert(slot.isEmpty);
+    });
+
+    test("FindSlotByIndex returns none for out of range index", () {
+        SlotList!int list;
+        list.add(10);
+        auto slot = list.findSlotByIndex(99);
+        assert(slot.isEmpty);
+    });
+
+    test("Compact defragments SlotList", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.add(30);
+        list.add(40);
+        list.add(50);
+        auto serial2 = list.getSerial(1);
+        auto serial4 = list.getSerial(3);
+        list.remove(1);
+        list.remove(3);
+        
+        assert(list.length == 3); // Non-empty count
+        assert(list.physicalLength == 5); // Physical length before compact
+        
+        list.compact();
+        
+        assert(list.length == 3); // Still 3 items
+        assert(list.physicalLength == 3); // Physical length now matches
+        assert(list[0] == 10);
+        assert(list[1] == 30);
+        assert(list[2] == 50);
+        assert(list.getSerial(0) == 1);
+        assert(list.getSerial(1) == 3);
+        assert(list.getSerial(2) == 5);
+        
+        // Old serials can still be found at new indices
+        assert(list.findIndexBySerial(serial2) == -1); // Removed serials not found
+        assert(list.findIndexBySerial(serial4) == -1);
+    });
+
+    test("Clear SlotList", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.add(30);
+        list.clear();
+        assert(list.length == 0);
+        assert(list.physicalLength == 0);
+        assert(list.capacity == 0);
+    });
+
+    test("Truncate SlotList", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.add(30);
+        list.add(40);
+        list.add(50);
+        list.truncate(3);
+        assert(list.length == 3);
+        assert(list.physicalLength == 3);
+        assert(list[0] == 10);
+        assert(list[1] == 20);
+        assert(list[2] == 30);
+    });
+
+    test("Increase SlotList capacity", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.capacity = 20;
+        assert(list.length == 2);
+        assert(list.physicalLength == 2);
+        assert(list.capacity == 20);
+    });
+
+    test("Set SlotList capacity to zero", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.capacity = 0;
+        assert(list.length == 0);
+        assert(list.capacity == 0);
+    });
+
+    test("Compare two SlotLists for equality", () {
+        SlotList!int list1;
+        SlotList!int list2;
+        list1.add(10);
+        list1.add(20);
+        list1.add(30);
+        list2.add(10);
+        list2.add(20);
+        list2.add(30);
+        assert(list1 == list2);
+    });
+
+    test("SlotLists with different serials are not equal", () {
+        SlotList!int list1;
+        SlotList!int list2;
+        list1.add(10);
+        list1.add(20);
+        list2.add(99); // Different serial sequence
+        list2.remove(0);
+        list2.add(10);
+        list2.add(20);
+        assert(list1 != list2); // Same values but different serials
+    });
+
+    test("Hash of SlotList", () {
+        SlotList!int list1;
+        SlotList!int list2;
+        list1.add(10);
+        list1.add(20);
+        list1.add(30);
+        list2.add(10);
+        list2.add(20);
+        list2.add(30);
+        assert(list1.toHash() == list2.toHash());
+    });
+
+    test("Assign SlotList to another SlotList", () {
+        SlotList!int list1;
+        SlotList!int list2;
+        list1.add(10);
+        list1.add(20);
+        list1.add(30);
+        list2 = list1;
+        assert(list1 == list2);
+        assert(list2[0] == 10);
+        assert(list2[1] == 20);
+        assert(list2[2] == 30);
+    });
+
+    test("Copy constructor creates independent copy", () {
+        SlotList!int list1;
+        list1.add(10);
+        list1.add(20);
+        auto list2 = list1;
+        list1.add(30);
+        list2.add(40);
+        assert(list1.length == 3);
+        assert(list2.length == 3);
+        assert(list1[2] == 30);
+        assert(list2[2] == 40);
+    });
+
+    test("OpDollar points to last slot", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.add(30);
+        assert(list.opDollar == 3);
+        assert(list[$ - 1] == 30);
+    });
+
+    test("Slice of SlotList", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.add(30);
+        list.add(40);
+        list.add(50);
+        assert(list[1 .. 4] == [20, 30, 40]);
+    });
+
+    test("Assign value by index", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.add(30);
+        list[1] = 99;
+        assert(list[1] == 99);
+        assert(list.getSerial(1) == 2); // Serial unchanged
+    });
+
+    test("Iterate over SlotList with opApply", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.add(30);
+        list.remove(1);
+        
+        int sum = 0;
+        foreach (item; list) {
+            sum += item;
+        }
+        assert(sum == 40); // Only non-empty slots
+    });
+
+    test("Iterate over SlotList with index", () {
+        SlotList!int list;
+        list.add(10);
+        list.add(20);
+        list.add(30);
+        list.remove(1);
+        
+        size_t count = 0;
+        size_t lastIndex = 0;
+        foreach (index, item; list) {
+            if (count == 0) {
+                assert(index == 0);
+                assert(item == 10);
+            } else if (count == 1) {
+                assert(index == 2); // Index 1 was skipped
+                assert(item == 30);
+            }
+            lastIndex = index;
+            count++;
+        }
+        assert(count == 2);
+        assert(lastIndex == 2);
+    });
+
+    test("Continuously growing SlotList", () {
+        SlotList!int list;
+        for (int i = 0; i < 64; i++) {
+            auto result = list.add(i);
+            assert(result.isSuccessful);
+            auto slot = result.value;
+            assert(slot.index == i);
+            assert(slot.serialNumber == i + 1);
+        }
+        assert(list.length == 64);
+        assert(list.physicalLength == 64);
+        for (int i = 0; i < 64; i++) {
+            assert(list[i] == i);
+            assert(list.getSerial(i) == i + 1);
+        }
+    });
+
+    test("Empty SlotList operations", () {
+        SlotList!int list;
+        assert(!list.find(10).isSuccessful);
+        assert(!list.exists(10));
+        assert(list.findItemBySerial(1).isEmpty);
+        assert(list.findIndexBySerial(1) == -1);
+        assert(list.getSerial(0) == 0);
+        assert(list.isEmpty(0));
+        list.remove(0); // Should not crash
+        list.replace(0, 10); // Should not crash
+        list.compact(); // Should not crash
+    });
+
+    test("Get item by Slot validates serial number", () {
+        SlotList!int list;
+        auto slot1 = list.add(10).value;
+        auto slot2 = list.add(20).value;
+        auto slot3 = list.add(30).value;
+        
+        // Valid slots should return items
+        assert(list.get(slot1).isDefined);
+        assert(list.get(slot1).value == 10);
+        assert(list.get(slot2).value == 20);
+        assert(list.get(slot3).value == 30);
+        
+        // After removal, slot becomes invalid
+        list.remove(1);
+        assert(list.get(slot2).isEmpty); // Serial number no longer matches
+        
+        // Other slots still valid
+        assert(list.get(slot1).isDefined);
+        assert(list.get(slot3).isDefined);
+    });
+
+    test("Remove by Slot validates serial number", () {
+        SlotList!int list;
+        auto slot1 = list.add(10).value;
+        auto slot2 = list.add(20).value;
+        auto slot3 = list.add(30).value;
+        
+        list.remove(slot2);
+        assert(list.length == 2);
+        assert(list.isEmpty(1));
+        
+        // Trying to remove again with same slot does nothing (serial mismatch)
+        list.remove(slot2);
+        assert(list.length == 2);
+        
+        // After slot is reused, old slot reference is invalid
+        auto slot4 = list.add(99).value;
+        assert(slot4.index == 1); // Reused slot 1
+        list.remove(slot2); // Old slot2 reference, different serial
+        assert(list.get(slot4).isDefined); // Still there
+        assert(list.get(slot4).value == 99);
+    });
+
+    test("Replace by Slot validates serial number", () {
+        SlotList!int list;
+        auto slot1 = list.add(10).value;
+        auto slot2 = list.add(20).value;
+        
+        list.replace(slot2, 99);
+        assert(list.get(slot2).value == 99);
+        
+        list.remove(slot2);
+        list.replace(slot2, 77); // Should do nothing, serial mismatch
+        assert(list.isEmpty(1));
+    });
+
+    test("IsValid checks slot validity", () {
+        SlotList!int list;
+        auto slot1 = list.add(10).value;
+        auto slot2 = list.add(20).value;
+        
+        assert(list.isValid(slot1));
+        assert(list.isValid(slot2));
+        
+        list.remove(slot1);
+        assert(!list.isValid(slot1)); // No longer valid
+        assert(list.isValid(slot2)); // Still valid
+        
+        // After compact, slots may become invalid
+        list.add(30);
+        list.compact();
+        // slot2's index may have changed
     });
 }
