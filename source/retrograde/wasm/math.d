@@ -15,6 +15,8 @@ version (WebAssembly)  :  //
 
 version (LDC) {
     // https://github.com/ldc-developers/druntime/blob/ldc/src/ldc/intrinsics.di
+    // Note: LDC intrinsics for WASM targets fall back to extern runtime functions
+    // (e.g. powf, cosf, sinf, cos, sin) which must be provided by the JS runtime.
     import ldc.intrinsics : llvm_ceil, llvm_floor, llvm_pow, llvm_sqrt, llvm_cos, llvm_sin;
 
     import retrograde.std.math : PI;
