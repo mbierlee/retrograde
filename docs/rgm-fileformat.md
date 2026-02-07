@@ -6,7 +6,7 @@ The offsets and sizes shown are in bytes. Types correspond to native types in th
 
 This document describes `version 1` of the RGM file format.
 
-For an example file, see `cube.rgm`
+For an example file, see `.\examples\cube.rgm`
 
 ## File Structure
 
