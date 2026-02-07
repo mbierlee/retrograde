@@ -22,18 +22,47 @@ private enum defaultChunkSize = 8;
 /**
  * A dynamic array that automatically resizes when needed.
  * Items are stored in a contiguous memory block.
- * This array implementation is not thread-safe.
+ * 
+ * The array grows automatically by `chunkSize` elements when capacity is exceeded.
+ * Memory is managed manually using malloc/realloc/free from retrograde.std.memory.
+ * 
+ * Key features:
+ * - Automatic resizing with configurable chunk size
+ * - Contiguous memory storage for cache efficiency
+ * - Support for slicing, indexing, and iteration
+ * - Copy and assignment operations with deep copy semantics
+ * - No gaps - removing items shifts subsequent elements
+ * 
+ * This implementation is not thread-safe.
+ * 
+ * Template_Params:
+ *  T = the type of elements stored in the array
+ *  chunkSize = the number of elements to allocate when growing (default: 8)
  */
 struct Array(T, size_t chunkSize = defaultChunkSize) {
     private T* items = null;
     private size_t _length = 0;
     private size_t _capacity = 0;
 
+    /**
+     * Copy constructor.
+     * Creates a deep copy of another array.
+     *
+     * Params:
+     *  other = the array to copy from.
+     */
     this(ref return scope inout typeof(this) other) {
         this(other.items[0 .. other._length]);
         _capacity = other._length;
     }
 
+    /**
+     * Constructor from a D array.
+     * Creates a deep copy of the given array.
+     *
+     * Params:
+     *  other = the D array to copy from.
+     */
     this(scope inout T[] other) {
         if (other.length == 0) {
             return;
@@ -54,6 +83,10 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         }
     }
 
+    /**
+     * Destructor.
+     * Automatically clears and deallocates all memory.
+     */
     ~this() {
         clear();
     }
@@ -156,9 +189,10 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         items[index] = newItem;
     }
 
-    /** 
+    /**
      * Clear all items in the array.
-     * Allocated memory will be deallocated.
+     * Calls destructors on all items and deallocates memory.
+     * After calling this, length and capacity will both be 0.
      */
     void clear() {
         if (items !is null) {
@@ -212,13 +246,24 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         return find(value) != -1;
     }
 
-    /** 
-     * Returns: A D array of the array's items.
+    /**
+     * Get a D array slice of the array's items.
+     * The returned slice directly references the internal memory buffer.
+     * The slice becomes invalid if the array is modified in a way that reallocates memory.
+     *
+     * Returns: A D array slice containing all items in the array.
      */
     T[] arr() {
         return items[0 .. _length];
     }
 
+    /**
+     * Assignment operator for copying another Array.
+     * Creates a deep copy of the other array.
+     *
+     * Params:
+     *  other = the array to copy from.
+     */
     void opAssign(ref return scope inout typeof(this) other) {
         if (this is other) {
             return;
@@ -247,6 +292,13 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         _capacity = other._capacity;
     }
 
+    /**
+     * Assignment operator for copying a D array.
+     * Creates a deep copy of the given array.
+     *
+     * Params:
+     *  other = the D array to copy from.
+     */
     void opAssign(scope inout T[] other) {
         if (other.length == 0) {
             clear();
@@ -271,77 +323,185 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         _capacity = other.length;
     }
 
+    /**
+     * Append operator (~=) for adding a single item.
+     * Equivalent to calling add().
+     *
+     * Params:
+     *  rhs = the item to append.
+     */
     void opOpAssign(string op : "~")(T rhs) {
         add(rhs);
     }
 
+    /**
+     * Append operator (~=) for concatenating another array.
+     * Adds all items from the other array to this array.
+     *
+     * Params:
+     *  rhs = the array to append.
+     */
     void opOpAssign(string op : "~")(ref typeof(this) rhs) {
         foreach (T item; rhs.items[0 .. rhs._length]) {
             add(item);
         }
     }
 
+    /**
+     * Binary concatenation operator (~) for creating a new array.
+     * Creates a new array containing items from both arrays.
+     *
+     * Params:
+     *  rhs = the array to concatenate.
+     * Returns: a new array containing all items from both arrays.
+     */
     typeof(this) opBinary(string op : "~")(ref typeof(this) rhs) {
         typeof(this) result = this;
         result ~= rhs;
         return result;
     }
 
+    /**
+     * Binary concatenation operator (~) for adding an item.
+     * Creates a new array with the item appended.
+     *
+     * Params:
+     *  rhs = the item to append.
+     * Returns: a new array with the item added at the end.
+     */
     typeof(this) opBinary(string op : "~")(T rhs) {
         typeof(this) result = this;
         result ~= rhs;
         return result;
     }
 
+    /**
+     * Binary concatenation operator (~) for adding an item by reference.
+     * Creates a new array with the item appended.
+     *
+     * Params:
+     *  rhs = the item to append.
+     * Returns: a new array with the item added at the end.
+     */
     typeof(this) opBinary(string op : "~")(ref T rhs) {
         typeof(this) result = this;
         result ~= rhs;
         return result;
     }
 
+    /**
+     * Index operator for read access (const version).
+     *
+     * Params:
+     *  i = the index of the item to access.
+     * Returns: the item at the given index.
+     */
     auto opIndex(size_t i) const {
         assert(i >= 0 && i < _length, "Index out of bounds");
         return items[i];
     }
 
+    /**
+     * Index operator for read/write access.
+     *
+     * Params:
+     *  i = the index of the item to access.
+     * Returns: the item at the given index.
+     */
     auto opIndex(size_t i) { // TODO: maybe get rid and fix const correctness
         assert(i >= 0 && i < _length, "Index out of bounds");
         return items[i];
     }
 
+    /**
+     * Full slice operator [].
+     * Returns a slice of all items in the array.
+     *
+     * Returns: a D array slice containing all items.
+     */
     T[] opIndex() {
         return items[0 .. _length];
     }
 
+    /**
+     * Dollar operator for slice expressions.
+     * Allows usage like array[0 .. $].
+     *
+     * Returns: the length of the array.
+     */
     size_t opDollar() {
         return _length;
     }
 
+    /**
+     * Slice operator for read/write access.
+     *
+     * Params:
+     *  i = the starting index.
+     *  j = the ending index (exclusive).
+     * Returns: a D array slice of the specified range.
+     */
     auto opSlice(size_t i, size_t j) { // TODO: maybe get rid and fix const correctness
         assert(i >= 0 && j >= 0 && i <= _length && j <= _length, "Index out of bounds");
         return items[i .. j];
     }
 
+    /// Idem
     auto opSlice(size_t i, size_t j) const {
         assert(i >= 0 && j >= 0 && i <= _length && j <= _length, "Index out of bounds");
         return items[i .. j];
     }
 
+    /**
+     * Multidimensional slice operator.
+     * Provides slice support for dimension 0.
+     *
+     * Params:
+     *  i = the starting index.
+     *  j = the ending index (exclusive).
+     * Returns: a D array slice of the specified range.
+     */
     T[] opSlice(size_t dim : 0)(size_t i, size_t j) {
         assert(i >= 0 && j >= 0 && i <= _length && j <= _length, "Index out of bounds");
         return items[i .. j];
     }
 
+    /**
+     * Identity operator for slices.
+     * Returns the slice as-is.
+     *
+     * Params:
+     *  slice = the slice to return.
+     * Returns: the same slice.
+     */
     T[] opIndex()(T[] slice) {
         return slice;
     }
 
+    /**
+     * Index assignment operator for setting a single element.
+     * Allows usage like array[i] = value.
+     *
+     * Params:
+     *  value = the value to assign.
+     *  i = the index to assign to.
+     * Returns: the assigned value.
+     */
     T opIndexAssign(T value, size_t i) {
         assert(i >= 0 && i < _length, "Index out of bounds");
         items[i] = value;
         return value;
     }
 
+    /**
+     * Array-wide assignment operator.
+     * Assigns the same value to all elements in the array.
+     * Allows usage like array[] = value.
+     *
+     * Params:
+     *  value = the value to assign to all elements.
+     * Returns: the assigned value.
+     */
     T opIndexAssign(T value) {
         for (size_t i = 0; i < _length; i++) {
             items[i] = value;
@@ -350,10 +510,25 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         return value;
     }
 
+    /**
+     * Equality comparison operator (const D array by value).
+     *
+     * Params:
+     *  other = the D array to compare with.
+     * Returns: true if arrays have the same length and all elements are equal.
+     */
     bool opEquals(const T[] other) const {
         return opEquals(other);
     }
 
+    /**
+     * Equality comparison operator (const D array by reference).
+     * Compares element-by-element.
+     *
+     * Params:
+     *  other = the D array to compare with.
+     * Returns: true if arrays have the same length and all elements are equal.
+     */
     bool opEquals(ref const T[] other) const {
         if (other.length != _length) {
             return false;
@@ -368,10 +543,25 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         return true;
     }
 
+    /**
+     * Equality comparison operator (const Array by value).
+     *
+     * Params:
+     *  other = the array to compare with.
+     * Returns: true if arrays have the same length and all elements are equal.
+     */
     bool opEquals(const typeof(this) other) const {
         return opEquals(other);
     }
 
+    /**
+     * Equality comparison operator (const Array by reference).
+     * Compares element-by-element.
+     *
+     * Params:
+     *  other = the array to compare with.
+     * Returns: true if arrays have the same length and all elements are equal.
+     */
     bool opEquals(ref const typeof(this) other) const {
         if (other.length != _length) {
             return false;
@@ -386,8 +576,11 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         return true;
     }
 
-    /** 
-     * Returns: the hash of the array.
+    /**
+     * Compute a hash of the array.
+     * Uses a polynomial rolling hash over all elements.
+     *
+     * Returns: the hash value of the array.
      */
     ulong toHash() nothrow @trusted const {
         ulong hash = 0;
@@ -398,6 +591,14 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         return hash;
     }
 
+    /**
+     * Foreach iteration support.
+     * Allows iteration with `foreach (item; array)`.
+     *
+     * Params:
+     *  dg = the delegate to call for each item.
+     * Returns: non-zero if iteration was stopped early, 0 otherwise.
+     */
     int opApply(int delegate(ref T) dg) {
         foreach (size_t i; 0 .. _length) {
             auto result = dg(items[i]);
@@ -409,6 +610,14 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         return 0;
     }
 
+    /**
+     * Foreach iteration support with index.
+     * Allows iteration with `foreach (i, item; array)`.
+     *
+     * Params:
+     *  dg = the delegate to call for each item with its index.
+     * Returns: non-zero if iteration was stopped early, 0 otherwise.
+     */
     int opApply(int delegate(size_t, ref T) dg) {
         foreach (size_t i; 0 .. _length) {
             auto result = dg(i, items[i]);
@@ -465,6 +674,13 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
     private size_t _capacity = 0;
     private int nextSerial = 1;
 
+    /**
+     * Copy constructor.
+     * Creates a deep copy of another slot list.
+     *
+     * Params:
+     *  other = the slot list to copy from.
+     */
     this(ref return scope inout typeof(this) other) {
         if (other._length == 0) {
             return;
@@ -492,6 +708,10 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
         }
     }
 
+    /**
+     * Destructor.
+     * Automatically clears and deallocates all memory.
+     */
     ~this() {
         clear();
     }
@@ -871,6 +1091,13 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
         return serials[index] == 0;
     }
 
+    /**
+     * Assignment operator for copying another SlotList.
+     * Creates a deep copy of the other slot list.
+     *
+     * Params:
+     *  other = the slot list to copy from.
+     */
     void opAssign(ref return scope inout typeof(this) other) {
         if (this is other) {
             return;
@@ -907,40 +1134,105 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
         nextSerial = other.nextSerial;
     }
 
+    /**
+     * Index operator for read access (const version).
+     *
+     * Params:
+     *  i = the index of the item to access.
+     * Returns: the item at the given index.
+     */
     auto opIndex(size_t i) const {
         assert(i >= 0 && i < _length, "Index out of bounds");
         return items[i];
     }
 
+    /**
+     * Index operator for read/write access.
+     *
+     * Params:
+     *  i = the index of the item to access.
+     * Returns: the item at the given index.
+     */
     auto opIndex(size_t i) {
         assert(i >= 0 && i < _length, "Index out of bounds");
         return items[i];
     }
 
+    /**
+     * Dollar operator for slice expressions.
+     * Allows usage like slotList[0 .. $].
+     *
+     * Returns: the physical length of the slot list.
+     */
     size_t opDollar() {
         return _length;
     }
 
+    /**
+     * Slice operator for read/write access.
+     * The returned slice directly references the internal memory buffer.
+     * The slice becomes invalid if the slot list is modified in a way that reallocates memory.
+     *
+     * Params:
+     *  i = the starting index.
+     *  j = the ending index (exclusive).
+     * Returns: a D array slice of the specified range.
+     */
     auto opSlice(size_t i, size_t j) {
         assert(i >= 0 && j >= 0 && i <= _length && j <= _length, "Index out of bounds");
         return items[i .. j];
     }
 
+    /**
+     * Slice operator for read access (const version).
+     * The returned slice directly references the internal memory buffer.
+     * The slice becomes invalid if the slot list is modified in a way that reallocates memory.
+     *
+     * Params:
+     *  i = the starting index.
+     *  j = the ending index (exclusive).
+     * Returns: a D array slice of the specified range.
+     */
     auto opSlice(size_t i, size_t j) const {
         assert(i >= 0 && j >= 0 && i <= _length && j <= _length, "Index out of bounds");
         return items[i .. j];
     }
 
+    /**
+     * Index assignment operator for setting a single element.
+     * Allows usage like slotList[i] = value.
+     * Note: This does not affect serial numbers.
+     *
+     * Params:
+     *  value = the value to assign.
+     *  i = the index to assign to.
+     * Returns: the assigned value.
+     */
     T opIndexAssign(T value, size_t i) {
         assert(i >= 0 && i < _length, "Index out of bounds");
         items[i] = value;
         return value;
     }
 
+    /**
+     * Equality comparison operator (const SlotList by value).
+     *
+     * Params:
+     *  other = the slot list to compare with.
+     * Returns: true if slot lists have the same length, items, and serial numbers.
+     */
     bool opEquals(const typeof(this) other) const {
         return opEquals(other);
     }
 
+    /**
+     * Equality comparison operator (const SlotList by reference).
+     * Compares both items and serial numbers element-by-element.
+     *
+     * Params:
+     *  other = the slot list to compare with.
+     * Returns: true if slot lists have the same length, items, and serial numbers.
+     */
     bool opEquals(ref const typeof(this) other) const {
         if (other._length != _length) {
             return false;
@@ -955,8 +1247,11 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
         return true;
     }
 
-    /** 
-     * Returns: the hash of the slot list.
+    /**
+     * Compute a hash of the slot list.
+     * Uses a polynomial rolling hash over all non-empty items and their serial numbers.
+     *
+     * Returns: the hash value of the slot list.
      */
     ulong toHash() nothrow @trusted const {
         ulong hash = 0;
@@ -970,6 +1265,14 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
         return hash;
     }
 
+    /**
+     * Foreach iteration support.
+     * Allows iteration with `foreach (item; array)`.
+     *
+     * Params:
+     *  dg = the delegate to call for each item.
+     * Returns: non-zero if iteration was stopped early, 0 otherwise.
+     */
     int opApply(int delegate(ref T) dg) {
         foreach (size_t i; 0 .. _length) {
             if (serials[i] != 0) {
@@ -983,6 +1286,14 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
         return 0;
     }
 
+    /**
+     * Foreach iteration support with index.
+     * Allows iteration with `foreach (i, item; array)`.
+     *
+     * Params:
+     *  dg = the delegate to call for each item with its index.
+     * Returns: non-zero if iteration was stopped early, 0 otherwise.
+     */
     int opApply(int delegate(size_t, ref T) dg) {
         foreach (size_t i; 0 .. _length) {
             if (serials[i] != 0) {
@@ -1249,6 +1560,13 @@ struct LinkedList(T) {
         return -1;
     }
 
+    /**
+     * Assignment operator for copying another LinkedList.
+     * Creates a deep copy of the other list.
+     *
+     * Params:
+     *  other = the list to copy from.
+     */
     void opAssign(ref return scope inout typeof(this) other) {
         NodePtr node = head;
         while (node !is null) {
@@ -1265,15 +1583,39 @@ struct LinkedList(T) {
         }
     }
 
+    /**
+     * Index operator for read access.
+     * Traverses the list from the head to the specified index.
+     *
+     * Params:
+     *  i = the index of the item to access.
+     * Returns: the item at the given index.
+     */
     auto opIndex(size_t i) {
         assert(i >= 0 && i < _length, "Index out of bounds");
         return get(i).value;
     }
 
+    /**
+     * Dollar operator for slice expressions.
+     * Allows usage like list[0 .. $].
+     *
+     * Returns: the length of the list.
+     */
     size_t opDollar() {
         return _length;
     }
 
+    /**
+     * Slice operator.
+     * Creates a new Array containing the elements in the specified range.
+     * Note: This traverses the list and copies elements into an Array, not a zero-copy view.
+     *
+     * Params:
+     *  i = the starting index.
+     *  j = the ending index (exclusive).
+     * Returns: a new Array containing the elements in the specified range.
+     */
     Array!T opSlice(size_t dim : 0)(size_t i, size_t j) {
         assert(i >= 0 && j >= 0 && i <= _length && j <= _length, "Index out of bounds");
         assert(i <= j, "Invalid slice");
@@ -1293,10 +1635,27 @@ struct LinkedList(T) {
         return result;
     }
 
+    /**
+     * Identity operator for slices.
+     * Returns the slice as-is.
+     *
+     * Params:
+     *  slice = the slice to return.
+     * Returns: the same slice.
+     */
     Array!T opIndex()(Array!T slice) {
         return slice;
     }
 
+    /**
+     * Index assignment operator for setting a single element.
+     * Allows usage like list[i] = value.
+     *
+     * Params:
+     *  value = the value to assign.
+     *  i = the index to assign to.
+     * Returns: the assigned value.
+     */
     T opIndexAssign(T value, size_t i) {
         assert(i >= 0 && i < _length, "Index out of bounds");
         NodePtr node = head;
@@ -1308,6 +1667,15 @@ struct LinkedList(T) {
         return value;
     }
 
+    /**
+     * List-wide assignment operator.
+     * Assigns the same value to all elements in the list.
+     * Allows usage like list[] = value.
+     *
+     * Params:
+     *  value = the value to assign to all elements.
+     * Returns: the assigned value.
+     */
     T opIndexAssign(T value) {
         NodePtr node = head;
         while (node !is null) {
@@ -1318,10 +1686,25 @@ struct LinkedList(T) {
         return value;
     }
 
+    /**
+     * Equality comparison operator (const LinkedList by value).
+     *
+     * Params:
+     *  other = the list to compare with.
+     * Returns: true if lists have the same length and all elements are equal.
+     */
     bool opEquals(const typeof(this) other) const {
         return opEquals(other);
     }
 
+    /**
+     * Equality comparison operator (const LinkedList by reference).
+     * Compares element-by-element.
+     *
+     * Params:
+     *  other = the list to compare with.
+     * Returns: true if lists have the same length and all elements are equal.
+     */
     bool opEquals(ref const typeof(this) other) const {
         if (other.length != _length) {
             return false;
