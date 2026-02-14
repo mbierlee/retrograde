@@ -14,15 +14,14 @@ module retrograde.engine.entity;
 import retrograde.std.string : String, s;
 import retrograde.std.stringid : StringId;
 import retrograde.std.memory : UniquePtr, free;
-import retrograde.std.collections : Array;
-import retrograde.std.result : OperationResult, success;
+import retrograde.std.collections : Array, SlotList, Slot;
+import retrograde.std.result : OperationResult, Result, success, failure;
 import retrograde.std.option : Option, some, none;
 import retrograde.std.dlang : CopyConstructors;
 
-alias EntityId = ulong;
+alias EntityId = uint;
 
 private struct EntityEntry {
-    EntityId id;
     String name;
     Array!Component components;
 
@@ -49,33 +48,32 @@ alias EntityAddedHookFunction = void delegate(EntityId);
 alias EntityFinalizedHookFunction = void delegate(EntityId);
 alias EntityRemovedHookFunction = void delegate(EntityId);
 
-private Array!EntityEntry entities;
-private ulong nextId = 1;
+private SlotList!EntityEntry entities;
 
 private Array!ProcessorFunction processors;
 private Array!EntityAddedHookFunction entityAddedHooks;
 private Array!EntityFinalizedHookFunction entityFinalizedHooks;
 private Array!EntityRemovedHookFunction entityRemovedHooks;
 
-EntityId createEntity(String name = String()) {
-    if (nextId == 0) {
-        nextId = 1;
+Result!EntityId createEntity(String name = String()) {
+    EntityEntry entry;
+    entry.name = name;
+    auto result = entities.add(entry);
+
+    if (!result.isSuccessful) {
+        return failure!EntityId(result.errorMessage);
     }
 
-    EntityId entityId = nextId++;
-    EntityEntry entry;
-    entry.id = entityId;
-    entry.name = name;
-    entities.add(entry);
+    EntityId entityId = result.value.serialNumber;
 
     foreach (hook; entityAddedHooks) {
         hook(entityId);
     }
 
-    return entityId;
+    return success(entityId);
 }
 
-EntityId createEntity(string name) {
+Result!EntityId createEntity(string name) {
     return createEntity(name.s);
 }
 
@@ -95,15 +93,15 @@ OperationResult removeEntity(EntityId entityId) {
         return success;
     }
 
-    for (size_t i = 0; i < entities.length; i++) {
-        if (entities[i].id == entityId) {
+    foreach (size_t i, ref entity; entities) {
+        if (entities.getSerial(i) == entityId) {
             // Free all component data
-            foreach (ref comp; entities[i].components) {
+            foreach (ref comp; entity.components) {
                 if (comp.data !is null) {
                     free(comp.data);
                 }
             }
-            
+
             entities.remove(i);
             foreach (hook; entityRemovedHooks) {
                 hook(entityId);
@@ -117,17 +115,11 @@ OperationResult removeEntity(EntityId entityId) {
 }
 
 bool entityExists(EntityId entityId) {
-    if (entityId <= 0) {
+    if (entityId == 0) {
         return false;
     }
 
-    foreach (entity; entities) {
-        if (entity.id == entityId) {
-            return true;
-        }
-    }
-
-    return false;
+    return entities.findIndexBySerial(entityId) != -1;
 }
 
 bool entityExists(String entityName) {
@@ -149,9 +141,9 @@ bool entityExists(string entityName) {
 }
 
 Option!EntityId getEntityByName(String entityName) {
-    foreach (ref entity; entities) {
+    foreach (size_t i, ref entity; entities) {
         if (entity.name == entityName) {
-            return some(entity.id);
+            return some(entities.getSerial(i));
         }
     }
     return none!EntityId;
@@ -161,21 +153,35 @@ Option!EntityId getEntityByName(string entityName) {
     return getEntityByName(entityName.s);
 }
 
+Option!String getEntityName(EntityId entityId) {
+    if (entityId == 0) {
+        return none!String;
+    }
+
+    foreach (size_t i, ref entity; entities) {
+        if (entities.getSerial(i) == entityId) {
+            return some(entity.name);
+        }
+    }
+    
+    return none!String;
+}
+
 void addEntityProcessor(ProcessorFunction processor) {
     processors.add(processor);
 }
 
 void updateEntities() {
     foreach (processor; processors) {
-        foreach (ref entity; entities) {
-            processor(entity.id);
+        foreach (size_t i, ref entity; entities) {
+            processor(entities.getSerial(i));
         }
     }
 }
 
 void forEachEntity(scope void delegate(EntityId) fn) {
-    foreach (entity; entities) {
-        fn(entity.id);
+    foreach (size_t i, ref entity; entities) {
+        fn(entities.getSerial(i));
     }
 }
 
@@ -203,8 +209,8 @@ void addComponent(EntityId entityId, StringId componentType, UniquePtr!void data
 }
 
 private void addComponent(EntityId entityId, Component component) {
-    foreach (ref entity; entities) {
-        if (entity.id == entityId) {
+    foreach (size_t i, ref entity; entities) {
+        if (entities.getSerial(i) == entityId) {
             foreach (ref comp; entity.components) {
                 if (comp.type == component.type) {
                     // Free old data
@@ -223,8 +229,8 @@ private void addComponent(EntityId entityId, Component component) {
 }
 
 void removeComponent(EntityId entityId, StringId componentType) {
-    foreach (ref entity; entities) {
-        if (entity.id == entityId) {
+    foreach (size_t i, ref entity; entities) {
+        if (entities.getSerial(i) == entityId) {
             foreach (size_t j, ref comp; entity.components) {
                 if (comp.type == componentType) {
                     // Free the component data
@@ -242,10 +248,10 @@ void removeComponent(EntityId entityId, StringId componentType) {
 }
 
 bool hasComponent(EntityId entityId, StringId componentType) {
-    for (size_t i = 0; i < entities.length; i++) {
-        if (entities[i].id == entityId) {
-            for (size_t j = 0; j < entities[i].components.length; j++) {
-                if (entities[i].components[j].type == componentType) {
+    foreach (size_t i, ref entity; entities) {
+        if (entities.getSerial(i) == entityId) {
+            for (size_t j = 0; j < entity.components.length; j++) {
+                if (entity.components[j].type == componentType) {
                     return true;
                 }
             }
@@ -258,11 +264,11 @@ bool hasComponent(EntityId entityId, StringId componentType) {
 }
 
 Option!(T*) getComponentData(T)(EntityId entityId, StringId componentType) {
-    for (size_t i = 0; i < entities.length; i++) {
-        if (entities[i].id == entityId) {
-            for (size_t j = 0; j < entities[i].components.length; j++) {
-                if (entities[i].components[j].type == componentType) {
-                    return some(cast(T*) entities[i].components[j].data);
+    foreach (size_t i, ref entity; entities) {
+        if (entities.getSerial(i) == entityId) {
+            for (size_t j = 0; j < entity.components.length; j++) {
+                if (entity.components[j].type == componentType) {
+                    return some(cast(T*) entity.components[j].data);
                 }
             }
 
@@ -288,10 +294,10 @@ import retrograde.std.memory : makeUniqueVoid;
 import retrograde.std.string : s;
 
 void resetEcs() {
-    nextId = 1;
     entities.clear();
     processors.clear();
     entityAddedHooks.clear();
+    entityFinalizedHooks.clear();
     entityRemovedHooks.clear();
 }
 
@@ -300,7 +306,7 @@ void runEntityTests() {
 
     test("Create entity and add component", {
         resetEcs();
-        EntityId entityId = createEntity("ent_test".s);
+        EntityId entityId = createEntity("ent_test".s).value;
         auto componentType = "comp_test".sid;
         addComponent(entityId, componentType);
         assert(hasComponent(entityId, componentType));
@@ -308,7 +314,7 @@ void runEntityTests() {
 
     test("Remove component from entity", {
         resetEcs();
-        EntityId entityId = createEntity("ent_test".s);
+        EntityId entityId = createEntity("ent_test".s).value;
         auto comp1Type = "comp1_test".sid;
         auto comp2Type = "comp2_test".sid;
         auto comp3Type = "comp3_test".sid;
@@ -327,7 +333,7 @@ void runEntityTests() {
 
     test("Component of same type replaces existing component", {
         resetEcs();
-        EntityId entityId = createEntity("ent_test".s);
+        EntityId entityId = createEntity("ent_test".s).value;
         auto data1 = makeUniqueVoid(1);
         auto data2 = makeUniqueVoid(2);
         auto componentType = "comp_test".sid;
@@ -341,7 +347,7 @@ void runEntityTests() {
 
     test("Check whether entity has a certain component", {
         resetEcs();
-        EntityId entityId = createEntity("ent_test".s);
+        EntityId entityId = createEntity("ent_test".s).value;
         auto componentType = "comp_test".sid;
         addComponent(entityId, componentType);
 
@@ -351,14 +357,14 @@ void runEntityTests() {
 
     test("Add component by type", {
         resetEcs();
-        EntityId entityId = createEntity("ent_test".s);
+        EntityId entityId = createEntity("ent_test".s).value;
         addComponent(entityId, "comp_test".sid);
         assert(hasComponent(entityId, "comp_test".sid));
     });
 
     test("Execute delegate with component by type directly on the data", {
         resetEcs();
-        EntityId entityId = createEntity("ent_test".s);
+        EntityId entityId = createEntity("ent_test".s).value;
         static StringId componentType = "comp_test".sid;
         auto data = makeUniqueVoid(123);
 
@@ -373,7 +379,7 @@ void runEntityTests() {
 
     test("Directly get data of a component", {
         resetEcs();
-        EntityId entityId = createEntity("ent_test".s);
+        EntityId entityId = createEntity("ent_test".s).value;
         static StringId componentType = "comp_test".sid;
         auto data = makeUniqueVoid(123);
 
@@ -387,8 +393,8 @@ void runEntityTests() {
 
     test("Created entities are assigned an entity ID", {
         resetEcs();
-        EntityId ent1 = createEntity("ent1_test".s);
-        EntityId ent2 = createEntity("ent2_test".s);
+        EntityId ent1 = createEntity("ent1_test".s).value;
+        EntityId ent2 = createEntity("ent2_test".s).value;
         assert(ent1 == 1);
         assert(ent2 == 2);
         assert(entityExists(ent1));
@@ -397,7 +403,7 @@ void runEntityTests() {
 
     test("Remove entity from entity manager by ID", {
         resetEcs();
-        EntityId entityId = createEntity("ent_test".s);
+        EntityId entityId = createEntity("ent_test".s).value;
         assert(entityId == 1);
         assert(entityExists(entityId));
         removeEntity(entityId);
@@ -406,21 +412,21 @@ void runEntityTests() {
 
     test("Check whether entity manager has entity by ID", {
         resetEcs();
-        EntityId entityId = createEntity("ent_test".s);
+        EntityId entityId = createEntity("ent_test".s).value;
         assert(entityExists(entityId));
         assert(!entityExists(999));
     });
 
     test("Check whether entity manager has entity by name", {
         resetEcs();
-        EntityId entityId = createEntity("ent_test".s);
+        EntityId entityId = createEntity("ent_test".s).value;
         assert(entityExists("ent_test".s));
         assert(!entityExists("nonexistent".s));
     });
 
     test("Get entity by name", {
         resetEcs();
-        EntityId entityId = createEntity("ent_test".s);
+        EntityId entityId = createEntity("ent_test".s).value;
         auto foundEntity = getEntityByName("ent_test".s);
         assert(foundEntity.isDefined);
         assert(foundEntity.value == entityId);
@@ -441,7 +447,7 @@ void runEntityTests() {
         static EntityId processedEntityId = 0;
         addEntityProcessor((EntityId entityId) { processedEntityId = entityId; });
 
-        EntityId entityId = createEntity("ent_test".s);
+        EntityId entityId = createEntity("ent_test".s).value;
         updateEntities();
         assert(processedEntityId == entityId);
     });
@@ -451,7 +457,7 @@ void runEntityTests() {
         static EntityId hookedEntityId = 0;
         addEntityAddedHook((EntityId entityId) { hookedEntityId = entityId; });
 
-        EntityId entityId = createEntity("ent_test".s);
+        EntityId entityId = createEntity("ent_test".s).value;
         finalizeEntity(entityId);
         assert(hookedEntityId == entityId);
     });
@@ -461,26 +467,54 @@ void runEntityTests() {
         static EntityId hookedEntityId = 0;
         addEntityRemovedHook((EntityId entityId) { hookedEntityId = entityId; });
 
-        EntityId entityId = createEntity("ent_test".s);
+        EntityId entityId = createEntity("ent_test".s).value;
         removeEntity(entityId);
         assert(hookedEntityId == entityId);
     });
 
     test("Entity creation without name", {
         resetEcs();
-        EntityId entityId = createEntity();
+        EntityId entityId = createEntity().value;
         assert(entityExists(entityId));
         assert(!entityExists("".s));
     });
 
     test("Entity creation with name of native string type", {
         resetEcs();
-        EntityId entityId = createEntity("ent_test");
+        EntityId entityId = createEntity("ent_test").value;
         assert(entityExists(entityId));
         assert(entityExists("ent_test"));
 
         auto foundEntity = getEntityByName("ent_test");
         assert(foundEntity.isDefined);
         assert(foundEntity.value == entityId);
+    });
+
+    test("Get entity name by ID", {
+        resetEcs();
+        EntityId entityId = createEntity("ent_test".s).value;
+        auto name = getEntityName(entityId);
+        assert(name.isDefined);
+        assert(name.value == "ent_test".s);
+    });
+
+    test("Get entity name for non-existent entity returns none", {
+        resetEcs();
+        auto name = getEntityName(999);
+        assert(!name.isDefined);
+    });
+
+    test("Get entity name for entity ID 0 returns none", {
+        resetEcs();
+        auto name = getEntityName(0);
+        assert(!name.isDefined);
+    });
+
+    test("Get entity name for entity without name", {
+        resetEcs();
+        EntityId entityId = createEntity().value;
+        auto name = getEntityName(entityId);
+        assert(name.isDefined);
+        assert(name.value.length == 0);
     });
 }
