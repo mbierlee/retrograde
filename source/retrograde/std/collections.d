@@ -652,7 +652,7 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
 
 struct Slot {
     size_t index;
-    int serialNumber;
+    uint serialNumber;
 }
 
 /** 
@@ -669,10 +669,10 @@ struct Slot {
  */
 struct SlotList(T, size_t chunkSize = defaultChunkSize) {
     private T* items = null;
-    private int* serials = null;
+    private uint* serials = null;
     private size_t _length = 0;
     private size_t _capacity = 0;
-    private int nextSerial = 1;
+    private uint nextSerial = 1;
 
     /**
      * Copy constructor.
@@ -687,15 +687,15 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
         }
 
         items = cast(T*) malloc(T.sizeof * other._length);
-        serials = cast(int*) malloc(int.sizeof * other._length);
+        serials = cast(uint*) malloc(uint.sizeof * other._length);
         assert(items !is null && serials !is null, "Failed to allocate memory during copy construction");
 
         if (items !is null && serials !is null) {
             memset(items, 0, T.sizeof * other._length);
-            memset(serials, 0, int.sizeof * other._length);
+            memset(serials, 0, uint.sizeof * other._length);
             
             T* mutableOtherItems = cast(T*) other.items;
-            int* mutableOtherSerials = cast(int*) other.serials;
+            uint* mutableOtherSerials = cast(uint*) other.serials;
             
             for (size_t i = 0; i < other._length; i++) {
                 items[i] = mutableOtherItems[i];
@@ -813,7 +813,8 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
         }
 
         serials[index] = 0;
-        items[index] = T.init;
+        auto init = T.init;
+        items[index] = init;
     }
 
     /** 
@@ -830,7 +831,8 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
         }
 
         serials[slot.index] = 0;
-        items[slot.index] = T.init;
+        auto init = T.init;
+        items[slot.index] = init;
     }
 
     /**
@@ -901,9 +903,10 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
     void truncate(size_t newLength) {
         if (newLength < _length) {
             // Clear the truncated slots
+            auto init = T.init;
             for (size_t i = newLength; i < _length; i++) {
                 serials[i] = 0;
-                items[i] = T.init;
+                items[i] = init;
             }
             _length = newLength;
         }
@@ -927,7 +930,8 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
                 if (writeIndex != readIndex) {
                     items[writeIndex] = items[readIndex];
                     serials[writeIndex] = serials[readIndex];
-                    items[readIndex] = T.init;
+                    auto init = T.init;
+                    items[readIndex] = init;
                     serials[readIndex] = 0;
                 }
                 writeIndex++;
@@ -962,7 +966,7 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
      *  serial = the serial number to search for.
      * Returns: the index of the item with the given serial number. -1 if not found.
      */
-    size_t findIndexBySerial(int serial) const {
+    size_t findIndexBySerial(uint serial) const {
         if (serial == 0) {
             return -1;
         }
@@ -983,7 +987,7 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
      *  serial = the serial number to search for.
      * Returns: the item with the given serial number, or none if not found.
      */
-    Option!T findItemBySerial(int serial) const {
+    Option!T findItemBySerial(uint serial) const {
         size_t index = findIndexBySerial(serial);
         if (index == -1) {
             return none!T;
@@ -999,7 +1003,7 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
      *  serial = the serial number to search for.
      * Returns: the slot with the given serial number, or none if not found.
      */
-    Option!Slot findSlotBySerial(int serial) const {
+    Option!Slot findSlotBySerial(uint serial) const {
         size_t index = findIndexBySerial(serial);
         if (index == -1) {
             return none!Slot;
@@ -1069,10 +1073,11 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
      *  index = the index to query.
      * Returns: the serial number at the index, or 0 if index is out of bounds.
      */
-    int getSerial(size_t index) const {
+    uint getSerial(size_t index) const {
         if (index >= _length) {
             return 0;
         }
+        
         return serials[index];
     }
 
@@ -1109,7 +1114,7 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
         }
 
         T* newItems = cast(T*) realloc(items, T.sizeof * other._length);
-        int* newSerials = cast(int*) realloc(serials, int.sizeof * other._length);
+        uint* newSerials = cast(uint*) realloc(serials, uint.sizeof * other._length);
         
         if (newItems is null || newSerials is null) {
             assert(0, "Failed to allocate memory during assignment of slot list");
@@ -1117,10 +1122,10 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
         }
 
         memset(newItems, 0, T.sizeof * other._length);
-        memset(newSerials, 0, int.sizeof * other._length);
+        memset(newSerials, 0, uint.sizeof * other._length);
         
         T* mutableOtherItems = cast(T*) other.items;
-        int* mutableOtherSerials = cast(int*) other.serials;
+        uint* mutableOtherSerials = cast(uint*) other.serials;
         
         for (size_t i = 0; i < other._length; i++) {
             newItems[i] = mutableOtherItems[i];
@@ -1315,7 +1320,7 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
 
     private void resize(size_t growSize = chunkSize) {
         items = cast(T*) realloc(items, T.sizeof * (_capacity + growSize));
-        serials = cast(int*) realloc(serials, int.sizeof * (_capacity + growSize));
+        serials = cast(uint*) realloc(serials, uint.sizeof * (_capacity + growSize));
         assert(items !is null && serials !is null, "Failed to allocate memory during resizing of slot list");
         _capacity += growSize;
 
