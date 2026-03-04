@@ -1,4 +1,4 @@
-# Retrograde Engine — Copilot Instructions
+# Retrograde Engine — Agent Instructions
 
 ## Overview
 
