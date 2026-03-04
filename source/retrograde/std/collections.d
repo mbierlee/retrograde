@@ -11,7 +11,7 @@
 
 module retrograde.std.collections;
 
-import retrograde.std.memory : malloc, realloc, free, allocateRaw, memset;
+import retrograde.std.memory : malloc, realloc, free, calloc, allocateRaw, memset;
 import retrograde.std.math : ceil;
 import retrograde.std.option : Option, some, none;
 import retrograde.std.hash : hashOf;
@@ -1920,12 +1920,484 @@ struct LinkedListIterator(T) {
     }
 }
 
+private enum defaultHashMapBucketCount = 16;
+
+private struct BucketNode(K, V) {
+    K key;
+    V value;
+    BucketNode!(K, V)* next;
+}
+
+/**
+ * A hash map that maps keys to values using separate chaining for collision
+ * resolution.
+ *
+ * Keys must support equality comparison (==).
+ * Keys with a toHash() method will have it used for hashing;
+ * all other types fall back to hashOf() which hashes raw bytes.
+ */
+struct HashMap(K, V) {
+    private alias Node = BucketNode!(K, V);
+    private Node** buckets = null;
+    private size_t _length = 0;
+    private size_t _bucketCount = 0;
+
+    this(ref return scope inout typeof(this) other) {
+        auto mutableOther = cast(typeof(this)*) &other;
+        copyFrom(*mutableOther);
+    }
+
+    ~this() {
+        cleanup();
+    }
+
+    void opAssign(ref return scope inout typeof(this) other) {
+        cleanup();
+        auto mutableOther = cast(typeof(this)*) &other;
+        copyFrom(*mutableOther);
+    }
+
+    /**
+     * Insert or overwrite a key-value pair.
+     * If the key already exists, its value is overwritten.
+     *
+     * Params:
+     *   key = The key.
+     *   value = The value to associate with the key.
+     */
+    void put(K key, V value) {
+        ensureBuckets();
+        auto bucketIndex = computeBucketIndex(key);
+        auto node = buckets[bucketIndex];
+        while (node !is null) {
+            if (node.key == key) {
+                node.value = value;
+                return;
+            }
+
+            node = node.next;
+        }
+
+        auto newNode = cast(Node*) calloc(1, Node.sizeof);
+        newNode.key = key;
+        newNode.value = value;
+        newNode.next = buckets[bucketIndex];
+        buckets[bucketIndex] = newNode;
+        _length++;
+        considerRehash();
+    }
+
+    /**
+     * Attempt to add a key-value pair only if the key does not already exist.
+     *
+     * Params:
+     *   key = The key.
+     *   value = The value to associate with the key.
+     * Returns: true if the pair was added, false if the key already existed
+     *          (value is left unchanged).
+     */
+    bool tryAdd(K key, V value) {
+        if (contains(key)) {
+            return false;
+        }
+
+        put(key, value);
+        return true;
+    }
+
+    /**
+     * Retrieve the value associated with a key.
+     *
+     * Params:
+     *   key = The key to look up.
+     * Returns: some(value) if the key exists, none!V otherwise.
+     */
+    Option!V get(K key) {
+        if (buckets is null) {
+            return none!V;
+        }
+
+        auto bucketIndex = computeBucketIndex(key);
+        auto node = buckets[bucketIndex];
+        while (node !is null) {
+            if (node.key == key) {
+                return some(node.value);
+            }
+
+            node = node.next;
+        }
+
+        return none!V;
+    }
+
+    /**
+     * Retrieve the value associated with a key via an out parameter.
+     *
+     * Params:
+     *   key = The key to look up.
+     *   value = Receives the associated value if the key exists.
+     * Returns: true if the key exists, false otherwise.
+     */
+    bool tryGet(K key, out V value) {
+        auto result = get(key);
+        if (result.isDefined) {
+            value = result.value;
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Remove the entry with the given key.
+     *
+     * Params:
+     *   key = The key to remove.
+     * Returns: true if the key was found and removed, false otherwise.
+     */
+    bool remove(K key) {
+        if (buckets is null) {
+            return false;
+        }
+
+        auto bucketIndex = computeBucketIndex(key);
+        Node* prev = null;
+        auto node = buckets[bucketIndex];
+        while (node !is null) {
+            if (node.key == key) {
+                if (prev is null) {
+                    buckets[bucketIndex] = node.next;
+                } else {
+                    prev.next = node.next;
+                }
+
+                free(node);
+                _length--;
+                return true;
+            }
+
+            prev = node;
+            node = node.next;
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns: true if the given key exists in this map.
+     */
+    bool contains(K key) {
+        if (buckets is null) {
+            return false;
+        }
+
+        auto bucketIndex = computeBucketIndex(key);
+        auto node = buckets[bucketIndex];
+        while (node !is null) {
+            if (node.key == key) {
+                return true;
+            }
+
+            node = node.next;
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns: The number of key-value pairs in this map.
+     */
+    size_t length() const {
+        return _length;
+    }
+
+    /**
+     * Remove all key-value pairs and free all nodes.
+     * The bucket array is retained and zeroed for reuse.
+     */
+    void clear() {
+        freeNodes();
+        _length = 0;
+    }
+
+    /**
+     * Returns: An Array containing all keys in this map.
+     */
+    Array!K keys() {
+        Array!K result;
+        if (buckets is null) {
+            return result;
+        }
+
+        for (size_t i = 0; i < _bucketCount; i++) {
+            auto node = buckets[i];
+            while (node !is null) {
+                result.add(node.key);
+                node = node.next;
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Returns: An Array containing all values in this map.
+     */
+    Array!V values() {
+        Array!V result;
+        if (buckets is null) {
+            return result;
+        }
+
+        for (size_t i = 0; i < _bucketCount; i++) {
+            auto node = buckets[i];
+            while (node !is null) {
+                result.add(node.value);
+                node = node.next;
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Get the value at the given key.
+     * Asserts if the key does not exist. Use get() for safe retrieval.
+     */
+    V opIndex(K key) {
+        auto result = get(key);
+        assert(result.isDefined, "Key not found in HashMap.");
+        return result.value;
+    }
+
+    /**
+     * Insert or overwrite a key-value pair.
+     * Equivalent to put(key, value).
+     */
+    void opIndexAssign(V value, K key) {
+        put(key, value);
+    }
+
+    /**
+     * Iterate over all key-value pairs.
+     * Usage: foreach (key, value; map) { ... }
+     */
+    int opApply(int delegate(ref K, ref V) dg) {
+        if (buckets is null) {
+            return 0;
+        }
+
+        for (size_t i = 0; i < _bucketCount; i++) {
+            auto node = buckets[i];
+            while (node !is null) {
+                int result = dg(node.key, node.value);
+                if (result) {
+                    return result;
+                }
+
+                node = node.next;
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Iterate over all values.
+     * Usage: foreach (value; map) { ... }
+     */
+    int opApply(int delegate(ref V) dg) {
+        if (buckets is null) {
+            return 0;
+        }
+
+        for (size_t i = 0; i < _bucketCount; i++) {
+            auto node = buckets[i];
+            while (node !is null) {
+                int result = dg(node.value);
+                if (result) {
+                    return result;
+                }
+
+                node = node.next;
+            }
+        }
+
+        return 0;
+    }
+
+    bool opEquals(ref typeof(this) other) {
+        if (_length != other._length) {
+            return false;
+        }
+
+        if (buckets is null) {
+            return true;
+        }
+
+        for (size_t i = 0; i < _bucketCount; i++) {
+            auto node = buckets[i];
+            while (node !is null) {
+                auto otherValue = other.get(node.key);
+                if (!otherValue.isDefined || otherValue.value != node.value) {
+                    return false;
+                }
+
+                node = node.next;
+            }
+        }
+
+        return true;
+    }
+
+    bool opEquals(typeof(this) other) {
+        return opEquals(other);
+    }
+
+    ulong toHash() nothrow @trusted const {
+        ulong hash = 0;
+        if (buckets is null) {
+            return hash;
+        }
+
+        for (size_t i = 0; i < _bucketCount; i++) {
+            auto node = cast(Node*) buckets[i];
+            while (node !is null) {
+                ulong pairHash;
+                static if (__traits(hasMember, K, "toHash")) {
+                    pairHash = node.key.toHash();
+                } else {
+                    pairHash = hashOf(node.key);
+                }
+
+                static if (__traits(hasMember, V, "toHash")) {
+                    pairHash = pairHash * 33 + node.value.toHash();
+                } else {
+                    pairHash = pairHash * 33 + hashOf(node.value);
+                }
+
+                hash ^= pairHash;
+                node = node.next;
+            }
+        }
+
+        return hash;
+    }
+
+    private void ensureBuckets() {
+        if (buckets is null) {
+            _bucketCount = defaultHashMapBucketCount;
+            buckets = cast(Node**) calloc(_bucketCount, (Node*).sizeof);
+        }
+    }
+
+    private size_t computeBucketIndex(K key) const {
+        ulong hash;
+        static if (__traits(hasMember, K, "toHash")) {
+            hash = key.toHash();
+        } else {
+            hash = hashOf(key);
+        }
+
+        return cast(size_t)(hash % _bucketCount);
+    }
+
+    private void considerRehash() {
+        if (_length * 4 > _bucketCount * 3) {
+            rehash(_bucketCount * 2);
+        }
+    }
+
+    private void rehash(size_t newBucketCount) {
+        auto newBuckets = cast(Node**) calloc(newBucketCount, (Node*).sizeof);
+        for (size_t i = 0; i < _bucketCount; i++) {
+            auto node = buckets[i];
+            while (node !is null) {
+                auto next = node.next;
+                ulong hash;
+                static if (__traits(hasMember, K, "toHash")) {
+                    hash = node.key.toHash();
+                } else {
+                    hash = hashOf(node.key);
+                }
+
+                size_t newIndex = cast(size_t)(hash % newBucketCount);
+                node.next = newBuckets[newIndex];
+                newBuckets[newIndex] = node;
+                node = next;
+            }
+        }
+
+        free(buckets);
+        buckets = newBuckets;
+        _bucketCount = newBucketCount;
+    }
+
+    private void freeNodes() {
+        if (buckets is null) {
+            return;
+        }
+
+        for (size_t i = 0; i < _bucketCount; i++) {
+            auto node = buckets[i];
+            while (node !is null) {
+                auto next = node.next;
+                free(node);
+                node = next;
+            }
+
+            buckets[i] = null;
+        }
+    }
+
+    private void cleanup() {
+        freeNodes();
+        if (buckets !is null) {
+            free(buckets);
+            buckets = null;
+        }
+
+        _length = 0;
+        _bucketCount = 0;
+    }
+
+    private void copyFrom(ref typeof(this) other) {
+        if (other.buckets is null) {
+            return;
+        }
+
+        _bucketCount = other._bucketCount;
+        buckets = cast(Node**) calloc(_bucketCount, (Node*).sizeof);
+        for (size_t i = 0; i < _bucketCount; i++) {
+            auto srcNode = other.buckets[i];
+            Node* lastNewNode = null;
+            while (srcNode !is null) {
+                auto newNode = cast(Node*) calloc(1, Node.sizeof);
+                newNode.key = srcNode.key;
+                newNode.value = srcNode.value;
+                newNode.next = null;
+                if (lastNewNode is null) {
+                    buckets[i] = newNode;
+                } else {
+                    lastNewNode.next = newNode;
+                }
+
+                lastNewNode = newNode;
+                srcNode = srcNode.next;
+            }
+        }
+
+        _length = other._length;
+    }
+}
+
 version (UnitTesting)  :  ///
 
 void runCollectionsTests() {
     runArrayTests();
     runSlotListTests();
     runLinkedListTests();
+    runHashMapTests();
 }
 
 void runArrayTests() {
@@ -3060,5 +3532,246 @@ void runSlotListTests() {
         list.add(30);
         list.compact();
         // slot2's index may have changed
+    });
+}
+
+void runHashMapTests() {
+    import retrograde.std.test : test, writeSection;
+    import retrograde.std.string : String, s;
+
+    writeSection("-- HashMap tests --");
+
+    test("Create an empty HashMap", {
+        HashMap!(int, int) map;
+        assert(map.length == 0);
+    });
+
+    test("Put and get a value", {
+        HashMap!(int, int) map;
+        map.put(1, 42);
+        auto result = map.get(1);
+        assert(result.isDefined);
+        assert(result.value == 42);
+    });
+
+    test("put overwrites existing key", {
+        HashMap!(int, int) map;
+        map.put(1, 10);
+        map.put(1, 20);
+        assert(map.length == 1);
+        assert(map.get(1).value == 20);
+    });
+
+    test("get returns none for missing key", {
+        HashMap!(int, int) map;
+        map.put(1, 42);
+        auto result = map.get(2);
+        assert(result.isEmpty);
+    });
+
+    test("tryGet returns true and value for existing key", {
+        HashMap!(int, int) map;
+        map.put(1, 42);
+        int value;
+        bool found = map.tryGet(1, value);
+        assert(found);
+        assert(value == 42);
+    });
+
+    test("tryGet returns false for missing key", {
+        HashMap!(int, int) map;
+        int value;
+        bool found = map.tryGet(99, value);
+        assert(!found);
+    });
+
+    test("tryAdd returns true for new key", {
+        HashMap!(int, int) map;
+        bool added = map.tryAdd(1, 42);
+        assert(added);
+        assert(map.length == 1);
+    });
+
+    test("tryAdd returns false for existing key and leaves value unchanged", {
+        HashMap!(int, int) map;
+        map.put(1, 42);
+        bool added = map.tryAdd(1, 99);
+        assert(!added);
+        assert(map.get(1).value == 42);
+    });
+
+    test("remove existing key", {
+        HashMap!(int, int) map;
+        map.put(1, 42);
+        bool removed = map.remove(1);
+        assert(removed);
+        assert(map.length == 0);
+        assert(map.get(1).isEmpty);
+    });
+
+    test("remove nonexistent key returns false", {
+        HashMap!(int, int) map;
+        bool removed = map.remove(99);
+        assert(!removed);
+    });
+
+    test("contains returns correct results", {
+        HashMap!(int, int) map;
+        map.put(5, 500);
+        assert(map.contains(5));
+        assert(!map.contains(6));
+    });
+
+    test("opIndex retrieves value", {
+        HashMap!(int, int) map;
+        map.put(3, 30);
+        assert(map[3] == 30);
+    });
+
+    test("opIndexAssign inserts or overwrites", {
+        HashMap!(int, int) map;
+        map[7] = 70;
+        assert(map[7] == 70);
+        map[7] = 700;
+        assert(map[7] == 700);
+    });
+
+    test("keys returns all keys", {
+        HashMap!(int, int) map;
+        map.put(1, 10);
+        map.put(2, 20);
+        map.put(3, 30);
+        auto k = map.keys();
+        assert(k.length == 3);
+        assert(k.exists(1));
+        assert(k.exists(2));
+        assert(k.exists(3));
+    });
+
+    test("values returns all values", {
+        HashMap!(int, int) map;
+        map.put(1, 10);
+        map.put(2, 20);
+        map.put(3, 30);
+        auto v = map.values();
+        assert(v.length == 3);
+        assert(v.exists(10));
+        assert(v.exists(20));
+        assert(v.exists(30));
+    });
+
+    test("foreach key-value iteration", {
+        HashMap!(int, int) map;
+        map.put(1, 10);
+        map.put(2, 20);
+        map.put(3, 30);
+        int sum = 0;
+        foreach (k, v; map) {
+            sum += v;
+        }
+
+        assert(sum == 60);
+    });
+
+    test("foreach value iteration", {
+        HashMap!(int, int) map;
+        map.put(1, 10);
+        map.put(2, 20);
+        map.put(3, 30);
+        int sum = 0;
+        foreach (v; map) {
+            sum += v;
+        }
+
+        assert(sum == 60);
+    });
+
+    test("clear empties the map", {
+        HashMap!(int, int) map;
+        map.put(1, 10);
+        map.put(2, 20);
+        map.clear();
+        assert(map.length == 0);
+        assert(!map.contains(1));
+    });
+
+    test("copy constructor makes an independent copy", {
+        HashMap!(int, int) map;
+        map.put(1, 10);
+        map.put(2, 20);
+        auto map2 = map;
+        map2.put(3, 30);
+        map2[1] = 100;
+        assert(map.length == 2);
+        assert(map[1] == 10);
+        assert(!map.contains(3));
+        assert(map2.length == 3);
+        assert(map2[1] == 100);
+    });
+
+    test("two identical HashMaps are equal", {
+        HashMap!(int, int) map1;
+        map1.put(1, 10);
+        map1.put(2, 20);
+        HashMap!(int, int) map2;
+        map2.put(1, 10);
+        map2.put(2, 20);
+        assert(map1 == map2);
+    });
+
+    test("two different HashMaps are not equal", {
+        HashMap!(int, int) map1;
+        map1.put(1, 10);
+        HashMap!(int, int) map2;
+        map2.put(1, 99);
+        assert(map1 != map2);
+    });
+
+    test("identical HashMaps have the same hash", {
+        HashMap!(int, int) map1;
+        map1.put(1, 10);
+        map1.put(2, 20);
+        HashMap!(int, int) map2;
+        map2.put(1, 10);
+        map2.put(2, 20);
+        assert(map1.toHash() == map2.toHash());
+    });
+
+    test("different HashMaps have different hashes", {
+        HashMap!(int, int) map1;
+        map1.put(1, 10);
+        HashMap!(int, int) map2;
+        map2.put(1, 99);
+        assert(map1.toHash() != map2.toHash());
+    });
+
+    test("HashMap with String keys", {
+        HashMap!(String, int) map;
+        map.put("hello".s, 1);
+        map.put("world".s, 2);
+        assert(map.length == 2);
+        assert(map.get("hello".s).value == 1);
+        assert(map.get("world".s).value == 2);
+        assert(map.get("foo".s).isEmpty);
+    });
+
+    test("HashMap with String values", {
+        HashMap!(int, String) map;
+        map.put(1, "one".s);
+        map.put(2, "two".s);
+        assert(map.get(1).value == "one".s);
+        assert(map.get(2).value == "two".s);
+    });
+
+    test("HashMap rehashes when load factor is exceeded", {
+        HashMap!(int, int) map;
+        for (int i = 0; i < 20; i++) {
+            map.put(i, i * 10);
+        }
+
+        assert(map.length == 20);
+        for (int i = 0; i < 20; i++) {
+            assert(map.get(i).value == i * 10);
+        }
     });
 }
