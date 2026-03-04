@@ -2,7 +2,7 @@
 
 ## Overview
 
-Retrograde is a D language game engine compiled with **`-betterC`** (no GC, no D runtime). It targets both **native** (Windows/Linux via DMD/LDC) and **WebAssembly** (via LDC). All standard library functionality is reimplemented from scratch in `source/retrograde/std/`.
+Retrograde is a D language game engine compiled with **`-betterC`** (no GC, no D runtime). It targets both **native** (Windows/Linux via DMD/LDC) and **WebAssembly** (via LDC). Most standard library functionality is reimplemented from scratch in `source/retrograde/std/`.
 
 ## Build & Test
 
@@ -68,6 +68,19 @@ Use D `version` conditions (not `#ifdef`). Key flags: `Native`, `WebAssembly`, `
 - Component type constants: `enum XxxComponentType = sid("comp_xxx");`
 - Math type aliases use suffixes: `F` (float), `D` (double), `I` (int), `U` (uint) — e.g., `Vector3F`, `Vector4I`.
 - `scalar` type alias is `float` by default, `double` with `DoublePrecision`.
+- Always use braces for control flow and scope blocks (`if`, `else`, `while`, `for`, `scope`, etc.), even for single-statement bodies. The body must be on a separate line from the condition:
+ ```d
+ // correct
+ if (condition) {
+     doSomething();
+ }
+
+ // wrong
+ if (condition) doSomething();
+ if (condition) { doSomething(); }
+ if (condition)
+     doSomething();
+```
 
 ## Key Patterns
 

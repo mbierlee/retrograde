@@ -39,17 +39,21 @@ int main(string[] args) {
         auto support = loadAssimp();
         if (support == AssimpSupport.noLibrary) {
             stderr.writeln("Error: Failed to load Assimp library.");
-            stderr.writeln("Ensure Assimp5.dll (Windows), libassimp.so.5 (Linux), or libassimp.dylib.5 (macOS) is available.");
+            stderr.writeln(
+                "Ensure Assimp5.dll (Windows), libassimp.so.5 (Linux), or libassimp.dylib.5 (macOS) is available.");
             return 1;
         }
+        
         if (support == AssimpSupport.badLibrary) {
-            stderr.writeln("Warning: Assimp library loaded but one or more symbols are missing. Results may be incorrect.");
+            stderr.writeln(
+                "Warning: Assimp library loaded but one or more symbols are missing. Results may be incorrect.");
         }
     }
 
     const(aiScene)* scene = aiImportFile(
         inputFile.toStringz(),
-        aiPostProcessSteps.Triangulate | aiPostProcessSteps.JoinIdenticalVertices | aiPostProcessSteps.SortByPType
+        aiPostProcessSteps.Triangulate | aiPostProcessSteps.JoinIdenticalVertices | aiPostProcessSteps
+            .SortByPType
     );
 
     if (scene is null) {
