@@ -18,6 +18,8 @@ Retrograde is a D language game engine compiled with **`-betterC`** (no GC, no D
 - Use smart pointers: `UniquePtr`, `SharedPtr`, `ResultPtr` from `retrograde.std.memory`.
 - Use `retrograde.std.string.String` (not D `string` literals for dynamic strings), `Array(T)` from `retrograde.std.collections` (not built-in slices for dynamic arrays).
 
+**Note:** The betterC constraints apply to the engine code in `source/retrograde/`. Tools in `./tools/` (e.g., `rgmodelconv`) are stand-alone D programs that are **not** compiled with `-betterC` and **can use** the standard library (Phobos) and full D runtime features.
+
 ## Platform Abstraction Pattern
 
 Platform-specific code lives in parallel module trees, selected via `version`:

@@ -1,0 +1,33 @@
+{
+	"authors": [
+		"Timur Gafarov"
+	],
+	"buildRequirements": [
+		"allowWarnings"
+	],
+	"license": "BSL-1.0",
+	"copyright": "Copyright (C) 2025, Timur Gafarov",
+	"name": "bindbc-assimp5",
+	"sourcePaths": [
+		"src"
+	],
+	"description": "Dynamic binding to Assimp",
+	"homepage": "https://github.com/DLangGamedev/bindbc-assimp",
+	"dependencies": {
+		"bindbc-loader": "~>1.0"
+	},
+	"importPaths": [
+		"src"
+	],
+	"version": "0.1.0",
+	"configurations": [
+		{
+			"targetType": "library",
+			"name": "library"
+		},
+		{
+			"targetType": "library",
+			"name": "debug"
+		}
+	]
+}

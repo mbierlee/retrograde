@@ -1,0 +1,21 @@
+{
+  "description": "Convert models to RGM model format",
+  "license": "MIT",
+  "authors": ["Mike Bierlee"],
+  "copyright": "Copyright Mike Bierlee 2026",
+  "name": "rgmodelconv",
+  "targetPath": "bin",
+  "targetType": "executable",
+  "dependencies": {
+    "bindbc-assimp5": { "path": "../../third-party/bindbc-assimp5" }
+  },
+  "configurations": [
+    {
+      "name": "windows",
+      "platforms": ["windows"],
+      "postBuildCommands": [
+        "copy /Y $PACKAGE_DIR\\lib\\assimp-vc143-mt.dll $PACKAGE_DIR\\bin\\assimp-vc143-mt.dll"
+      ]
+    }
+  ]
+}
