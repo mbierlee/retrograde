@@ -777,6 +777,10 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
      * Returns: a Result containing the Slot referencing the added item, or a failure if the operation failed.
      */
     Result!Slot add(T item) {
+        if (nextSerial == 0) {
+            return failure!Slot("SlotList serial number overflow: maximum number of additions reached");
+        }
+
         // First try to find an empty slot
         for (size_t i = 0; i < _length; i++) {
             if (serials[i] == 0) {
@@ -3532,6 +3536,18 @@ void runSlotListTests() {
         list.add(30);
         list.compact();
         // slot2's index may have changed
+    });
+
+    test("Add fails when serial number overflows", () {
+        SlotList!int list;
+        list.nextSerial = uint.max;
+        auto result = list.add(1);
+        assert(result.isSuccessful);
+        assert(result.value.serialNumber == uint.max);
+        // nextSerial has now wrapped to 0
+        assert(list.nextSerial == 0);
+        auto overflowResult = list.add(2);
+        assert(!overflowResult.isSuccessful);
     });
 }
 
