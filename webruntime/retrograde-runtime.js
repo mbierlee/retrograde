@@ -349,6 +349,57 @@ export default class RetrogradeRuntime {
       glBlendFunc: (sfactor, dfactor) => {
         this.glContext.blendFunc(sfactor, dfactor);
       },
+
+      // Asset Loading
+      
+      startAssetFetch: (urlPtr, urlLen, handle) => {
+        const url = this.getString(urlPtr, urlLen);
+        fetch(url)
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            return response.arrayBuffer();
+          })
+          .then((arrayBuffer) => {
+            const data = new Uint8Array(arrayBuffer);
+            const wasmPtr = this.instance.exports.malloc(data.length);
+            const wasmBuf = new Uint8Array(
+              this.memory.buffer,
+              wasmPtr,
+              data.length
+            );
+
+            wasmBuf.set(data);
+            this.instance.exports.onAssetFetchComplete(
+              handle,
+              wasmPtr,
+              data.length
+            );
+            
+            this.instance.exports.free(wasmPtr);
+          })
+          .catch((err) => {
+            const msg = err.message || "Unknown fetch error";
+            const encoded = new TextEncoder().encode(msg);
+            const errPtr = this.instance.exports.malloc(encoded.length);
+            const errBuf = new Uint8Array(
+              this.memory.buffer,
+              errPtr,
+              encoded.length
+            );
+
+            errBuf.set(encoded);
+            this.instance.exports.onAssetFetchError(
+              handle,
+              errPtr,
+              encoded.length
+            );
+
+            this.instance.exports.free(errPtr);
+          });
+      },
     };
   }
 

@@ -26,6 +26,7 @@ void runTests() {
     import retrograde.engine.entity : runEntityTests;
     import retrograde.std.endian : runEndianTests;
     import retrograde.data.assets.rgm : runRgmTests;
+    import retrograde.std.assets : runAssetsTests;
 
     runStdMemoryTests();
     runStringTests();
@@ -39,6 +40,7 @@ void runTests() {
     runConvTests();
     runEndianTests();
     runRgmTests();
+    runAssetsTests();
 
     writeln();
     writeln("Tests run: ", testCount);
