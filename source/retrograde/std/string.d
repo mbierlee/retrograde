@@ -200,6 +200,25 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
         return _length;
     }
 
+    /**
+     * Returns a new String that is a substring of this String.
+     *
+     * Params:
+     *   startIndex = The zero-based starting character position.
+     *   length     = The number of characters to include. Defaults to the rest of the string.
+     * Returns: A new StringT containing the requested substring.
+     */
+    StringT!T substring(size_t startIndex, size_t length = size_t.max) const {
+        if (startIndex >= _length) {
+            return StringT!T();
+        }
+
+        size_t end = (length == size_t.max || startIndex + length > _length) ? _length : startIndex + length;
+        StringT!T result;
+        result.copyFrom(cast(void*)(ptr + startIndex), end - startIndex);
+        return result;
+    }
+
     /** 
      * Returns: A copy of this String as a C string, wrapped in a UniquePtr.
      */
@@ -403,6 +422,20 @@ String join(ref Array!String strings, string glue = "") {
     return result;
 }
 
+bool startsWith(T)(StringT!T str, StringT!T prefix) {
+    if (prefix.length > str.length) {
+        return false;
+    }
+
+    for (size_t i = 0; i < prefix.length; i++) {
+        if (str[i] != prefix[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 version (UnitTesting)  :  ///
 
 void runStringTests() {
@@ -603,8 +636,24 @@ void runStringBasicTests() {
         assert(strings.join(", ") == "a, b, c".s);
         assert(strings.join() == "abc".s);
     });
-}
 
+    test("startsWith returns true when string starts with prefix", {
+        assert("Hello world".s.startsWith("Hello".s));
+        assert("Hello world".s.startsWith("Hello world".s));
+        assert("Hello world".s.startsWith("".s));
+        assert(!"Hello world".s.startsWith("world".s));
+        assert(!"Hello world".s.startsWith("Hello world!".s));
+    });
+
+    test("substring returns a substring of a String", {
+        assert("Hello world".s.substring(6) == "world".s);
+        assert("Hello world".s.substring(0, 5) == "Hello".s);
+        assert("Hello world".s.substring(0) == "Hello world".s);
+        assert("Hello world".s.substring(6, 3) == "wor".s);
+        assert("Hello world".s.substring(100) == "".s);
+        assert("Hello world".s.substring(6, 999) == "world".s);
+    });
+}
 
 void runStringIteratorTests() {
     import retrograde.std.test : test, writeSection;
