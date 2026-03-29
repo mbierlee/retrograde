@@ -2075,6 +2075,8 @@ struct HashMap(K, V) {
                     prev.next = node.next;
                 }
 
+                node.key.destroy();
+                node.value.destroy();
                 free(node);
                 _length--;
                 return true;
@@ -2346,6 +2348,8 @@ struct HashMap(K, V) {
             auto node = buckets[i];
             while (node !is null) {
                 auto next = node.next;
+                node.key.destroy();
+                node.value.destroy();
                 free(node);
                 node = next;
             }
