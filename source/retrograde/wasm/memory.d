@@ -91,12 +91,17 @@ export extern (C) void* malloc(size_t size) {
  */
 version (LDC) @optStrategy("none")
 export extern (C) void* calloc(size_t nitems, size_t size) {
-    auto ptr = malloc(nitems * size);
+    if (size != 0 && nitems > size_t.max / size) {
+        return null;
+    }
+
+    auto totalSize = nitems * size;
+    auto ptr = malloc(totalSize);
     if (ptr is null) {
         return null;
     }
 
-    memset(ptr, 0, nitems * size);
+    memset(ptr, 0, totalSize);
     return ptr;
 }
 
@@ -108,7 +113,8 @@ export extern (C) void* calloc(size_t nitems, size_t size) {
  *
  * Params:
  *  ptr: The pointer to the memory block to resize. If null, a new block is allocated.
- *  newSize: The new size of the memory block. If it is 0, a null pointer is returned and the pointer remains unchanged.
+ *  newSize: The new size of the memory block. If it is 0 and ptr is not null, the block
+ *           is freed and a null pointer is returned (following glibc convention).
  * Returns: A pointer to the resized memory block, or null if something went wrong. The same pointer is returned when the resize fit.
  */
 export extern (C) void* realloc(void* ptr, size_t newSize) {
@@ -117,6 +123,7 @@ export extern (C) void* realloc(void* ptr, size_t newSize) {
     }
 
     if (newSize == 0) {
+        free(ptr);
         return null;
     }
 
@@ -163,8 +170,6 @@ export extern (C) void* realloc(void* ptr, size_t newSize) {
                 version (MemoryDebug) {
                     writeErrLn(splitRes.errorMessage);
                 }
-
-                return null;
             }
         }
 
@@ -253,16 +258,16 @@ export extern (C) void* memset(void* ptr, int value, size_t num) {
 }
 
 /**
- * Compares the block of memory pointed by ptr1 to the block of memory pointed by ptr2, returning zero if they are equal
- * or a value different from zero representing which is greater if they are not.
+ * Compares the first num bytes of the memory areas pointed to by ptr1 and ptr2, returning zero if
+ * they are equal or a value different from zero representing which is greater if they are not.
  *
  * Params:
- *  ptr1: Pointer to block of memory.
- *  ptr2: Pointer to other block of memory.
+ *  ptr1: Pointer to first memory area.
+ *  ptr2: Pointer to second memory area.
  *  num: Number of bytes to compare.
- * Returns: An integral value indicating the relationship between the content of the memory blocks:
- *          A zero value indicates that the contents of both memory blocks are equal.
- *          A value greater than zero indicates that the first byte that does not match in both memory blocks has a greater value in ptr1 than in ptr2
+ * Returns: An integral value indicating the relationship between the contents:
+ *          A zero value indicates that the contents of both memory areas are equal.
+ *          A value greater than zero indicates that the first differing byte has a greater value in ptr1 than in ptr2.
  *          A value less than zero indicates the opposite.
  */
 export extern (C) int memcmp(const void* ptr1, const void* ptr2, size_t num) {
@@ -299,45 +304,62 @@ export extern (C) void* memcpy(void* dest, const void* src, size_t count) {
 }
 
 /** 
- * Copies memory from src into dest for count amount of bytes.
- * Makes sure that the count is not greater than the size of the source memory
- * and that dest is big enough. If not, dest is resized.
- * If something goes wrong, null is returned.
+ * Copies count bytes from src into dest, correctly handling overlapping memory regions.
+ * Works with any valid pointer (heap, stack, static data).
+ *
+ * When src or dest point to managed heap memory, bounds checking is performed against
+ * the block's allocated size (blockSize). If count would exceed either block's bounds,
+ * null is returned to prevent corruption of adjacent block metadata. When a pointer
+ * is not heap-managed, no bounds check is possible and count is used as-is.
+ *
+ * Unlike memcpy, memmove handles the case where src and dest overlap by copying
+ * backwards when dest > src with overlapping ranges.
  *
  * Params:
- *  dest: Pointer to the destination array where the content is to be copied.
- *  src: Pointer to the source of data to be copied.
+ *  dest: Pointer to the destination memory.
+ *  src: Pointer to the source memory.
  *  count: Number of bytes to copy.
- * Returns: dest as-is.
+ * Returns: dest on success, or null if a heap bounds check fails.
  */
 export extern (C) void* memmove(void* dest, const void* src, size_t count) {
-    auto srcBlockRes = src.getBlock;
-    if (srcBlockRes.isFailure) {
-        version (MemoryDebug) {
-            writeErrLn(srcBlockRes.errorMessage);
-        }
-
-        return null;
+    if (count == 0) {
+        return dest;
     }
 
-    auto srcBlock = srcBlockRes.value;
-    auto actualCount = srcBlock.usedSize >= count ? count : srcBlock.usedSize;
+    auto srcBlockRes = src.getBlock;
+    if (srcBlockRes.isSuccessful) {
+        if (count > srcBlockRes.value.blockSize) {
+            version (MemoryDebug) {
+                writeErrLn("memmove: count exceeds src block bounds");
+            }
+            return null;
+        }
+    }
 
     auto destBlockRes = dest.getBlock;
-    if (destBlockRes.isFailure) {
-        version (MemoryDebug) {
-            writeErrLn(destBlockRes.errorMessage);
+    if (destBlockRes.isSuccessful) {
+        if (count > destBlockRes.value.blockSize) {
+            version (MemoryDebug) {
+                writeErrLn("memmove: count exceeds dest block bounds");
+            }
+            return null;
         }
-
-        return null;
     }
 
-    auto destBlock = destBlockRes.value;
-    if (destBlock.usedSize < actualCount) {
-        dest = realloc(dest, actualCount);
+    auto d = cast(ubyte*) dest;
+    auto s = cast(const ubyte*) src;
+
+    if (d > s && d < s + count) {
+        for (size_t i = count; i > 0; i--) {
+            d[i - 1] = s[i - 1];
+        }
+    } else {
+        for (size_t i = 0; i < count; i++) {
+            d[i] = s[i];
+        }
     }
 
-    return memcpy(dest, src, actualCount);
+    return dest;
 }
 
 /** 
@@ -633,9 +655,17 @@ private OperationResult allocateBlock(MemoryBlock* block, size_t usedBytes) {
     block.isAllocated = true;
     block.usedSize = usedBytes;
     if (block is firstFreeBlock) {
-        firstFreeBlock = cast(MemoryBlock*)(
+        auto candidate = cast(MemoryBlock*)(
             (cast(ubyte*) block) + MemoryBlock.sizeof + block.blockSize
         );
+
+        if (cast(void*) candidate < cast(void*) heapEnd
+            && candidate.isValidBlock()
+            && !candidate.isAllocated) {
+            firstFreeBlock = candidate;
+        } else {
+            firstFreeBlock = null;
+        }
     }
 
     return success();
@@ -1216,10 +1246,12 @@ void runWasmMemTests() {
         }
     });
 
-    test("realloc returns a null pointer when newSize is 0", {
+    test("realloc frees and returns a null pointer when newSize is 0", {
         auto ptr = malloc(10);
         auto newPtr = realloc(ptr, 0);
         assert(newPtr is null);
+        auto block = getBlock(ptr).value;
+        assert(!block.isAllocated);
     });
 
     test("memcpy copies src into dest", {
@@ -1241,43 +1273,83 @@ void runWasmMemTests() {
         ptr1[1] = 'I';
         assert(ptr2[0] == 0);
         assert(ptr2[1] == 0);
-        memmove(ptr2, ptr1, 2);
+        auto ret = memmove(ptr2, ptr1, 2);
+        assert(ret is ptr2);
         assert(ptr2[0] == 'H');
         assert(ptr2[1] == 'I');
     });
 
-    test("memmove does not copy more than is allocated for src", {
-        auto ptr1 = cast(ubyte*) malloc(2);
-        ptr1[0] = 'H';
-        ptr1[1] = 'I';
-
-        auto ptr2 = cast(ubyte*) malloc(1);
-        *ptr2 = 'X'; // overflow would actually lead to reading the block header anyway, not 'X'
-
-        auto ptr3 = cast(ubyte*) malloc(3);
-        assert(ptr3[0] == 0);
-        assert(ptr3[1] == 0);
-        assert(ptr3[2] == 0);
-
-        memmove(ptr3, ptr1, 3);
-        assert(ptr3[0] == 'H');
-        assert(ptr3[1] == 'I');
-        assert(ptr3[2] == 0);
+    test("memmove returns dest for zero count", {
+        auto ptr = cast(ubyte*) malloc(4);
+        auto ret = memmove(ptr, ptr, 0);
+        assert(ret is ptr);
     });
 
-    test("memmove resizes dest when it does not fit", {
+    test("memmove handles forward overlap correctly", {
+        auto ptr = cast(ubyte*) malloc(10);
+        ptr[0] = 'A';
+        ptr[1] = 'B';
+        ptr[2] = 'C';
+        ptr[3] = 'D';
+        ptr[4] = 'E';
+        // Copy [0..4] to [2..6] — dest > src, overlapping
+        memmove(ptr + 2, ptr, 4);
+        assert(ptr[0] == 'A');
+        assert(ptr[1] == 'B');
+        assert(ptr[2] == 'A');
+        assert(ptr[3] == 'B');
+        assert(ptr[4] == 'C');
+        assert(ptr[5] == 'D');
+    });
+
+    test("memmove handles backward overlap correctly", {
+        auto ptr = cast(ubyte*) malloc(10);
+        ptr[2] = 'A';
+        ptr[3] = 'B';
+        ptr[4] = 'C';
+        ptr[5] = 'D';
+        // Copy [2..6] to [0..4] — dest < src, overlapping
+        memmove(ptr, ptr + 2, 4);
+        assert(ptr[0] == 'A');
+        assert(ptr[1] == 'B');
+        assert(ptr[2] == 'C');
+        assert(ptr[3] == 'D');
+    });
+
+    test("memmove returns null when count exceeds src block bounds", {
         auto ptr1 = cast(ubyte*) malloc(2);
+        auto ptr2 = cast(ubyte*) malloc(10);
         ptr1[0] = 'H';
         ptr1[1] = 'I';
+        auto ret = memmove(ptr2, ptr1, 5);
+        assert(ret is null);
+        // dest is unchanged
+        assert(ptr2[0] == 0);
+        assert(ptr2[1] == 0);
+    });
 
-        auto ptr2 = cast(ubyte*) malloc(1);
-        malloc(1); // Intentional fragmentation to prevent free-block combining
-        auto ptr3 = cast(ubyte*) memmove(ptr2, ptr1, 2);
-        assert(ptr3 !is ptr2);
-        assert(ptr3[0] == 'H');
-        assert(ptr3[1] == 'I');
+    test("memmove returns null when count exceeds dest block bounds", {
+        auto ptr1 = cast(ubyte*) malloc(10);
+        auto ptr2 = cast(ubyte*) malloc(2);
+        memset(ptr1, 'X', 10);
+        auto ret = memmove(ptr2, ptr1, 5);
+        assert(ret is null);
+        // Verify the next block's header was not corrupted
+        auto destBlock = ptr2.getBlock.value;
+        auto nextBlock = destBlock.nextBlock;
+        assert(nextBlock.isValidBlock());
+    });
 
-        auto ptr2Block = ptr2.getBlock.value;
-        assert(!ptr2Block.isAllocated);
+    test("memmove works with non-heap pointers", {
+        // D string literals are in static memory, not on this allocator's heap
+        string str = "Hello";
+        auto dest = cast(ubyte*) malloc(5);
+        auto ret = memmove(dest, cast(const void*) str.ptr, 5);
+        assert(ret is dest);
+        assert(dest[0] == 'H');
+        assert(dest[1] == 'e');
+        assert(dest[2] == 'l');
+        assert(dest[3] == 'l');
+        assert(dest[4] == 'o');
     });
 }
