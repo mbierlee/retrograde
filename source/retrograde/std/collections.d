@@ -1952,11 +1952,11 @@ struct HashMap(K, V) {
     }
 
     ~this() {
-        cleanup();
+        clear();
     }
 
     void opAssign(ref return scope inout typeof(this) other) {
-        cleanup();
+        clear();
         auto mutableOther = cast(typeof(this)*) &other;
         copyFrom(*mutableOther);
     }
@@ -2118,12 +2118,17 @@ struct HashMap(K, V) {
     }
 
     /**
-     * Remove all key-value pairs and free all nodes.
-     * The bucket array is retained and zeroed for reuse.
+     * Remove all key-value pairs, free all nodes, and free the bucket array.
      */
     void clear() {
         freeNodes();
+        if (buckets !is null) {
+            free(buckets);
+            buckets = null;
+        }
+
         _length = 0;
+        _bucketCount = 0;
     }
 
     /**
@@ -2356,17 +2361,6 @@ struct HashMap(K, V) {
 
             buckets[i] = null;
         }
-    }
-
-    private void cleanup() {
-        freeNodes();
-        if (buckets !is null) {
-            free(buckets);
-            buckets = null;
-        }
-
-        _length = 0;
-        _bucketCount = 0;
     }
 
     private void copyFrom(ref typeof(this) other) {
