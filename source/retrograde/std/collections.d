@@ -1444,7 +1444,7 @@ struct LinkedList(T) {
      * Params:
      *   pred = the predicate to use.
      */
-    void removeWhere(bool function(const ref T) pred) {
+    void removeWhere(Fn)(scope Fn pred) if (!is(T == void)) {
         NodePtr node = head;
         while (node !is null) {
             NodePtr next = node.next;
