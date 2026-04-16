@@ -2016,13 +2016,13 @@ struct HashMap(K, V) {
      *   key = The key to look up.
      * Returns: some(value) if the key exists, none!V otherwise.
      */
-    Option!V get(K key) {
+    Option!V get(K key) const {
         if (buckets is null) {
             return none!V;
         }
 
         auto bucketIndex = computeBucketIndex(key);
-        auto node = buckets[bucketIndex];
+        auto node = cast(Node*) buckets[bucketIndex];
         while (node !is null) {
             if (node.key == key) {
                 return some(node.value);
@@ -2237,7 +2237,7 @@ struct HashMap(K, V) {
         return 0;
     }
 
-    bool opEquals(ref typeof(this) other) {
+    bool opEquals(ref const typeof(this) other) const {
         if (_length != other._length) {
             return false;
         }
@@ -2247,7 +2247,7 @@ struct HashMap(K, V) {
         }
 
         for (size_t i = 0; i < _bucketCount; i++) {
-            auto node = buckets[i];
+            auto node = cast(Node*) buckets[i];
             while (node !is null) {
                 auto otherValue = other.get(node.key);
                 if (!otherValue.isDefined || otherValue.value != node.value) {
@@ -2261,7 +2261,7 @@ struct HashMap(K, V) {
         return true;
     }
 
-    bool opEquals(typeof(this) other) {
+    bool opEquals(const typeof(this) other) const {
         return opEquals(other);
     }
 
