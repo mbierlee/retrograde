@@ -20,7 +20,7 @@ import retrograde.std.result : OperationResult, success, failure;
 private enum byte[] rgmMagicNumber = [0x52, 0x47, 0x4D, 0x20];
 private enum size_t rgmHeaderSize = 10;
 
-ResultPtr!Model loadModel(ubyte[] data, StringId name = sid("unknown")) {
+ResultPtr!Model loadModel(const(ubyte)[] data, StringId name = sid("unknown")) {
     // Check header size
     if (data.length < rgmHeaderSize) {
         return failedPtr!Model("Header is too small for a valid RGM file.");
@@ -50,7 +50,7 @@ ResultPtr!Model loadModel(ubyte[] data, StringId name = sid("unknown")) {
     return successPtr(model);
 }
 
-private OperationResult readMeshData(ubyte[] data, ref size_t offset, Model* model) {
+private OperationResult readMeshData(const(ubyte)[] data, ref size_t offset, Model* model) {
     Mesh mesh = Mesh();
 
     // Read vertex count
@@ -89,7 +89,7 @@ private OperationResult readMeshData(ubyte[] data, ref size_t offset, Model* mod
     return success();
 }
 
-private OperationResult readVertexData(ubyte[] data, ref size_t offset, ref Mesh mesh) {
+private OperationResult readVertexData(const(ubyte)[] data, ref size_t offset, ref Mesh mesh) {
     // Read X coordinate
     if (data.length - offset < 4) {
         return failure("Cannot read X coordinate: Unexpected end of data.");
@@ -142,7 +142,7 @@ private OperationResult readVertexData(ubyte[] data, ref size_t offset, ref Mesh
     return success();
 }
 
-private OperationResult readFaceData(ubyte[] data, ref size_t offset, ref Mesh mesh) {
+private OperationResult readFaceData(const(ubyte)[] data, ref size_t offset, ref Mesh mesh) {
     // Read vertex index 1
     if (data.length - offset < 4) {
         return failure("Cannot read vertex index 1: Unexpected end of data.");
@@ -171,12 +171,12 @@ private OperationResult readFaceData(ubyte[] data, ref size_t offset, ref Mesh m
     return success();
 }
 
-private uint readUInt(ubyte[] data, ref size_t offset) {
+private uint readUInt(const(ubyte)[] data, ref size_t offset) {
     ubyte[4] bytes = data[offset .. offset + 4];
     return toPlatformEndian!uint(bytes, Endian.little);
 }
 
-private float readFloat(ubyte[] data, ref size_t offset) {
+private float readFloat(const(ubyte)[] data, ref size_t offset) {
     ubyte[4] bytes = data[offset .. offset + 4];
     return toPlatformEndian!float(bytes, Endian.little);
 }
