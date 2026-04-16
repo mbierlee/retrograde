@@ -81,6 +81,47 @@ Result!T failure(T)(string errorMessage) if (!is(T == void)) {
 }
 
 /** 
+ * Calls the given action with the result's value if the result is successful.
+ * Does nothing if the result is a failure.
+ *
+ * Params:
+ *   T = The type of the result's value.
+ *   Fn = The type of the callable action.
+ *   res = The result to check.
+ *   onSuccess = The action to call with the result's value on success.
+ */
+void withResult(T, Fn)(Result!T res, scope Fn onSuccess) if (!is(T == void)) {
+    if (res.isSuccessful) {
+        onSuccess(res.value);
+    }
+}
+
+/** 
+ * Calls the given action with the result's value if the result is successful,
+ * or calls onError with the error message if the result is a failure.
+ *
+ * Params:
+ *   T = The type of the result's value.
+ *   Fn = The type of the callable action.
+ *   ErrFn = The type of the callable error action.
+ *   res = The result to check.
+ *   onSuccess = The action to call with the result's value on success.
+ *   onError = The action to call with the error message on failure.
+ */
+void withResult(T, Fn, ErrFn)(Result!T res, scope Fn onSuccess, scope ErrFn onError) if (!is(T == void)) {
+    if (res.isSuccessful) {
+        onSuccess(res.value);
+    } else {
+        onError(res.errorMessage);
+    }
+}
+
+private union ResultValue(T) {
+    T value;
+    string errorMessage;
+}
+
+/** 
  * An OperationResult is a type that can be used to return a success or failure
  * of an operation that does not return a value. It is used for idiomatic error handling.
  */
@@ -135,9 +176,38 @@ OperationResult failure(string errorMessage) {
     return result;
 }
 
-private union ResultValue(T) {
-    T value;
-    string errorMessage;
+/** 
+ * Calls the given action if the OperationResult is successful.
+ * Does nothing if the result is a failure.
+ *
+ * Params:
+ *   Fn = The type of the callable action.
+ *   res = The result to check.
+ *   onSuccess = The action to call on success.
+ */
+void withResult(Fn)(OperationResult res, scope Fn onSuccess) {
+    if (res.isSuccessful) {
+        onSuccess();
+    }
+}
+
+/** 
+ * Calls the given action if the OperationResult is successful,
+ * or calls onError with the error message if the result is a failure.
+ *
+ * Params:
+ *   Fn = The type of the callable action.
+ *   ErrFn = The type of the callable error action.
+ *   res = The result to check.
+ *   onSuccess = The action to call on success.
+ *   onError = The action to call with the error message on failure.
+ */
+void withResult(Fn, ErrFn)(OperationResult res, scope Fn onSuccess, scope ErrFn onError) {
+    if (res.isSuccessful) {
+        onSuccess();
+    } else {
+        onError(res.errorMessage);
+    }
 }
 
 version (UnitTesting)  :  ///
@@ -191,5 +261,61 @@ void runResultTests() {
         auto result = failure("Something went wrong");
         assert(result.isFailure);
         assert(!result.isSuccessful);
+    });
+
+    test("withResult calls action with value on successful Result", {
+        auto result = success(42);
+        int received = 0;
+        result.withResult((int v) { received = v; });
+        assert(received == 42);
+    });
+
+    test("withResult does not call action on failed Result", {
+        auto result = failure!int("error");
+        bool called = false;
+        result.withResult((int v) { called = true; });
+        assert(!called);
+    });
+
+    test("withResult calls action on successful OperationResult", {
+        auto result = success();
+        bool called = false;
+        result.withResult(() { called = true; });
+        assert(called);
+    });
+
+    test("withResult does not call action on failed OperationResult", {
+        auto result = failure("error");
+        bool called = false;
+        result.withResult(() { called = true; });
+        assert(!called);
+    });
+
+    test("withResult calls onError with error message on failed Result", {
+        auto result = failure!int("something went wrong");
+        string received = "";
+        result.withResult((int v) {}, (string e) { received = e; });
+        assert(received == "something went wrong");
+    });
+
+    test("withResult does not call onError on successful Result", {
+        auto result = success(42);
+        bool called = false;
+        result.withResult((int v) {}, (string e) { called = true; });
+        assert(!called);
+    });
+
+    test("withResult calls onError with error message on failed OperationResult", {
+        auto result = failure("something went wrong");
+        string received = "";
+        result.withResult(() {}, (string e) { received = e; });
+        assert(received == "something went wrong");
+    });
+
+    test("withResult does not call onError on successful OperationResult", {
+        auto result = success();
+        bool called = false;
+        result.withResult(() {}, (string e) { called = true; });
+        assert(!called);
     });
 }
