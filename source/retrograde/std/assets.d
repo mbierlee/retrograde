@@ -239,6 +239,7 @@ void withAssetData(Fn, AssetErrFn)(
     if (isAssetReady(handle)) {
         auto result = getAssetData(handle);
         onSuccess(result.value);
+        releaseAssetData(handle);
     } else if (isAssetError(handle)) {
         auto errorResult = getAssetError(handle);
         if (errorResult.isSuccessful) {
