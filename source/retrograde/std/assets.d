@@ -217,6 +217,37 @@ Result!(const(ubyte)[]) getAssetData(AssetHandle handle) {
 }
 
 /**
+ * Convenience wrapper that checks the state of an asset and dispatches to the
+ * appropriate delegate.
+ *
+ * If the asset is ready, $(D onSuccess) is called with the asset data.
+ *
+ * If the asset is in an error state, $(D onAssetError) is called with the error message.
+ *
+ * If the asset is still pending, none of the delegates are called.
+ *
+ * Params:
+ *  handle     = The asset handle to inspect.
+ *  onSuccess  = Called with the asset data when the asset is ready.
+ *  onError    = Called with an error message if the asset is in an error state.
+ */
+void withAssetData(Fn, AssetErrFn)(
+    AssetHandle handle,
+    scope Fn onSuccess,
+    scope AssetErrFn onError
+) {
+    if (isAssetReady(handle)) {
+        auto result = getAssetData(handle);
+        onSuccess(result.value);
+    } else if (isAssetError(handle)) {
+        auto errorResult = getAssetError(handle);
+        if (errorResult.isSuccessful) {
+            onError(errorResult.value);
+        }
+    }
+}
+
+/**
  * Directly inserts raw data as a ready asset, bypassing the async fetch mechanism.
  * The data is copied into a managed buffer. The returned handle is immediately ready
  * and can be used with $(D getAssetData) straight away.
@@ -530,6 +561,54 @@ void runAssetsTests() {
         assert(dataResult.value[0] == 10);
         assert(dataResult.value[1] == 20);
         assert(dataResult.value[2] == 30);
+    });
+
+    writeSection("-- withAssetData tests --");
+
+    test("withAssetData calls onSuccess when asset is ready", () {
+        resetState();
+
+        ubyte[3] data = [1, 2, 3];
+        auto handle = addAssetData(data[]).value;
+
+        bool called = false;
+        withAssetData(handle, (const(ubyte)[] d) {
+            called = true;
+            assert(d.length == 3);
+        }, (String e) {});
+
+        assert(called);
+    });
+
+    test("withAssetData calls onAssetError when asset is in an error state", () {
+        resetState();
+
+        mountAssetsPath("unittest://data/".s, "assets/".s);
+        auto handle = fetchAsset("assets/model.rgm".s).value;
+        assetFetchError(handle, "fetch failed".s);
+
+        String received;
+        withAssetData(handle, (const(ubyte)[] d) {}, (String e) {
+            received = e;
+        });
+
+        assert(received == "fetch failed");
+    });
+
+    test("withAssetData calls none of the delegates when asset is pending", () {
+        resetState();
+
+        mountAssetsPath("unittest://data/".s, "assets/".s);
+        auto handle = fetchAsset("assets/model.rgm".s).value;
+
+        bool called = false;
+        withAssetData(handle, (const(ubyte)[] d) {
+            called = true;
+        }, (String e) {
+            called = true;
+        });
+
+        assert(!called);
     });
 }
 
