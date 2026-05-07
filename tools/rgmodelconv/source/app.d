@@ -25,8 +25,9 @@ import bindbc.assimp;
 int main(string[] args) {
     string inputFile;
     string outputFile;
+    bool showStats;
 
-    int argsResult = parseArgs(args, inputFile, outputFile);
+    int argsResult = parseArgs(args, inputFile, outputFile, showStats);
     if (argsResult != -1) {
         return argsResult;
     }
@@ -43,7 +44,7 @@ int main(string[] args) {
                 "Ensure Assimp5.dll (Windows), libassimp.so.5 (Linux), or libassimp.dylib.5 (macOS) is available.");
             return 1;
         }
-        
+
         if (support == AssimpSupport.badLibrary) {
             stderr.writeln(
                 "Warning: Assimp library loaded but one or more symbols are missing. Results may be incorrect.");
@@ -75,18 +76,30 @@ int main(string[] args) {
         auto output = File(outputFile, "wb");
         writeRgmFile(output, scene);
 
-        uint totalVertices = 0;
-        uint totalFaces = 0;
-        for (uint i = 0; i < scene.mNumMeshes; i++) {
-            auto mesh = scene.mMeshes[i];
-            totalVertices += mesh.mNumVertices;
-            totalFaces += countTriangles(mesh);
-        }
-
         writefln("Converted '%s' -> '%s'", inputFile, outputFile);
-        writefln("  Meshes:         %d", scene.mNumMeshes);
-        writefln("  Total vertices: %d", totalVertices);
-        writefln("  Total faces:    %d", totalFaces);
+
+        if (showStats) {
+            uint totalVertices = 0;
+            uint totalFaces = 0;
+            uint totalUvChannels = 0;
+            uint maxUvChannelsUsed = 0;
+            for (uint i = 0; i < scene.mNumMeshes; i++) {
+                auto mesh = scene.mMeshes[i];
+                totalVertices += mesh.mNumVertices;
+                totalFaces += countTriangles(mesh);
+                uint uvChannels = countUvChannels(mesh);
+                totalUvChannels += uvChannels;
+                if (uvChannels > maxUvChannelsUsed) {
+                    maxUvChannelsUsed = uvChannels;
+                }
+            }
+
+            writefln("  Meshes:         %d", scene.mNumMeshes);
+            writefln("  Total vertices: %d", totalVertices);
+            writefln("  Total faces:    %d", totalFaces);
+            writefln("  Total UV chans: %d", totalUvChannels);
+            writefln("  Max UV chans:   %d", maxUvChannelsUsed);
+        }
     } catch (Exception e) {
         stderr.writefln("Error writing output file '%s': %s", outputFile, e.msg);
         return 1;
@@ -101,11 +114,12 @@ int main(string[] args) {
  *   0  if the program should exit successfully (e.g. --help was shown),
  *   1  if there was a usage error.
  */
-int parseArgs(ref string[] args, out string inputFile, out string outputFile) {
+int parseArgs(ref string[] args, out string inputFile, out string outputFile, out bool showStats) {
     try {
         auto opts = getopt(args,
             "input|i", "Input model file path", &inputFile,
             "output|o", "Output RGM file path", &outputFile,
+            "stats", "Print mesh statistics after conversion", &showStats,
         );
 
         if (opts.helpWanted) {
@@ -142,12 +156,22 @@ void writeRgmFile(ref File output, const(aiScene)* scene) {
     }
 }
 
+enum maxUvChannels = 8;
+
 void writeMeshData(ref File output, const(aiMesh)* mesh) {
     uint triangleCount = countTriangles(mesh);
+    uint uvChannelCount = countUvChannels(mesh);
+
+    if (uvChannelCount > maxUvChannels) {
+        throw new Exception(
+            "Mesh has more UV channels than the RGM format supports (max " ~
+                maxUvChannels.stringof ~ ").");
+    }
 
     // Mesh header
     writeUint(output, mesh.mNumVertices);
     writeUint(output, triangleCount);
+    writeUbyte(output, cast(ubyte) uvChannelCount);
 
     bool hasColors = mesh.mColors[0]!is null;
 
@@ -180,14 +204,38 @@ void writeMeshData(ref File output, const(aiMesh)* mesh) {
         writeUint(output, face.mIndices[1]);
         writeUint(output, face.mIndices[2]);
     }
+
+    // UV channel data (channel-major: all UVs for channel 0, then channel 1, ...)
+    for (uint c = 0; c < uvChannelCount; c++) {
+        for (uint i = 0; i < mesh.mNumVertices; i++) {
+            aiVector3D uv = mesh.mTextureCoords[c][i];
+            writeFloat(output, uv.x);
+            writeFloat(output, uv.y);
+        }
+    }
+}
+
+uint countUvChannels(const(aiMesh)* mesh) {
+    uint count = 0;
+    for (uint c = 0; c < AI_MAX_NUMBER_OF_TEXTURECOORDS; c++) {
+        if (mesh.mTextureCoords[c] is null) {
+            break;
+        }
+
+        count++;
+    }
+
+    return count;
 }
 
 uint countTriangles(const(aiMesh)* mesh) {
     uint count = 0;
     for (uint i = 0; i < mesh.mNumFaces; i++) {
-        if (mesh.mFaces[i].mNumIndices == 3)
+        if (mesh.mFaces[i].mNumIndices == 3) {
             count++;
+        }
     }
+
     return count;
 }
 
@@ -197,6 +245,11 @@ void writeBytes(ref File output, ubyte[] bytes...) {
 
 void writeUint(ref File output, uint value) {
     ubyte[4] bytes = nativeToLittleEndian(value);
+    output.rawWrite(bytes[]);
+}
+
+void writeUbyte(ref File output, ubyte value) {
+    ubyte[1] bytes = [value];
     output.rawWrite(bytes[]);
 }
 

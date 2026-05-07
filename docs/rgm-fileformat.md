@@ -24,7 +24,7 @@ For an example file, see `examples/cube.rgm`
 
 The binary file format consists of a header followed by data sections. Each section contains information about the meshes, vertices, and faces that make up the 3D model.
 
-Total file size = 10 + sum of (8 + vertexCount × 24 + faceCount × 12) for each mesh.
+Total file size = 10 + sum of (9 + vertexCount × 24 + faceCount × 12 + uvChannelCount × vertexCount × 8) for each mesh.
 
 ## Header (10 bytes)
 
@@ -42,12 +42,14 @@ After the header a variable amount of sections of individual mesh data is presen
 The amount of sections should be equal to the amount of meshes specified in the header.
 Meshes are identified by their 0-based index in the file.
 
-| Offset | Size             | Type   | Description  |
-| ------ | ---------------- | ------ | ------------ |
-| 0x00   | 4                | uint   | Vertex count |
-| 0x04   | 4                | uint   | Face count   |
-| 0x08   | vertexCount × 24 | Vertex | Vertex data  |
-| ...    | faceCount × 12   | Face   | Face data    |
+| Offset | Size                            | Type    | Description       |
+| ------ | ------------------------------- | ------- | ----------------- |
+| 0x00   | 4                               | uint    | Vertex count      |
+| 0x04   | 4                               | uint    | Face count        |
+| 0x08   | 1                               | ubyte   | UV channel count  |
+| 0x09   | vertexCount × 24                | Vertex  | Vertex data       |
+| ...    | faceCount × 12                  | Face    | Face data         |
+| ...    | uvChannelCount × vertexCount × 8 | UvCoord | UV channel data   |
 
 ### Vertex (24 bytes per vertex)
 
@@ -75,3 +77,14 @@ Vertex indices are wound in **counter-clockwise (CCW)** order when viewed from t
 | 0x00   | 4    | uint | Vertex index 1 |
 | 0x04   | 4    | uint | Vertex index 2 |
 | 0x08   | 4    | uint | Vertex index 3 |
+
+### UV Channel Data (uvChannelCount × vertexCount × 8 bytes)
+
+When `uvChannelCount` is greater than zero, UV texture coordinates follow the face data. The data is laid out **channel-major**: all UV pairs for channel 0 first (one pair per vertex, in vertex order), then all UV pairs for channel 1, and so on through channel `uvChannelCount - 1`. Channels must be contiguous starting at 0 (matching the glTF `TEXCOORD_0`, `TEXCOORD_1`, ... convention). Each pair is two 32-bit little-endian IEEE 754 floats.
+
+The maximum number of UV channels is 8.
+
+| Offset | Size | Type  | Description  |
+| ------ | ---- | ----- | ------------ |
+| 0x00   | 4    | float | U coordinate |
+| 0x04   | 4    | float | V coordinate |

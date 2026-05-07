@@ -16,6 +16,13 @@
       "postBuildCommands": [
         "copy /Y $PACKAGE_DIR\\lib\\assimp-vc143-mt.dll $PACKAGE_DIR\\bin\\assimp-vc143-mt.dll"
       ]
+    },
+    {
+      "name": "linux",
+      "platforms": ["linux"],
+      "postBuildCommands": [
+        "cp -f $PACKAGE_DIR/lib/libassimp.so.5 $PACKAGE_DIR/bin/libassimp.so.5"
+      ]
     }
   ]
 }

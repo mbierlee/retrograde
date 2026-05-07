@@ -11,7 +11,7 @@
 
 module retrograde.data.assets.rgm;
 
-import retrograde.data.model : Model, Vertex, Face, Mesh;
+import retrograde.data.model : Model, Vertex, Face, Mesh, UvCoord, maxUvChannels;
 import retrograde.std.endian : toPlatformEndian, Endian;
 import retrograde.std.memory : ResultPtr, failedPtr, makeRaw, successPtr;
 import retrograde.std.stringid : StringId, sid;
@@ -69,6 +69,18 @@ private OperationResult readMeshData(const(ubyte)[] data, ref size_t offset, Mod
     uint faceCount = readUInt(data, offset);
     offset += 4;
 
+    // Read UV channel count
+    if (data.length - offset < 1) {
+        return failure("Cannot read UV channel count: Unexpected end of data.");
+    }
+
+    ubyte uvChannelCount = data[offset];
+    offset += 1;
+
+    if (uvChannelCount > maxUvChannels) {
+        return failure("Invalid UV channel count: exceeds maxUvChannels.");
+    }
+
     // Read vertices
     for (uint i; i < vertexCount; i++) {
         OperationResult result = readVertexData(data, offset, mesh);
@@ -85,7 +97,41 @@ private OperationResult readMeshData(const(ubyte)[] data, ref size_t offset, Mod
         }
     }
 
+    // Read UV channel data
+    if (uvChannelCount > 0) {
+        OperationResult uvResult = readUvData(data, offset, mesh, uvChannelCount, vertexCount);
+        if (uvResult.isFailure()) {
+            return uvResult;
+        }
+    }
+
     model.meshes ~= mesh;
+    return success();
+}
+
+private OperationResult readUvData(
+    const(ubyte)[] data,
+    ref size_t offset,
+    ref Mesh mesh,
+    ubyte uvChannelCount,
+    uint vertexCount
+) {
+    size_t totalCoords = cast(size_t) uvChannelCount * vertexCount;
+    size_t requiredBytes = totalCoords * 8;
+    if (data.length - offset < requiredBytes) {
+        return failure("Cannot read UV data: Unexpected end of data.");
+    }
+
+    mesh.uvCoords.capacity = totalCoords;
+    for (size_t i = 0; i < totalCoords; i++) {
+        float u = readFloat(data, offset);
+        offset += 4;
+        float v = readFloat(data, offset);
+        offset += 4;
+        mesh.uvCoords ~= UvCoord(u, v);
+    }
+
+    mesh.uvChannelCount = uvChannelCount;
     return success();
 }
 
@@ -189,7 +235,7 @@ void runRgmTests() {
     writeSection("-- RGM tests --");
 
     test("Load simple model containing a plane", {
-        ubyte[138] modelData = [
+        ubyte[139] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -198,6 +244,7 @@ void runRgmTests() {
             // Mesh 1
             0x04, 0x00, 0x00, 0x00, // Vertex count (4)
             0x02, 0x00, 0x00, 0x00, // Face count (2)
+            0x00, // UV channel count (0)
 
             // Vertex 1
             0x00, 0x00, 0x00, 0x00, // X coordinate (0.0)
@@ -285,5 +332,85 @@ void runRgmTests() {
         assert(model.meshes[0].faces[1].vA == 1);
         assert(model.meshes[0].faces[1].vB == 3);
         assert(model.meshes[0].faces[1].vC == 2);
+
+        assert(model.meshes[0].uvChannelCount == 0);
+        assert(model.meshes[0].uvCoords.length == 0);
+    });
+
+    test("Load simple model with two UV channels", {
+        ubyte[151] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
+
+            // Mesh 1
+            0x03, 0x00, 0x00, 0x00, // Vertex count (3)
+            0x01, 0x00, 0x00, 0x00, // Face count (1)
+            0x02, // UV channel count (2)
+
+            // Vertex 1
+            0x00, 0x00, 0x00, 0x00, // X (0.0)
+            0x00, 0x00, 0x00, 0x00, // Y (0.0)
+            0x00, 0x00, 0x00, 0x00, // Z (0.0)
+            0x00, 0x00, 0x80, 0x3F, // R (1.0)
+            0x00, 0x00, 0x00, 0x00, // G (0.0)
+            0x00, 0x00, 0x00, 0x00, // B (0.0)
+
+            // Vertex 2
+            0x00, 0x00, 0x80, 0x3F, // X (1.0)
+            0x00, 0x00, 0x00, 0x00, // Y (0.0)
+            0x00, 0x00, 0x00, 0x00, // Z (0.0)
+            0x00, 0x00, 0x00, 0x00, // R (0.0)
+            0x00, 0x00, 0x80, 0x3F, // G (1.0)
+            0x00, 0x00, 0x00, 0x00, // B (0.0)
+
+            // Vertex 3
+            0x00, 0x00, 0x00, 0x00, // X (0.0)
+            0x00, 0x00, 0x80, 0x3F, // Y (1.0)
+            0x00, 0x00, 0x00, 0x00, // Z (0.0)
+            0x00, 0x00, 0x00, 0x00, // R (0.0)
+            0x00, 0x00, 0x00, 0x00, // G (0.0)
+            0x00, 0x00, 0x80, 0x3F, // B (1.0)
+
+            // Face 1
+            0x00, 0x00, 0x00, 0x00, // index 0
+            0x01, 0x00, 0x00, 0x00, // index 1
+            0x02, 0x00, 0x00, 0x00, // index 2
+
+            // UV channel 0 (u, v per vertex)
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // (0.0, 0.0)
+            0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, // (1.0, 0.0)
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, // (0.0, 1.0)
+
+            // UV channel 1 (u, v per vertex)
+            0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, // (2.0, 0.0)
+            0x00, 0x00, 0x40, 0x40, 0x00, 0x00, 0x00, 0x00, // (3.0, 0.0)
+            0x00, 0x00, 0x80, 0x40, 0x00, 0x00, 0x00, 0x00, // (4.0, 0.0)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(result.isSuccessful());
+
+        auto model = result.unique();
+        assert(model.meshes.length == 1);
+        assert(model.meshes[0].uvChannelCount == 2);
+        assert(model.meshes[0].uvCoords.length == 6);
+
+        // Channel 0
+        assert(model.meshes[0].uvCoords[0].u == 0.0);
+        assert(model.meshes[0].uvCoords[0].v == 0.0);
+        assert(model.meshes[0].uvCoords[1].u == 1.0);
+        assert(model.meshes[0].uvCoords[1].v == 0.0);
+        assert(model.meshes[0].uvCoords[2].u == 0.0);
+        assert(model.meshes[0].uvCoords[2].v == 1.0);
+
+        // Channel 1
+        assert(model.meshes[0].uvCoords[3].u == 2.0);
+        assert(model.meshes[0].uvCoords[3].v == 0.0);
+        assert(model.meshes[0].uvCoords[4].u == 3.0);
+        assert(model.meshes[0].uvCoords[4].v == 0.0);
+        assert(model.meshes[0].uvCoords[5].u == 4.0);
+        assert(model.meshes[0].uvCoords[5].v == 0.0);
     });
 }
