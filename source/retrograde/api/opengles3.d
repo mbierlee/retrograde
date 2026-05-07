@@ -19,7 +19,7 @@ import retrograde.engine.entity : EntityId, hasComponent, withComponentData, add
     getComponentData;
 import retrograde.engine.rendering : Color, RenderPass, Viewport;
 
-import retrograde.data.model : ModelComponentType, Model;
+import retrograde.data.model : ModelComponentType, Model, maxUvChannels;
 
 import retrograde.std.memory : makeSharedVoid, makeRaw, UniquePtr;
 import retrograde.std.collections : Array;
@@ -118,14 +118,33 @@ void loadEntityModel(EntityId entity) {
             glEnableVertexAttribArray(ColorAttribLocation);
             glVertexAttribPointer(ColorAttribLocation, 4, GL_FLOAT, false, 0, 0);
 
-            auto meshInfo = GlMeshInfo(
-                positionBufferObject,
-                colorBufferObject,
-                vertexArrayObject,
-                0,
-                mesh.vertices.length,
-                0
-            );
+            GlMeshInfo meshInfo;
+            meshInfo.positionBufferObject = positionBufferObject;
+            meshInfo.colorBufferObject = colorBufferObject;
+            meshInfo.vertexArrayObject = vertexArrayObject;
+            meshInfo.elementBufferObject = 0;
+            meshInfo.vertexCount = mesh.vertices.length;
+            meshInfo.elementCount = 0;
+            meshInfo.uvChannelCount = mesh.uvChannelCount;
+
+            for (ubyte c = 0; c < mesh.uvChannelCount; c++) {
+                Array!GLfloat uvData;
+                uvData.capacity = mesh.vertices.length * 2;
+                size_t channelStart = cast(size_t) c * mesh.vertices.length;
+                for (size_t i = 0; i < mesh.vertices.length; i++) {
+                    auto coord = mesh.uvCoords[channelStart + i];
+                    uvData.add(cast(GLfloat) coord.u);
+                    uvData.add(cast(GLfloat) coord.v);
+                }
+
+                auto uvBufferObject = glCreateBuffer();
+                glBindBuffer(GL_ARRAY_BUFFER, uvBufferObject);
+                glBufferDataFloat(GL_ARRAY_BUFFER, uvData.arr, GL_STATIC_DRAW);
+                glEnableVertexAttribArray(UvAttribLocationBase + c);
+                glVertexAttribPointer(UvAttribLocationBase + c, 2, GL_FLOAT, false, 0, 0);
+
+                meshInfo.uvBufferObjects[c] = uvBufferObject;
+            }
 
             if (mesh.faces.length > 0) {
                 GLuint elementBufferObject = glCreateBuffer();
@@ -160,6 +179,10 @@ void unloadEntityModel(EntityId entity) {
             glDeleteBuffer(meshInfo.positionBufferObject);
             glDeleteBuffer(meshInfo.colorBufferObject);
             glDeleteBuffer(meshInfo.elementBufferObject);
+            for (ubyte c = 0; c < meshInfo.uvChannelCount; c++) {
+                glDeleteBuffer(meshInfo.uvBufferObjects[c]);
+            }
+
             glDeleteVertexArray(meshInfo.vertexArrayObject);
         }
     });
@@ -262,6 +285,7 @@ private uint viewportHeight = 1;
 
 private enum PositionAttribLocation = 0;
 private enum ColorAttribLocation = 1;
+private enum UvAttribLocationBase = 2;
 
 private struct GlMeshInfo {
     GLuint positionBufferObject;
@@ -270,6 +294,8 @@ private struct GlMeshInfo {
     GLuint elementBufferObject;
     GLuint vertexCount;
     GLuint elementCount;
+    GLuint[maxUvChannels] uvBufferObjects;
+    ubyte uvChannelCount;
 }
 
 private struct GlModelInfo {

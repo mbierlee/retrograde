@@ -18,8 +18,10 @@ import retrograde.std.dlang : CopyConstructors;
 alias VertexComponent = float;
 alias VertexIndex = size_t;
 alias TextureCoordinateIndex = size_t;
+alias UvChannelIndex = ubyte;
 
 enum ModelComponentType = sid("comp_model");
+enum maxUvChannels = 8;
 
 /**
  * Represents a vertex in a 3D model.
@@ -54,11 +56,13 @@ struct Face {
     // TextureCoordinateIndex vtA, vtB, vtC;
 }
 
-// struct TextureCoordinate {
-//     VertexComponent u;
-//     VertexComponent v;
-//     VertexComponent w;
-// }
+/**
+ * A single UV texture coordinate pair for one vertex on one channel.
+ */
+struct UvCoord {
+    VertexComponent u;
+    VertexComponent v;
+}
 
 /**
  * Represents a mesh in a 3D model, consisting of vertices and faces.
@@ -66,6 +70,12 @@ struct Face {
 struct Mesh {
     Array!Vertex vertices;
     Array!Face faces;
+
+    /// Number of active UV channels (0..maxUvChannels).
+    ubyte uvChannelCount;
+
+    /// Flat channel-major UV data: channel c, vertex i lives at index `c * vertices.length + i`.
+    Array!UvCoord uvCoords;
 
     mixin CopyConstructors!Mesh;
 }
