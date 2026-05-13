@@ -6,3 +6,6 @@ test-native:
 
 build-rgmodelconv-release:
 	cd tools/rgmodelconv && dub build --build=release
+
+build-rgimageconv-release:
+	cd tools/rgimageconv && dub build --build=release

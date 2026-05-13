@@ -1,9 +1,9 @@
 {
+  "name": "rgmodelconv",
   "description": "Convert models to RGM model format",
   "license": "MIT",
   "authors": ["Mike Bierlee"],
   "copyright": "Copyright Mike Bierlee 2026",
-  "name": "rgmodelconv",
   "targetPath": "bin",
   "targetType": "executable",
   "dependencies": {
