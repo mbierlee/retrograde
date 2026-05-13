@@ -12,6 +12,7 @@
 module retrograde.data.assets.rgm;
 
 import retrograde.data.model : Model, Vertex, Face, Mesh, UvCoord, maxUvChannels;
+import retrograde.data.assets.readercommon : readUInt, readFloat;
 import retrograde.std.endian : toPlatformEndian, Endian;
 import retrograde.std.memory : ResultPtr, failedPtr, makeRaw, successPtr;
 import retrograde.std.stringid : StringId, sid;
@@ -45,6 +46,10 @@ ResultPtr!Model loadModel(const(ubyte)[] data, StringId name = sid("unknown")) {
         if (result.isFailure()) {
             return failedPtr!Model(result.errorMessage());
         }
+    }
+
+    if (offset != data.length) {
+        return failedPtr!Model("RGM data contains unexpected trailing bytes.");
     }
 
     return successPtr(model);
@@ -217,16 +222,6 @@ private OperationResult readFaceData(const(ubyte)[] data, ref size_t offset, ref
     return success();
 }
 
-private uint readUInt(const(ubyte)[] data, ref size_t offset) {
-    ubyte[4] bytes = data[offset .. offset + 4];
-    return toPlatformEndian!uint(bytes, Endian.little);
-}
-
-private float readFloat(const(ubyte)[] data, ref size_t offset) {
-    ubyte[4] bytes = data[offset .. offset + 4];
-    return toPlatformEndian!float(bytes, Endian.little);
-}
-
 version (UnitTesting)  :  ///
 
 void runRgmTests() {
@@ -335,6 +330,48 @@ void runRgmTests() {
 
         assert(model.meshes[0].uvChannelCount == 0);
         assert(model.meshes[0].uvCoords.length == 0);
+    });
+
+    test("Reject model with trailing bytes beyond expected data", {
+        ubyte[140] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
+
+            // Mesh 1
+            0x04, 0x00, 0x00, 0x00, // Vertex count (4)
+            0x02, 0x00, 0x00, 0x00, // Face count (2)
+            0x00, // UV channel count (0)
+
+            // Vertex 1
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+            // Vertex 2
+            0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
+
+            // Vertex 3
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F,
+
+            // Vertex 4
+            0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F,
+
+            // Face 1
+            0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
+
+            // Face 2
+            0x01, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
+
+            // Trailing byte (unexpected)
+            0xFF,
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
     });
 
     test("Load simple model with two UV channels", {
