@@ -1,0 +1,9 @@
+{
+  "name": "rgimageconv",
+  "description": "Convert images to the RGI image format",
+  "license": "MIT",
+  "authors": ["Mike Bierlee"],
+  "copyright": "Copyright Mike Bierlee 2026",
+  "targetPath": "bin",
+  "targetType": "executable"
+}
