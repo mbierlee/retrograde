@@ -14,6 +14,8 @@ This document describes `version 1` of the RGI file format.
 
 > **Note:** Version 1 is currently in development and has not been publicly released. The format may change without notice.
 
+For an example file, see `examples/test1024.rgi`
+
 ## Changelog
 
 | Version | Description     |
