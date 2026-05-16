@@ -18,10 +18,10 @@ struct Option(T) {
     private T _value;
     private bool _isDefined;
 
-    /** 
+    /**
      * Returns: The value of the option. If the option is not defined, an assert is thrown.
      */
-    T value() {
+    ref T value() return {
         assert(this._isDefined, "Option does not have a value. Make sure to check isDefined() before calling value()");
         return this._value;
     }

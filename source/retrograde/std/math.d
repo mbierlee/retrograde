@@ -1052,9 +1052,9 @@ struct QuaternionT(T) {
         return conjugate / magnitudeSquared;
     }
 
-    string toString() const {
+    String toString() const {
         auto realPartString = (cast(T) realPart).to!String();
-        auto vectorString = imaginaryVector.toString().s;
+        auto vectorString = imaginaryVector.toString();
         return "(".s ~ realPartString ~ ", ".s ~ vectorString ~ ")".s;
     }
 }

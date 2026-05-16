@@ -208,7 +208,7 @@ Result!(const(ubyte)[]) getAssetData(AssetHandle handle) {
     }
 
     if (entry.status == AssetStatus.error) {
-        return failure!(const(ubyte)[])(entry.errorMessage.toString());
+        return failure!(const(ubyte)[])(entry.errorMessage);
     }
 
     entry.usageCount++;

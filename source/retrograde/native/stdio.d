@@ -14,9 +14,14 @@ module retrograde.native.stdio;
 version (Native)  :  //
 
 import core.stdc.stdio : printf;
+import retrograde.std.string : String;
 
 void writelnStr(string msg) {
     printf("%.*s\n", cast(int) msg.length, msg.ptr);
+}
+
+void writelnString(ref const String msg) {
+    printf("%.*s\n", cast(int) msg.length, msg.dataPtr);
 }
 
 void writelnUint(uint number) {
@@ -69,6 +74,10 @@ void writelnBool(bool value) {
 
 void writeErrLnStr(string msg) {
     printf("ERROR: %.*s\n", cast(int) msg.length, msg.ptr);
+}
+
+void writeErrLnString(ref const String msg) {
+    printf("ERROR: %.*s\n", cast(int) msg.length, msg.dataPtr);
 }
 
 void writeErrLnUint(uint number) {

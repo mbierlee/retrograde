@@ -33,7 +33,7 @@ String toString(T)(T val)
         unsignedIntegralToString(str.ptr, maxDigits, val);
     }
 
-    return str.ptr.cStrToString().s;
+    return str.ptr.cStrToString();
 }
 
 export extern (C) void integralToString(char* str, uint ptrLength, long val);

@@ -38,12 +38,38 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
         freePtr();
     }
 
-    void opAssign(ref return scope typeof(this) other) {
+    void opAssign(ref return scope inout typeof(this) other) {
+        if (this.ptr is other.ptr) {
+            return;
+        }
+
         copyFrom(cast(void*) other.ptr, other._length);
     }
 
     void opAssign(string str) {
         copyFrom(cast(void*) str.ptr, str.length);
+    }
+
+    int opApply(scope int delegate(ref T) dg) {
+        for (size_t i = 0; i < _length; i++) {
+            int result = dg(ptr[i]);
+            if (result) {
+                return result;
+            }
+        }
+
+        return 0;
+    }
+
+    int opApply(scope int delegate(T) dg) const {
+        for (size_t i = 0; i < _length; i++) {
+            int result = dg(ptr[i]);
+            if (result) {
+                return result;
+            }
+        }
+
+        return 0;
     }
 
     void opOpAssign(string op : "~")(ref typeof(this) rhs) {
@@ -161,36 +187,32 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
         return true;
     }
 
-    /** 
+    /**
      * Returns: a hash of this String.
      */
     ulong toHash() nothrow @trusted const {
-        return get().hashOf();
+        static if (is(T == char)) {
+            return (cast(string) ptr[0 .. _length]).hashOf();
+        } else {
+            ulong hash = 0;
+            foreach (i; 0 .. _length) {
+                hash = hash * 33 + ptr[i];
+            }
+
+            return hash;
+        }
     }
 
-    static if (is(T == char)) {
-        /** 
-         * Returns: the D string representation of this String.
-         */
-        string get() const {
-            return cast(string) ptr[0 .. _length];
-        }
-
-        /** 
-         * Returns: the D string representation of this String.
-         */
-        @property string toString() const {
-            return get();
-        }
-
-        alias toString this;
-    } else {
-        /** 
-         * Returns: a character array of this String
-         */
-        const(T)[] get() const {
-            return ptr[0 .. _length];
-        }
+    /**
+     * Returns: a raw pointer to this String's internal character buffer.
+     *
+     * The returned pointer is only valid for the lifetime of this String.
+     * It must not be stored beyond that lifetime, and any slice constructed
+     * from it (e.g. for printf-style use) must be consumed before the String
+     * is destroyed or mutated. Prefer the safer accessors where possible.
+     */
+    const(T)* dataPtr() const {
+        return ptr;
     }
 
     /** 
@@ -457,7 +479,7 @@ void runStringBasicTests() {
 
     test("Create and use String from static string", {
         auto str = String("Hello world");
-        assert(str.get == "Hello world");
+        assert(str == "Hello world");
         assert(str.length == 11);
     });
 
@@ -470,7 +492,7 @@ void runStringBasicTests() {
     test("Construct a String from another String", {
         auto str = String("Hello world");
         auto str2 = String(str);
-        assert(str2.get == "Hello world");
+        assert(str2 == "Hello world");
         assert(str2.length == 11);
         assert(str2.ptr !is str.ptr);
     });
@@ -479,7 +501,7 @@ void runStringBasicTests() {
         auto str = String("Hello world");
         auto str2 = String("Goodbye world");
         str2 = str;
-        assert(str2.get == "Hello world");
+        assert(str2 == "Hello world");
         assert(str2.length == 11);
         assert(str2.ptr !is str.ptr);
     });
@@ -487,14 +509,14 @@ void runStringBasicTests() {
     test("Assigning a D string to a String copies it", {
         auto str = String("Hello world");
         str = "Goodbye world";
-        assert(str.get == "Goodbye world");
+        assert(str == "Goodbye world");
         assert(str.length == 13);
     });
 
     test("String can be used in a truthy test to check for emptyness", {
         auto str = String("Hello world");
         assert(str);
-        str = String("");
+        str = "";
         assert(!str);
     });
 
@@ -502,7 +524,7 @@ void runStringBasicTests() {
         auto str = String("Hello");
         auto str2 = String(" world");
         auto str3 = str ~ str2 ~ String("!");
-        assert(str3.get == "Hello world!");
+        assert(str3 == "Hello world!");
         assert(str3.length == 12);
     });
 
@@ -510,14 +532,14 @@ void runStringBasicTests() {
         auto str = String("Hello");
         auto str2 = String(" world");
         str ~= str2;
-        assert(str.get == "Hello world");
+        assert(str == "Hello world");
         assert(str.length == 11);
     });
 
     test("Concatenate D string to String", {
         auto str = String("Hello");
         str ~= " world";
-        assert(str.get == "Hello world");
+        assert(str == "Hello world");
         assert(str.length == 11);
     });
 
@@ -534,25 +556,25 @@ void runStringBasicTests() {
     test("Change character of String via index", {
         auto str = String("Hello world");
         str[0] = 'h';
-        assert(str.get == "hello world");
+        assert(str == "hello world");
     });
 
     test("Change all characters of String via index", {
         auto str = String("Hello world");
         str[] = 'h';
-        assert(str.get == "hhhhhhhhhhh");
+        assert(str == "hhhhhhhhhhh");
     });
 
     test("Change all characters of String via slice", {
         auto str = String("Hello world");
         str[6 .. $] = 'h';
-        assert(str.get == "Hello hhhhh");
+        assert(str == "Hello hhhhh");
     });
 
     test("Create String from a slice", {
         auto dStr = "Hello world";
         auto str = String(dStr[6 .. $]);
-        assert(str.get == "world");
+        assert(str == "world");
     });
 
     test("Compare string through equals operator", {
@@ -565,7 +587,7 @@ void runStringBasicTests() {
 
     test("Create String with s convenience function", {
         auto str = "Hello world".s;
-        assert(str.get == "Hello world");
+        assert(str == "Hello world");
     });
 
     test("Compare two Strings by hash", {
@@ -592,7 +614,8 @@ void runStringBasicTests() {
         assert(str == "hi!");
 
         auto str2 = String("bye");
-        str2 = str2 ~ '!';
+        auto combined = str2 ~ '!';
+        str2 = combined;
         assert(str2 == "bye!");
     });
 
