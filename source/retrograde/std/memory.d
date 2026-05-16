@@ -11,6 +11,8 @@
 
 module retrograde.std.memory;
 
+import retrograde.std.string : String;
+
 version (WebAssembly) {
     public import retrograde.wasm.memory : malloc, free, calloc, realloc, memset, memcmp, memcpy, memmove;
 } else {
@@ -475,7 +477,7 @@ SharedPtr!void makeSharedVoid(T)(const T initial = T.init) {
 struct ResultPtr(T) {
     private bool success;
     private T* _ptr;
-    string _errorMessage;
+    String _errorMessage;
 
     ~this() {
         cleanup();
@@ -633,10 +635,10 @@ struct ResultPtr(T) {
         return !this.success;
     }
 
-    /** 
+    /**
      * Returns: The error message of the result.
      */
-    string errorMessage() {
+    String errorMessage() const {
         return this._errorMessage;
     }
 
@@ -661,6 +663,14 @@ ResultPtr!T successPtr(T)(T* ptr) {
 }
 
 ResultPtr!T failedPtr(T)(string errorMessage) {
+    ResultPtr!T resultPtr;
+    resultPtr._ptr = null;
+    resultPtr.success = false;
+    resultPtr._errorMessage = errorMessage;
+    return resultPtr;
+}
+
+ResultPtr!T failedPtr(T)(String errorMessage) {
     ResultPtr!T resultPtr;
     resultPtr._ptr = null;
     resultPtr.success = false;

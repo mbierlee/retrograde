@@ -22,14 +22,44 @@ version (WebAssembly) {
     static assert(false, "No stdio implementation available for target platform. Provide one of these versions: WebAssembly, Native");
 }
 
-/** 
+/**
+ * Prints the contents of a $(D String) to the standard output stream.
+ *
+ * The slice handed to the underlying writer borrows from $(D msg)'s buffer
+ * for the duration of the call only — it never escapes this function.
+ */
+void writelnString(ref const String msg) {
+    auto slice = msg.dataPtr[0 .. msg.length];
+    writelnStr(cast(string) slice);
+}
+
+/**
+ * Prints the contents of a $(D String) to the standard error stream.
+ *
+ * The slice handed to the underlying writer borrows from $(D msg)'s buffer
+ * for the duration of the call only — it never escapes this function.
+ */
+void writeErrLnString(ref const String msg) {
+    auto slice = msg.dataPtr[0 .. msg.length];
+    writeErrLnStr(cast(string) slice);
+}
+
+void writeln(ref const String value) {
+    writelnString(value);
+}
+
+void writeErrLn(ref const String value) {
+    writeErrLnString(value);
+}
+
+/**
  * Prints a value to the standard output stream.
  */
 void writeln(T)(T value) {
     static if (is(T == string)) {
         writelnStr(value);
     } else static if (is(T == String)) {
-        writelnStr(value.toString());
+        writelnString(value);
     } else static if (is(T == uint)) {
         writelnUint(value);
     } else static if (is(T == int)) {
@@ -65,14 +95,14 @@ void writeln() {
     writeln("");
 }
 
-/** 
+/**
  * Prints a value to the standard error stream.
  */
 void writeErrLn(T)(T value) {
     static if (is(T == string)) {
         writeErrLnStr(value);
     } else static if (is(T == String)) {
-        writeErrLnStr(value.toString());
+        writeErrLnString(value);
     } else static if (is(T == uint)) {
         writeErrLnUint(value);
     } else static if (is(T == int)) {

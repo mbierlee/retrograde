@@ -19,7 +19,7 @@ import retrograde.std.assets : assetFetchComplete, assetFetchError;
 extern (C) void startAssetFetch(char* url, size_t urlLen, uint handle);
 
 void fetchPlatformAssetAsync(uint handle, String url) {
-    startAssetFetch(cast(char*) url.ptr, url.length, handle);
+    startAssetFetch(cast(char*) url.dataPtr, url.length, handle);
 }
 
 export extern (C) void onAssetFetchComplete(uint handle, ubyte* dataPtr, size_t dataLen) {
