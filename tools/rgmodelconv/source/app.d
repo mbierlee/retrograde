@@ -94,11 +94,11 @@ int main(string[] args) {
                 }
             }
 
-            writefln("  Meshes:         %d", scene.mNumMeshes);
-            writefln("  Total vertices: %d", totalVertices);
-            writefln("  Total faces:    %d", totalFaces);
-            writefln("  Total UV chans: %d", totalUvChannels);
-            writefln("  Max UV chans:   %d", maxUvChannelsUsed);
+            writefln("  Meshes:            %d", scene.mNumMeshes);
+            writefln("  Total vertices:    %d", totalVertices);
+            writefln("  Total faces:       %d", totalFaces);
+            writefln("  Total UV chans:    %d", totalUvChannels);
+            writefln("  Max UV chans/mesh: %d", maxUvChannelsUsed);
         }
     } catch (Exception e) {
         stderr.writefln("Error writing output file '%s': %s", outputFile, e.msg);

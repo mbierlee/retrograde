@@ -15,27 +15,29 @@ import retrograde.data.image : Image, ChannelFormat, bytesPerChannel;
 import retrograde.data.assets.readercommon : readUInt, readUShort, readUByte;
 import retrograde.std.memory : ResultPtr, failedPtr, makeRaw, successPtr;
 import retrograde.std.stringid : StringId, sid;
+import retrograde.std.result : Result, success, failure;
 
-private enum byte[] rgiMagicNumber = [0x52, 0x47, 0x49, 0x20];
+enum byte[] rgiMagicNumber = [0x52, 0x47, 0x49, 0x20];
 private enum size_t rgiHeaderSize = 9;
 private enum size_t rgiImageHeaderSize = 10;
+private enum size_t rgiPaletteCountSize = 4;
 
-private enum CompressionType : ubyte {
+enum CompressionType : ubyte {
     none = 0,
 }
 
-private enum ColorMode : ubyte {
+enum ColorMode : ubyte {
     direct = 0,
     indexed = 1,
 }
 
-private enum IndexFormat : ubyte {
+enum IndexFormat : ubyte {
     u8 = 0,
     u16 = 1,
     u32 = 2,
 }
 
-private size_t bytesPerIndex(IndexFormat fmt) {
+size_t bytesPerIndex(IndexFormat fmt) {
     final switch (fmt) {
     case IndexFormat.u8:
         return 1;
@@ -58,28 +60,66 @@ private bool exceedsIndexFormatRange(uint paletteCount, IndexFormat fmt) {
     }
 }
 
-ResultPtr!Image loadImage(const(ubyte)[] data, StringId name = sid("unknown")) {
-    // File header
+/**
+ * Metadata for the RGI file header, image header, and (when indexed) palette
+ * entry count. After a successful parse all fields are guaranteed to be valid
+ * and self-consistent; in particular `paletteEntryCount` is 0 in direct color
+ * mode and `indexFormat` is meaningful only in indexed mode.
+ */
+struct ImageHeader {
+    /// File format version (currently always 1).
+    ushort formatVersion;
+    /// Compression applied to the pixel data section.
+    CompressionType compression;
+    /// Whether pixels are stored as direct samples or as palette indices.
+    ColorMode colorMode;
+    /// Encoding of each palette index. Only meaningful when `colorMode == indexed`.
+    IndexFormat indexFormat;
+    /// Image width in pixels (always > 0).
+    uint width;
+    /// Image height in pixels (always > 0).
+    uint height;
+    /// Number of channels per pixel (1..4).
+    ubyte channelCount;
+    /// Per-channel storage format.
+    ChannelFormat channelFormat;
+    /// Number of palette entries. 0 in direct mode.
+    uint paletteEntryCount;
+}
+
+/**
+ * Parse and validate the leading headers of an RGI file: the 9-byte file
+ * header, the 10-byte image header, and (in indexed mode) the 4-byte palette
+ * entry count. Palette entries and pixel data are not read.
+ *
+ * Params:
+ *   data = The raw RGI file bytes.
+ * Returns:
+ *   A successful `Result!ImageHeader` containing the parsed header, or a
+ *   failure with a descriptive error message if the headers are missing,
+ *   malformed, or specify an unsupported value.
+ */
+Result!ImageHeader loadImageHeader(const(ubyte)[] data) {
     if (data.length < rgiHeaderSize) {
-        return failedPtr!Image("Data is too short to be an RGI file.");
+        return failure!ImageHeader("Data is too short to be an RGI file.");
     }
 
     if (data[0 .. 4] != rgiMagicNumber) {
-        return failedPtr!Image("Data is not a valid RGI file.");
+        return failure!ImageHeader("Data is not a valid RGI file.");
     }
 
     if (data[4 .. 6] != [0x01, 0x00]) {
-        return failedPtr!Image("Unsupported RGI version.");
+        return failure!ImageHeader("Unsupported RGI version.");
     }
 
     if (data[6] != cast(ubyte) CompressionType.none) {
-        return failedPtr!Image("Unsupported RGI compression type.");
+        return failure!ImageHeader("Unsupported RGI compression type.");
     }
 
     ubyte rawColorMode = data[7];
     if (rawColorMode != cast(ubyte) ColorMode.direct
         && rawColorMode != cast(ubyte) ColorMode.indexed) {
-        return failedPtr!Image("Unsupported RGI color mode.");
+        return failure!ImageHeader("Unsupported RGI color mode.");
     }
 
     ColorMode colorMode = cast(ColorMode) rawColorMode;
@@ -87,40 +127,39 @@ ResultPtr!Image loadImage(const(ubyte)[] data, StringId name = sid("unknown")) {
     ubyte rawIndexFormat = data[8];
     if (colorMode == ColorMode.direct) {
         if (rawIndexFormat != 0) {
-            return failedPtr!Image("RGI index format must be 0 in direct color mode.");
+            return failure!ImageHeader("RGI index format must be 0 in direct color mode.");
         }
     } else {
         if (rawIndexFormat != cast(ubyte) IndexFormat.u8
             && rawIndexFormat != cast(ubyte) IndexFormat.u16
             && rawIndexFormat != cast(ubyte) IndexFormat.u32) {
-            return failedPtr!Image("Unsupported RGI index format.");
+            return failure!ImageHeader("Unsupported RGI index format.");
         }
     }
 
     IndexFormat indexFormat = cast(IndexFormat) rawIndexFormat;
 
-    // Image header
     size_t offset = rgiHeaderSize;
     if (data.length - offset < rgiImageHeaderSize) {
-        return failedPtr!Image("Cannot read RGI image header: Unexpected end of data.");
+        return failure!ImageHeader("Cannot read RGI image header: Unexpected end of data.");
     }
 
     uint width = readUInt(data, offset);
     offset += 4;
     if (width == 0) {
-        return failedPtr!Image("Invalid RGI image width.");
+        return failure!ImageHeader("Invalid RGI image width.");
     }
 
     uint height = readUInt(data, offset);
     offset += 4;
     if (height == 0) {
-        return failedPtr!Image("Invalid RGI image height.");
+        return failure!ImageHeader("Invalid RGI image height.");
     }
 
     ubyte channelCount = readUByte(data, offset);
     offset += 1;
     if (channelCount < 1 || channelCount > 4) {
-        return failedPtr!Image("Invalid RGI channel count.");
+        return failure!ImageHeader("Invalid RGI channel count.");
     }
 
     ubyte rawChannelFormat = readUByte(data, offset);
@@ -128,24 +167,66 @@ ResultPtr!Image loadImage(const(ubyte)[] data, StringId name = sid("unknown")) {
     if (rawChannelFormat != cast(ubyte) ChannelFormat.u8
         && rawChannelFormat != cast(ubyte) ChannelFormat.u16
         && rawChannelFormat != cast(ubyte) ChannelFormat.u32) {
-        return failedPtr!Image("Unsupported RGI channel format.");
+        return failure!ImageHeader("Unsupported RGI channel format.");
     }
 
     ChannelFormat channelFormat = cast(ChannelFormat) rawChannelFormat;
 
-    size_t pixelBytes = cast(size_t) channelCount * bytesPerChannel(channelFormat);
-    size_t totalPixels = cast(size_t) width * cast(size_t) height;
+    uint paletteEntryCount = 0;
+    if (colorMode == ColorMode.indexed) {
+        if (data.length - offset < rgiPaletteCountSize) {
+            return failure!ImageHeader("Cannot read RGI palette entry count: Unexpected end of data.");
+        }
+
+        paletteEntryCount = readUInt(data, offset);
+        if (paletteEntryCount == 0) {
+            return failure!ImageHeader("Invalid RGI palette entry count.");
+        }
+
+        if (exceedsIndexFormatRange(paletteEntryCount, indexFormat)) {
+            return failure!ImageHeader("RGI palette entry count exceeds index format range.");
+        }
+    }
+
+    ImageHeader header;
+    header.formatVersion = 1;
+    header.compression = cast(CompressionType) data[6];
+    header.colorMode = colorMode;
+    header.indexFormat = indexFormat;
+    header.width = width;
+    header.height = height;
+    header.channelCount = channelCount;
+    header.channelFormat = channelFormat;
+    header.paletteEntryCount = paletteEntryCount;
+    return success(header);
+}
+
+ResultPtr!Image loadImage(const(ubyte)[] data, StringId name = sid("unknown")) {
+    auto headerResult = loadImageHeader(data);
+    if (headerResult.isFailure()) {
+        return failedPtr!Image(headerResult.errorMessage());
+    }
+
+    ImageHeader header = headerResult.value();
+
+    size_t pixelBytes = cast(size_t) header.channelCount * bytesPerChannel(header.channelFormat);
+    size_t totalPixels = cast(size_t) header.width * cast(size_t) header.height;
     size_t expandedPixelBytes = totalPixels * pixelBytes;
 
     Image* image = makeRaw!Image();
     image.name = name;
-    image.width = width;
-    image.height = height;
-    image.channelCount = channelCount;
-    image.channelFormat = channelFormat;
+    image.width = header.width;
+    image.height = header.height;
+    image.channelCount = header.channelCount;
+    image.channelFormat = header.channelFormat;
     image.pixelData.capacity = expandedPixelBytes;
 
-    if (colorMode == ColorMode.direct) {
+    size_t offset = rgiHeaderSize + rgiImageHeaderSize;
+    if (header.colorMode == ColorMode.indexed) {
+        offset += rgiPaletteCountSize;
+    }
+
+    if (header.colorMode == ColorMode.direct) {
         if (data.length - offset < expandedPixelBytes) {
             return failedPtr!Image("Cannot read RGI pixel data: Unexpected end of data.");
         }
@@ -157,21 +238,7 @@ ResultPtr!Image loadImage(const(ubyte)[] data, StringId name = sid("unknown")) {
         offset += expandedPixelBytes;
     } else {
         // Indexed: read palette, then read indices and expand to direct samples.
-        if (data.length - offset < 4) {
-            return failedPtr!Image("Cannot read RGI palette entry count: Unexpected end of data.");
-        }
-
-        uint paletteCount = readUInt(data, offset);
-        offset += 4;
-        if (paletteCount == 0) {
-            return failedPtr!Image("Invalid RGI palette entry count.");
-        }
-
-        if (exceedsIndexFormatRange(paletteCount, indexFormat)) {
-            return failedPtr!Image("RGI palette entry count exceeds index format range.");
-        }
-
-        size_t paletteBytes = cast(size_t) paletteCount * pixelBytes;
+        size_t paletteBytes = cast(size_t) header.paletteEntryCount * pixelBytes;
         if (data.length - offset < paletteBytes) {
             return failedPtr!Image("Cannot read RGI palette data: Unexpected end of data.");
         }
@@ -179,14 +246,14 @@ ResultPtr!Image loadImage(const(ubyte)[] data, StringId name = sid("unknown")) {
         size_t paletteOffset = offset;
         offset += paletteBytes;
 
-        size_t indexedPixelBytes = totalPixels * bytesPerIndex(indexFormat);
+        size_t indexedPixelBytes = totalPixels * bytesPerIndex(header.indexFormat);
         if (data.length - offset < indexedPixelBytes) {
             return failedPtr!Image("Cannot read RGI indexed pixel data: Unexpected end of data.");
         }
 
         for (size_t i = 0; i < totalPixels; i++) {
             uint index;
-            final switch (indexFormat) {
+            final switch (header.indexFormat) {
             case IndexFormat.u8:
                 index = readUByte(data, offset);
                 offset += 1;
@@ -201,7 +268,7 @@ ResultPtr!Image loadImage(const(ubyte)[] data, StringId name = sid("unknown")) {
                 break;
             }
 
-            if (index >= paletteCount) {
+            if (index >= header.paletteEntryCount) {
                 return failedPtr!Image("RGI pixel index out of palette range.");
             }
 

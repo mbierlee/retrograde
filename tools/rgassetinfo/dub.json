@@ -1,0 +1,13 @@
+{
+  "name": "rgassetinfo",
+  "description": "Displays asset information",
+  "license": "MIT",
+  "authors": ["Mike Bierlee"],
+  "copyright": "Copyright Mike Bierlee 2026",
+  "targetPath": "bin",
+  "targetType": "executable",
+  "versions": ["Native", "NoGraphicsApi"],
+  "dependencies": {
+    "retrograde": { "path": "../../" }
+  }
+}
