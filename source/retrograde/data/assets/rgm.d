@@ -72,6 +72,7 @@ ResultPtr!Model loadModel(const(ubyte)[] data, StringId name = sid("unknown")) {
 
     ModelHeader header = headerResult.value();
     Model* model = makeRaw!Model();
+    model.name = name;
 
     size_t offset = rgmHeaderSize;
     for (uint i; i < header.meshCount; i++) {
@@ -321,6 +322,7 @@ void runRgmTests() {
         assert(result.isSuccessful());
 
         auto model = result.unique();
+        assert(model.name == sid("unknown"));
         assert(model.meshes.length == 1);
         assert(model.meshes[0].vertices.length == 4);
         assert(model.meshes[0].vertices[0].x == 0.0);
@@ -405,6 +407,41 @@ void runRgmTests() {
 
         auto result = loadModel(modelData);
         assert(!result.isSuccessful());
+    });
+
+    test("Assign provided name to loaded model", {
+        ubyte[103] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
+
+            // Mesh 1
+            0x03, 0x00, 0x00, 0x00, // Vertex count (3)
+            0x01, 0x00, 0x00, 0x00, // Face count (1)
+            0x00, // UV channel count (0)
+
+            // Vertex 1
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+            // Vertex 2
+            0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
+
+            // Vertex 3
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F,
+
+            // Face 1
+            0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
+        ];
+
+        auto result = loadModel(modelData, sid("my_model"));
+        assert(result.isSuccessful());
+
+        auto model = result.unique();
+        assert(model.name == sid("my_model"));
     });
 
     test("Load simple model with two UV channels", {
