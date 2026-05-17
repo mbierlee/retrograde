@@ -18,7 +18,7 @@ version (OpenGLES3) {
     public import retrograde.api.opengles3;
 }
 
-version (UnitTesting) {
+version (NoGraphicsApi) {
     import retrograde.engine.entity : EntityId;
     import retrograde.engine.rendering : RenderPass, Color, Viewport;
 

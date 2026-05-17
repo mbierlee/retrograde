@@ -9,3 +9,6 @@ build-rgmodelconv-release:
 
 build-rgimageconv-release:
 	cd tools/rgimageconv && dub build --build=release
+
+build-rgassetinfo-release:
+	cd tools/rgassetinfo && dub build --build=release

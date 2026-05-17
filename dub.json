@@ -16,7 +16,7 @@
       "targetType": "library",
       "sourcePaths": ["source"],
       "importPaths": ["source"],
-      "versions": ["Native", "UnitTesting"]
+      "versions": ["Native", "UnitTesting", "NoGraphicsApi"]
     }
   ],
   "buildTypes": {

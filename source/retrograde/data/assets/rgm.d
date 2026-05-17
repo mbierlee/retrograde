@@ -12,36 +12,69 @@
 module retrograde.data.assets.rgm;
 
 import retrograde.data.model : Model, Vertex, Face, Mesh, UvCoord, maxUvChannels;
-import retrograde.data.assets.readercommon : readUInt, readFloat;
+import retrograde.data.assets.readercommon : readUInt, readUShort, readFloat;
 import retrograde.std.endian : toPlatformEndian, Endian;
 import retrograde.std.memory : ResultPtr, failedPtr, makeRaw, successPtr;
 import retrograde.std.stringid : StringId, sid;
-import retrograde.std.result : OperationResult, success, failure;
+import retrograde.std.result : Result, OperationResult, success, failure;
 
-private enum byte[] rgmMagicNumber = [0x52, 0x47, 0x4D, 0x20];
+enum byte[] rgmMagicNumber = [0x52, 0x47, 0x4D, 0x20];
 private enum size_t rgmHeaderSize = 10;
 
-ResultPtr!Model loadModel(const(ubyte)[] data, StringId name = sid("unknown")) {
-    // Check header size
+/**
+ * Metadata for the 10-byte file-level header of an RGM model.
+ */
+struct ModelHeader {
+    /// File format version (currently always 1).
+    ushort formatVersion;
+    /// Number of meshes contained in the file.
+    uint meshCount;
+}
+
+/**
+ * Parse and validate the 10-byte file-level header of an RGM model.
+ *
+ * Only the header bytes are inspected; the mesh sections are not read.
+ *
+ * Params:
+ *   data = The raw RGM file bytes.
+ * Returns:
+ *   A successful `Result!ModelHeader` containing the parsed header, or a
+ *   failure with a descriptive error message if the header is missing,
+ *   malformed, or specifies an unsupported version.
+ */
+Result!ModelHeader loadModelHeader(const(ubyte)[] data) {
     if (data.length < rgmHeaderSize) {
-        return failedPtr!Model("Header is too small for a valid RGM file.");
+        return failure!ModelHeader("Header is too small for a valid RGM file.");
     }
 
-    // Check magic number
     if (data[0 .. 4] != rgmMagicNumber) {
-        return failedPtr!Model("Data is not a valid RGM file.");
+        return failure!ModelHeader("Data is not a valid RGM file.");
     }
 
-    // Check version
     if (data[4 .. 6] != [0x01, 0x00]) {
-        return failedPtr!Model("Unsupported RGM version.");
+        return failure!ModelHeader("Unsupported RGM version.");
     }
 
+    ModelHeader header;
+    size_t offset = 4;
+    header.formatVersion = readUShort(data, offset);
+    offset = 6;
+    header.meshCount = readUInt(data, offset);
+    return success(header);
+}
+
+ResultPtr!Model loadModel(const(ubyte)[] data, StringId name = sid("unknown")) {
+    auto headerResult = loadModelHeader(data);
+    if (headerResult.isFailure()) {
+        return failedPtr!Model(headerResult.errorMessage());
+    }
+
+    ModelHeader header = headerResult.value();
     Model* model = makeRaw!Model();
 
-    uint meshCount = toPlatformEndian!uint(data[6 .. 10], Endian.little);
     size_t offset = rgmHeaderSize;
-    for (uint i; i < meshCount; i++) {
+    for (uint i; i < header.meshCount; i++) {
         OperationResult result = readMeshData(data, offset, model);
         if (result.isFailure()) {
             return failedPtr!Model(result.errorMessage());
