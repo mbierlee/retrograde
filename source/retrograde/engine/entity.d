@@ -31,16 +31,6 @@ private struct EntityEntry {
 private struct Component {
     StringId type;
     void* data;
-
-    this(ref return scope const typeof(this) other) {
-        type = other.type;
-        data = cast(void*) other.data;
-    }
-
-    void opAssign(ref const typeof(this) other) {
-        type = other.type;
-        data = cast(void*) other.data;
-    }
 }
 
 alias ProcessorFunction = void delegate(EntityId);
