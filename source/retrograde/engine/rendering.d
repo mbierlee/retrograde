@@ -12,7 +12,6 @@
 module retrograde.engine.rendering;
 
 import retrograde.std.collections : Array;
-import retrograde.std.memory : SharedPtr;
 import retrograde.std.stringid : sid, StringId;
 import retrograde.std.math : degreesToRadians, scalar, Matrix4, createViewMatrixQ, createPerspectiveMatrix,
     createOrthographicMatrix, Vector3, Quaternion;
@@ -221,12 +220,10 @@ struct RenderPass {
     string fragmentShader;
     StringId componentType;
     void delegate(EntityId entity, const ref RenderPass renderPass, const ref Matrix4 viewProjectionMatrix) render;
-
-    SharedPtr!void apiData;
 }
 
 RenderPass genericModelRenderPass = RenderPass(
-    "generic",
+    "renderpass_generic_model",
     import("opengles3/generic_model_vertex.glsl"),
     import("opengles3/generic_model_fragment.glsl"),
     ModelComponentType,
