@@ -21,9 +21,9 @@ import retrograde.engine.rendering : Color, RenderPass, Viewport;
 
 import retrograde.data.model : ModelComponentType, Model, maxUvChannels;
 
-import retrograde.std.memory : makeSharedVoid, makeRaw, UniquePtr;
-import retrograde.std.collections : Array;
-import retrograde.std.stringid : sid;
+import retrograde.std.memory : makeRaw, unique;
+import retrograde.std.collections : Array, HashMap;
+import retrograde.std.stringid : StringId, sid;
 import retrograde.std.math : Matrix4, Vector3, Quaternion, toTranslationMatrix4, toScalingMatrix4;
 import retrograde.std.geometry : PositionComponentType, OrientationComponentType, ScaleComponentType;
 import retrograde.std.dlang : CopyConstructors;
@@ -61,8 +61,7 @@ void initRenderPass(ref RenderPass renderPass) {
     passInfo.shaderProgram = program;
     passInfo.mvpMatrixUniformLocation = glGetUniformLocation(program, "modelViewProjectionMatrix");
 
-    auto voidPtr = makeSharedVoid!GlRenderPassInfo(passInfo);
-    renderPass.apiData = voidPtr;
+    renderPassInfos.put(renderPass.passName.sid, passInfo);
 }
 
 void initFrame() {
@@ -164,7 +163,7 @@ void loadEntityModel(EntityId entity) {
             modelInfo.meshes.add(meshInfo);
         }
 
-        entity.addComponent(GlModelInfoComponentType, UniquePtr!void(cast(void*) modelInfo));
+        entity.addComponent(GlModelInfoComponentType, modelInfo.unique());
         // loadedModels.add(model.name);
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -201,8 +200,9 @@ void setClearColor(Color color) {
 }
 
 void useRenderPassShaderProgram(ref RenderPass renderPass) {
-    if (renderPass.apiData.isDefined) {
-        glUseProgram((cast(GlRenderPassInfo*) renderPass.apiData.ptr).shaderProgram);
+    auto passInfo = renderPassInfos.get(renderPass.passName.sid);
+    if (passInfo.isDefined) {
+        glUseProgram(passInfo.value.shaderProgram);
     }
 }
 
@@ -234,13 +234,13 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
         auto modelMatrix = position.toTranslationMatrix4() * orientation.toRotationMatrix() * scale.toScalingMatrix4();
         auto modelViewProjectionMatrix = viewProjectionMatrix * modelMatrix;
 
-        auto mvpMatrixUniformLocation = (cast(GlRenderPassInfo*)(cast(RenderPass) renderPass)
-            .apiData.ptr)
-            .mvpMatrixUniformLocation;
-
-        if (mvpMatrixUniformLocation >= 0) {
-            auto modelViewProjectionMatrixData = modelViewProjectionMatrix.getDataArray!float;
-            glUniformMatrix4fv(mvpMatrixUniformLocation, 1, true, modelViewProjectionMatrixData);
+        auto passInfo = renderPassInfos.get(renderPass.passName.sid);
+        if (passInfo.isDefined) {
+            auto mvpMatrixUniformLocation = passInfo.value.mvpMatrixUniformLocation;
+            if (mvpMatrixUniformLocation >= 0) {
+                auto modelViewProjectionMatrixData = modelViewProjectionMatrix.getDataArray!float;
+                glUniformMatrix4fv(mvpMatrixUniformLocation, 1, true, modelViewProjectionMatrixData);
+            }
         }
 
         foreach (ref meshInfo; modelInfo.meshes) {
@@ -282,6 +282,7 @@ private Color clearColor = Color(0, 0, 0, 0);
 // private Array!StringId loadedModels;
 private uint viewportWidth = 1;
 private uint viewportHeight = 1;
+private HashMap!(StringId, GlRenderPassInfo) renderPassInfos;
 
 private enum PositionAttribLocation = 0;
 private enum ColorAttribLocation = 1;

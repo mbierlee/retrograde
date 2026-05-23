@@ -31,6 +31,7 @@ private struct EntityEntry {
 private struct Component {
     StringId type;
     void* data;
+    void function(void*) destroyer; // null when there is no data
 }
 
 alias ProcessorFunction = void delegate(EntityId);
@@ -88,6 +89,10 @@ OperationResult removeEntity(EntityId entityId) {
             // Free all component data
             foreach (ref comp; entity.components) {
                 if (comp.data !is null) {
+                    if (comp.destroyer !is null) {
+                        comp.destroyer(comp.data);
+                    }
+
                     free(comp.data);
                 }
             }
@@ -153,7 +158,7 @@ Option!String getEntityName(EntityId entityId) {
             return some(entity.name);
         }
     }
-    
+
     return none!String;
 }
 
@@ -201,10 +206,21 @@ void addComponent(EntityId entityId, StringId componentType) {
     addComponent(entityId, Component(componentType));
 }
 
-void addComponent(EntityId entityId, StringId componentType, UniquePtr!void data) {
+void addComponent(T)(EntityId entityId, StringId componentType, UniquePtr!T data) {
+    static assert(!is(T == void),
+        "addComponent requires a concrete component data type; UniquePtr!void is not allowed.");
+
     Component component;
     component.type = componentType;
-    component.data = data.release();
+    static if (is(T == struct) && __traits(hasMember, T, "__xdtor")) {
+        static void destroyComponentData(void* p) {
+            destroy(*cast(T*) p);
+        }
+
+        component.destroyer = &destroyComponentData;
+    }
+
+    component.data = cast(void*) data.release();
     addComponent(entityId, component);
 }
 
@@ -215,9 +231,14 @@ private void addComponent(EntityId entityId, Component component) {
                 if (comp.type == component.type) {
                     // Free old data
                     if (comp.data !is null) {
+                        if (comp.destroyer !is null) {
+                            comp.destroyer(comp.data);
+                        }
                         free(comp.data);
                     }
+
                     comp.data = component.data;
+                    comp.destroyer = component.destroyer;
                     return;
                 }
             }
@@ -235,8 +256,13 @@ void removeComponent(EntityId entityId, StringId componentType) {
                 if (comp.type == componentType) {
                     // Free the component data
                     if (comp.data !is null) {
+                        if (comp.destroyer !is null) {
+                            comp.destroyer(comp.data);
+                        }
+
                         free(comp.data);
                     }
+
                     entity.components.remove(j);
                     return;
                 }
@@ -290,8 +316,18 @@ version (UnitTesting)  :  ///
 
 import retrograde.std.test : test, writeSection;
 import retrograde.std.stringid : sid;
-import retrograde.std.memory : makeUniqueVoid;
+import retrograde.std.memory : makeUnique;
 import retrograde.std.string : s;
+
+private __gshared uint destructorCallCount = 0;
+
+private struct DestructorTrackingComponent {
+    int value;
+
+    ~this() {
+        destructorCallCount++;
+    }
+}
 
 void resetEcs() {
     entities.clear();
@@ -334,8 +370,8 @@ void runEntityTests() {
     test("Component of same type replaces existing component", {
         resetEcs();
         EntityId entityId = createEntity("ent_test".s).value;
-        auto data1 = makeUniqueVoid(1);
-        auto data2 = makeUniqueVoid(2);
+        auto data1 = makeUnique(1);
+        auto data2 = makeUnique(2);
         auto componentType = "comp_test".sid;
         addComponent(entityId, componentType, data1.move());
         addComponent(entityId, componentType, data2.move());
@@ -366,7 +402,7 @@ void runEntityTests() {
         resetEcs();
         EntityId entityId = createEntity("ent_test".s).value;
         static StringId componentType = "comp_test".sid;
-        auto data = makeUniqueVoid(123);
+        auto data = makeUnique(123);
 
         addComponent(entityId, componentType, data.move());
         static bool executedWithComponent = false;
@@ -381,7 +417,7 @@ void runEntityTests() {
         resetEcs();
         EntityId entityId = createEntity("ent_test".s).value;
         static StringId componentType = "comp_test".sid;
-        auto data = makeUniqueVoid(123);
+        auto data = makeUnique(123);
 
         addComponent(entityId, componentType, data.move());
 
@@ -516,5 +552,48 @@ void runEntityTests() {
         auto name = getEntityName(entityId);
         assert(name.isDefined);
         assert(name.value.length == 0);
+    });
+
+    test("Component destructor is invoked on removeEntity", {
+        resetEcs();
+        EntityId entityId = createEntity("ent_test".s).value;
+        auto componentType = "comp_destructor_test".sid;
+        addComponent(entityId, componentType, makeUnique(DestructorTrackingComponent(7)));
+
+        destructorCallCount = 0;
+        removeEntity(entityId);
+        assert(destructorCallCount == 1);
+    });
+
+    test("Component destructor is invoked on removeComponent", {
+        resetEcs();
+        EntityId entityId = createEntity("ent_test".s).value;
+        auto componentType = "comp_destructor_test".sid;
+        addComponent(entityId, componentType, makeUnique(DestructorTrackingComponent(7)));
+
+        destructorCallCount = 0;
+        removeComponent(entityId, componentType);
+        assert(destructorCallCount == 1);
+    });
+
+    test("Component destructor is invoked when component data is replaced", {
+        resetEcs();
+        EntityId entityId = createEntity("ent_test".s).value;
+        auto componentType = "comp_destructor_test".sid;
+        addComponent(entityId, componentType, makeUnique(DestructorTrackingComponent(1)));
+        auto newData = makeUnique(DestructorTrackingComponent(2));
+
+        destructorCallCount = 0;
+        addComponent(entityId, componentType, newData.move());
+        assert(destructorCallCount == 1);
+
+        removeEntity(entityId);
+        assert(destructorCallCount == 2);
+    });
+
+    test("addComponent cannot be instantiated with UniquePtr!void", {
+        EntityId entityId = 1;
+        StringId componentType = "comp_void_test".sid;
+        assert(!__traits(compiles, addComponent(entityId, componentType, UniquePtr!void.init)));
     });
 }

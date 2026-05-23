@@ -11,7 +11,7 @@
 
 module retrograde.engine.entityfactory;
 
-import retrograde.std.memory : makeUniqueVoid;
+import retrograde.std.memory : makeUnique;
 import retrograde.std.math : Vector3, Quaternion;
 import retrograde.std.geometry : PositionComponentType, OrientationComponentType, ScaleComponentType;
 
@@ -23,11 +23,11 @@ void addPosition(EntityId entity, const double x, const double y, const double z
 }
 
 void addPosition(EntityId entity, const Vector3 position) {
-    entity.addComponent(PositionComponentType, makeUniqueVoid(position));
+    entity.addComponent(PositionComponentType, makeUnique(position));
 }
 
 void addOrientation(EntityId entity, double radianAngle, const Vector3 axis) {
-    entity.addComponent(OrientationComponentType, makeUniqueVoid(Quaternion.createRotation(radianAngle, axis)));
+    entity.addComponent(OrientationComponentType, makeUnique(Quaternion.createRotation(radianAngle, axis)));
 }
 
 void addScale(EntityId entity, const double scale) {
@@ -39,9 +39,9 @@ void addScale(EntityId entity, const double xScale, const double yScale, const d
 }
 
 void addScale(EntityId entity, const Vector3 scale) {
-    entity.addComponent(ScaleComponentType, makeUniqueVoid(scale));
+    entity.addComponent(ScaleComponentType, makeUnique(scale));
 }
 
 void addRotation(EntityId entity, double radianAngle, const Vector3 axis) {
-    entity.addComponent(RotationComponentType, makeUniqueVoid(Quaternion.createRotation(radianAngle, axis)));
+    entity.addComponent(RotationComponentType, makeUnique(Quaternion.createRotation(radianAngle, axis)));
 }

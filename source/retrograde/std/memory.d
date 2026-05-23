@@ -108,6 +108,10 @@ T[] makeRawArray(T)(size_t length, T initialValue = T.init) {
  * manually.
  */
 struct UniquePtr(T) {
+    static assert(!is(T == void),
+        "UniquePtr!void is not allowed: a void payload cannot be destroyed. " ~
+            "Use a concrete type so the destructor can run on cleanup.");
+
     private T* _ptr;
 
     this(T* ptr) {
@@ -142,12 +146,10 @@ struct UniquePtr(T) {
         return mixin("_ptr." ~ s ~ " = value");
     }
 
-    static if (!is(T == void)) {
-        auto opIndex(size_t i) {
-            assert(_ptr !is null, "Unique pointer is null and may not be used.");
-            //TODO: Bounds checking
-            return _ptr[i];
-        }
+    auto opIndex(size_t i) {
+        assert(_ptr !is null, "Unique pointer is null and may not be used.");
+        //TODO: Bounds checking
+        return _ptr[i];
     }
 
     /**
@@ -231,10 +233,7 @@ struct UniquePtr(T) {
 
     private void cleanup() {
         if (_ptr !is null) {
-            static if (!is(T == void)) {
-                destroy(*_ptr);
-            }
-
+            destroy(*_ptr);
             free(_ptr);
         }
 
@@ -242,8 +241,8 @@ struct UniquePtr(T) {
     }
 }
 
-/** 
- * Move a unique pointer from one instance to another. 
+/**
+ * Move a unique pointer from one instance to another.
  *
  * The source is released and becomes unusable.
  */
@@ -281,26 +280,16 @@ UniquePtr!T makeUnique(T)(const ref T initial) {
 }
 
 /**
- * Create a unique void pointer initialized to the given value.
- *
- * Params:
- *  T: The type of the value to initialize the pointer with. Not the type of the pointer itself.
- *  initial: The initial value. When not given, the initial value is the default value of the type.
- * Returns: A unique void pointer.
- */
-UniquePtr!void makeUniqueVoid(T)(const T initial = T.init) {
-    void* rawPtr = cast(void*) makeRaw(initial);
-    UniquePtr!void uniquePtr = UniquePtr!void(rawPtr);
-    return uniquePtr;
-}
-
-/**
  * A shared pointer to allocated memory.
  *
  * A shared pointer can be copied and shared between multiple owners.
  * The memory is freed when the last owner destroys the shared pointer.
  */
 struct SharedPtr(T) {
+    static assert(!is(T == void),
+        "SharedPtr!void is not allowed: a void payload cannot be destroyed. " ~
+            "Use a concrete type so the destructor can run on cleanup.");
+
     private T* _ptr = null;
     private size_t* refCount = null;
 
@@ -388,12 +377,10 @@ struct SharedPtr(T) {
         return mixin("_ptr." ~ s ~ " = value");
     }
 
-    static if (!is(T == void)) {
-        auto opIndex(size_t i) {
-            assert(_ptr !is null, "Shared pointer is null and may not be used.");
-            //TODO: Bounds checking
-            return _ptr[i];
-        }
+    auto opIndex(size_t i) {
+        assert(_ptr !is null, "Shared pointer is null and may not be used.");
+        //TODO: Bounds checking
+        return _ptr[i];
     }
 
     private void releaseShare() {
@@ -404,10 +391,7 @@ struct SharedPtr(T) {
             }
 
             if (*refCount <= 0) {
-                static if (!is(T == void)) {
-                    destroy(*_ptr);
-                }
-
+                destroy(*_ptr);
                 free(_ptr);
                 free(refCount);
                 _ptr = null;
@@ -453,20 +437,6 @@ SharedPtr!T makeShared(T)(inout ref T initial) {
 }
 
 /**
- * Create a shared void pointer initialized to the given value.
- *
- * Params:
- *  T: The type of the value to initialize the pointer with. Not the type of the pointer itself.
- *  initial: The initial value. When not given, the initial value is the default value of the type.
- * Returns: A shared void pointer.
- */
-SharedPtr!void makeSharedVoid(T)(const T initial = T.init) {
-    void* rawPtr = cast(void*) makeRaw(initial);
-    SharedPtr!void sharedPtr = SharedPtr!void(rawPtr);
-    return sharedPtr;
-}
-
-/** 
  * A smart pointer used as a return type from functions that can succeed or fail.
  *
  * Result pointers are a combination of UniquePtr and Result types. They contain both a managed pointer
@@ -475,6 +445,10 @@ SharedPtr!void makeSharedVoid(T)(const T initial = T.init) {
  * as soon as possible.
  */
 struct ResultPtr(T) {
+    static assert(!is(T == void),
+        "ResultPtr!void is not allowed: a void payload cannot be destroyed. " ~
+            "Use a concrete type so the destructor can run on cleanup.");
+
     private bool success;
     private T* _ptr;
     String _errorMessage;
@@ -506,12 +480,10 @@ struct ResultPtr(T) {
         return mixin("_ptr." ~ s ~ " = value");
     }
 
-    static if (!is(T == void)) {
-        auto opIndex(size_t i) {
-            assert(_ptr !is null, "Result pointer is null and may not be used.");
-            //TODO: Bounds checking
-            return _ptr[i];
-        }
+    auto opIndex(size_t i) {
+        assert(_ptr !is null, "Result pointer is null and may not be used.");
+        //TODO: Bounds checking
+        return _ptr[i];
     }
 
     /**
@@ -644,10 +616,7 @@ struct ResultPtr(T) {
 
     private void cleanup() {
         if (_ptr !is null) {
-            static if (!is(T == void)) {
-                destroy(*_ptr);
-            }
-
+            destroy(*_ptr);
             free(_ptr);
         }
 
@@ -919,10 +888,8 @@ void runUniquePointerTests() {
         }
     });
 
-    test("Create and use a unique pointer of a void pointer", {
-        void* ptr = makeRaw!int(88);
-        auto uniquePtr = UniquePtr!void(ptr);
-        assert(*(cast(int*) uniquePtr.ptr) == 88);
+    test("UniquePtr cannot be instantiated with void", {
+        assert(!__traits(compiles, UniquePtr!void.init));
     });
 
     test("Check whether a unique pointer is defined", {
@@ -1053,12 +1020,8 @@ void runSharedPointerTests() {
         }
     });
 
-    test("Create and use a shared pointer of a void pointer", {
-        void* ptr = makeRaw!int(42);
-        auto sharedPtr = SharedPtr!void(ptr);
-        assert(sharedPtr.ptr !is null);
-        assert(sharedPtr.useCount == 1);
-        assert(*(cast(int*) sharedPtr.ptr) == 42);
+    test("SharedPtr cannot be instantiated with void", {
+        assert(!__traits(compiles, SharedPtr!void.init));
     });
 
     test("Shared pointer in a container is properly refcounted", {
@@ -1106,14 +1069,14 @@ void runSharedPointerTests() {
     });
 
     test("Cast a shared pointer", {
-        auto voidPtr = makeSharedVoid(5);
+        auto floatPtr = makeShared!float(5.0f);
         {
-            auto intPtr = voidPtr.as!int;
-            assert(voidPtr.ptr is intPtr.ptr);
+            auto intPtr = floatPtr.as!int;
+            assert(cast(float*) intPtr.ptr is floatPtr.ptr);
             assert(intPtr.useCount == 2);
         }
 
-        assert(voidPtr.useCount == 1);
+        assert(floatPtr.useCount == 1);
     });
 
     test("Nullify a shared pointer", {
@@ -1270,10 +1233,8 @@ void runResultPointerTests() {
         }
     });
 
-    test("Create and use a result pointer of a void pointer", {
-        void* ptr = makeRaw!int(88);
-        auto resultPtr = successPtr!void(ptr);
-        assert(*(cast(int*) resultPtr.ptr) == 88);
+    test("ResultPtr cannot be instantiated with void", {
+        assert(!__traits(compiles, ResultPtr!void.init));
     });
 
     test("Check whether a result pointer is defined", {
