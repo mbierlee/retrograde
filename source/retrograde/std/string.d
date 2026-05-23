@@ -26,12 +26,12 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
     /** 
      * Create a String from a D string
      */
-    this(string str) {
-        copyFrom(cast(void*) str.ptr, str.length);
+    this(immutable(T)[] str) {
+        copyFrom(str.ptr, str.length);
     }
 
     this(ref return scope inout typeof(this) other) {
-        copyFrom(cast(void*) other.ptr, other._length);
+        copyFrom(other.ptr, other._length);
     }
 
     ~this() {
@@ -43,11 +43,11 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
             return;
         }
 
-        copyFrom(cast(void*) other.ptr, other._length);
+        copyFrom(other.ptr, other._length);
     }
 
-    void opAssign(string str) {
-        copyFrom(cast(void*) str.ptr, str.length);
+    void opAssign(immutable(T)[] str) {
+        copyFrom(str.ptr, str.length);
     }
 
     int opApply(scope int delegate(ref T) dg) {
@@ -237,7 +237,7 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
 
         size_t end = (length == size_t.max || startIndex + length > _length) ? _length : startIndex + length;
         StringT!T result;
-        result.copyFrom(cast(void*)(ptr + startIndex), end - startIndex);
+        result.copyFrom(ptr + startIndex, end - startIndex);
         return result;
     }
 
@@ -251,11 +251,11 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
         return cStrPtr.unique;
     }
 
-    private void copyFrom(void* ptr, size_t length) {
+    private void copyFrom(const(T)* srcPtr, size_t length) {
         freePtr();
         this.ptr = cast(T*) calloc(length, T.sizeof);
         _length = length;
-        memcpy(cast(void*) this.ptr, ptr, length);
+        memcpy(cast(void*) this.ptr, cast(const void*) srcPtr, length * T.sizeof);
     }
 
     private void freePtr() {
