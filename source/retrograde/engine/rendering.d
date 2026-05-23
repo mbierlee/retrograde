@@ -18,7 +18,7 @@ import retrograde.std.math : degreesToRadians, scalar, Matrix4, createViewMatrix
 import retrograde.std.geometry : PositionComponentType, OrientationComponentType;
 import retrograde.std.dlang : CopyConstructors;
 
-import retrograde.engine.entity : EntityId, forEachEntity, addEntityFinalizedHook, addEntityRemovedHook, getComponentData,
+import retrograde.engine.entity : EntityId, forEachEntity, addEntityFinalizedHook, addEntityRemovedHook, withComponentData,
     hasComponent;
 import retrograde.engine.graphicsapi : initRenderApi, initRenderPass, setClearColor, initFrame, loadEntityModel,
     unloadEntityModel, useRenderPassShaderProgram, drawModel, clearShaderProgram, getViewport;
@@ -135,23 +135,18 @@ void renderFrame() {
     Quaternion orientation;
 
     if (cameraEntity != 0) {
-        auto maybePosition = cameraEntity.getComponentData!Vector3(PositionComponentType);
-        if (maybePosition.isDefined()) {
-            position = *maybePosition.value;
-        }
+        cameraEntity.withComponentData!Vector3(PositionComponentType, (Vector3* p) {
+            position = *p;
+        });
 
-        auto maybeOrientation = cameraEntity.getComponentData!Quaternion(
-            OrientationComponentType);
-        if (maybeOrientation.isDefined()) {
-            orientation = *maybeOrientation.value;
-        }
+        cameraEntity.withComponentData!Quaternion(OrientationComponentType, (Quaternion* o) {
+            orientation = *o;
+        });
 
-        auto maybeCameraConfiguration = cameraEntity.getComponentData!CameraConfiguration(
-            CameraComponentType);
-        if (maybeCameraConfiguration.isDefined()) {
-            projectionMatrix = createProjectionMatrix(*maybeCameraConfiguration.value);
-        }
-
+        cameraEntity.withComponentData!CameraConfiguration(CameraComponentType, (
+                CameraConfiguration* c) {
+            projectionMatrix = createProjectionMatrix(*c);
+        });
     }
 
     viewMatrix = createViewMatrixQ(position, orientation);
