@@ -19,7 +19,7 @@ import retrograde.engine.entity : EntityId, hasComponent, withComponentData, add
     getComponentData;
 import retrograde.engine.rendering : Color, RenderPass, Viewport;
 
-import retrograde.data.model : ModelComponentType, Model, maxUvChannels;
+import retrograde.data.model : ModelComponentType, Model;
 
 import retrograde.std.memory : makeRaw, unique;
 import retrograde.std.collections : Array, HashMap;
@@ -85,21 +85,15 @@ void loadEntityModel(EntityId entity) {
         auto modelInfo = makeRaw!GlModelInfo;
         foreach (ref mesh; model.meshes) {
             Array!GLfloat positionData;
-            Array!GLfloat colorData;
 
             // Pre-allocate for efficiency
             positionData.capacity = mesh.vertices.length * 4;
-            colorData.capacity = mesh.vertices.length * 4;
 
             foreach (ref vertex; mesh.vertices) {
                 positionData.add(cast(GLfloat) vertex.x);
                 positionData.add(cast(GLfloat) vertex.y);
                 positionData.add(cast(GLfloat) vertex.z);
                 positionData.add(cast(GLfloat) vertex.w);
-                colorData.add(cast(GLfloat) vertex.r);
-                colorData.add(cast(GLfloat) vertex.g);
-                colorData.add(cast(GLfloat) vertex.b);
-                colorData.add(cast(GLfloat) vertex.a);
             }
 
             auto vertexArrayObject = glCreateVertexArray();
@@ -111,39 +105,12 @@ void loadEntityModel(EntityId entity) {
             glEnableVertexAttribArray(PositionAttribLocation);
             glVertexAttribPointer(PositionAttribLocation, 4, GL_FLOAT, false, 0, 0);
 
-            auto colorBufferObject = glCreateBuffer();
-            glBindBuffer(GL_ARRAY_BUFFER, colorBufferObject);
-            glBufferDataFloat(GL_ARRAY_BUFFER, colorData.arr, GL_STATIC_DRAW);
-            glEnableVertexAttribArray(ColorAttribLocation);
-            glVertexAttribPointer(ColorAttribLocation, 4, GL_FLOAT, false, 0, 0);
-
             GlMeshInfo meshInfo;
             meshInfo.positionBufferObject = positionBufferObject;
-            meshInfo.colorBufferObject = colorBufferObject;
             meshInfo.vertexArrayObject = vertexArrayObject;
             meshInfo.elementBufferObject = 0;
             meshInfo.vertexCount = mesh.vertices.length;
             meshInfo.elementCount = 0;
-            meshInfo.uvChannelCount = mesh.uvChannelCount;
-
-            for (ubyte c = 0; c < mesh.uvChannelCount; c++) {
-                Array!GLfloat uvData;
-                uvData.capacity = mesh.vertices.length * 2;
-                size_t channelStart = cast(size_t) c * mesh.vertices.length;
-                for (size_t i = 0; i < mesh.vertices.length; i++) {
-                    auto coord = mesh.uvCoords[channelStart + i];
-                    uvData.add(cast(GLfloat) coord.u);
-                    uvData.add(cast(GLfloat) coord.v);
-                }
-
-                auto uvBufferObject = glCreateBuffer();
-                glBindBuffer(GL_ARRAY_BUFFER, uvBufferObject);
-                glBufferDataFloat(GL_ARRAY_BUFFER, uvData.arr, GL_STATIC_DRAW);
-                glEnableVertexAttribArray(UvAttribLocationBase + c);
-                glVertexAttribPointer(UvAttribLocationBase + c, 2, GL_FLOAT, false, 0, 0);
-
-                meshInfo.uvBufferObjects[c] = uvBufferObject;
-            }
 
             if (mesh.faces.length > 0) {
                 GLuint elementBufferObject = glCreateBuffer();
@@ -176,12 +143,7 @@ void unloadEntityModel(EntityId entity) {
     entity.withComponentData(GlModelInfoComponentType, (GlModelInfo* modelInfo) {
         foreach (ref meshInfo; modelInfo.meshes) {
             glDeleteBuffer(meshInfo.positionBufferObject);
-            glDeleteBuffer(meshInfo.colorBufferObject);
             glDeleteBuffer(meshInfo.elementBufferObject);
-            for (ubyte c = 0; c < meshInfo.uvChannelCount; c++) {
-                glDeleteBuffer(meshInfo.uvBufferObjects[c]);
-            }
-
             glDeleteVertexArray(meshInfo.vertexArrayObject);
         }
     });
@@ -285,18 +247,13 @@ private uint viewportHeight = 1;
 private HashMap!(StringId, GlRenderPassInfo) renderPassInfos;
 
 private enum PositionAttribLocation = 0;
-private enum ColorAttribLocation = 1;
-private enum UvAttribLocationBase = 2;
 
 private struct GlMeshInfo {
     GLuint positionBufferObject;
-    GLuint colorBufferObject;
     GLuint vertexArrayObject;
     GLuint elementBufferObject;
     GLuint vertexCount;
     GLuint elementCount;
-    GLuint[maxUvChannels] uvBufferObjects;
-    ubyte uvChannelCount;
 }
 
 private struct GlModelInfo {

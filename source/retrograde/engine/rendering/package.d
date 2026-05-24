@@ -11,19 +11,19 @@
 
 module retrograde.engine.rendering;
 
-import retrograde.std.collections : Array;
-import retrograde.std.stringid : sid, StringId;
-import retrograde.std.math : degreesToRadians, scalar, Matrix4, createViewMatrixQ, createPerspectiveMatrix,
-    createOrthographicMatrix, Vector3, Quaternion;
-import retrograde.std.geometry : PositionComponentType, OrientationComponentType;
-import retrograde.std.dlang : CopyConstructors;
-
-import retrograde.engine.entity : EntityId, forEachEntity, addEntityFinalizedHook, addEntityRemovedHook, withComponentData,
-    hasComponent;
-import retrograde.engine.graphicsapi : initRenderApi, initRenderPass, setClearColor, initFrame, loadEntityModel,
-    unloadEntityModel, useRenderPassShaderProgram, drawModel, clearShaderProgram, getViewport;
-
 import retrograde.data.model : ModelComponentType;
+
+import retrograde.engine.entity : addEntityFinalizedHook, addEntityRemovedHook, EntityId, forEachEntity,
+    hasComponent, withComponentData;
+import retrograde.engine.graphicsapi : clearShaderProgram, getViewport, initFrame, initRenderApi,
+    initRenderPass, loadEntityModel, setClearColor, unloadEntityModel, useRenderPassShaderProgram;
+import retrograde.engine.rendering.renderpass.genericmodel : genericModelRenderPass;
+
+import retrograde.std.collections : Array;
+import retrograde.std.geometry : OrientationComponentType, PositionComponentType;
+import retrograde.std.math : createOrthographicMatrix, createPerspectiveMatrix, createViewMatrixQ,
+    degreesToRadians, Matrix4, Quaternion, scalar, Vector3;
+import retrograde.std.stringid : sid, StringId;
 
 enum RenderableComponentType = sid("comp_renderable");
 
@@ -214,18 +214,9 @@ struct RenderPass {
     string vertexShader;
     string fragmentShader;
     StringId componentType;
+    void delegate() initPass;
     void delegate(EntityId entity, const ref RenderPass renderPass, const ref Matrix4 viewProjectionMatrix) render;
 }
-
-RenderPass genericModelRenderPass = RenderPass(
-    "renderpass_generic_model",
-    import("opengles3/generic_model_vertex.glsl"),
-    import("opengles3/generic_model_fragment.glsl"),
-    ModelComponentType,
-    (EntityId entity, const ref RenderPass renderPass, const ref Matrix4 viewProjectionMatrix) {
-    drawModel(entity, renderPass, viewProjectionMatrix);
-}
-);
 
 Array!RenderPass renderPasses;
 
@@ -251,6 +242,10 @@ private void initRenderPasses() {
     }
 
     foreach (ref renderPass; renderPasses) {
+        if(renderPass.initPass !is null) {
+            renderPass.initPass();
+        }
+
         initRenderPass(renderPass);
     }
 }
