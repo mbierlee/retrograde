@@ -22,17 +22,18 @@ For an example file, see `examples/cube.rgm`
 
 ## File Structure
 
-The binary file format consists of a header followed by data sections. Each section contains information about the meshes, vertices, and faces that make up the 3D model.
+The binary file format consists of a header followed by data sections. Each section contains information about the meshes (with their vertices and faces) and the materials that make up the 3D model.
 
-Total file size = 10 + sum of (9 + vertexCount × 24 + faceCount × 12 + uvChannelCount × vertexCount × 8) for each mesh.
+Total file size = 14 + sum_meshes(13 + vertexCount × 24 + faceCount × 12 + uvChannelCount × vertexCount × 8) + sum_materials(materialEntrySize).
 
-## Header (10 bytes)
+## Header (14 bytes)
 
 | Offset | Size | Type   | Description                        |
 | ------ | ---- | ------ | ---------------------------------- |
 | 0x00   | 4    | uint   | Magic number (0x52474D20 - "RGM ") |
 | 0x04   | 2    | ushort | Version number                     |
 | 0x06   | 4    | uint   | Amount of meshes                   |
+| 0x0A   | 4    | uint   | Amount of materials                |
 
 The version number is a `ushort` that is incremented with every change to the format. The current version is `1`.
 
@@ -42,14 +43,17 @@ After the header a variable amount of sections of individual mesh data is presen
 The amount of sections should be equal to the amount of meshes specified in the header.
 Meshes are identified by their 0-based index in the file.
 
-| Offset | Size                            | Type    | Description       |
-| ------ | ------------------------------- | ------- | ----------------- |
-| 0x00   | 4                               | uint    | Vertex count      |
-| 0x04   | 4                               | uint    | Face count        |
-| 0x08   | 1                               | ubyte   | UV channel count  |
-| 0x09   | vertexCount × 24                | Vertex  | Vertex data       |
-| ...    | faceCount × 12                  | Face    | Face data         |
-| ...    | uvChannelCount × vertexCount × 8 | UvCoord | UV channel data   |
+| Offset | Size                            | Type    | Description                       |
+| ------ | ------------------------------- | ------- | --------------------------------- |
+| 0x00   | 4                               | uint    | Vertex count                      |
+| 0x04   | 4                               | uint    | Face count                        |
+| 0x08   | 1                               | ubyte   | UV channel count                  |
+| 0x09   | 4                               | uint    | Material index (0 = no material)  |
+| 0x0D   | vertexCount × 24                | Vertex  | Vertex data                       |
+| ...    | faceCount × 12                  | Face    | Face data                         |
+| ...    | uvChannelCount × vertexCount × 8 | UvCoord | UV channel data                  |
+
+The material index references a material by its declared `index` field in the materials section, not by array position. A value of `0` is reserved as the sentinel meaning "no material assigned".
 
 ### Vertex (24 bytes per vertex)
 
@@ -88,3 +92,41 @@ The maximum number of UV channels is 8.
 | ------ | ---- | ----- | ------------ |
 | 0x00   | 4    | float | U coordinate |
 | 0x04   | 4    | float | V coordinate |
+
+## Materials (variable size)
+
+After all mesh sections the materials section follows. The number of material entries is equal to the material count specified in the header.
+
+Materials are referenced by meshes via their declared `index` field. Material indices must satisfy:
+
+- `index >= 1` (0 is reserved as the "no material" sentinel)
+- All indices within a single file are unique (no two materials share the same index)
+- Indices may otherwise be arbitrary — gaps and non-sequential order are allowed
+
+### Material Entry (variable size)
+
+| Offset | Size | Type  | Description                              |
+| ------ | ---- | ----- | ---------------------------------------- |
+| 0x00   | 4    | uint  | Material index (≥ 1, unique within file) |
+| 0x04   | 1    | ubyte | Material type                            |
+| 0x05   | ...  | ...   | Type-specific payload                    |
+
+### Material Types
+
+| Value | Name          | Description                                                  |
+| ----- | ------------- | ------------------------------------------------------------ |
+| 1     | Vertex Colors | Renders using only the per-vertex RGB colors. No payload.    |
+| 2     | Unlit         | Passthrough material — references a single texture by name.  |
+
+### Vertex Colors Payload (type = 1)
+
+No payload bytes. The material entry ends after the type byte.
+
+### Unlit Payload (type = 2)
+
+| Offset | Size       | Type    | Description                          |
+| ------ | ---------- | ------- | ------------------------------------ |
+| 0x00   | 2          | ushort  | Texture name length in bytes         |
+| 0x02   | nameLength | ubyte[] | Texture name (UTF-8, no terminator)  |
+
+The name length is the byte length of the UTF-8 encoded name, not the codepoint count. The name has no null terminator.

@@ -11,24 +11,28 @@
 
 module retrograde.data.assets.rgm;
 
-import retrograde.data.model : Model, Vertex, Face, Mesh, UvCoord, maxUvChannels;
+import retrograde.data.model : Model, Vertex, Face, Mesh, UvCoord, maxUvChannels,
+    Material, MaterialIndex, MaterialType, noMaterial;
 import retrograde.data.assets.readercommon : readUInt, readUShort, readFloat;
 import retrograde.std.endian : toPlatformEndian, Endian;
 import retrograde.std.memory : ResultPtr, failedPtr, makeRaw, successPtr;
 import retrograde.std.stringid : StringId, sid;
+import retrograde.std.string : String;
 import retrograde.std.result : Result, OperationResult, success, failure;
 
 enum byte[] rgmMagicNumber = [0x52, 0x47, 0x4D, 0x20];
-private enum size_t rgmHeaderSize = 10;
+private enum size_t rgmHeaderSize = 14;
 
 /**
- * Metadata for the 10-byte file-level header of an RGM model.
+ * Metadata for the file-level header of an RGM model.
  */
 struct ModelHeader {
     /// File format version (currently always 1).
     ushort formatVersion;
     /// Number of meshes contained in the file.
     uint meshCount;
+    /// Number of materials contained in the file.
+    uint materialCount;
 }
 
 /**
@@ -61,6 +65,8 @@ Result!ModelHeader loadModelHeader(const(ubyte)[] data) {
     header.formatVersion = readUShort(data, offset);
     offset = 6;
     header.meshCount = readUInt(data, offset);
+    offset = 10;
+    header.materialCount = readUInt(data, offset);
     return success(header);
 }
 
@@ -80,6 +86,18 @@ ResultPtr!Model loadModel(const(ubyte)[] data, StringId name = sid("unknown")) {
         if (result.isFailure()) {
             return failedPtr!Model(result.errorMessage());
         }
+    }
+
+    for (uint i; i < header.materialCount; i++) {
+        OperationResult result = readMaterialData(data, offset, model);
+        if (result.isFailure()) {
+            return failedPtr!Model(result.errorMessage());
+        }
+    }
+
+    OperationResult crossCheck = validateMeshMaterialReferences(model);
+    if (crossCheck.isFailure()) {
+        return failedPtr!Model(crossCheck.errorMessage());
     }
 
     if (offset != data.length) {
@@ -119,6 +137,15 @@ private OperationResult readMeshData(const(ubyte)[] data, ref size_t offset, Mod
     if (uvChannelCount > maxUvChannels) {
         return failure("Invalid UV channel count: exceeds maxUvChannels.");
     }
+
+    // Read material index
+    if (data.length - offset < 4) {
+        return failure("Cannot read material index: Unexpected end of data.");
+    }
+
+    MaterialIndex materialIndex = readUInt(data, offset);
+    offset += 4;
+    mesh.materialIndex = materialIndex;
 
     // Read vertices
     for (uint i; i < vertexCount; i++) {
@@ -256,6 +283,95 @@ private OperationResult readFaceData(const(ubyte)[] data, ref size_t offset, ref
     return success();
 }
 
+private OperationResult readMaterialData(const(ubyte)[] data, ref size_t offset, Model* model) {
+    // Read material index
+    if (data.length - offset < 4) {
+        return failure("Cannot read material index: Unexpected end of data.");
+    }
+
+    MaterialIndex index = readUInt(data, offset);
+    offset += 4;
+
+    if (index == 0) {
+        return failure("Material index 0 is reserved.");
+    }
+
+    for (size_t i; i < model.materials.length; i++) {
+        if (model.materials[i].index == index) {
+            return failure("Duplicate material index.");
+        }
+    }
+
+    // Read material type
+    if (data.length - offset < 1) {
+        return failure("Cannot read material type: Unexpected end of data.");
+    }
+
+    ubyte typeByte = data[offset];
+    offset += 1;
+
+    Material material;
+    material.index = index;
+
+    if (typeByte == cast(ubyte) MaterialType.vertexColors) {
+        material.type = MaterialType.vertexColors;
+    } else if (typeByte == cast(ubyte) MaterialType.unlit) {
+        material.type = MaterialType.unlit;
+
+        // Read name length
+        if (data.length - offset < 2) {
+            return failure("Cannot read unlit texture name length: Unexpected end of data.");
+        }
+
+        ushort nameLength = readUShort(data, offset);
+        offset += 2;
+
+        // Read UTF-8 name bytes
+        if (data.length - offset < nameLength) {
+            return failure("Cannot read unlit texture name: Unexpected end of data.");
+        }
+
+        for (size_t i; i < nameLength; i++) {
+            material.textureName ~= cast(char) data[offset + i];
+        }
+
+        offset += nameLength;
+    } else {
+        return failure("Unknown material type.");
+    }
+
+    model.materials ~= material;
+    return success();
+}
+
+private OperationResult validateMeshMaterialReferences(Model* model) {
+    // Iterate over non-owning slices to avoid Array.opIndex returning Mesh/Material
+    // by value (which would deep-copy and reallocate inner arrays on every iteration).
+    Mesh[] meshes = model.meshes.arr();
+    Material[] materials = model.materials.arr();
+
+    foreach (ref mesh; meshes) {
+        MaterialIndex meshIndex = mesh.materialIndex;
+        if (meshIndex == noMaterial) {
+            continue;
+        }
+
+        bool found = false;
+        foreach (ref material; materials) {
+            if (material.index == meshIndex) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            return failure("Mesh references unknown material index.");
+        }
+    }
+
+    return success();
+}
+
 version (UnitTesting)  :  ///
 
 void runRgmTests() {
@@ -264,16 +380,18 @@ void runRgmTests() {
     writeSection("-- RGM tests --");
 
     test("Load simple model containing a plane", {
-        ubyte[139] modelData = [
+        ubyte[147] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
             0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
 
             // Mesh 1
             0x04, 0x00, 0x00, 0x00, // Vertex count (4)
             0x02, 0x00, 0x00, 0x00, // Face count (2)
             0x00, // UV channel count (0)
+            0x00, 0x00, 0x00, 0x00, // Material index (0 = no material)
 
             // Vertex 1
             0x00, 0x00, 0x00, 0x00, // X coordinate (0.0)
@@ -368,16 +486,18 @@ void runRgmTests() {
     });
 
     test("Reject model with trailing bytes beyond expected data", {
-        ubyte[140] modelData = [
+        ubyte[148] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
             0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
 
             // Mesh 1
             0x04, 0x00, 0x00, 0x00, // Vertex count (4)
             0x02, 0x00, 0x00, 0x00, // Face count (2)
             0x00, // UV channel count (0)
+            0x00, 0x00, 0x00, 0x00, // Material index (0 = no material)
 
             // Vertex 1
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -410,16 +530,18 @@ void runRgmTests() {
     });
 
     test("Assign provided name to loaded model", {
-        ubyte[103] modelData = [
+        ubyte[111] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
             0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
 
             // Mesh 1
             0x03, 0x00, 0x00, 0x00, // Vertex count (3)
             0x01, 0x00, 0x00, 0x00, // Face count (1)
             0x00, // UV channel count (0)
+            0x00, 0x00, 0x00, 0x00, // Material index (0 = no material)
 
             // Vertex 1
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -445,16 +567,18 @@ void runRgmTests() {
     });
 
     test("Load simple model with two UV channels", {
-        ubyte[151] modelData = [
+        ubyte[159] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
             0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
 
             // Mesh 1
             0x03, 0x00, 0x00, 0x00, // Vertex count (3)
             0x01, 0x00, 0x00, 0x00, // Face count (1)
             0x02, // UV channel count (2)
+            0x00, 0x00, 0x00, 0x00, // Material index (0 = no material)
 
             // Vertex 1
             0x00, 0x00, 0x00, 0x00, // X (0.0)
@@ -519,5 +643,240 @@ void runRgmTests() {
         assert(model.meshes[0].uvCoords[4].v == 0.0);
         assert(model.meshes[0].uvCoords[5].u == 4.0);
         assert(model.meshes[0].uvCoords[5].v == 0.0);
+    });
+
+    test("Load model with one Unlit material", {
+        ubyte[129] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+
+            // Mesh 1
+            0x03, 0x00, 0x00, 0x00, // Vertex count (3)
+            0x01, 0x00, 0x00, 0x00, // Face count (1)
+            0x00, // UV channel count (0)
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+
+            // Vertex 1
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+            // Vertex 2
+            0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
+
+            // Vertex 3
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F,
+
+            // Face 1
+            0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
+
+            // Material 1
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+            0x02, // Material type (Unlit)
+            0x0B, 0x00, // Texture name length (11)
+            'd', 'i', 'f', 'f', 'u', 's', 'e', '.', 'r', 'g', 'i', // Texture name
+        ];
+
+        auto result = loadModel(modelData);
+        assert(result.isSuccessful());
+
+        auto model = result.unique();
+        assert(model.materials.length == 1);
+        assert(model.materials[0].index == 1);
+        assert(model.materials[0].type == MaterialType.unlit);
+        assert(model.materials[0].textureName == "diffuse.rgi");
+        assert(model.meshes[0].materialIndex == 1);
+    });
+
+    test("Load model with one Vertex Colors material", {
+        ubyte[116] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+
+            // Mesh 1
+            0x03, 0x00, 0x00, 0x00, // Vertex count (3)
+            0x01, 0x00, 0x00, 0x00, // Face count (1)
+            0x00, // UV channel count (0)
+            0x07, 0x00, 0x00, 0x00, // Material index (7)
+
+            // Vertex 1
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+            // Vertex 2
+            0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
+
+            // Vertex 3
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F,
+
+            // Face 1
+            0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
+
+            // Material 1
+            0x07, 0x00, 0x00, 0x00, // Material index (7)
+            0x01, // Material type (Vertex Colors)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(result.isSuccessful());
+
+        auto model = result.unique();
+        assert(model.materials.length == 1);
+        assert(model.materials[0].index == 7);
+        assert(model.materials[0].type == MaterialType.vertexColors);
+        assert(model.materials[0].textureName.length == 0);
+        assert(model.meshes[0].materialIndex == 7);
+    });
+
+    test("Load model with multiple materials using non-sequential indices", {
+        ubyte[146] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x02, 0x00, 0x00, 0x00, // Amount of meshes (2)
+            0x02, 0x00, 0x00, 0x00, // Amount of materials (2)
+
+            // Mesh 1
+            0x03, 0x00, 0x00, 0x00, // Vertex count (3)
+            0x01, 0x00, 0x00, 0x00, // Face count (1)
+            0x00, // UV channel count (0)
+            0x05, 0x00, 0x00, 0x00, // Material index (5)
+
+            // Vertex 1
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+            // Vertex 2
+            0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
+
+            // Vertex 3
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F,
+
+            // Face 1
+            0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
+
+            // Mesh 2 (degenerate, references material 9)
+            0x00, 0x00, 0x00, 0x00, // Vertex count (0)
+            0x00, 0x00, 0x00, 0x00, // Face count (0)
+            0x00, // UV channel count (0)
+            0x09, 0x00, 0x00, 0x00, // Material index (9)
+
+            // Material 1: Unlit at index 5
+            0x05, 0x00, 0x00, 0x00, // Material index (5)
+            0x02, // Material type (Unlit)
+            0x0A, 0x00, // Texture name length (10)
+            'a', 'l', 'b', 'e', 'd', 'o', '.', 'r', 'g', 'i',
+
+            // Material 2: Vertex Colors at index 9
+            0x09, 0x00, 0x00, 0x00, // Material index (9)
+            0x01, // Material type (Vertex Colors)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(result.isSuccessful());
+
+        auto model = result.unique();
+        assert(model.materials.length == 2);
+        assert(model.materials[0].index == 5);
+        assert(model.materials[0].type == MaterialType.unlit);
+        assert(model.materials[0].textureName == "albedo.rgi");
+        assert(model.materials[1].index == 9);
+        assert(model.materials[1].type == MaterialType.vertexColors);
+
+        assert(model.meshes[0].materialIndex == 5);
+        assert(model.meshes[1].materialIndex == 9);
+    });
+
+    test("Reject material with reserved index 0", {
+        ubyte[19] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+
+            // Material 1: reserved index 0
+            0x00, 0x00, 0x00, 0x00, // Material index (0 - reserved)
+            0x01, // Material type (Vertex Colors)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
+    test("Reject duplicate material indices", {
+        ubyte[24] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x02, 0x00, 0x00, 0x00, // Amount of materials (2)
+
+            // Material 1
+            0x03, 0x00, 0x00, 0x00, // Material index (3)
+            0x01, // Material type (Vertex Colors)
+
+            // Material 2 (duplicate index)
+            0x03, 0x00, 0x00, 0x00, // Material index (3) - duplicate!
+            0x01, // Material type (Vertex Colors)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
+    test("Reject mesh referencing unknown material index", {
+        ubyte[56] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+
+            // Mesh 1 (references material 99)
+            0x01, 0x00, 0x00, 0x00, // Vertex count (1)
+            0x00, 0x00, 0x00, 0x00, // Face count (0)
+            0x00, // UV channel count (0)
+            0x63, 0x00, 0x00, 0x00, // Material index (99)
+
+            // Vertex 1
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+            // Material 1 (only index 1 exists, not 99)
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+            0x01, // Material type (Vertex Colors)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
+    test("Reject unknown material type byte", {
+        ubyte[19] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+
+            // Material 1: unknown type
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+            0xFF, // Material type (unknown)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
     });
 }

@@ -20,10 +20,9 @@ import std.algorithm : sort;
 import std.array : array;
 
 import retrograde.data.assets.rgm : loadModel, loadModelHeader, ModelHeader, rgmMagicNumber;
-import retrograde.data.assets.rgi :
-    loadImageHeader, ImageHeader, rgiMagicNumber,
+import retrograde.data.assets.rgi : loadImageHeader, ImageHeader, rgiMagicNumber,
     CompressionType, ColorMode, IndexFormat, bytesPerIndex;
-import retrograde.data.model : Model, Mesh;
+import retrograde.data.model : Model, Mesh, Material, MaterialType, noMaterial;
 import retrograde.data.image : ChannelFormat, bytesPerChannel;
 
 private enum AssetKind {
@@ -79,7 +78,7 @@ int showFileInfo(string inputFile, bool requireAssetMagic) {
 
     case AssetKind.rgi:
         return showImageInfo(inputFile, data);
-		
+
     case AssetKind.unknown:
         writefln("File:           %s", inputFile);
         writeln("Not a Retrograde asset file");
@@ -187,17 +186,20 @@ int showModelInfo(string inputFile, const(ubyte)[] data) {
 
     ModelHeader header = headerResult.value();
     auto model = result.unique();
+
     // Access the model through the raw pointer so we can use `arr()` to take
     // a non-owning D slice over the underlying Mesh storage. Going through
     // UniquePtr's opDispatch or Array's `opIndex` would copy each Mesh by
     // value, which deep-copies vertex/face/UV data we only want to inspect.
     Mesh[] meshes = model.ptr.meshes.arr();
+    Material[] materials = model.ptr.materials.arr();
 
-    writefln("File:           %s", inputFile);
-    writefln("Size on disk:   %d bytes", data.length);
-    writefln("Format:         RGM (Retrograde Model)");
-    writefln("Version:        %d", header.formatVersion);
-    writefln("Meshes:         %d", meshes.length);
+    writefln("File:              %s", inputFile);
+    writefln("Size on disk:      %d bytes", data.length);
+    writefln("Format:            RGM (Retrograde Model)");
+    writefln("Version:           %d", header.formatVersion);
+    writefln("Meshes:            %d", meshes.length);
+    writefln("Materials:         %d", materials.length);
 
     size_t totalVertices = 0;
     size_t totalFaces = 0;
@@ -218,15 +220,55 @@ int showModelInfo(string inputFile, const(ubyte)[] data) {
     writefln("Total UV chans:    %d", totalUvChannels);
     writefln("Max UV chans/mesh: %d", maxUvChannelsUsed);
 
-    if (meshes.length > 1) {
+    if (meshes.length > 0) {
         writeln("Per-mesh:");
         foreach (i, ref mesh; meshes) {
-            writefln("  Mesh %d: %d vertices, %d faces, %d UV channels",
-                i, mesh.vertices.length, mesh.faces.length, mesh.uvChannelCount);
+            writefln("  Mesh %d: %d vertices, %d faces, %d UV channels, material %s",
+                i, mesh.vertices.length, mesh.faces.length, mesh.uvChannelCount,
+                materialReferenceLabel(mesh.materialIndex)
+            );
+        }
+    }
+
+    if (materials.length > 0) {
+        writeln("Per-material:");
+        foreach (i, ref material; materials) {
+            writefln("  Material %d: index %d, type %s%s",
+                i, material.index, materialTypeName(material.type),
+                materialPayloadDescription(material));
         }
     }
 
     return 0;
+}
+
+string materialTypeName(MaterialType type) {
+    final switch (type) {
+    case MaterialType.vertexColors:
+        return "Vertex Colors";
+    case MaterialType.unlit:
+        return "Unlit";
+    }
+}
+
+string materialReferenceLabel(uint materialIndex) {
+    import std.conv : to;
+
+    if (materialIndex == noMaterial) {
+        return "none";
+    }
+
+    return to!string(materialIndex);
+}
+
+string materialPayloadDescription(ref Material material) {
+    final switch (material.type) {
+    case MaterialType.vertexColors:
+        return "";
+    case MaterialType.unlit:
+        auto name = material.textureName[];
+        return ", texture \"" ~ name.idup ~ "\"";
+    }
 }
 
 int showImageInfo(string inputFile, const(ubyte)[] data) {
@@ -263,7 +305,8 @@ int showImageInfo(string inputFile, const(ubyte)[] data) {
 
     size_t expandedBytes = cast(size_t) header.width
         * cast(size_t) header.height
-        * cast(size_t) header.channelCount
+        * cast(
+            size_t) header.channelCount
         * bytesPerChannel(header.channelFormat);
     writefln("Expanded pixel data: %d bytes", expandedBytes);
 

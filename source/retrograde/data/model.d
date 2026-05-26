@@ -14,14 +14,41 @@ module retrograde.data.model;
 import retrograde.std.collections : Array;
 import retrograde.std.stringid : StringId, sid;
 import retrograde.std.dlang : CopyConstructors;
+import retrograde.std.string : String;
 
 alias VertexComponent = float;
 alias VertexIndex = size_t;
 alias TextureCoordinateIndex = size_t;
 alias UvChannelIndex = ubyte;
+alias MaterialIndex = uint;
 
 enum ModelComponentType = sid("comp_model");
 enum maxUvChannels = 8;
+
+/// Sentinel value used by `Mesh.materialIndex` to indicate that no material is assigned.
+enum MaterialIndex noMaterial = 0;
+
+/**
+ * Identifies how a material should be interpreted by the renderer.
+ */
+enum MaterialType : ubyte {
+    vertexColors = 1, /// Use only the per-vertex RGB colors. No payload.
+    unlit = 2 /// Passthrough material — references a single texture by name.
+}
+
+/**
+ * Represents a material referenced by one or more meshes.
+ *
+ * Materials are stored in a flat list on `Model` and looked up by their
+ * unique 1-based `index` field. Index `0` is reserved (see `noMaterial`).
+ */
+struct Material {
+    MaterialIndex index; /// 1-based unique index used by meshes to reference this material.
+    MaterialType type;
+    String textureName; /// Populated when `type == MaterialType.unlit`. Empty otherwise.
+
+    mixin CopyConstructors!Material;
+}
 
 /**
  * Represents a vertex in a 3D model.
@@ -71,21 +98,25 @@ struct Mesh {
     Array!Vertex vertices;
     Array!Face faces;
 
+    /// Flat channel-major UV data: channel c, vertex i lives at index `c * vertices.length + i`.
+    Array!UvCoord uvCoords;
+
     /// Number of active UV channels (0..maxUvChannels).
     ubyte uvChannelCount;
 
-    /// Flat channel-major UV data: channel c, vertex i lives at index `c * vertices.length + i`.
-    Array!UvCoord uvCoords;
+    /// Index of the material to use for this mesh. `noMaterial` (0) means no material is assigned.
+    MaterialIndex materialIndex = noMaterial;
 
     mixin CopyConstructors!Mesh;
 }
 
 /**
- * Represents a 3D model, consisting of multiple meshes.
+ * Represents a 3D model, consisting of multiple meshes and the materials they reference.
  */
 struct Model {
     StringId name;
     Array!Mesh meshes;
+    Array!Material materials;
 
     mixin CopyConstructors!Model;
 }
