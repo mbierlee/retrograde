@@ -1,3 +1,5 @@
+module app;
+
 /**
  * rgmodelconv - Convert 3D model files to Retrograde Model (.rgm) format.
  *
@@ -146,14 +148,17 @@ int parseArgs(ref string[] args, out string inputFile, out string outputFile, ou
 }
 
 void writeRgmFile(ref File output, const(aiScene)* scene) {
-    // Header (10 bytes)
+    // Header (14 bytes)
     writeBytes(output, 0x52, 0x47, 0x4D, 0x20); // Magic "RGM "
     writeUshort(output, 1); // Version 1
     writeUint(output, scene.mNumMeshes); // Mesh count
+    writeUint(output, 0); // Material count (material conversion not yet implemented)
 
     for (uint i = 0; i < scene.mNumMeshes; i++) {
         writeMeshData(output, scene.mMeshes[i]);
     }
+
+    // Materials section is empty for now; meshes use material index 0 (no material).
 }
 
 enum maxUvChannels = 8;
@@ -172,6 +177,7 @@ void writeMeshData(ref File output, const(aiMesh)* mesh) {
     writeUint(output, mesh.mNumVertices);
     writeUint(output, triangleCount);
     writeUbyte(output, cast(ubyte) uvChannelCount);
+    writeUint(output, 0); // Material index (0 = no material; material conversion not yet implemented)
 
     bool hasColors = mesh.mColors[0]!is null;
 
