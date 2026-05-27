@@ -147,30 +147,47 @@ int parseArgs(ref string[] args, out string inputFile, out string outputFile, ou
     return -1;
 }
 
-// Material conversion is not yet implemented; for debugging, emit a single
-// vertex-colors material that all meshes reference.
-enum debugMaterialIndex = 1;
 enum materialTypeVertexColors = 1;
+enum noMaterialIndex = 0;
 
 void writeRgmFile(ref File output, const(aiScene)* scene) {
+    // Map Assimp material index -> RGM material index. Unused Assimp materials
+    // (e.g. the synthetic default the glTF2 importer always appends) map to 0
+    // and are not emitted. Used materials get sequential 1-based RGM indices
+    // assigned in Assimp order.
+    uint[] materialIndexMap = new uint[scene.mNumMaterials];
+    uint nextRgmIndex = 1;
+    for (uint i = 0; i < scene.mNumMeshes; i++) {
+        uint mi = scene.mMeshes[i].mMaterialIndex;
+        if (mi < scene.mNumMaterials && materialIndexMap[mi] == 0) {
+            materialIndexMap[mi] = nextRgmIndex++;
+        }
+    }
+    uint usedMaterialCount = nextRgmIndex - 1;
+
     // Header (14 bytes)
     writeBytes(output, 0x52, 0x47, 0x4D, 0x20); // Magic "RGM "
     writeUshort(output, 1); // Version 1
     writeUint(output, scene.mNumMeshes); // Mesh count
-    writeUint(output, 1); // Material count
+    writeUint(output, usedMaterialCount); // Material count
 
     for (uint i = 0; i < scene.mNumMeshes; i++) {
-        writeMeshData(output, scene.mMeshes[i]);
+        writeMeshData(output, scene.mMeshes[i], materialIndexMap);
     }
 
-    // Vertex-colors material entry (no payload).
-    writeUint(output, debugMaterialIndex);
-    writeUbyte(output, materialTypeVertexColors);
+    // Emit one vertex-colors material per used Assimp material, in the order
+    // they were first referenced.
+    for (uint i = 0; i < scene.mNumMaterials; i++) {
+        if (materialIndexMap[i] != 0) {
+            writeUint(output, materialIndexMap[i]);
+            writeUbyte(output, materialTypeVertexColors);
+        }
+    }
 }
 
 enum maxUvChannels = 8;
 
-void writeMeshData(ref File output, const(aiMesh)* mesh) {
+void writeMeshData(ref File output, const(aiMesh)* mesh, const uint[] materialIndexMap) {
     uint triangleCount = countTriangles(mesh);
     uint uvChannelCount = countUvChannels(mesh);
 
@@ -180,11 +197,14 @@ void writeMeshData(ref File output, const(aiMesh)* mesh) {
                 maxUvChannels.stringof ~ ").");
     }
 
+    uint materialIndex = mesh.mMaterialIndex < materialIndexMap.length
+        ? materialIndexMap[mesh.mMaterialIndex] : noMaterialIndex;
+
     // Mesh header
     writeUint(output, mesh.mNumVertices);
     writeUint(output, triangleCount);
     writeUbyte(output, cast(ubyte) uvChannelCount);
-    writeUint(output, debugMaterialIndex); // All meshes share the debug vertex-colors material.
+    writeUint(output, materialIndex);
 
     bool hasColors = mesh.mColors[0]!is null;
 
