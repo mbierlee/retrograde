@@ -244,6 +244,8 @@ int showModelInfo(string inputFile, const(ubyte)[] data) {
 
 string materialTypeName(MaterialType type) {
     final switch (type) {
+    case MaterialType.invalid:
+        return "Invalid";
     case MaterialType.vertexColors:
         return "Vertex Colors";
     case MaterialType.unlit:
@@ -263,6 +265,8 @@ string materialReferenceLabel(uint materialIndex) {
 
 string materialPayloadDescription(ref Material material) {
     final switch (material.type) {
+    case MaterialType.invalid:
+        return "";
     case MaterialType.vertexColors:
         return "";
     case MaterialType.unlit:

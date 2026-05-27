@@ -32,6 +32,7 @@ enum MaterialIndex noMaterial = 0;
  * Identifies how a material should be interpreted by the renderer.
  */
 enum MaterialType : ubyte {
+    invalid = 0, /// Sentinel for an unrecognized or missing material type. Renderers treat this like `noMaterial`, falling back to the render pass shader.
     vertexColors = 1, /// Use only the per-vertex RGB colors. No payload.
     unlit = 2 /// Passthrough material — references a single texture by name.
 }

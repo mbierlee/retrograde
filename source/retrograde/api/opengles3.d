@@ -177,7 +177,9 @@ void loadEntityModel(EntityId entity) {
                         break;
                     }
                 }
+            }
 
+            if (mesh.materialIndex != noMaterial && meshInfo.materialType != MaterialType.invalid) {
                 auto maybeMaterialShaderInfo = materialShaderInfos.get(meshInfo.materialType);
                 if (maybeMaterialShaderInfo.isDefined) {
                     auto materialShaderInfo = maybeMaterialShaderInfo.value;
@@ -306,7 +308,9 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
             GLuint vao = 0;
             auto useMaterial = false;
 
-            if (meshInfo.materialIndex != noMaterial && meshInfo.materialVertexArrayObject != 0) {
+            if (meshInfo.materialIndex != noMaterial
+                && meshInfo.materialType != MaterialType.invalid
+                && meshInfo.materialVertexArrayObject != 0) {
                 auto maybeMaterialShaderInfo = materialShaderInfos.get(meshInfo.materialType);
                 if (maybeMaterialShaderInfo.isDefined) {
                     auto materialShaderInfo = maybeMaterialShaderInfo.value;
