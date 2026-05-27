@@ -20,7 +20,7 @@ version (OpenGLES3) {
 
 version (NoGraphicsApi) {
     import retrograde.engine.entity : EntityId;
-    import retrograde.engine.rendering : RenderPass, Color, Viewport;
+    import retrograde.engine.rendering : RenderPass, Color, Viewport, MaterialShader;
 
     import retrograde.std.math : Matrix4;
 
@@ -28,6 +28,9 @@ version (NoGraphicsApi) {
     }
 
     void initRenderPass(ref RenderPass renderPass) {
+    }
+
+    void initMaterialShader(ref MaterialShader materialShader) {
     }
 
     void loadEntityModel(EntityId entity) {

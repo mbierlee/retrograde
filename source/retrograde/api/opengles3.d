@@ -17,9 +17,9 @@ version (OpenGLES3)  :  //
 
 import retrograde.engine.entity : EntityId, hasComponent, withComponentData, addComponent,
     getComponentData;
-import retrograde.engine.rendering : Color, RenderPass, Viewport;
+import retrograde.engine.rendering : Color, RenderPass, Viewport, renderPasses, MaterialShader;
 
-import retrograde.data.model : ModelComponentType, Model;
+import retrograde.data.model : ModelComponentType, Model, MaterialType, MaterialIndex, noMaterial;
 
 import retrograde.std.memory : makeRaw, unique;
 import retrograde.std.collections : Array, HashMap;
@@ -60,8 +60,28 @@ void initRenderPass(ref RenderPass renderPass) {
     GlRenderPassInfo passInfo;
     passInfo.shaderProgram = program;
     passInfo.mvpMatrixUniformLocation = glGetUniformLocation(program, "modelViewProjectionMatrix");
+    passInfo.positionAttribLocation = glGetAttribLocation(program, "position");
 
     renderPassInfos.put(renderPass.passName.sid, passInfo);
+}
+
+void initMaterialShader(ref MaterialShader materialShader) {
+    auto program = compileShaderProgram(
+        materialShader.materialName,
+        materialShader.vertexShader,
+        materialShader.fragmentShader
+    );
+
+    GlMaterialShaderInfo shaderInfo;
+    shaderInfo.shaderProgram = program;
+    shaderInfo.mvpMatrixUniformLocation = glGetUniformLocation(program, "modelViewProjectionMatrix");
+    shaderInfo.positionAttribLocation = glGetAttribLocation(program, "position");
+
+    if (materialShader.materialType == MaterialType.vertexColors) {
+        shaderInfo.colorsAttribLocation = glGetAttribLocation(program, "color");
+    }
+
+    materialShaderInfos.put(materialShader.materialType, shaderInfo);
 }
 
 void initFrame() {
@@ -96,18 +116,12 @@ void loadEntityModel(EntityId entity) {
                 positionData.add(cast(GLfloat) vertex.w);
             }
 
-            auto vertexArrayObject = glCreateVertexArray();
-            glBindVertexArray(vertexArrayObject);
-
             auto positionBufferObject = glCreateBuffer();
             glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
             glBufferDataFloat(GL_ARRAY_BUFFER, positionData.arr, GL_STATIC_DRAW);
-            glEnableVertexAttribArray(PositionAttribLocation);
-            glVertexAttribPointer(PositionAttribLocation, 4, GL_FLOAT, false, 0, 0);
 
             GlMeshInfo meshInfo;
             meshInfo.positionBufferObject = positionBufferObject;
-            meshInfo.vertexArrayObject = vertexArrayObject;
             meshInfo.elementBufferObject = 0;
             meshInfo.vertexCount = mesh.vertices.length;
             meshInfo.elementCount = 0;
@@ -127,6 +141,87 @@ void loadEntityModel(EntityId entity) {
                 meshInfo.elementCount = indexData.length;
             }
 
+            foreach (ref renderPass; renderPasses) {
+                if (!entity.hasComponent(renderPass.componentType)) {
+                    continue;
+                }
+
+                auto passSid = renderPass.passName.sid;
+                auto maybePassInfo = renderPassInfos.get(passSid);
+                if (!maybePassInfo.isDefined) {
+                    continue;
+                }
+
+                auto passInfo = maybePassInfo.value;
+                auto vertexArrayObject = glCreateVertexArray();
+                glBindVertexArray(vertexArrayObject);
+
+                glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
+                if (passInfo.positionAttribLocation >= 0) {
+                    glEnableVertexAttribArray(passInfo.positionAttribLocation);
+                    glVertexAttribPointer(passInfo.positionAttribLocation, 4, GL_FLOAT, false, 0, 0);
+                }
+
+                if (meshInfo.elementBufferObject != 0) {
+                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshInfo.elementBufferObject);
+                }
+
+                meshInfo.vertexArrayObjects.put(passSid, vertexArrayObject);
+            }
+
+            meshInfo.materialIndex = mesh.materialIndex;
+            if (mesh.materialIndex != noMaterial) {
+                foreach (ref material; model.materials) {
+                    if (material.index == mesh.materialIndex) {
+                        meshInfo.materialType = material.type;
+                        break;
+                    }
+                }
+
+                auto maybeMaterialShaderInfo = materialShaderInfos.get(meshInfo.materialType);
+                if (maybeMaterialShaderInfo.isDefined) {
+                    auto materialShaderInfo = maybeMaterialShaderInfo.value;
+
+                    if (meshInfo.materialType == MaterialType.vertexColors) {
+                        Array!GLfloat colorData;
+                        colorData.capacity = mesh.vertices.length * 4;
+                        foreach (ref vertex; mesh.vertices) {
+                            colorData.add(cast(GLfloat) vertex.r);
+                            colorData.add(cast(GLfloat) vertex.g);
+                            colorData.add(cast(GLfloat) vertex.b);
+                            colorData.add(cast(GLfloat) vertex.a);
+                        }
+
+                        meshInfo.colorBufferObject = glCreateBuffer();
+                        glBindBuffer(GL_ARRAY_BUFFER, meshInfo.colorBufferObject);
+                        glBufferDataFloat(GL_ARRAY_BUFFER, colorData.arr, GL_STATIC_DRAW);
+                    }
+
+                    auto materialVao = glCreateVertexArray();
+                    glBindVertexArray(materialVao);
+
+                    glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
+                    if (materialShaderInfo.positionAttribLocation >= 0) {
+                        glEnableVertexAttribArray(materialShaderInfo.positionAttribLocation);
+                        glVertexAttribPointer(materialShaderInfo.positionAttribLocation, 4, GL_FLOAT, false, 0, 0);
+                    }
+
+                    if (meshInfo.materialType == MaterialType.vertexColors
+                    && meshInfo.colorBufferObject != 0
+                    && materialShaderInfo.colorsAttribLocation >= 0) {
+                        glBindBuffer(GL_ARRAY_BUFFER, meshInfo.colorBufferObject);
+                        glEnableVertexAttribArray(materialShaderInfo.colorsAttribLocation);
+                        glVertexAttribPointer(materialShaderInfo.colorsAttribLocation, 4, GL_FLOAT, false, 0, 0);
+                    }
+
+                    if (meshInfo.elementBufferObject != 0) {
+                        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshInfo.elementBufferObject);
+                    }
+
+                    meshInfo.materialVertexArrayObject = materialVao;
+                }
+            }
+
             modelInfo.meshes.add(meshInfo);
         }
 
@@ -143,8 +238,13 @@ void unloadEntityModel(EntityId entity) {
     entity.withComponentData(GlModelInfoComponentType, (GlModelInfo* modelInfo) {
         foreach (ref meshInfo; modelInfo.meshes) {
             glDeleteBuffer(meshInfo.positionBufferObject);
+            glDeleteBuffer(meshInfo.colorBufferObject);
             glDeleteBuffer(meshInfo.elementBufferObject);
-            glDeleteVertexArray(meshInfo.vertexArrayObject);
+            foreach (ref GLuint vao; meshInfo.vertexArrayObjects) {
+                glDeleteVertexArray(vao);
+            }
+
+            glDeleteVertexArray(meshInfo.materialVertexArrayObject);
         }
     });
 
@@ -195,18 +295,49 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
 
         auto modelMatrix = position.toTranslationMatrix4() * orientation.toRotationMatrix() * scale.toScalingMatrix4();
         auto modelViewProjectionMatrix = viewProjectionMatrix * modelMatrix;
+        auto modelViewProjectionMatrixData = modelViewProjectionMatrix.getDataArray!float;
 
-        auto passInfo = renderPassInfos.get(renderPass.passName.sid);
-        if (passInfo.isDefined) {
-            auto mvpMatrixUniformLocation = passInfo.value.mvpMatrixUniformLocation;
-            if (mvpMatrixUniformLocation >= 0) {
-                auto modelViewProjectionMatrixData = modelViewProjectionMatrix.getDataArray!float;
-                glUniformMatrix4fv(mvpMatrixUniformLocation, 1, true, modelViewProjectionMatrixData);
-            }
-        }
+        auto passSid = renderPass.passName.sid;
+        auto maybePassInfo = renderPassInfos.get(passSid);
 
         foreach (ref meshInfo; modelInfo.meshes) {
-            glBindVertexArray(meshInfo.vertexArrayObject);
+            GLuint shaderProgram;
+            GLint mvpMatrixUniformLocation = -1;
+            GLuint vao = 0;
+            auto useMaterial = false;
+
+            if (meshInfo.materialIndex != noMaterial && meshInfo.materialVertexArrayObject != 0) {
+                auto maybeMaterialShaderInfo = materialShaderInfos.get(meshInfo.materialType);
+                if (maybeMaterialShaderInfo.isDefined) {
+                    auto materialShaderInfo = maybeMaterialShaderInfo.value;
+                    shaderProgram = materialShaderInfo.shaderProgram;
+                    mvpMatrixUniformLocation = materialShaderInfo.mvpMatrixUniformLocation;
+                    vao = meshInfo.materialVertexArrayObject;
+                    useMaterial = true;
+                }
+            }
+
+            if (!useMaterial) {
+                if (!maybePassInfo.isDefined) {
+                    continue;
+                }
+
+                auto maybeVao = meshInfo.vertexArrayObjects.get(passSid);
+                if (!maybeVao.isDefined) {
+                    continue;
+                }
+
+                shaderProgram = maybePassInfo.value.shaderProgram;
+                mvpMatrixUniformLocation = maybePassInfo.value.mvpMatrixUniformLocation;
+                vao = maybeVao.value;
+            }
+
+            glUseProgram(shaderProgram);
+            if (mvpMatrixUniformLocation >= 0) {
+                glUniformMatrix4fv(mvpMatrixUniformLocation, 1, true, modelViewProjectionMatrixData);
+            }
+
+            glBindVertexArray(vao);
             if (meshInfo.elementCount > 0) {
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshInfo.elementBufferObject);
                 glDrawElements(GL_TRIANGLES, meshInfo.elementCount, GL_UNSIGNED_INT, 0);
@@ -245,15 +376,20 @@ private Color clearColor = Color(0, 0, 0, 0);
 private uint viewportWidth = 1;
 private uint viewportHeight = 1;
 private HashMap!(StringId, GlRenderPassInfo) renderPassInfos;
-
-private enum PositionAttribLocation = 0;
+private HashMap!(MaterialType, GlMaterialShaderInfo) materialShaderInfos;
 
 private struct GlMeshInfo {
     GLuint positionBufferObject;
-    GLuint vertexArrayObject;
+    GLuint colorBufferObject;
+    HashMap!(StringId, GLuint) vertexArrayObjects;
+    GLuint materialVertexArrayObject;
     GLuint elementBufferObject;
     GLuint vertexCount;
     GLuint elementCount;
+    MaterialIndex materialIndex = noMaterial;
+    MaterialType materialType;
+
+    mixin CopyConstructors!GlMeshInfo;
 }
 
 private struct GlModelInfo {
@@ -265,4 +401,12 @@ private struct GlModelInfo {
 private struct GlRenderPassInfo {
     GLuint shaderProgram;
     GLint mvpMatrixUniformLocation;
+    GLint positionAttribLocation;
+}
+
+private struct GlMaterialShaderInfo {
+    GLuint shaderProgram;
+    GLint mvpMatrixUniformLocation;
+    GLint positionAttribLocation;
+    GLint colorsAttribLocation;
 }

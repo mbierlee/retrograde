@@ -9,7 +9,7 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.engine.rendering.renderpass.genericmodel;
+module retrograde.engine.rendering.renderpass;
 
 import retrograde.data.model : ModelComponentType;
 
@@ -21,10 +21,9 @@ import retrograde.std.math : Matrix4;
 
 RenderPass genericModelRenderPass = RenderPass(
     "renderpass_generic_model",
-    import("opengles3/fallback_model_vertex.glsl"),
-    import("opengles3/fallback_model_fragment.glsl"),
+    import("opengles3/renderpass_genericmodel_vertex.glsl"),
+    import("opengles3/renderpass_genericmodel_fragment.glsl"),
     ModelComponentType,
-    null,
     (EntityId entity, const ref RenderPass renderPass, const ref Matrix4 viewProjectionMatrix) {
     drawModel(entity, renderPass, viewProjectionMatrix);
 }

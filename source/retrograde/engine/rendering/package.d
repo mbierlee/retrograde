@@ -11,15 +11,16 @@
 
 module retrograde.engine.rendering;
 
-import retrograde.data.model : ModelComponentType;
+import retrograde.data.model : ModelComponentType, MaterialType;
 
 import retrograde.engine.entity : addEntityFinalizedHook, addEntityRemovedHook, EntityId, forEachEntity,
     hasComponent, withComponentData;
 import retrograde.engine.graphicsapi : clearShaderProgram, getViewport, initFrame, initRenderApi,
-    initRenderPass, loadEntityModel, setClearColor, unloadEntityModel, useRenderPassShaderProgram;
-import retrograde.engine.rendering.renderpass.genericmodel : genericModelRenderPass;
+    initRenderPass, initMaterialShader, loadEntityModel, setClearColor, unloadEntityModel, useRenderPassShaderProgram;
+import retrograde.engine.rendering.renderpass : genericModelRenderPass;
+import retrograde.engine.rendering.materialshader : vertexColorsMaterialShader;
 
-import retrograde.std.collections : Array;
+import retrograde.std.collections : Array, HashMap;
 import retrograde.std.geometry : OrientationComponentType, PositionComponentType;
 import retrograde.std.math : createOrthographicMatrix, createPerspectiveMatrix, createViewMatrixQ,
     degreesToRadians, Matrix4, Quaternion, scalar, Vector3;
@@ -123,6 +124,7 @@ void initRenderer() {
     initRenderApi();
     setClearColor(Color(0, 0, 0, 1));
     initRenderPasses();
+    initMaterialShaders();
     initEntityManagerHooks();
 }
 
@@ -214,11 +216,19 @@ struct RenderPass {
     string vertexShader;
     string fragmentShader;
     StringId componentType;
-    void delegate() initPass;
     void delegate(EntityId entity, const ref RenderPass renderPass, const ref Matrix4 viewProjectionMatrix) render;
 }
 
+struct MaterialShader {
+    string materialName;
+    MaterialType materialType;
+    string vertexShader;
+    string fragmentShader;
+}
+
 Array!RenderPass renderPasses;
+
+HashMap!(MaterialType, MaterialShader) materialShaders;
 
 struct Color {
     /// Red
@@ -242,11 +252,17 @@ private void initRenderPasses() {
     }
 
     foreach (ref renderPass; renderPasses) {
-        if(renderPass.initPass !is null) {
-            renderPass.initPass();
-        }
-
         initRenderPass(renderPass);
+    }
+}
+
+private void initMaterialShaders() {
+    if (materialShaders.length == 0) {
+        materialShaders.put(vertexColorsMaterialShader.materialType, vertexColorsMaterialShader);
+    }
+
+    foreach (ref materialShader; materialShaders.values) {
+        initMaterialShader(materialShader);
     }
 }
 
