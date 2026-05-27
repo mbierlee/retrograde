@@ -1,10 +1,10 @@
 ifeq ($(OS),Windows_NT)
-	RGMODELCONV := ..\..\tools\rgmodelconv\bin\rgmodelconv.exe
-	RGIMAGECONV := ..\..\tools\rgimageconv\bin\rgimageconv.exe
+	RGMODELCONV := ..\tools\rgmodelconv\bin\rgmodelconv.exe
+	RGIMAGECONV := ..\tools\rgimageconv\bin\rgimageconv.exe
 	RM := del /Q
 else
-	RGMODELCONV := ../../tools/rgmodelconv/bin/rgmodelconv
-	RGIMAGECONV := ../../tools/rgimageconv/bin/rgimageconv
+	RGMODELCONV := ../tools/rgmodelconv/bin/rgmodelconv
+	RGIMAGECONV := ../tools/rgimageconv/bin/rgimageconv
 	RM := rm -f
 endif
 
