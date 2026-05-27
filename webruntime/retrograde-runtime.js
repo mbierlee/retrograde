@@ -326,6 +326,12 @@ export default class RetrogradeRuntime {
         return this.uniformLocations.length;
       },
 
+      glGetAttribLocation: (program, nameLength, namePtr) => {
+        const name = this.getString(namePtr, nameLength);
+        const programObject = this.getProgramObject(program);
+        return this.glContext.getAttribLocation(programObject, name);
+      },
+
       glUniformMatrix4fv: (
         location,
         count,

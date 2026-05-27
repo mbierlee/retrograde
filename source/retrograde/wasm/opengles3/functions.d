@@ -37,6 +37,7 @@ void glEnable(GLenum cap);
 void glDisable(GLenum cap);
 void glCullFace(GLenum mode);
 GLint glGetUniformLocation(GLuint program, string name);
+GLint glGetAttribLocation(GLuint program, string name);
 void glUniformMatrix4fv(GLint location, GLsizei count, GLbool transpose, GLfloat[] value);
 void glDepthFunc(GLenum func);
 void glStencilFunc(GLenum func, GLint refVal, GLuint mask);

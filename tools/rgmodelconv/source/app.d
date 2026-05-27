@@ -147,18 +147,25 @@ int parseArgs(ref string[] args, out string inputFile, out string outputFile, ou
     return -1;
 }
 
+// Material conversion is not yet implemented; for debugging, emit a single
+// vertex-colors material that all meshes reference.
+enum debugMaterialIndex = 1;
+enum materialTypeVertexColors = 1;
+
 void writeRgmFile(ref File output, const(aiScene)* scene) {
     // Header (14 bytes)
     writeBytes(output, 0x52, 0x47, 0x4D, 0x20); // Magic "RGM "
     writeUshort(output, 1); // Version 1
     writeUint(output, scene.mNumMeshes); // Mesh count
-    writeUint(output, 0); // Material count (material conversion not yet implemented)
+    writeUint(output, 1); // Material count
 
     for (uint i = 0; i < scene.mNumMeshes; i++) {
         writeMeshData(output, scene.mMeshes[i]);
     }
 
-    // Materials section is empty for now; meshes use material index 0 (no material).
+    // Vertex-colors material entry (no payload).
+    writeUint(output, debugMaterialIndex);
+    writeUbyte(output, materialTypeVertexColors);
 }
 
 enum maxUvChannels = 8;
@@ -177,7 +184,7 @@ void writeMeshData(ref File output, const(aiMesh)* mesh) {
     writeUint(output, mesh.mNumVertices);
     writeUint(output, triangleCount);
     writeUbyte(output, cast(ubyte) uvChannelCount);
-    writeUint(output, 0); // Material index (0 = no material; material conversion not yet implemented)
+    writeUint(output, debugMaterialIndex); // All meshes share the debug vertex-colors material.
 
     bool hasColors = mesh.mColors[0]!is null;
 
