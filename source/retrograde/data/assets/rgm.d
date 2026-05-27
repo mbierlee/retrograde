@@ -313,7 +313,9 @@ private OperationResult readMaterialData(const(ubyte)[] data, ref size_t offset,
     Material material;
     material.index = index;
 
-    if (typeByte == cast(ubyte) MaterialType.vertexColors) {
+    if (typeByte == cast(ubyte) MaterialType.invalid) {
+        material.type = MaterialType.invalid;
+    } else if (typeByte == cast(ubyte) MaterialType.vertexColors) {
         material.type = MaterialType.vertexColors;
     } else if (typeByte == cast(ubyte) MaterialType.unlit) {
         material.type = MaterialType.unlit;
