@@ -147,8 +147,40 @@ int parseArgs(ref string[] args, out string inputFile, out string outputFile, ou
     return -1;
 }
 
-enum materialTypeVertexColors = 1;
 enum noMaterialIndex = 0;
+
+/// Mirrors `retrograde.data.model.MaterialType`. Kept in sync manually because
+/// this tool is not built with the engine.
+enum MaterialType : ubyte {
+    invalid = 0,
+    vertexColors = 1,
+    unlit = 2
+}
+
+/// Custom Assimp material property key used to tag the intended RGM material type.
+enum rgmatPropertyKey = "rgmat";
+
+/**
+ * Read the `rgmat` string property from an Assimp material and map it to a
+ * `MaterialType`. Returns `MaterialType.invalid` when the property is missing
+ * or its value is not a recognized material type name.
+ */
+MaterialType getMaterialType(const(aiMaterial)* material) {
+    aiString value;
+    if (aiGetMaterialString(material, rgmatPropertyKey.ptr, 0, 0, &value) != aiReturn.SUCCESS) {
+        return MaterialType.invalid;
+    }
+
+    const(char)[] name = value.data[0 .. value.length];
+    switch (name) {
+        case "vertexColors":
+            return MaterialType.vertexColors;
+        case "unlit":
+            return MaterialType.unlit;
+        default:
+            return MaterialType.invalid;
+    }
+}
 
 void writeRgmFile(ref File output, const(aiScene)* scene) {
     // Map Assimp material index -> RGM material index. Unused Assimp materials
@@ -175,12 +207,13 @@ void writeRgmFile(ref File output, const(aiScene)* scene) {
         writeMeshData(output, scene.mMeshes[i], materialIndexMap);
     }
 
-    // Emit one vertex-colors material per used Assimp material, in the order
-    // they were first referenced.
+    // Emit one material entry per used Assimp material, in the order they were
+    // first referenced. The material type is read from the Assimp material's
+    // `rgmat` property; missing or unknown values fall back to `invalid`.
     for (uint i = 0; i < scene.mNumMaterials; i++) {
         if (materialIndexMap[i] != 0) {
             writeUint(output, materialIndexMap[i]);
-            writeUbyte(output, materialTypeVertexColors);
+            writeUbyte(output, cast(ubyte) getMaterialType(scene.mMaterials[i]));
         }
     }
 }
