@@ -151,15 +151,19 @@ int parseArgs(ref string[] args, out string inputFile, out string outputFile, ou
 }
 
 void writeRgmFile(ref File output, const(aiScene)* scene) {
-    // Map Assimp material index -> RGM material index. Unused Assimp materials
-    // (e.g. the synthetic default the glTF2 importer always appends) map to 0
-    // and are not emitted. Used materials get sequential 1-based RGM indices
-    // assigned in Assimp order.
+    // Map Assimp material index -> RGM material index. Assimp's glTF2 importer
+    // always appends exactly one synthesized default material at the highest
+    // index and points materialless primitives at it (see
+    // isSyntheticDefaultMaterial). That one slot is treated as "no material":
+    // it is never emitted, and meshes referencing it fall through to the
+    // `noMaterial` sentinel. Every other material that is actually referenced by
+    // a mesh gets a sequential 1-based RGM index assigned in Assimp order.
     uint[] materialIndexMap = new uint[scene.mNumMaterials];
     uint nextRgmIndex = 1;
     for (uint i = 0; i < scene.mNumMeshes; i++) {
         uint mi = scene.mMeshes[i].mMaterialIndex;
-        if (mi < scene.mNumMaterials && materialIndexMap[mi] == 0) {
+        if (mi < scene.mNumMaterials && materialIndexMap[mi] == 0
+            && !isSyntheticDefaultMaterial(scene, mi)) {
             materialIndexMap[mi] = nextRgmIndex++;
         }
     }
@@ -198,6 +202,37 @@ void writeRgmFile(ref File output, const(aiScene)* scene) {
             writeUbyte(output, flags); // Common flags (bit 0 = double-sided)
         }
     }
+}
+
+/**
+ * Returns true if the material at `index` is the synthetic default that
+ * Assimp's glTF2 importer fabricates for primitives that have no material.
+ *
+ * The importer always appends exactly one such material at the highest index
+ * (`mNumMaterials - 1`), regardless of whether any primitive actually needs it,
+ * and leaves it nameless. We require BOTH conditions — last slot AND nameless —
+ * so that a genuine (if unnamed) material sitting in any other slot is still
+ * treated as real and emitted. Real materials from authoring tools (Blender,
+ * etc.) carry a name, so this only ever fires on the appended placeholder.
+ */
+bool isSyntheticDefaultMaterial(const(aiScene)* scene, uint index) {
+    return index + 1 == scene.mNumMaterials && !isNamedMaterial(scene.mMaterials[index]);
+}
+
+/**
+ * Returns true if the Assimp material carries a non-empty name (AI_MATKEY_NAME).
+ */
+bool isNamedMaterial(const(aiMaterial)* material) {
+    aiString name;
+    aiReturn result = aiGetMaterialString(
+        material,
+        AI_MATKEY_NAME[0].toStringz(),
+        AI_MATKEY_NAME[1],
+        AI_MATKEY_NAME[2],
+        &name
+    );
+
+    return result == AI_SUCCESS && name.length > 0;
 }
 
 void writeMeshData(ref File output, const(aiMesh)* mesh, const uint[] materialIndexMap) {
