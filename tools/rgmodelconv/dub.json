@@ -6,8 +6,10 @@
   "copyright": "Copyright Mike Bierlee 2026",
   "targetPath": "bin",
   "targetType": "executable",
+  "versions": ["Native", "NoGraphicsApi"],
   "dependencies": {
-    "bindbc-assimp5": { "path": "../../third-party/bindbc-assimp5" }
+    "bindbc-assimp5": { "path": "../../third-party/bindbc-assimp5" },
+    "retrograde": { "path": "../../" }
   },
   "configurations": [
     {

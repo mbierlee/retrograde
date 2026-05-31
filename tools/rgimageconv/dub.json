@@ -5,5 +5,9 @@
   "authors": ["Mike Bierlee"],
   "copyright": "Copyright Mike Bierlee 2026",
   "targetPath": "bin",
-  "targetType": "executable"
+  "targetType": "executable",
+  "versions": ["Native", "NoGraphicsApi"],
+  "dependencies": {
+    "retrograde": { "path": "../../" }
+  }
 }

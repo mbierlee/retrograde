@@ -18,31 +18,12 @@ module encoders.rgi;
 import std.array : Appender, appender;
 import std.bitmanip : nativeToLittleEndian;
 
-import image : DecodedImage, PixelFormat, bytesPerChannel, channelCount, bytesPerPixel;
+import retrograde.data.assets.rgi : ColorMode, CompressionType, IndexFormat, rgiMagicNumber;
+import retrograde.data.image : ChannelFormat;
 
-enum ubyte[4] rgiMagic = [0x52, 0x47, 0x49, 0x20];
+import image : DecodedImage, PixelFormat, channelCount, bytesPerPixel;
+
 enum ushort rgiVersion = 1;
-
-enum CompressionType : ubyte {
-    none = 0,
-}
-
-enum ColorMode : ubyte {
-    direct = 0,
-    indexed = 1,
-}
-
-enum IndexFormat : ubyte {
-    u8 = 0,
-    u16 = 1,
-    u32 = 2,
-}
-
-enum ChannelFormat : ubyte {
-    u8 = 0,
-    u16 = 1,
-    u32 = 2,
-}
 
 enum Mode {
     direct,
@@ -67,17 +48,6 @@ private ChannelFormat toRgiChannelFormat(PixelFormat f) {
         return ChannelFormat.u8;
     case PixelFormat.rgba8:
         return ChannelFormat.u8;
-    }
-}
-
-private size_t bytesPerIndex(IndexFormat fmt) {
-    final switch (fmt) {
-    case IndexFormat.u8:
-        return 1;
-    case IndexFormat.u16:
-        return 2;
-    case IndexFormat.u32:
-        return 4;
     }
 }
 
@@ -213,7 +183,7 @@ private uint packPixelKey(const(ubyte)[] pixel) {
 }
 
 private void writeFileHeader(ref Appender!(ubyte[]) buf, ColorMode colorMode, IndexFormat indexFmt) {
-    buf.put(rgiMagic[]);
+    buf.put(cast(const(ubyte)[]) rgiMagicNumber);
     writeUshort(buf, rgiVersion);
     writeUbyte(buf, cast(ubyte) CompressionType.none);
     writeUbyte(buf, cast(ubyte) colorMode);
