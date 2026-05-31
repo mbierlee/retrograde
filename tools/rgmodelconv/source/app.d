@@ -24,6 +24,9 @@ import std.path : baseName, stripExtension, buildPath;
 
 import bindbc.assimp;
 
+import retrograde.data.assets.rgm : rgmMagicNumber;
+import retrograde.data.model : MaterialType, maxUvChannels, noMaterial;
+
 int main(string[] args) {
     string inputFile;
     string outputFile;
@@ -147,41 +150,6 @@ int parseArgs(ref string[] args, out string inputFile, out string outputFile, ou
     return -1;
 }
 
-enum noMaterialIndex = 0;
-
-/// Mirrors `retrograde.data.model.MaterialType`. Kept in sync manually because
-/// this tool is not built with the engine.
-enum MaterialType : ubyte {
-    invalid = 0,
-    vertexColors = 1,
-    unlit = 2
-}
-
-/// Custom Assimp material property key used to tag the intended RGM material type.
-enum rgmatPropertyKey = "rgmat";
-
-/**
- * Read the `rgmat` string property from an Assimp material and map it to a
- * `MaterialType`. Returns `MaterialType.invalid` when the property is missing
- * or its value is not a recognized material type name.
- */
-MaterialType getMaterialType(const(aiMaterial)* material) {
-    aiString value;
-    if (aiGetMaterialString(material, rgmatPropertyKey.ptr, 0, 0, &value) != aiReturn.SUCCESS) {
-        return MaterialType.invalid;
-    }
-
-    const(char)[] name = value.data[0 .. value.length];
-    switch (name) {
-        case "vertexColors":
-            return MaterialType.vertexColors;
-        case "unlit":
-            return MaterialType.unlit;
-        default:
-            return MaterialType.invalid;
-    }
-}
-
 void writeRgmFile(ref File output, const(aiScene)* scene) {
     // Map Assimp material index -> RGM material index. Unused Assimp materials
     // (e.g. the synthetic default the glTF2 importer always appends) map to 0
@@ -198,7 +166,7 @@ void writeRgmFile(ref File output, const(aiScene)* scene) {
     uint usedMaterialCount = nextRgmIndex - 1;
 
     // Header (14 bytes)
-    writeBytes(output, 0x52, 0x47, 0x4D, 0x20); // Magic "RGM "
+    output.rawWrite(rgmMagicNumber); // Magic "RGM "
     writeUshort(output, 1); // Version 1
     writeUint(output, scene.mNumMeshes); // Mesh count
     writeUint(output, usedMaterialCount); // Material count
@@ -208,17 +176,14 @@ void writeRgmFile(ref File output, const(aiScene)* scene) {
     }
 
     // Emit one material entry per used Assimp material, in the order they were
-    // first referenced. The material type is read from the Assimp material's
-    // `rgmat` property; missing or unknown values fall back to `invalid`.
+    // first referenced. Every used material defaults to `vertexColors`.
     for (uint i = 0; i < scene.mNumMaterials; i++) {
         if (materialIndexMap[i] != 0) {
             writeUint(output, materialIndexMap[i]);
-            writeUbyte(output, cast(ubyte) getMaterialType(scene.mMaterials[i]));
+            writeUbyte(output, cast(ubyte) MaterialType.vertexColors);
         }
     }
 }
-
-enum maxUvChannels = 8;
 
 void writeMeshData(ref File output, const(aiMesh)* mesh, const uint[] materialIndexMap) {
     uint triangleCount = countTriangles(mesh);
@@ -231,7 +196,7 @@ void writeMeshData(ref File output, const(aiMesh)* mesh, const uint[] materialIn
     }
 
     uint materialIndex = mesh.mMaterialIndex < materialIndexMap.length
-        ? materialIndexMap[mesh.mMaterialIndex] : noMaterialIndex;
+        ? materialIndexMap[mesh.mMaterialIndex] : noMaterial;
 
     // Mesh header
     writeUint(output, mesh.mNumVertices);
@@ -303,10 +268,6 @@ uint countTriangles(const(aiMesh)* mesh) {
     }
 
     return count;
-}
-
-void writeBytes(ref File output, ubyte[] bytes...) {
-    output.rawWrite(bytes);
 }
 
 void writeUint(ref File output, uint value) {
