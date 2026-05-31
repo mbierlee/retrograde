@@ -38,6 +38,19 @@ enum MaterialType : ubyte {
 }
 
 /**
+ * Bit flags packed into a material's "common flags" byte.
+ *
+ * These are properties shared by every material type except `invalid`. In the
+ * RGM file they live in a single ubyte that follows the type byte. Bits not
+ * listed here are reserved for future common properties; they are written as 0
+ * and ignored on read.
+ */
+enum MaterialFlags : ubyte {
+    none = 0,
+    doubleSided = 1 << 0 /// Render both faces (disable back-face culling) for this material.
+}
+
+/**
  * Represents a material referenced by one or more meshes.
  *
  * Materials are stored in a flat list on `Model` and looked up by their
@@ -46,6 +59,7 @@ enum MaterialType : ubyte {
 struct Material {
     MaterialIndex index; /// 1-based unique index used by meshes to reference this material.
     MaterialType type;
+    bool doubleSided; /// Common property (decoded from `MaterialFlags.doubleSided`): render both faces. Always false for `MaterialType.invalid`.
     String textureName; /// Populated when `type == MaterialType.unlit`. Empty otherwise.
 
     mixin CopyConstructors!Material;

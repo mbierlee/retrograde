@@ -233,8 +233,9 @@ int showModelInfo(string inputFile, const(ubyte)[] data) {
     if (materials.length > 0) {
         writeln("Per-material:");
         foreach (i, ref material; materials) {
-            writefln("  Material %d: index %d, type %s%s",
+            writefln("  Material %d: index %d, type %s%s%s",
                 i, material.index, materialTypeName(material.type),
+                materialCommonFlagsDescription(material),
                 materialPayloadDescription(material));
         }
     }
@@ -261,6 +262,10 @@ string materialReferenceLabel(uint materialIndex) {
     }
 
     return to!string(materialIndex);
+}
+
+string materialCommonFlagsDescription(ref Material material) {
+    return material.doubleSided ? ", double-sided" : "";
 }
 
 string materialPayloadDescription(ref Material material) {
