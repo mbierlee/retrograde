@@ -180,28 +180,102 @@ void writeRgmFile(ref File output, const(aiScene)* scene) {
     }
 
     // Emit one material entry per used Assimp material, in the order they were
-    // first referenced. Every used material defaults to `vertexColors`.
+    // first referenced. A material maps to `vertexColors` when it is an unlit,
+    // textureless material drawn with per-vertex colors; anything we cannot
+    // classify falls back to the `invalid` sentinel.
     for (uint i = 0; i < scene.mNumMaterials; i++) {
-        if (materialIndexMap[i] != 0) {
-            const(aiMaterial)* material = scene.mMaterials[i];
+        if (materialIndexMap[i] == 0) {
+            continue;
+        }
 
-            int twoSided = 0;
-            aiReturn twoSidedResult = aiGetMaterialInteger(
-                material,
-                AI_MATKEY_TWOSIDED[0].toStringz(),
-                AI_MATKEY_TWOSIDED[1],
-                AI_MATKEY_TWOSIDED[2],
-                &twoSided
-            );
+        const(aiMaterial)* material = scene.mMaterials[i];
 
-            bool doubleSided = twoSidedResult == AI_SUCCESS && twoSided != 0;
-            ubyte flags = doubleSided ? cast(ubyte) MaterialFlags.doubleSided : 0;
+        MaterialType type = isVertexColorMaterial(scene, i)
+            ? MaterialType.vertexColors : MaterialType.invalid;
 
-            writeUint(output, materialIndexMap[i]); // Material index
-            writeUbyte(output, cast(ubyte) MaterialType.vertexColors); // Material type
-            writeUbyte(output, flags); // Common flags (bit 0 = double-sided)
+        writeUint(output, materialIndexMap[i]); // Material index
+        writeUbyte(output, cast(ubyte) type); // Material type
+
+        // The `invalid` sentinel carries no common-flags byte and no payload.
+        if (type == MaterialType.invalid) {
+            continue;
+        }
+
+        int twoSided = 0;
+        aiReturn twoSidedResult = aiGetMaterialInteger(
+            material,
+            AI_MATKEY_TWOSIDED[0].toStringz(),
+            AI_MATKEY_TWOSIDED[1],
+            AI_MATKEY_TWOSIDED[2],
+            &twoSided
+        );
+
+        bool doubleSided = twoSidedResult == AI_SUCCESS && twoSided != 0;
+        ubyte flags = doubleSided ? cast(ubyte) MaterialFlags.doubleSided : 0;
+        writeUbyte(output, flags); // Common flags (bit 0 = double-sided)
+    }
+}
+
+/**
+ * Returns true when the Assimp material should be emitted as
+ * `MaterialType.vertexColors`. This requires all of:
+ *
+ *  - Its shading model is unlit (AI_MATKEY_SHADING_MODEL == aiShadingMode_Unlit,
+ *    which Assimp aliases to aiShadingMode_NoShading, 0x9).
+ *  - At least one mesh referencing it carries per-vertex colors.
+ *  - It references no textures of any type.
+ */
+bool isVertexColorMaterial(const(aiScene)* scene, uint assimpIndex) {
+    const(aiMaterial)* material = scene.mMaterials[assimpIndex];
+    return isUnlitShading(material)
+        && materialHasVertexColors(scene, assimpIndex)
+        && !materialHasTextures(material);
+}
+
+/**
+ * Returns true if the material's shading model is unlit. Assimp exposes the
+ * glTF `KHR_materials_unlit` extension as aiShadingMode_Unlit, which is an alias
+ * for aiShadingMode_NoShading (0x9).
+ */
+bool isUnlitShading(const(aiMaterial)* material) {
+    int shadingModel;
+    aiReturn result = aiGetMaterialInteger(
+        material,
+        AI_MATKEY_SHADING_MODEL[0].toStringz(),
+        AI_MATKEY_SHADING_MODEL[1],
+        AI_MATKEY_SHADING_MODEL[2],
+        &shadingModel
+    );
+
+    return result == AI_SUCCESS && shadingModel == aiShadingMode.NoShading;
+}
+
+/**
+ * Returns true if any mesh that references the material at `assimpIndex` carries
+ * per-vertex colors (vertex colors are a mesh attribute, not a material one).
+ */
+bool materialHasVertexColors(const(aiScene)* scene, uint assimpIndex) {
+    for (uint i = 0; i < scene.mNumMeshes; i++) {
+        const(aiMesh)* mesh = scene.mMeshes[i];
+        if (mesh.mMaterialIndex == assimpIndex && mesh.mColors[0]!is null) {
+            return true;
         }
     }
+
+    return false;
+}
+
+/**
+ * Returns true if the material references at least one texture of any type.
+ */
+bool materialHasTextures(const(aiMaterial)* material) {
+    for (uint t = aiTextureType.NONE; t <= AI_TEXTURE_TYPE_MAX; t++) {
+        if (aiGetMaterialTextureCount(material, cast(aiTextureType) t) > 0) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**
