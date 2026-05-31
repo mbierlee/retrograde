@@ -174,6 +174,7 @@ void loadEntityModel(EntityId entity) {
                 foreach (ref material; model.materials) {
                     if (material.index == mesh.materialIndex) {
                         meshInfo.materialType = material.type;
+                        meshInfo.doubleSided = material.doubleSided;
                         break;
                     }
                 }
@@ -341,12 +342,20 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
                 glUniformMatrix4fv(mvpMatrixUniformLocation, 1, true, modelViewProjectionMatrixData);
             }
 
+            if (meshInfo.doubleSided) {
+                glDisable(GL_CULL_FACE);
+            }
+
             glBindVertexArray(vao);
             if (meshInfo.elementCount > 0) {
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshInfo.elementBufferObject);
                 glDrawElements(GL_TRIANGLES, meshInfo.elementCount, GL_UNSIGNED_INT, 0);
             } else {
                 glDrawArrays(GL_TRIANGLES, 0, meshInfo.vertexCount);
+            }
+
+            if (meshInfo.doubleSided) {
+                glEnable(GL_CULL_FACE);
             }
         }
 
@@ -392,6 +401,9 @@ private struct GlMeshInfo {
     GLuint elementCount;
     MaterialIndex materialIndex = noMaterial;
     MaterialType materialType;
+
+    /// Common material property: when true this mesh renders both faces (back-face culling disabled).
+    bool doubleSided;
 
     mixin CopyConstructors!GlMeshInfo;
 }

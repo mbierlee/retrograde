@@ -25,7 +25,7 @@ import std.path : baseName, stripExtension, buildPath;
 import bindbc.assimp;
 
 import retrograde.data.assets.rgm : rgmMagicNumber;
-import retrograde.data.model : MaterialType, maxUvChannels, noMaterial;
+import retrograde.data.model : MaterialType, MaterialFlags, maxUvChannels, noMaterial;
 
 int main(string[] args) {
     string inputFile;
@@ -179,8 +179,23 @@ void writeRgmFile(ref File output, const(aiScene)* scene) {
     // first referenced. Every used material defaults to `vertexColors`.
     for (uint i = 0; i < scene.mNumMaterials; i++) {
         if (materialIndexMap[i] != 0) {
-            writeUint(output, materialIndexMap[i]);
-            writeUbyte(output, cast(ubyte) MaterialType.vertexColors);
+            const(aiMaterial)* material = scene.mMaterials[i];
+
+            int twoSided = 0;
+            aiReturn twoSidedResult = aiGetMaterialInteger(
+                material,
+                AI_MATKEY_TWOSIDED[0].toStringz(),
+                AI_MATKEY_TWOSIDED[1],
+                AI_MATKEY_TWOSIDED[2],
+                &twoSided
+            );
+
+            bool doubleSided = twoSidedResult == AI_SUCCESS && twoSided != 0;
+            ubyte flags = doubleSided ? cast(ubyte) MaterialFlags.doubleSided : 0;
+
+            writeUint(output, materialIndexMap[i]); // Material index
+            writeUbyte(output, cast(ubyte) MaterialType.vertexColors); // Material type
+            writeUbyte(output, flags); // Common flags (bit 0 = double-sided)
         }
     }
 }

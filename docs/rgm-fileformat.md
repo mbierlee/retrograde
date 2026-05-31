@@ -109,7 +109,12 @@ Materials are referenced by meshes via their declared `index` field. Material in
 | ------ | ---- | ----- | ---------------------------------------- |
 | 0x00   | 4    | uint  | Material index (≥ 1, unique within file) |
 | 0x04   | 1    | ubyte | Material type                            |
-| 0x05   | ...  | ...   | Type-specific payload                    |
+| 0x05   | 1    | ubyte | Common flags (see below)                 |
+| 0x06   | ...  | ...   | Type-specific payload                    |
+
+The common flags byte is present for every material type **except** the reserved `invalid` (0)
+sentinel, whose entry ends after the type byte. The size formula above accounts for this byte as
+part of each `materialEntrySize`.
 
 ### Material Types
 
@@ -118,9 +123,19 @@ Materials are referenced by meshes via their declared `index` field. Material in
 | 1     | Vertex Colors | Renders using only the per-vertex RGB colors. No payload.    |
 | 2     | Unlit         | Passthrough material — references a single texture by name.  |
 
+### Common Flags
+
+A single `ubyte` bitfield holding properties shared by all material types (except `invalid`). It
+follows the type byte and precedes any type-specific payload.
+
+| Bit  | Mask | Name         | Description                                              |
+| ---- | ---- | ------------ | ------------------------------------------------------- |
+| 0    | 0x01 | Double-sided | Render both faces (disable back-face culling).          |
+| 1–7  | —    | Reserved     | Reserved for future common properties. Written as 0 and ignored on read. |
+
 ### Vertex Colors Payload (type = 1)
 
-No payload bytes. The material entry ends after the type byte.
+No type-specific payload bytes. The material entry ends after the common flags byte.
 
 ### Unlit Payload (type = 2)
 

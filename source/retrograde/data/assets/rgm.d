@@ -12,7 +12,7 @@
 module retrograde.data.assets.rgm;
 
 import retrograde.data.model : Model, Vertex, Face, Mesh, UvCoord, maxUvChannels,
-    Material, MaterialIndex, MaterialType, noMaterial;
+    Material, MaterialIndex, MaterialType, MaterialFlags, noMaterial;
 import retrograde.data.assets.readercommon : readUInt, readUShort, readFloat;
 import retrograde.std.endian : toPlatformEndian, Endian;
 import retrograde.std.memory : ResultPtr, failedPtr, makeRaw, successPtr;
@@ -313,13 +313,33 @@ private OperationResult readMaterialData(const(ubyte)[] data, ref size_t offset,
     Material material;
     material.index = index;
 
-    if (typeByte == cast(ubyte) MaterialType.invalid) {
-        material.type = MaterialType.invalid;
-    } else if (typeByte == cast(ubyte) MaterialType.vertexColors) {
-        material.type = MaterialType.vertexColors;
-    } else if (typeByte == cast(ubyte) MaterialType.unlit) {
-        material.type = MaterialType.unlit;
+    // Match the type byte against every MaterialType member at compile time, so
+    // new material types are recognised here automatically.
+    bool knownType = false;
+    static foreach (member; __traits(allMembers, MaterialType)) {
+        if (typeByte == cast(ubyte) __traits(getMember, MaterialType, member)) {
+            material.type = __traits(getMember, MaterialType, member);
+            knownType = true;
+        }
+    }
 
+    if (!knownType) {
+        return failure("Unknown material type.");
+    }
+
+    // Common flags: present for every type except the `invalid` sentinel.
+    if (material.type != MaterialType.invalid) {
+        if (data.length - offset < 1) {
+            return failure("Cannot read material flags: Unexpected end of data.");
+        }
+
+        ubyte flags = data[offset];
+        offset += 1;
+        material.doubleSided = (flags & MaterialFlags.doubleSided) != 0;
+    }
+
+    // Type-specific payload.
+    if (material.type == MaterialType.unlit) {
         // Read name length
         if (data.length - offset < 2) {
             return failure("Cannot read unlit texture name length: Unexpected end of data.");
@@ -338,8 +358,6 @@ private OperationResult readMaterialData(const(ubyte)[] data, ref size_t offset,
         }
 
         offset += nameLength;
-    } else {
-        return failure("Unknown material type.");
     }
 
     model.materials ~= material;
@@ -648,7 +666,7 @@ void runRgmTests() {
     });
 
     test("Load model with one Unlit material", {
-        ubyte[129] modelData = [
+        ubyte[130] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -679,6 +697,7 @@ void runRgmTests() {
             // Material 1
             0x01, 0x00, 0x00, 0x00, // Material index (1)
             0x02, // Material type (Unlit)
+            0x00, // Common flags (none)
             0x0B, 0x00, // Texture name length (11)
             'd', 'i', 'f', 'f', 'u', 's', 'e', '.', 'r', 'g', 'i', // Texture name
         ];
@@ -690,12 +709,13 @@ void runRgmTests() {
         assert(model.materials.length == 1);
         assert(model.materials[0].index == 1);
         assert(model.materials[0].type == MaterialType.unlit);
+        assert(model.materials[0].doubleSided == false);
         assert(model.materials[0].textureName == "diffuse.rgi");
         assert(model.meshes[0].materialIndex == 1);
     });
 
     test("Load model with one Vertex Colors material", {
-        ubyte[116] modelData = [
+        ubyte[117] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -726,6 +746,7 @@ void runRgmTests() {
             // Material 1
             0x07, 0x00, 0x00, 0x00, // Material index (7)
             0x01, // Material type (Vertex Colors)
+            0x00, // Common flags (none)
         ];
 
         auto result = loadModel(modelData);
@@ -735,12 +756,13 @@ void runRgmTests() {
         assert(model.materials.length == 1);
         assert(model.materials[0].index == 7);
         assert(model.materials[0].type == MaterialType.vertexColors);
+        assert(model.materials[0].doubleSided == false);
         assert(model.materials[0].textureName.length == 0);
         assert(model.meshes[0].materialIndex == 7);
     });
 
     test("Load model with multiple materials using non-sequential indices", {
-        ubyte[146] modelData = [
+        ubyte[148] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -777,12 +799,14 @@ void runRgmTests() {
             // Material 1: Unlit at index 5
             0x05, 0x00, 0x00, 0x00, // Material index (5)
             0x02, // Material type (Unlit)
+            0x00, // Common flags (none)
             0x0A, 0x00, // Texture name length (10)
             'a', 'l', 'b', 'e', 'd', 'o', '.', 'r', 'g', 'i',
 
             // Material 2: Vertex Colors at index 9
             0x09, 0x00, 0x00, 0x00, // Material index (9)
             0x01, // Material type (Vertex Colors)
+            0x00, // Common flags (none)
         ];
 
         auto result = loadModel(modelData);
@@ -792,12 +816,46 @@ void runRgmTests() {
         assert(model.materials.length == 2);
         assert(model.materials[0].index == 5);
         assert(model.materials[0].type == MaterialType.unlit);
+        assert(model.materials[0].doubleSided == false);
         assert(model.materials[0].textureName == "albedo.rgi");
         assert(model.materials[1].index == 9);
         assert(model.materials[1].type == MaterialType.vertexColors);
+        assert(model.materials[1].doubleSided == false);
 
         assert(model.meshes[0].materialIndex == 5);
         assert(model.meshes[1].materialIndex == 9);
+    });
+
+    test("Load model with a double-sided material", {
+        ubyte[33] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+
+            // Mesh 1 (degenerate, references material 1)
+            0x00, 0x00, 0x00, 0x00, // Vertex count (0)
+            0x00, 0x00, 0x00, 0x00, // Face count (0)
+            0x00, // UV channel count (0)
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+
+            // Material 1: Vertex Colors, double-sided (with a reserved bit also set)
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+            0x01, // Material type (Vertex Colors)
+            0x03, // Common flags (double-sided | reserved bit 1)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(result.isSuccessful());
+
+        auto model = result.unique();
+        assert(model.materials.length == 1);
+        assert(model.materials[0].index == 1);
+        assert(model.materials[0].type == MaterialType.vertexColors);
+        // Bit 0 set => double-sided; reserved bits are ignored, parsing stays clean.
+        assert(model.materials[0].doubleSided == true);
+        assert(model.meshes[0].materialIndex == 1);
     });
 
     test("Reject material with reserved index 0", {
@@ -818,7 +876,7 @@ void runRgmTests() {
     });
 
     test("Reject duplicate material indices", {
-        ubyte[24] modelData = [
+        ubyte[26] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -828,10 +886,12 @@ void runRgmTests() {
             // Material 1
             0x03, 0x00, 0x00, 0x00, // Material index (3)
             0x01, // Material type (Vertex Colors)
+            0x00, // Common flags (none)
 
             // Material 2 (duplicate index)
             0x03, 0x00, 0x00, 0x00, // Material index (3) - duplicate!
             0x01, // Material type (Vertex Colors)
+            0x00, // Common flags (none)
         ];
 
         auto result = loadModel(modelData);
@@ -839,7 +899,7 @@ void runRgmTests() {
     });
 
     test("Reject mesh referencing unknown material index", {
-        ubyte[56] modelData = [
+        ubyte[57] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -859,6 +919,7 @@ void runRgmTests() {
             // Material 1 (only index 1 exists, not 99)
             0x01, 0x00, 0x00, 0x00, // Material index (1)
             0x01, // Material type (Vertex Colors)
+            0x00, // Common flags (none)
         ];
 
         auto result = loadModel(modelData);
