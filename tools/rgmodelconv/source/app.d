@@ -20,7 +20,7 @@ import std.getopt;
 import std.string : toStringz, fromStringz;
 import std.bitmanip : nativeToLittleEndian;
 import std.file : isDir, exists;
-import std.path : baseName, stripExtension, buildPath;
+import std.path : baseName, stripExtension, buildPath, setExtension;
 
 import bindbc.assimp;
 
@@ -31,8 +31,9 @@ int main(string[] args) {
     string inputFile;
     string outputFile;
     bool showStats;
+    bool noRenameImages;
 
-    int argsResult = parseArgs(args, inputFile, outputFile, showStats);
+    int argsResult = parseArgs(args, inputFile, outputFile, showStats, noRenameImages);
     if (argsResult != -1) {
         return argsResult;
     }
@@ -79,7 +80,7 @@ int main(string[] args) {
 
     try {
         auto output = File(outputFile, "wb");
-        writeRgmFile(output, scene);
+        writeRgmFile(output, scene, !noRenameImages);
 
         writefln("Converted '%s' -> '%s'", inputFile, outputFile);
 
@@ -119,12 +120,16 @@ int main(string[] args) {
  *   0  if the program should exit successfully (e.g. --help was shown),
  *   1  if there was a usage error.
  */
-int parseArgs(ref string[] args, out string inputFile, out string outputFile, out bool showStats) {
+int parseArgs(ref string[] args, out string inputFile, out string outputFile, out bool showStats,
+    out bool noRenameImages) {
     try {
         auto opts = getopt(args,
             "input|i", "Input model file path", &inputFile,
             "output|o", "Output RGM file path", &outputFile,
             "stats", "Print mesh statistics after conversion", &showStats,
+            "no-rename-images",
+            "Keep original texture image names instead of rewriting their extension to .rgi",
+            &noRenameImages,
         );
 
         if (opts.helpWanted) {
@@ -150,7 +155,7 @@ int parseArgs(ref string[] args, out string inputFile, out string outputFile, ou
     return -1;
 }
 
-void writeRgmFile(ref File output, const(aiScene)* scene) {
+void writeRgmFile(ref File output, const(aiScene)* scene, bool renameImages) {
     // Map Assimp material index -> RGM material index. Assimp's glTF2 importer
     // always appends exactly one synthesized default material at the highest
     // index and points materialless primitives at it (see
@@ -180,9 +185,10 @@ void writeRgmFile(ref File output, const(aiScene)* scene) {
     }
 
     // Emit one material entry per used Assimp material, in the order they were
-    // first referenced. A material maps to `vertexColors` when it is an unlit,
-    // textureless material drawn with per-vertex colors; anything we cannot
-    // classify falls back to the `invalid` sentinel.
+    // first referenced. A material maps to `unlit` when it uses the unlit
+    // shading model and references an external texture, or to `vertexColors`
+    // when it is unlit, textureless and drawn with per-vertex colors; anything
+    // we cannot classify falls back to the `invalid` sentinel.
     for (uint i = 0; i < scene.mNumMaterials; i++) {
         if (materialIndexMap[i] == 0) {
             continue;
@@ -190,8 +196,15 @@ void writeRgmFile(ref File output, const(aiScene)* scene) {
 
         const(aiMaterial)* material = scene.mMaterials[i];
 
-        MaterialType type = isVertexColorMaterial(scene, i)
-            ? MaterialType.vertexColors : MaterialType.invalid;
+        string unlitTextureName;
+        MaterialType type;
+        if (isUnlitMaterial(scene, i, unlitTextureName)) {
+            type = MaterialType.unlit;
+        } else if (isVertexColorMaterial(scene, i)) {
+            type = MaterialType.vertexColors;
+        } else {
+            type = MaterialType.invalid;
+        }
 
         writeUint(output, materialIndexMap[i]); // Material index
         writeUbyte(output, cast(ubyte) type); // Material type
@@ -213,6 +226,12 @@ void writeRgmFile(ref File output, const(aiScene)* scene) {
         bool doubleSided = twoSidedResult == AI_SUCCESS && twoSided != 0;
         ubyte flags = doubleSided ? cast(ubyte) MaterialFlags.doubleSided : 0;
         writeUbyte(output, flags); // Common flags (bit 0 = double-sided)
+
+        if (type == MaterialType.unlit) {
+            string textureName = renameImages
+                ? setExtension(unlitTextureName, "rgi") : unlitTextureName;
+            writeString(output, textureName);
+        }
     }
 }
 
@@ -230,6 +249,61 @@ bool isVertexColorMaterial(const(aiScene)* scene, uint assimpIndex) {
     return isUnlitShading(material)
         && materialHasVertexColors(scene, assimpIndex)
         && !materialHasTextures(material);
+}
+
+/**
+ * Returns true when the Assimp material should be emitted as
+ * `MaterialType.unlit`: it uses the unlit shading model and references an
+ * external texture. Unlike `isVertexColorMaterial`, per-vertex colors are not
+ * required. On success, `textureName` is set to that texture's path, which
+ * becomes the unlit material's payload.
+ *
+ * Only referenced textures are supported; embedded textures (which Assimp
+ * denotes with a '*'-prefixed path) are ignored, so a material carrying only
+ * embedded textures does not classify as unlit.
+ */
+bool isUnlitMaterial(const(aiScene)* scene, uint assimpIndex, out string textureName) {
+    const(aiMaterial)* material = scene.mMaterials[assimpIndex];
+    if (!isUnlitShading(material)) {
+        return false;
+    }
+
+    string name = getReferencedTextureName(material);
+    if (name.length == 0) {
+        return false;
+    }
+
+    textureName = name;
+    return true;
+}
+
+/**
+ * Returns the path of the first externally referenced texture found on the
+ * material, or an empty string when it has none. Embedded textures (whose
+ * Assimp path begins with '*') are skipped.
+ */
+string getReferencedTextureName(const(aiMaterial)* material) {
+    for (uint t = aiTextureType.NONE; t <= AI_TEXTURE_TYPE_MAX; t++) {
+        uint count = aiGetMaterialTextureCount(material, cast(aiTextureType) t);
+        for (uint idx = 0; idx < count; idx++) {
+            aiString path;
+            aiReturn result = aiGetMaterialTexture(
+                material, cast(aiTextureType) t, idx, &path,
+                null, null, null, null, null, null
+            );
+
+            if (result != AI_SUCCESS) {
+                continue;
+            }
+
+            string name = path.data[0 .. path.length].idup;
+            if (name.length > 0 && name[0] != '*') {
+                return name;
+            }
+        }
+    }
+
+    return "";
 }
 
 /**
@@ -412,4 +486,16 @@ void writeUshort(ref File output, ushort value) {
 void writeFloat(ref File output, float value) {
     ubyte[4] bytes = nativeToLittleEndian(value);
     output.rawWrite(bytes[]);
+}
+
+/// Writes a length-prefixed string: a ushort byte length followed by the raw
+/// UTF-8 bytes (no null terminator).
+void writeString(ref File output, string value) {
+    if (value.length > ushort.max) {
+        throw new Exception(
+            "String is too long for the RGM format (max " ~ ushort.max.stringof ~ " bytes).");
+    }
+
+    writeUshort(output, cast(ushort) value.length);
+    output.rawWrite(cast(const(ubyte)[]) value);
 }

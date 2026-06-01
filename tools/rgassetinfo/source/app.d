@@ -31,10 +31,21 @@ private enum AssetKind {
     rgi,
 }
 
+/**
+ * Outcome of inspecting a single file, used by directory mode to decide
+ * whether to emit a separator and whether to count a failure.
+ */
+private enum InspectResult {
+    printed, /// File info was printed.
+    skipped, /// File was silently skipped (--valid-only, non-asset file).
+    failed, /// Read or parse failure.
+}
+
 int main(string[] args) {
     string inputPath;
+    bool validOnly;
 
-    int argsResult = parseArgs(args, inputPath);
+    int argsResult = parseArgs(args, inputPath, validOnly);
     if (argsResult != -1) {
         return argsResult;
     }
@@ -45,48 +56,71 @@ int main(string[] args) {
     }
 
     if (isDir(inputPath)) {
-        return showDirInfo(inputPath);
+        return showDirInfo(inputPath, validOnly);
     }
 
-    return showFileInfo(inputPath, true);
+    bool printedAny = false;
+    return showFileInfo(inputPath, true, validOnly, printedAny) == InspectResult.failed ? 1 : 0;
+}
+
+/**
+ * Emit a blank-line separator before an entry, but only once a previous entry
+ * has produced output. Flips `printedAny` so the next entry knows to separate.
+ */
+void emitSeparator(ref bool printedAny) {
+    if (printedAny) {
+        writeln();
+    }
+
+    printedAny = true;
 }
 
 /**
  * Inspect a single file. When `requireAssetMagic` is true (single-file mode),
- * an unrecognized magic number is reported as an error and the process exits
- * non-zero. In directory mode it is reported as a one-line notice on stdout
- * so the user still sees the file listed without bailing out the whole scan.
+ * an unrecognized magic number is reported as an error. In directory mode it
+ * is reported as a one-line notice on stdout so the user still sees the file
+ * listed without bailing out the whole scan.
  *
- * Returns:
- *   0 on success, or on a recognized non-asset in directory mode,
- *   1 on read or parse failures, or — in single-file mode — when the file
- *     is not a Retrograde asset.
+ * When `validOnly` is true, files that are not recognized as Retrograde assets
+ * are skipped silently (no output, not counted as a failure) regardless of
+ * mode.
  */
-int showFileInfo(string inputFile, bool requireAssetMagic) {
+InspectResult showFileInfo(string inputFile, bool requireAssetMagic, bool validOnly, ref bool printedAny) {
     ubyte[] data;
     try {
         data = cast(ubyte[]) read(inputFile);
     } catch (Exception e) {
+        if (validOnly) {
+            return InspectResult.skipped;
+        }
+
         stderr.writefln("Error: failed to read '%s': %s", inputFile, e.msg);
-        return 1;
+        return InspectResult.failed;
     }
 
     AssetKind kind = detectAssetKind(data);
     final switch (kind) {
     case AssetKind.rgm:
-        return showModelInfo(inputFile, data);
+        return showModelInfo(inputFile, data, printedAny) == 0 ? InspectResult.printed : InspectResult
+            .failed;
 
     case AssetKind.rgi:
-        return showImageInfo(inputFile, data);
+        return showImageInfo(inputFile, data, printedAny) == 0 ? InspectResult.printed : InspectResult
+            .failed;
 
     case AssetKind.unknown:
+        if (validOnly) {
+            return InspectResult.skipped;
+        }
+
+        emitSeparator(printedAny);
         writefln("File:           %s", inputFile);
         writeln("Not a Retrograde asset file");
-        return requireAssetMagic ? 1 : 0;
+        return requireAssetMagic ? InspectResult.failed : InspectResult.printed;
     }
 }
 
-int showDirInfo(string inputDir) {
+int showDirInfo(string inputDir, bool validOnly) {
     string[] files;
     try {
         foreach (entry; dirEntries(inputDir, SpanMode.shallow)) {
@@ -102,13 +136,14 @@ int showDirInfo(string inputDir) {
     // Stable, predictable ordering across filesystems.
     sort(files);
 
+    // `printedAny` is threaded into each inspection so the blank-line
+    // separator is emitted right before an entry's first output line, and
+    // only after a previous entry has actually printed. This keeps skipped
+    // files (and failures, which write to stderr) from leaving stray gaps.
     int failures = 0;
-    foreach (i, file; files) {
-        if (i > 0) {
-            writeln();
-        }
-
-        if (showFileInfo(file, false) != 0) {
+    bool printedAny = false;
+    foreach (file; files) {
+        if (showFileInfo(file, false, validOnly, printedAny) == InspectResult.failed) {
             failures++;
         }
     }
@@ -138,10 +173,11 @@ AssetKind detectAssetKind(const(ubyte)[] data) {
  *   0  if the program should exit successfully (e.g. --help was shown),
  *   1  if there was a usage error.
  */
-int parseArgs(ref string[] args, out string inputPath) {
+int parseArgs(ref string[] args, out string inputPath, out bool validOnly) {
     try {
         auto opts = getopt(args,
             "input|i", "Input RGM or RGI file, or directory to scan", &inputPath,
+            "valid-only", "Silently skip files not recognized as Retrograde assets", &validOnly,
         );
 
         if (opts.helpWanted) {
@@ -169,7 +205,7 @@ int parseArgs(ref string[] args, out string inputPath) {
     return -1;
 }
 
-int showModelInfo(string inputFile, const(ubyte)[] data) {
+int showModelInfo(string inputFile, const(ubyte)[] data, ref bool printedAny) {
     auto headerResult = loadModelHeader(data);
     if (!headerResult.isSuccessful()) {
         stderr.writefln("Error: failed to parse '%s': %s",
@@ -194,6 +230,7 @@ int showModelInfo(string inputFile, const(ubyte)[] data) {
     Mesh[] meshes = model.ptr.meshes.arr();
     Material[] materials = model.ptr.materials.arr();
 
+    emitSeparator(printedAny);
     writefln("File:              %s", inputFile);
     writefln("Size on disk:      %d bytes", data.length);
     writefln("Format:            RGM (Retrograde Model)");
@@ -280,7 +317,7 @@ string materialPayloadDescription(ref Material material) {
     }
 }
 
-int showImageInfo(string inputFile, const(ubyte)[] data) {
+int showImageInfo(string inputFile, const(ubyte)[] data, ref bool printedAny) {
     auto headerResult = loadImageHeader(data);
     if (!headerResult.isSuccessful()) {
         stderr.writefln("Error: failed to parse '%s': %s",
@@ -290,6 +327,7 @@ int showImageInfo(string inputFile, const(ubyte)[] data) {
 
     ImageHeader header = headerResult.value();
 
+    emitSeparator(printedAny);
     writefln("File:           %s", inputFile);
     writefln("Size on disk:   %d bytes", data.length);
     writefln("Format:         RGI (Retrograde Image)");
