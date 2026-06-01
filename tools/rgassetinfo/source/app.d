@@ -176,14 +176,13 @@ AssetKind detectAssetKind(const(ubyte)[] data) {
 int parseArgs(ref string[] args, out string inputPath, out bool validOnly) {
     try {
         auto opts = getopt(args,
-            "input|i", "Input RGM or RGI file, or directory to scan", &inputPath,
             "valid-only", "Silently skip files not recognized as Retrograde assets", &validOnly,
         );
 
         if (opts.helpWanted) {
             defaultGetoptPrinter(
                 "rgassetinfo - Display statistics about Retrograde asset files.\n\n" ~
-                    "Usage: rgassetinfo -i <input>\n\n" ~
+                    "Usage: rgassetinfo <input>\n\n" ~
                     "Supports Retrograde Model (.rgm) and Retrograde Image (.rgi) files.\n" ~
                     "If <input> is a directory, all RGM and RGI files inside it are\n" ~
                     "inspected (non-recursive).\n",
@@ -192,11 +191,15 @@ int parseArgs(ref string[] args, out string inputPath, out bool validOnly) {
             return 0;
         }
 
-        if (inputPath.length == 0) {
-            stderr.writeln("Error: --input is required.");
+        // getopt strips recognized options, leaving the program name in
+        // args[0] and the positional input path (if any) in args[1].
+        if (args.length < 2) {
+            stderr.writeln("Error: an input path is required.");
             stderr.writeln("Use --help for usage information.");
             return 1;
         }
+
+        inputPath = args[1];
     } catch (Exception e) {
         stderr.writeln("Error: ", e.msg);
         return 1;
