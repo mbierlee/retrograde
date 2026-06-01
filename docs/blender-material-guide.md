@@ -91,6 +91,11 @@ The exported texture's name becomes the `unlit` material's texture-name
 reference in the `.rgm`; how that name resolves to an actual texture asset is up
 to the engine/runtime.
 
+> At the moment `unlit` only works when exporting as a **`.gltf`** file, because
+> embedded images (as produced by `.glb`) are not supported yet.
+
+See `asset-examples/cube-unlit-textured.blend` for a working example.
+
 ---
 
 ## Backface culling
