@@ -22,11 +22,11 @@ For an example file, see `asset-examples/cube.rgm`
 
 ## File Structure
 
-The binary file format consists of a header followed by data sections. Each section contains information about the meshes (with their vertices and faces) and the materials that make up the 3D model.
+The binary file format consists of a header followed by data sections. Each section contains information about the meshes (with their vertices and faces), the materials that make up the 3D model, and the images those materials reference.
 
-Total file size = 14 + sum_meshes(13 + vertexCount × 24 + faceCount × 12 + uvChannelCount × vertexCount × 8) + sum_materials(materialEntrySize).
+Total file size = 18 + sum_meshes(13 + vertexCount × 24 + faceCount × 12 + uvChannelCount × vertexCount × 8) + sum_materials(materialEntrySize) + sum_images(imageEntrySize).
 
-## Header (14 bytes)
+## Header (18 bytes)
 
 | Offset | Size | Type   | Description                        |
 | ------ | ---- | ------ | ---------------------------------- |
@@ -34,6 +34,7 @@ Total file size = 14 + sum_meshes(13 + vertexCount × 24 + faceCount × 12 + uvC
 | 0x04   | 2    | ushort | Version number                     |
 | 0x06   | 4    | uint   | Amount of meshes                   |
 | 0x0A   | 4    | uint   | Amount of materials                |
+| 0x0E   | 4    | uint   | Amount of images                   |
 
 The version number is a `ushort` that is incremented with every change to the format. The current version is `1`.
 
@@ -121,7 +122,7 @@ part of each `materialEntrySize`.
 | Value | Name          | Description                                                  |
 | ----- | ------------- | ------------------------------------------------------------ |
 | 1     | Vertex Colors | Renders using only the per-vertex RGB colors. No payload.    |
-| 2     | Unlit         | Passthrough material — references a single texture by name.  |
+| 2     | Unlit         | Passthrough material — references a single image by index.   |
 
 ### Common Flags
 
@@ -139,9 +140,48 @@ No type-specific payload bytes. The material entry ends after the common flags b
 
 ### Unlit Payload (type = 2)
 
-| Offset | Size       | Type    | Description                          |
-| ------ | ---------- | ------- | ------------------------------------ |
-| 0x00   | 2          | ushort  | Texture name length in bytes         |
-| 0x02   | nameLength | ubyte[] | Texture name (UTF-8, no terminator)  |
+| Offset | Size | Type | Description                                              |
+| ------ | ---- | ---- | ------------------------------------------------------- |
+| 0x00   | 4    | uint | Image index (≥ 1, references an image by its `index`)   |
 
-The name length is the byte length of the UTF-8 encoded name, not the codepoint count. The name has no null terminator.
+The image index references an entry in the images section by its declared `index` field (see "Images" below), not by array position. It must be `≥ 1` and must match a defined image.
+
+## Images (variable size)
+
+After all material entries the images section follows. The number of image entries is equal to the image count specified in the header. Images hold the texture data referenced by materials (for example, the texture of an `Unlit` material).
+
+Images are referenced by materials via their declared `index` field. Image indices follow the same rules as material indices:
+
+- `index >= 1` (0 is reserved)
+- All indices within a single file are unique (no two images share the same index)
+- Indices may otherwise be arbitrary — gaps and non-sequential order are allowed
+
+Referencing images by their declared index (rather than by file position) means image entries can be reordered in the file without breaking the materials that reference them.
+
+### Image Entry (variable size)
+
+| Offset | Size | Type  | Description                            |
+| ------ | ---- | ----- | -------------------------------------- |
+| 0x00   | 4    | uint  | Image index (≥ 1, unique within file)  |
+| 0x04   | 1    | ubyte | Image type                             |
+| 0x05   | ...  | ...   | Type-specific payload                  |
+
+### Image Types
+
+| Value | Name      | Description                                                       |
+| ----- | --------- | ---------------------------------------------------------------- |
+| 0     | Reference | The payload is a path to an external image file.                 |
+| 1     | Embedded  | Reserved: image data embedded in the model. Not yet implemented. |
+
+### Reference Payload (type = 0)
+
+| Offset | Size       | Type    | Description                         |
+| ------ | ---------- | ------- | ----------------------------------- |
+| 0x00   | 2          | ushort  | Path length in bytes                |
+| 0x02   | pathLength | ubyte[] | Image path (UTF-8, no terminator)   |
+
+The path length is the byte length of the UTF-8 encoded path, not the codepoint count. The path has no null terminator.
+
+### Embedded Payload (type = 1)
+
+The `Embedded` image type is **reserved** and **not yet implemented**. Its payload layout is undefined; writers never emit it and readers reject any image declaring this type.

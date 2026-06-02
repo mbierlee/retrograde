@@ -1,3 +1,5 @@
+module app;
+
 /**
  * rgassetinfo - Display statistics about Retrograde asset files.
  *
@@ -22,7 +24,8 @@ import std.array : array;
 import retrograde.data.assets.rgm : loadModel, loadModelHeader, ModelHeader, rgmMagicNumber;
 import retrograde.data.assets.rgi : loadImageHeader, ImageHeader, rgiMagicNumber,
     CompressionType, ColorMode, IndexFormat, bytesPerIndex;
-import retrograde.data.model : Model, Mesh, Material, MaterialType, noMaterial;
+import retrograde.data.model : Model, Mesh, Material, MaterialType, noMaterial,
+    Image, ImageType;
 import retrograde.data.image : ChannelFormat, bytesPerChannel;
 
 private enum AssetKind {
@@ -232,6 +235,7 @@ int showModelInfo(string inputFile, const(ubyte)[] data, ref bool printedAny) {
     // value, which deep-copies vertex/face/UV data we only want to inspect.
     Mesh[] meshes = model.ptr.meshes.arr();
     Material[] materials = model.ptr.materials.arr();
+    Image[] images = model.ptr.images.arr();
 
     emitSeparator(printedAny);
     writefln("File:              %s", inputFile);
@@ -240,6 +244,7 @@ int showModelInfo(string inputFile, const(ubyte)[] data, ref bool printedAny) {
     writefln("Version:           %d", header.formatVersion);
     writefln("Meshes:            %d", meshes.length);
     writefln("Materials:         %d", materials.length);
+    writefln("Images:            %d", images.length);
 
     size_t totalVertices = 0;
     size_t totalFaces = 0;
@@ -280,6 +285,15 @@ int showModelInfo(string inputFile, const(ubyte)[] data, ref bool printedAny) {
         }
     }
 
+    if (images.length > 0) {
+        writeln("Per-image:");
+        foreach (i, ref image; images) {
+            writefln("  Image %d: index %d, type %s%s",
+                i, image.index, imageTypeName(image.type),
+                imagePayloadDescription(image));
+        }
+    }
+
     return 0;
 }
 
@@ -315,8 +329,28 @@ string materialPayloadDescription(ref Material material) {
     case MaterialType.vertexColors:
         return "";
     case MaterialType.unlit:
-        auto name = material.textureName[];
-        return ", texture \"" ~ name.idup ~ "\"";
+        import std.conv : to;
+
+        return ", image " ~ to!string(material.imageIndex);
+    }
+}
+
+string imageTypeName(ImageType type) {
+    final switch (type) {
+    case ImageType.reference:
+        return "reference";
+    case ImageType.embedded:
+        return "embedded";
+    }
+}
+
+string imagePayloadDescription(ref Image image) {
+    final switch (image.type) {
+    case ImageType.reference:
+        auto path = image.path[];
+        return ", path \"" ~ path.idup ~ "\"";
+    case ImageType.embedded:
+        return "";
     }
 }
 
