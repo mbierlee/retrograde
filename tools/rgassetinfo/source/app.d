@@ -25,7 +25,7 @@ import retrograde.data.assets.rgm : loadModel, loadModelHeader, ModelHeader, rgm
 import retrograde.data.assets.rgi : loadImageHeader, ImageHeader, rgiMagicNumber,
     CompressionType, ColorMode, IndexFormat, bytesPerIndex;
 import retrograde.data.model : Model, Mesh, Material, MaterialType, noMaterial,
-    Image, ImageType;
+    Texture, TextureType;
 import retrograde.data.image : ChannelFormat, bytesPerChannel;
 
 private enum AssetKind {
@@ -235,7 +235,7 @@ int showModelInfo(string inputFile, const(ubyte)[] data, ref bool printedAny) {
     // value, which deep-copies vertex/face/UV data we only want to inspect.
     Mesh[] meshes = model.ptr.meshes.arr();
     Material[] materials = model.ptr.materials.arr();
-    Image[] images = model.ptr.images.arr();
+    Texture[] textures = model.ptr.textures.arr();
 
     emitSeparator(printedAny);
     writefln("File:              %s", inputFile);
@@ -244,7 +244,7 @@ int showModelInfo(string inputFile, const(ubyte)[] data, ref bool printedAny) {
     writefln("Version:           %d", header.formatVersion);
     writefln("Meshes:            %d", meshes.length);
     writefln("Materials:         %d", materials.length);
-    writefln("Images:            %d", images.length);
+    writefln("Textures:          %d", textures.length);
 
     size_t totalVertices = 0;
     size_t totalFaces = 0;
@@ -285,12 +285,12 @@ int showModelInfo(string inputFile, const(ubyte)[] data, ref bool printedAny) {
         }
     }
 
-    if (images.length > 0) {
-        writeln("Per-image:");
-        foreach (i, ref image; images) {
-            writefln("  Image %d: index %d, type %s%s",
-                i, image.index, imageTypeName(image.type),
-                imagePayloadDescription(image));
+    if (textures.length > 0) {
+        writeln("Per-texture:");
+        foreach (i, ref texture; textures) {
+            writefln("  Texture %d: index %d, type %s%s",
+                i, texture.index, textureTypeName(texture.type),
+                texturePayloadDescription(texture));
         }
     }
 
@@ -331,25 +331,25 @@ string materialPayloadDescription(ref Material material) {
     case MaterialType.unlit:
         import std.conv : to;
 
-        return ", image " ~ to!string(material.imageIndex);
+        return ", texture " ~ to!string(material.textureIndex);
     }
 }
 
-string imageTypeName(ImageType type) {
+string textureTypeName(TextureType type) {
     final switch (type) {
-    case ImageType.reference:
+    case TextureType.reference:
         return "reference";
-    case ImageType.embedded:
+    case TextureType.embedded:
         return "embedded";
     }
 }
 
-string imagePayloadDescription(ref Image image) {
-    final switch (image.type) {
-    case ImageType.reference:
-        auto path = image.path[];
+string texturePayloadDescription(ref Texture texture) {
+    final switch (texture.type) {
+    case TextureType.reference:
+        auto path = texture.path[];
         return ", path \"" ~ path.idup ~ "\"";
-    case ImageType.embedded:
+    case TextureType.embedded:
         return "";
     }
 }

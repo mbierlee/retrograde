@@ -13,7 +13,7 @@ module retrograde.data.assets.rgm;
 
 import retrograde.data.model : Model, Vertex, Face, Mesh, UvCoord, maxUvChannels,
     Material, MaterialIndex, MaterialType, MaterialFlags, noMaterial,
-    Image, ImageIndex, ImageType;
+    Texture, TextureIndex, TextureType;
 import retrograde.data.assets.readercommon : readUInt, readUShort, readFloat;
 import retrograde.std.endian : toPlatformEndian, Endian;
 import retrograde.std.memory : ResultPtr, failedPtr, makeRaw, successPtr;
@@ -34,8 +34,8 @@ struct ModelHeader {
     uint meshCount;
     /// Number of materials contained in the file.
     uint materialCount;
-    /// Number of images contained in the file.
-    uint imageCount;
+    /// Number of textures contained in the file.
+    uint textureCount;
 }
 
 /**
@@ -71,7 +71,7 @@ Result!ModelHeader loadModelHeader(const(ubyte)[] data) {
     offset = 10;
     header.materialCount = readUInt(data, offset);
     offset = 14;
-    header.imageCount = readUInt(data, offset);
+    header.textureCount = readUInt(data, offset);
     return success(header);
 }
 
@@ -100,8 +100,8 @@ ResultPtr!Model loadModel(const(ubyte)[] data, StringId name = sid("unknown")) {
         }
     }
 
-    for (uint i; i < header.imageCount; i++) {
-        OperationResult result = readImageData(data, offset, model);
+    for (uint i; i < header.textureCount; i++) {
+        OperationResult result = readTextureData(data, offset, model);
         if (result.isFailure()) {
             return failedPtr!Model(result.errorMessage());
         }
@@ -112,9 +112,9 @@ ResultPtr!Model loadModel(const(ubyte)[] data, StringId name = sid("unknown")) {
         return failedPtr!Model(meshMaterialCrossCheck.errorMessage());
     }
 
-    OperationResult imageCrossCheck = validateMaterialImageReferences(model);
-    if (imageCrossCheck.isFailure()) {
-        return failedPtr!Model(imageCrossCheck.errorMessage());
+    OperationResult textureCrossCheck = validateMaterialTextureReferences(model);
+    if (textureCrossCheck.isFailure()) {
+        return failedPtr!Model(textureCrossCheck.errorMessage());
     }
 
     if (offset != data.length) {
@@ -357,12 +357,12 @@ private OperationResult readMaterialData(const(ubyte)[] data, ref size_t offset,
 
     // Type-specific payload.
     if (material.type == MaterialType.unlit) {
-        // Read the referenced image index.
+        // Read the referenced texture index.
         if (data.length - offset < 4) {
-            return failure("Cannot read unlit image index: Unexpected end of data.");
+            return failure("Cannot read unlit texture index: Unexpected end of data.");
         }
 
-        material.imageIndex = readUInt(data, offset);
+        material.textureIndex = readUInt(data, offset);
         offset += 4;
     }
 
@@ -370,59 +370,59 @@ private OperationResult readMaterialData(const(ubyte)[] data, ref size_t offset,
     return success();
 }
 
-private OperationResult readImageData(const(ubyte)[] data, ref size_t offset, Model* model) {
-    // Read image index
+private OperationResult readTextureData(const(ubyte)[] data, ref size_t offset, Model* model) {
+    // Read texture index
     if (data.length - offset < 4) {
-        return failure("Cannot read image index: Unexpected end of data.");
+        return failure("Cannot read texture index: Unexpected end of data.");
     }
 
-    ImageIndex index = readUInt(data, offset);
+    TextureIndex index = readUInt(data, offset);
     offset += 4;
 
     if (index == 0) {
-        return failure("Image index 0 is reserved.");
+        return failure("Texture index 0 is reserved.");
     }
 
-    for (size_t i; i < model.images.length; i++) {
-        if (model.images[i].index == index) {
-            return failure("Duplicate image index.");
+    for (size_t i; i < model.textures.length; i++) {
+        if (model.textures[i].index == index) {
+            return failure("Duplicate texture index.");
         }
     }
 
-    // Read image type
+    // Read texture type
     if (data.length - offset < 1) {
-        return failure("Cannot read image type: Unexpected end of data.");
+        return failure("Cannot read texture type: Unexpected end of data.");
     }
 
     ubyte typeByte = data[offset];
     offset += 1;
 
-    Image image;
-    image.index = index;
+    Texture texture;
+    texture.index = index;
 
-    // Match the type byte against every ImageType member at compile time, so
-    // new image types are recognised here automatically.
+    // Match the type byte against every TextureType member at compile time, so
+    // new texture types are recognised here automatically.
     bool knownType = false;
-    static foreach (member; __traits(allMembers, ImageType)) {
-        if (typeByte == cast(ubyte) __traits(getMember, ImageType, member)) {
-            image.type = __traits(getMember, ImageType, member);
+    static foreach (member; __traits(allMembers, TextureType)) {
+        if (typeByte == cast(ubyte) __traits(getMember, TextureType, member)) {
+            texture.type = __traits(getMember, TextureType, member);
             knownType = true;
         }
     }
 
     if (!knownType) {
-        return failure("Unknown image type.");
+        return failure("Unknown texture type.");
     }
 
     // Type-specific payload.
-    if (image.type == ImageType.embedded) {
-        return failure("Embedded images are not yet implemented.");
+    if (texture.type == TextureType.embedded) {
+        return failure("Embedded textures are not yet implemented.");
     }
 
-    if (image.type == ImageType.reference) {
+    if (texture.type == TextureType.reference) {
         // Read path length
         if (data.length - offset < 2) {
-            return failure("Cannot read image path length: Unexpected end of data.");
+            return failure("Cannot read texture path length: Unexpected end of data.");
         }
 
         ushort pathLength = readUShort(data, offset);
@@ -430,17 +430,17 @@ private OperationResult readImageData(const(ubyte)[] data, ref size_t offset, Mo
 
         // Read UTF-8 path bytes
         if (data.length - offset < pathLength) {
-            return failure("Cannot read image path: Unexpected end of data.");
+            return failure("Cannot read texture path: Unexpected end of data.");
         }
 
         for (size_t i; i < pathLength; i++) {
-            image.path ~= cast(char) data[offset + i];
+            texture.path ~= cast(char) data[offset + i];
         }
 
         offset += pathLength;
     }
 
-    model.images ~= image;
+    model.textures ~= texture;
     return success();
 }
 
@@ -472,11 +472,11 @@ private OperationResult validateMeshMaterialReferences(Model* model) {
     return success();
 }
 
-private OperationResult validateMaterialImageReferences(Model* model) {
-    // Iterate over non-owning slices to avoid Array.opIndex returning Material/Image
+private OperationResult validateMaterialTextureReferences(Model* model) {
+    // Iterate over non-owning slices to avoid Array.opIndex returning Material/Texture
     // by value (which would deep-copy and reallocate inner data on every iteration).
     Material[] materials = model.materials.arr();
-    Image[] images = model.images.arr();
+    Texture[] textures = model.textures.arr();
 
     foreach (ref material; materials) {
         if (material.type != MaterialType.unlit) {
@@ -484,15 +484,15 @@ private OperationResult validateMaterialImageReferences(Model* model) {
         }
 
         bool found = false;
-        foreach (ref image; images) {
-            if (image.index == material.imageIndex) {
+        foreach (ref texture; textures) {
+            if (texture.index == material.textureIndex) {
                 found = true;
                 break;
             }
         }
 
         if (!found) {
-            return failure("Unlit material references unknown image index.");
+            return failure("Unlit material references unknown texture index.");
         }
     }
 
@@ -513,7 +513,7 @@ void runRgmTests() {
             0x01, 0x00, // Version
             0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
             0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
-            0x00, 0x00, 0x00, 0x00, // Amount of images (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
 
             // Mesh 1
             0x04, 0x00, 0x00, 0x00, // Vertex count (4)
@@ -611,7 +611,7 @@ void runRgmTests() {
 
         assert(model.meshes[0].uvChannelCount == 0);
         assert(model.meshes[0].uvCoords.length == 0);
-        assert(model.images.length == 0);
+        assert(model.textures.length == 0);
     });
 
     test("Reject model with trailing bytes beyond expected data", {
@@ -621,7 +621,7 @@ void runRgmTests() {
             0x01, 0x00, // Version
             0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
             0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
-            0x00, 0x00, 0x00, 0x00, // Amount of images (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
 
             // Mesh 1
             0x04, 0x00, 0x00, 0x00, // Vertex count (4)
@@ -666,7 +666,7 @@ void runRgmTests() {
             0x01, 0x00, // Version
             0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
             0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
-            0x00, 0x00, 0x00, 0x00, // Amount of images (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
 
             // Mesh 1
             0x03, 0x00, 0x00, 0x00, // Vertex count (3)
@@ -704,7 +704,7 @@ void runRgmTests() {
             0x01, 0x00, // Version
             0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
             0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
-            0x00, 0x00, 0x00, 0x00, // Amount of images (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
 
             // Mesh 1
             0x03, 0x00, 0x00, 0x00, // Vertex count (3)
@@ -777,14 +777,14 @@ void runRgmTests() {
         assert(model.meshes[0].uvCoords[5].v == 0.0);
     });
 
-    test("Load model with one Unlit material referencing an image", {
+    test("Load model with one Unlit material referencing a texture", {
         ubyte[143] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
             0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
             0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
-            0x01, 0x00, 0x00, 0x00, // Amount of images (1)
+            0x01, 0x00, 0x00, 0x00, // Amount of textures (1)
 
             // Mesh 1
             0x03, 0x00, 0x00, 0x00, // Vertex count (3)
@@ -811,11 +811,11 @@ void runRgmTests() {
             0x01, 0x00, 0x00, 0x00, // Material index (1)
             0x02, // Material type (Unlit)
             0x00, // Common flags (none)
-            0x01, 0x00, 0x00, 0x00, // Image index (1)
+            0x01, 0x00, 0x00, 0x00, // Texture index (1)
 
-            // Image 1
-            0x01, 0x00, 0x00, 0x00, // Image index (1)
-            0x00, // Image type (reference)
+            // Texture 1
+            0x01, 0x00, 0x00, 0x00, // Texture index (1)
+            0x00, // Texture type (reference)
             0x0B, 0x00, // Path length (11)
             'd', 'i', 'f', 'f', 'u', 's', 'e', '.', 'r', 'g', 'i', // Path
         ];
@@ -828,13 +828,13 @@ void runRgmTests() {
         assert(model.materials[0].index == 1);
         assert(model.materials[0].type == MaterialType.unlit);
         assert(model.materials[0].doubleSided == false);
-        assert(model.materials[0].imageIndex == 1);
+        assert(model.materials[0].textureIndex == 1);
         assert(model.meshes[0].materialIndex == 1);
 
-        assert(model.images.length == 1);
-        assert(model.images[0].index == 1);
-        assert(model.images[0].type == ImageType.reference);
-        assert(model.images[0].path == "diffuse.rgi");
+        assert(model.textures.length == 1);
+        assert(model.textures[0].index == 1);
+        assert(model.textures[0].type == TextureType.reference);
+        assert(model.textures[0].path == "diffuse.rgi");
     });
 
     test("Load model with one Vertex Colors material", {
@@ -844,7 +844,7 @@ void runRgmTests() {
             0x01, 0x00, // Version
             0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
             0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
-            0x00, 0x00, 0x00, 0x00, // Amount of images (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
 
             // Mesh 1
             0x03, 0x00, 0x00, 0x00, // Vertex count (3)
@@ -881,9 +881,9 @@ void runRgmTests() {
         assert(model.materials[0].index == 7);
         assert(model.materials[0].type == MaterialType.vertexColors);
         assert(model.materials[0].doubleSided == false);
-        assert(model.materials[0].imageIndex == 0);
+        assert(model.materials[0].textureIndex == 0);
         assert(model.meshes[0].materialIndex == 7);
-        assert(model.images.length == 0);
+        assert(model.textures.length == 0);
     });
 
     test("Load model with multiple materials using non-sequential indices", {
@@ -893,7 +893,7 @@ void runRgmTests() {
             0x01, 0x00, // Version
             0x02, 0x00, 0x00, 0x00, // Amount of meshes (2)
             0x02, 0x00, 0x00, 0x00, // Amount of materials (2)
-            0x01, 0x00, 0x00, 0x00, // Amount of images (1)
+            0x01, 0x00, 0x00, 0x00, // Amount of textures (1)
 
             // Mesh 1
             0x03, 0x00, 0x00, 0x00, // Vertex count (3)
@@ -922,20 +922,20 @@ void runRgmTests() {
             0x00, // UV channel count (0)
             0x09, 0x00, 0x00, 0x00, // Material index (9)
 
-            // Material 1: Unlit at index 5, referencing image 2
+            // Material 1: Unlit at index 5, referencing texture 2
             0x05, 0x00, 0x00, 0x00, // Material index (5)
             0x02, // Material type (Unlit)
             0x00, // Common flags (none)
-            0x02, 0x00, 0x00, 0x00, // Image index (2)
+            0x02, 0x00, 0x00, 0x00, // Texture index (2)
 
             // Material 2: Vertex Colors at index 9
             0x09, 0x00, 0x00, 0x00, // Material index (9)
             0x01, // Material type (Vertex Colors)
             0x00, // Common flags (none)
 
-            // Image 1: reference at index 2 (declared index is independent of file order)
-            0x02, 0x00, 0x00, 0x00, // Image index (2)
-            0x00, // Image type (reference)
+            // Texture 1: reference at index 2 (declared index is independent of file order)
+            0x02, 0x00, 0x00, 0x00, // Texture index (2)
+            0x00, // Texture type (reference)
             0x0A, 0x00, // Path length (10)
             'a', 'l', 'b', 'e', 'd', 'o', '.', 'r', 'g', 'i',
         ];
@@ -948,7 +948,7 @@ void runRgmTests() {
         assert(model.materials[0].index == 5);
         assert(model.materials[0].type == MaterialType.unlit);
         assert(model.materials[0].doubleSided == false);
-        assert(model.materials[0].imageIndex == 2);
+        assert(model.materials[0].textureIndex == 2);
         assert(model.materials[1].index == 9);
         assert(model.materials[1].type == MaterialType.vertexColors);
         assert(model.materials[1].doubleSided == false);
@@ -956,10 +956,10 @@ void runRgmTests() {
         assert(model.meshes[0].materialIndex == 5);
         assert(model.meshes[1].materialIndex == 9);
 
-        assert(model.images.length == 1);
-        assert(model.images[0].index == 2);
-        assert(model.images[0].type == ImageType.reference);
-        assert(model.images[0].path == "albedo.rgi");
+        assert(model.textures.length == 1);
+        assert(model.textures[0].index == 2);
+        assert(model.textures[0].type == TextureType.reference);
+        assert(model.textures[0].path == "albedo.rgi");
     });
 
     test("Load model with a double-sided material", {
@@ -969,7 +969,7 @@ void runRgmTests() {
             0x01, 0x00, // Version
             0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
             0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
-            0x00, 0x00, 0x00, 0x00, // Amount of images (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
 
             // Mesh 1 (degenerate, references material 1)
             0x00, 0x00, 0x00, 0x00, // Vertex count (0)
@@ -1002,7 +1002,7 @@ void runRgmTests() {
             0x01, 0x00, // Version
             0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
             0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
-            0x00, 0x00, 0x00, 0x00, // Amount of images (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
 
             // Material 1: reserved index 0
             0x00, 0x00, 0x00, 0x00, // Material index (0 - reserved)
@@ -1020,7 +1020,7 @@ void runRgmTests() {
             0x01, 0x00, // Version
             0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
             0x02, 0x00, 0x00, 0x00, // Amount of materials (2)
-            0x00, 0x00, 0x00, 0x00, // Amount of images (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
 
             // Material 1
             0x03, 0x00, 0x00, 0x00, // Material index (3)
@@ -1044,7 +1044,7 @@ void runRgmTests() {
             0x01, 0x00, // Version
             0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
             0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
-            0x00, 0x00, 0x00, 0x00, // Amount of images (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
 
             // Mesh 1 (references material 99)
             0x01, 0x00, 0x00, 0x00, // Vertex count (1)
@@ -1073,7 +1073,7 @@ void runRgmTests() {
             0x01, 0x00, // Version
             0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
             0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
-            0x00, 0x00, 0x00, 0x00, // Amount of images (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
 
             // Material 1: unknown type
             0x01, 0x00, 0x00, 0x00, // Material index (1)
@@ -1084,78 +1084,78 @@ void runRgmTests() {
         assert(!result.isSuccessful());
     });
 
-    test("Reject image with reserved index 0", {
+    test("Reject texture with reserved index 0", {
         ubyte[23] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
             0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
             0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
-            0x01, 0x00, 0x00, 0x00, // Amount of images (1)
+            0x01, 0x00, 0x00, 0x00, // Amount of textures (1)
 
-            // Image 1: reserved index 0
-            0x00, 0x00, 0x00, 0x00, // Image index (0 - reserved)
-            0x00, // Image type (reference)
+            // Texture 1: reserved index 0
+            0x00, 0x00, 0x00, 0x00, // Texture index (0 - reserved)
+            0x00, // Texture type (reference)
         ];
 
         auto result = loadModel(modelData);
         assert(!result.isSuccessful());
     });
 
-    test("Reject duplicate image indices", {
+    test("Reject duplicate texture indices", {
         ubyte[29] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
             0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
             0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
-            0x02, 0x00, 0x00, 0x00, // Amount of images (2)
+            0x02, 0x00, 0x00, 0x00, // Amount of textures (2)
 
-            // Image 1
-            0x01, 0x00, 0x00, 0x00, // Image index (1)
-            0x00, // Image type (reference)
+            // Texture 1
+            0x01, 0x00, 0x00, 0x00, // Texture index (1)
+            0x00, // Texture type (reference)
             0x00, 0x00, // Path length (0)
 
-            // Image 2 (duplicate index)
-            0x01, 0x00, 0x00, 0x00, // Image index (1) - duplicate!
+            // Texture 2 (duplicate index)
+            0x01, 0x00, 0x00, 0x00, // Texture index (1) - duplicate!
         ];
 
         auto result = loadModel(modelData);
         assert(!result.isSuccessful());
     });
 
-    test("Reject embedded image as not yet implemented", {
+    test("Reject embedded texture as not yet implemented", {
         ubyte[23] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
             0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
             0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
-            0x01, 0x00, 0x00, 0x00, // Amount of images (1)
+            0x01, 0x00, 0x00, 0x00, // Amount of textures (1)
 
-            // Image 1: embedded (reserved, not implemented)
-            0x01, 0x00, 0x00, 0x00, // Image index (1)
-            0x01, // Image type (embedded)
+            // Texture 1: embedded (reserved, not implemented)
+            0x01, 0x00, 0x00, 0x00, // Texture index (1)
+            0x01, // Texture type (embedded)
         ];
 
         auto result = loadModel(modelData);
         assert(!result.isSuccessful());
     });
 
-    test("Reject unlit material referencing unknown image index", {
+    test("Reject unlit material referencing unknown texture index", {
         ubyte[28] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
             0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
             0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
-            0x00, 0x00, 0x00, 0x00, // Amount of images (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
 
-            // Material 1: Unlit referencing a non-existent image 99
+            // Material 1: Unlit referencing a non-existent texture 99
             0x01, 0x00, 0x00, 0x00, // Material index (1)
             0x02, // Material type (Unlit)
             0x00, // Common flags (none)
-            0x63, 0x00, 0x00, 0x00, // Image index (99 - undefined)
+            0x63, 0x00, 0x00, 0x00, // Texture index (99 - undefined)
         ];
 
         auto result = loadModel(modelData);

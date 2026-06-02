@@ -22,9 +22,9 @@ For an example file, see `asset-examples/cube.rgm`
 
 ## File Structure
 
-The binary file format consists of a header followed by data sections. Each section contains information about the meshes (with their vertices and faces), the materials that make up the 3D model, and the images those materials reference.
+The binary file format consists of a header followed by data sections. Each section contains information about the meshes (with their vertices and faces), the materials that make up the 3D model, and the textures those materials reference.
 
-Total file size = 18 + sum_meshes(13 + vertexCount × 24 + faceCount × 12 + uvChannelCount × vertexCount × 8) + sum_materials(materialEntrySize) + sum_images(imageEntrySize).
+Total file size = 18 + sum_meshes(13 + vertexCount × 24 + faceCount × 12 + uvChannelCount × vertexCount × 8) + sum_materials(materialEntrySize) + sum_textures(textureEntrySize).
 
 ## Header (18 bytes)
 
@@ -34,7 +34,7 @@ Total file size = 18 + sum_meshes(13 + vertexCount × 24 + faceCount × 12 + uvC
 | 0x04   | 2    | ushort | Version number                     |
 | 0x06   | 4    | uint   | Amount of meshes                   |
 | 0x0A   | 4    | uint   | Amount of materials                |
-| 0x0E   | 4    | uint   | Amount of images                   |
+| 0x0E   | 4    | uint   | Amount of textures                 |
 
 The version number is a `ushort` that is incremented with every change to the format. The current version is `1`.
 
@@ -122,7 +122,7 @@ part of each `materialEntrySize`.
 | Value | Name          | Description                                                  |
 | ----- | ------------- | ------------------------------------------------------------ |
 | 1     | Vertex Colors | Renders using only the per-vertex RGB colors. No payload.    |
-| 2     | Unlit         | Passthrough material — references a single image by index.   |
+| 2     | Unlit         | Passthrough material — references a single texture by index. |
 
 ### Common Flags
 
@@ -142,31 +142,31 @@ No type-specific payload bytes. The material entry ends after the common flags b
 
 | Offset | Size | Type | Description                                              |
 | ------ | ---- | ---- | ------------------------------------------------------- |
-| 0x00   | 4    | uint | Image index (≥ 1, references an image by its `index`)   |
+| 0x00   | 4    | uint | Texture index (≥ 1, references a texture by its `index`) |
 
-The image index references an entry in the images section by its declared `index` field (see "Images" below), not by array position. It must be `≥ 1` and must match a defined image.
+The texture index references an entry in the textures section by its declared `index` field (see "Textures" below), not by array position. It must be `≥ 1` and must match a defined texture.
 
-## Images (variable size)
+## Textures (variable size)
 
-After all material entries the images section follows. The number of image entries is equal to the image count specified in the header. Images hold the texture data referenced by materials (for example, the texture of an `Unlit` material).
+After all material entries the textures section follows. The number of texture entries is equal to the texture count specified in the header. Textures hold the image data referenced by materials (for example, the texture of an `Unlit` material).
 
-Images are referenced by materials via their declared `index` field. Image indices follow the same rules as material indices:
+Textures are referenced by materials via their declared `index` field. Texture indices follow the same rules as material indices:
 
 - `index >= 1` (0 is reserved)
-- All indices within a single file are unique (no two images share the same index)
+- All indices within a single file are unique (no two textures share the same index)
 - Indices may otherwise be arbitrary — gaps and non-sequential order are allowed
 
-Referencing images by their declared index (rather than by file position) means image entries can be reordered in the file without breaking the materials that reference them.
+Referencing textures by their declared index (rather than by file position) means texture entries can be reordered in the file without breaking the materials that reference them.
 
-### Image Entry (variable size)
+### Texture Entry (variable size)
 
-| Offset | Size | Type  | Description                            |
-| ------ | ---- | ----- | -------------------------------------- |
-| 0x00   | 4    | uint  | Image index (≥ 1, unique within file)  |
-| 0x04   | 1    | ubyte | Image type                             |
-| 0x05   | ...  | ...   | Type-specific payload                  |
+| Offset | Size | Type  | Description                             |
+| ------ | ---- | ----- | --------------------------------------- |
+| 0x00   | 4    | uint  | Texture index (≥ 1, unique within file) |
+| 0x04   | 1    | ubyte | Texture type                            |
+| 0x05   | ...  | ...   | Type-specific payload                   |
 
-### Image Types
+### Texture Types
 
 | Value | Name      | Description                                                       |
 | ----- | --------- | ---------------------------------------------------------------- |
@@ -184,4 +184,4 @@ The path length is the byte length of the UTF-8 encoded path, not the codepoint 
 
 ### Embedded Payload (type = 1)
 
-The `Embedded` image type is **reserved** and **not yet implemented**. Its payload layout is undefined; writers never emit it and readers reject any image declaring this type.
+The `Embedded` texture type is **reserved** and **not yet implemented**. Its payload layout is undefined; writers never emit it and readers reject any texture declaring this type.

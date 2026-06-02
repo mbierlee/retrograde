@@ -21,7 +21,7 @@ alias VertexIndex = size_t;
 alias TextureCoordinateIndex = size_t;
 alias UvChannelIndex = ubyte;
 alias MaterialIndex = uint;
-alias ImageIndex = uint;
+alias TextureIndex = uint;
 
 enum ModelComponentType = sid("comp_model");
 enum maxUvChannels = 8;
@@ -30,20 +30,43 @@ enum maxUvChannels = 8;
 enum MaterialIndex noMaterial = 0;
 
 /**
+ * Represents a 3D model, consisting of multiple meshes and the materials they reference.
+ */
+struct Model {
+    StringId name;
+    Array!Mesh meshes;
+    Array!Material materials;
+    Array!Texture textures;
+
+    mixin CopyConstructors!Model;
+}
+
+/**
+ * Represents a mesh in a 3D model, consisting of vertices and faces.
+ */
+struct Mesh {
+    Array!Vertex vertices;
+    Array!Face faces;
+
+    /// Flat channel-major UV data: channel c, vertex i lives at index `c * vertices.length + i`.
+    Array!UvCoord uvCoords;
+
+    /// Number of active UV channels (0..maxUvChannels).
+    ubyte uvChannelCount;
+
+    /// Index of the material to use for this mesh. `noMaterial` (0) means no material is assigned.
+    MaterialIndex materialIndex = noMaterial;
+
+    mixin CopyConstructors!Mesh;
+}
+
+/**
  * Identifies how a material should be interpreted by the renderer.
  */
 enum MaterialType : ubyte {
     invalid = 0, /// Sentinel for an unrecognized or missing material type. Renderers treat this like `noMaterial`, falling back to the render pass shader.
     vertexColors = 1, /// Use only the per-vertex RGB colors. No payload.
-    unlit = 2 /// Passthrough material — references a single image (by index) from the model's image list.
-}
-
-/**
- * Identifies how an image's data is supplied.
- */
-enum ImageType : ubyte {
-    reference = 0, /// The payload is a path to an external image file.
-    embedded = 1 /// Reserved: image data is embedded in the model. Not yet implemented.
+    unlit = 2 /// Passthrough material — references a single texture (by index) from the model's texture list.
 }
 
 /**
@@ -69,23 +92,31 @@ struct Material {
     MaterialIndex index; /// 1-based unique index used by meshes to reference this material.
     MaterialType type;
     bool doubleSided; /// Common property (decoded from `MaterialFlags.doubleSided`): render both faces. Always false for `MaterialType.invalid`.
-    ImageIndex imageIndex; /// Populated when `type == MaterialType.unlit`: the index of the referenced `Image`. 0 otherwise.
+    TextureIndex textureIndex; /// Populated when `type == MaterialType.unlit`: the index of the referenced `Texture`. 0 otherwise.
 
     mixin CopyConstructors!Material;
 }
 
 /**
- * Represents an image referenced by one or more materials.
+ * Identifies how a texture's image data is supplied.
+ */
+enum TextureType : ubyte {
+    reference = 0, /// The payload is a path to an external image file.
+    embedded = 1 /// Reserved: image data is embedded in the model. Not yet implemented.
+}
+
+/**
+ * Represents a texture referenced by one or more materials.
  *
- * Images are stored in a flat list on `Model` and looked up by their unique
+ * Textures are stored in a flat list on `Model` and looked up by their unique
  * 1-based `index` field. Index `0` is reserved.
  */
-struct Image {
-    ImageIndex index; /// 1-based unique index used by materials to reference this image.
-    ImageType type;
-    String path; /// Populated when `type == ImageType.reference`: the path to the external image file. Empty otherwise.
+struct Texture {
+    TextureIndex index; /// 1-based unique index used by materials to reference this texture.
+    TextureType type;
+    String path; /// Populated when `type == TextureType.reference`: the path to the external image file. Empty otherwise.
 
-    mixin CopyConstructors!Image;
+    mixin CopyConstructors!Texture;
 }
 
 /**
@@ -117,7 +148,7 @@ struct Face {
     VertexIndex vA; /// Index of the first vertex
     VertexIndex vB; /// Index of the second vertex
     VertexIndex vC; /// Index of the third vertex
-    
+
     // TextureCoordinateIndex vtA, vtB, vtC;
 }
 
@@ -127,35 +158,4 @@ struct Face {
 struct UvCoord {
     VertexComponent u;
     VertexComponent v;
-}
-
-/**
- * Represents a mesh in a 3D model, consisting of vertices and faces.
- */
-struct Mesh {
-    Array!Vertex vertices;
-    Array!Face faces;
-
-    /// Flat channel-major UV data: channel c, vertex i lives at index `c * vertices.length + i`.
-    Array!UvCoord uvCoords;
-
-    /// Number of active UV channels (0..maxUvChannels).
-    ubyte uvChannelCount;
-
-    /// Index of the material to use for this mesh. `noMaterial` (0) means no material is assigned.
-    MaterialIndex materialIndex = noMaterial;
-
-    mixin CopyConstructors!Mesh;
-}
-
-/**
- * Represents a 3D model, consisting of multiple meshes and the materials they reference.
- */
-struct Model {
-    StringId name;
-    Array!Mesh meshes;
-    Array!Material materials;
-    Array!Image images;
-
-    mixin CopyConstructors!Model;
 }

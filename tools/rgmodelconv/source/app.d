@@ -25,7 +25,7 @@ import std.path : baseName, stripExtension, buildPath, setExtension;
 import bindbc.assimp;
 
 import retrograde.data.assets.rgm : rgmMagicNumber;
-import retrograde.data.model : MaterialType, MaterialFlags, maxUvChannels, noMaterial, ImageType;
+import retrograde.data.model : MaterialType, MaterialFlags, maxUvChannels, noMaterial, TextureType;
 
 int main(string[] args) {
     string inputFile;
@@ -175,14 +175,14 @@ void writeRgmFile(ref File output, const(aiScene)* scene, bool renameImages) {
     uint usedMaterialCount = nextRgmIndex - 1;
 
     // Pre-pass: classify every used material and, for unlit materials, resolve the
-    // texture path into a shared Images list. Identical paths are deduplicated, so
-    // several materials can reference the same image by its 1-based index. The
+    // texture path into a shared Textures list. Identical paths are deduplicated, so
+    // several materials can reference the same texture by its 1-based index. The
     // classification is recorded here so the material write pass below does not have
     // to re-run it.
     MaterialType[] materialTypes = new MaterialType[scene.mNumMaterials];
-    uint[] materialImageIndices = new uint[scene.mNumMaterials];
-    string[] images; // Image at position p has the 1-based index (p + 1).
-    uint[string] imagePathToIndex;
+    uint[] materialTextureIndices = new uint[scene.mNumMaterials];
+    string[] texturePaths; // Texture at position p has the 1-based index (p + 1).
+    uint[string] texturePathToIndex;
     for (uint i = 0; i < scene.mNumMaterials; i++) {
         if (materialIndexMap[i] == 0) {
             continue;
@@ -191,16 +191,16 @@ void writeRgmFile(ref File output, const(aiScene)* scene, bool renameImages) {
         string unlitTextureName;
         if (isUnlitMaterial(scene, i, unlitTextureName)) {
             materialTypes[i] = MaterialType.unlit;
-            string imagePath = renameImages
+            string texturePath = renameImages
                 ? setExtension(unlitTextureName, "rgi") : unlitTextureName;
-            uint* existing = imagePath in imagePathToIndex;
+            uint* existing = texturePath in texturePathToIndex;
             if (existing !is null) {
-                materialImageIndices[i] = *existing;
+                materialTextureIndices[i] = *existing;
             } else {
-                uint imageIndex = cast(uint)(images.length + 1);
-                imagePathToIndex[imagePath] = imageIndex;
-                images ~= imagePath;
-                materialImageIndices[i] = imageIndex;
+                uint textureIndex = cast(uint)(texturePaths.length + 1);
+                texturePathToIndex[texturePath] = textureIndex;
+                texturePaths ~= texturePath;
+                materialTextureIndices[i] = textureIndex;
             }
         } else if (isVertexColorMaterial(scene, i)) {
             materialTypes[i] = MaterialType.vertexColors;
@@ -214,7 +214,7 @@ void writeRgmFile(ref File output, const(aiScene)* scene, bool renameImages) {
     writeUshort(output, 1); // Version 1
     writeUint(output, scene.mNumMeshes); // Mesh count
     writeUint(output, usedMaterialCount); // Material count
-    writeUint(output, cast(uint) images.length); // Image count
+    writeUint(output, cast(uint) texturePaths.length); // Texture count
 
     for (uint i = 0; i < scene.mNumMeshes; i++) {
         writeMeshData(output, scene.mMeshes[i], materialIndexMap);
@@ -255,17 +255,17 @@ void writeRgmFile(ref File output, const(aiScene)* scene, bool renameImages) {
         writeUbyte(output, flags); // Common flags (bit 0 = double-sided)
 
         if (type == MaterialType.unlit) {
-            writeUint(output, materialImageIndices[i]); // Referenced image index
+            writeUint(output, materialTextureIndices[i]); // Referenced texture index
         }
     }
 
-    // Emit the Images list. Every image produced here is a `reference`: its payload
-    // is the (optionally renamed) texture path. The `embedded` image type is not yet
+    // Emit the Textures list. Every texture produced here is a `reference`: its payload
+    // is the (optionally renamed) texture path. The `embedded` texture type is not yet
     // implemented and is never written.
-    foreach (idx, imagePath; images) {
-        writeUint(output, cast(uint)(idx + 1)); // Image index (1-based)
-        writeUbyte(output, cast(ubyte) ImageType.reference); // Image type
-        writeString(output, imagePath); // Path payload
+    foreach (idx, texturePath; texturePaths) {
+        writeUint(output, cast(uint)(idx + 1)); // Texture index (1-based)
+        writeUbyte(output, cast(ubyte) TextureType.reference); // Texture type
+        writeString(output, texturePath); // Path payload
     }
 }
 
