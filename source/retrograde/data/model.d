@@ -21,6 +21,7 @@ alias VertexIndex = size_t;
 alias TextureCoordinateIndex = size_t;
 alias UvChannelIndex = ubyte;
 alias MaterialIndex = uint;
+alias ImageIndex = uint;
 
 enum ModelComponentType = sid("comp_model");
 enum maxUvChannels = 8;
@@ -34,7 +35,15 @@ enum MaterialIndex noMaterial = 0;
 enum MaterialType : ubyte {
     invalid = 0, /// Sentinel for an unrecognized or missing material type. Renderers treat this like `noMaterial`, falling back to the render pass shader.
     vertexColors = 1, /// Use only the per-vertex RGB colors. No payload.
-    unlit = 2 /// Passthrough material — references a single texture by name.
+    unlit = 2 /// Passthrough material — references a single image (by index) from the model's image list.
+}
+
+/**
+ * Identifies how an image's data is supplied.
+ */
+enum ImageType : ubyte {
+    reference = 0, /// The payload is a path to an external image file.
+    embedded = 1 /// Reserved: image data is embedded in the model. Not yet implemented.
 }
 
 /**
@@ -60,9 +69,23 @@ struct Material {
     MaterialIndex index; /// 1-based unique index used by meshes to reference this material.
     MaterialType type;
     bool doubleSided; /// Common property (decoded from `MaterialFlags.doubleSided`): render both faces. Always false for `MaterialType.invalid`.
-    String textureName; /// Populated when `type == MaterialType.unlit`. Empty otherwise.
+    ImageIndex imageIndex; /// Populated when `type == MaterialType.unlit`: the index of the referenced `Image`. 0 otherwise.
 
     mixin CopyConstructors!Material;
+}
+
+/**
+ * Represents an image referenced by one or more materials.
+ *
+ * Images are stored in a flat list on `Model` and looked up by their unique
+ * 1-based `index` field. Index `0` is reserved.
+ */
+struct Image {
+    ImageIndex index; /// 1-based unique index used by materials to reference this image.
+    ImageType type;
+    String path; /// Populated when `type == ImageType.reference`: the path to the external image file. Empty otherwise.
+
+    mixin CopyConstructors!Image;
 }
 
 /**
@@ -132,6 +155,7 @@ struct Model {
     StringId name;
     Array!Mesh meshes;
     Array!Material materials;
+    Array!Image images;
 
     mixin CopyConstructors!Model;
 }

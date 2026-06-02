@@ -25,7 +25,7 @@ import std.path : baseName, stripExtension, buildPath, setExtension;
 import bindbc.assimp;
 
 import retrograde.data.assets.rgm : rgmMagicNumber;
-import retrograde.data.model : MaterialType, MaterialFlags, maxUvChannels, noMaterial;
+import retrograde.data.model : MaterialType, MaterialFlags, maxUvChannels, noMaterial, ImageType;
 
 int main(string[] args) {
     string inputFile;
@@ -174,11 +174,47 @@ void writeRgmFile(ref File output, const(aiScene)* scene, bool renameImages) {
     }
     uint usedMaterialCount = nextRgmIndex - 1;
 
-    // Header (14 bytes)
+    // Pre-pass: classify every used material and, for unlit materials, resolve the
+    // texture path into a shared Images list. Identical paths are deduplicated, so
+    // several materials can reference the same image by its 1-based index. The
+    // classification is recorded here so the material write pass below does not have
+    // to re-run it.
+    MaterialType[] materialTypes = new MaterialType[scene.mNumMaterials];
+    uint[] materialImageIndices = new uint[scene.mNumMaterials];
+    string[] images; // Image at position p has the 1-based index (p + 1).
+    uint[string] imagePathToIndex;
+    for (uint i = 0; i < scene.mNumMaterials; i++) {
+        if (materialIndexMap[i] == 0) {
+            continue;
+        }
+
+        string unlitTextureName;
+        if (isUnlitMaterial(scene, i, unlitTextureName)) {
+            materialTypes[i] = MaterialType.unlit;
+            string imagePath = renameImages
+                ? setExtension(unlitTextureName, "rgi") : unlitTextureName;
+            uint* existing = imagePath in imagePathToIndex;
+            if (existing !is null) {
+                materialImageIndices[i] = *existing;
+            } else {
+                uint imageIndex = cast(uint)(images.length + 1);
+                imagePathToIndex[imagePath] = imageIndex;
+                images ~= imagePath;
+                materialImageIndices[i] = imageIndex;
+            }
+        } else if (isVertexColorMaterial(scene, i)) {
+            materialTypes[i] = MaterialType.vertexColors;
+        } else {
+            materialTypes[i] = MaterialType.invalid;
+        }
+    }
+
+    // Header (18 bytes)
     output.rawWrite(rgmMagicNumber); // Magic "RGM "
     writeUshort(output, 1); // Version 1
     writeUint(output, scene.mNumMeshes); // Mesh count
     writeUint(output, usedMaterialCount); // Material count
+    writeUint(output, cast(uint) images.length); // Image count
 
     for (uint i = 0; i < scene.mNumMeshes; i++) {
         writeMeshData(output, scene.mMeshes[i], materialIndexMap);
@@ -195,16 +231,7 @@ void writeRgmFile(ref File output, const(aiScene)* scene, bool renameImages) {
         }
 
         const(aiMaterial)* material = scene.mMaterials[i];
-
-        string unlitTextureName;
-        MaterialType type;
-        if (isUnlitMaterial(scene, i, unlitTextureName)) {
-            type = MaterialType.unlit;
-        } else if (isVertexColorMaterial(scene, i)) {
-            type = MaterialType.vertexColors;
-        } else {
-            type = MaterialType.invalid;
-        }
+        MaterialType type = materialTypes[i];
 
         writeUint(output, materialIndexMap[i]); // Material index
         writeUbyte(output, cast(ubyte) type); // Material type
@@ -228,10 +255,17 @@ void writeRgmFile(ref File output, const(aiScene)* scene, bool renameImages) {
         writeUbyte(output, flags); // Common flags (bit 0 = double-sided)
 
         if (type == MaterialType.unlit) {
-            string textureName = renameImages
-                ? setExtension(unlitTextureName, "rgi") : unlitTextureName;
-            writeString(output, textureName);
+            writeUint(output, materialImageIndices[i]); // Referenced image index
         }
+    }
+
+    // Emit the Images list. Every image produced here is a `reference`: its payload
+    // is the (optionally renamed) texture path. The `embedded` image type is not yet
+    // implemented and is never written.
+    foreach (idx, imagePath; images) {
+        writeUint(output, cast(uint)(idx + 1)); // Image index (1-based)
+        writeUbyte(output, cast(ubyte) ImageType.reference); // Image type
+        writeString(output, imagePath); // Path payload
     }
 }
 
