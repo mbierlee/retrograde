@@ -114,8 +114,21 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
     }
 
     typeof(this) opBinary(string op : "~")(T rhs) {
-        this ~= rhs;
-        return this;
+        auto str = String(this);
+        str ~= rhs;
+        return str;
+    }
+
+    typeof(this) opBinary(string op : "~")(string rhs) {
+        auto str = String(this);
+        str ~= rhs;
+        return str;
+    }
+
+    typeof(this) opBinaryRight(string op : "~")(string lhs) {
+        auto str = String(lhs);
+        str ~= this;
+        return str;
     }
 
     T opIndex(size_t index) {
@@ -543,6 +556,19 @@ void runStringBasicTests() {
         assert(str.length == 11);
     });
 
+    test("Concatenate D string literal on either side of a String", {
+        auto str = String("world");
+        auto prefixed = "Hello " ~ str;
+        assert(prefixed == "Hello world");
+        assert(prefixed.length == 11);
+
+        auto suffixed = str ~ "!";
+        assert(suffixed == "world!");
+        assert(suffixed.length == 6);
+
+        assert(str == "world");
+    });
+
     test("Using dollar on String", {
         auto str = String("Hello world");
         assert(str[$ - 1] == 'd');
@@ -615,8 +641,8 @@ void runStringBasicTests() {
 
         auto str2 = String("bye");
         auto combined = str2 ~ '!';
-        str2 = combined;
-        assert(str2 == "bye!");
+        assert(str2 == "bye");
+        assert(combined == "bye!");
     });
 
     test("stripNonNumeric gets rid of numbers", {
