@@ -147,6 +147,10 @@ Result!AssetHandle fetchAsset(string virtualPath) {
  * Returns: $(D true) if the asset identified by $(D handle) has finished loading successfully.
  */
 bool isAssetReady(AssetHandle handle) {
+    if (handle == 0) {
+        return false;
+    }
+
     AssetEntry entry;
     if (assets.tryGet(handle, entry)) {
         return entry.status == AssetStatus.ready;
@@ -159,6 +163,10 @@ bool isAssetReady(AssetHandle handle) {
  * Returns: $(D true) if the asset identified by $(D handle) failed to load.
  */
 bool isAssetError(AssetHandle handle) {
+    if (handle == 0) {
+        return false;
+    }
+
     AssetEntry entry;
     if (assets.tryGet(handle, entry)) {
         return entry.status == AssetStatus.error;
@@ -176,6 +184,10 @@ bool isAssetError(AssetHandle handle) {
  *          if the handle is invalid or the asset is not in an error state.
  */
 Result!String getAssetError(AssetHandle handle) {
+    if (handle == 0) {
+        return failure!String("Invalid asset handle");
+    }
+
     AssetEntry entry;
     if (!assets.tryGet(handle, entry)) {
         return failure!String("Invalid asset handle");
@@ -198,6 +210,10 @@ Result!String getAssetError(AssetHandle handle) {
  *          if the handle is invalid, the asset is still loading, or the asset is in an error state.
  */
 Result!(const(ubyte)[]) getAssetData(AssetHandle handle) {
+    if (handle == 0) {
+        return failure!(const(ubyte)[])("Invalid asset handle");
+    }
+
     AssetEntry entry;
     if (!assets.tryGet(handle, entry)) {
         return failure!(const(ubyte)[])("Invalid asset handle");
@@ -221,10 +237,8 @@ Result!(const(ubyte)[]) getAssetData(AssetHandle handle) {
  * appropriate delegate.
  *
  * If the asset is ready, $(D onSuccess) is called with the asset data.
- *
  * If the asset is in an error state, $(D onAssetError) is called with the error message.
- *
- * If the asset is still pending, none of the delegates are called.
+ * If the asset is still pending, or the handle is invalid (0 or unknown), none of the delegates are called.
  *
  * Params:
  *  handle     = The asset handle to inspect.
@@ -236,6 +250,10 @@ void withAssetData(Fn, AssetErrFn)(
     scope Fn onSuccess,
     scope AssetErrFn onError
 ) {
+    if (handle == 0) {
+        return;
+    }
+
     if (isAssetReady(handle)) {
         auto result = getAssetData(handle);
         onSuccess(result.value);
@@ -275,6 +293,10 @@ Result!AssetHandle addAssetData(const(ubyte)[] data) {
  *  handle = The handle of the asset to release.
  */
 void releaseAssetData(AssetHandle handle) {
+    if (handle == 0) {
+        return;
+    }
+
     AssetEntry entry;
     if (assets.tryGet(handle, entry) && entry.usageCount > 0) {
         entry.usageCount--;
@@ -589,9 +611,7 @@ void runAssetsTests() {
         assetFetchError(handle, "fetch failed".s);
 
         String received;
-        withAssetData(handle, (const(ubyte)[] d) {}, (String e) {
-            received = e;
-        });
+        withAssetData(handle, (const(ubyte)[] d) {}, (String e) { received = e; });
 
         assert(received == "fetch failed");
     });
@@ -603,13 +623,10 @@ void runAssetsTests() {
         auto handle = fetchAsset("assets/model.rgm".s).value;
 
         bool called = false;
-        withAssetData(handle, (const(ubyte)[] d) {
-            called = true;
-        }, (String e) {
+        withAssetData(handle, (const(ubyte)[] d) { called = true; }, (String e) {
             called = true;
         });
 
         assert(!called);
     });
 }
-
