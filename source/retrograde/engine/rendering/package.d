@@ -11,7 +11,7 @@
 
 module retrograde.engine.rendering;
 
-import retrograde.data.model : ModelComponentType, MaterialType;
+import retrograde.assets.model : ModelComponentType, MaterialType;
 
 import retrograde.engine.entity : addEntityFinalizedHook, addEntityRemovedHook, EntityId, forEachEntity,
     hasComponent, withComponentData;

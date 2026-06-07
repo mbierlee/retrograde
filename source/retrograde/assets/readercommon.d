@@ -9,7 +9,7 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.data.assets.readercommon;
+module retrograde.assets.readercommon;
 
 import retrograde.std.endian : toPlatformEndian, Endian;
 

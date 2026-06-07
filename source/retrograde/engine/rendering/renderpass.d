@@ -11,7 +11,7 @@
 
 module retrograde.engine.rendering.renderpass;
 
-import retrograde.data.model : ModelComponentType;
+import retrograde.assets.model : ModelComponentType;
 
 import retrograde.engine.entity : EntityId;
 import retrograde.engine.graphicsapi : drawModel;

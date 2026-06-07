@@ -19,7 +19,7 @@ import retrograde.engine.entity : EntityId, hasComponent, withComponentData, add
     getComponentData;
 import retrograde.engine.rendering : Color, RenderPass, Viewport, renderPasses, MaterialShader;
 
-import retrograde.data.model : ModelComponentType, Model, MaterialType, MaterialIndex, noMaterial;
+import retrograde.assets.model : ModelComponentType, Model, MaterialType, MaterialIndex, noMaterial;
 
 import retrograde.std.memory : makeRaw, unique;
 import retrograde.std.collections : Array, HashMap;

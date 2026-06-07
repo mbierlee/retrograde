@@ -12,7 +12,7 @@
 module retrograde.engine.rendering.materialshader;
 
 import retrograde.engine.rendering : MaterialShader;
-import retrograde.data.model : MaterialType;
+import retrograde.assets.model : MaterialType;
 
 MaterialShader vertexColorsMaterialShader = MaterialShader(
     "VertexColors",

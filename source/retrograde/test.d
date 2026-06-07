@@ -25,9 +25,9 @@ void runTests() {
     import retrograde.std.conv : runConvTests;
     import retrograde.engine.entity : runEntityTests;
     import retrograde.std.endian : runEndianTests;
-    import retrograde.data.assets.rgm : runRgmTests;
-    import retrograde.data.assets.rgi : runRgiTests;
-    import retrograde.data.image : runImageTests;
+    import retrograde.assets.rgm : runRgmTests;
+    import retrograde.assets.rgi : runRgiTests;
+    import retrograde.assets.image : runImageTests;
     import retrograde.std.assets : runAssetsTests;
 
     runStdMemoryTests();
