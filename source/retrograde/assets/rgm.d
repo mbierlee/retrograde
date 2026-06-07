@@ -9,12 +9,12 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.data.assets.rgm;
+module retrograde.assets.rgm;
 
-import retrograde.data.model : Model, Vertex, Face, Mesh, UvCoord, maxUvChannels,
+import retrograde.assets.model : Model, Vertex, Face, Mesh, UvCoord, maxUvChannels,
     Material, MaterialIndex, MaterialType, MaterialFlags, noMaterial,
     Texture, TextureIndex, TextureType;
-import retrograde.data.assets.readercommon : readUInt, readUShort, readFloat;
+import retrograde.assets.readercommon : readUInt, readUShort, readFloat;
 import retrograde.std.endian : toPlatformEndian, Endian;
 import retrograde.std.memory : ResultPtr, failedPtr, makeRaw, successPtr;
 import retrograde.std.stringid : StringId, sid;

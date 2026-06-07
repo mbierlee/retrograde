@@ -9,10 +9,10 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.data.assets.rgi;
+module retrograde.assets.rgi;
 
-import retrograde.data.image : Image, ChannelFormat, bytesPerChannel;
-import retrograde.data.assets.readercommon : readUInt, readUShort, readUByte;
+import retrograde.assets.image : Image, ChannelFormat, bytesPerChannel;
+import retrograde.assets.readercommon : readUInt, readUShort, readUByte;
 import retrograde.std.memory : ResultPtr, failedPtr, makeRaw, successPtr;
 import retrograde.std.stringid : StringId, sid;
 import retrograde.std.result : Result, success, failure;

@@ -9,7 +9,7 @@
  *  The full terms of the license can be found in the LICENSE.txt file.
  */
 
-module retrograde.data.model;
+module retrograde.assets.model;
 
 import retrograde.std.collections : Array;
 import retrograde.std.stringid : StringId, sid;
