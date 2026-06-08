@@ -1804,45 +1804,64 @@ struct LinkedListIterator(T) {
     private alias NodePtr = LinkedListNode!T*;
 
     private LinkedList!T* list;
+
     private NodePtr node;
+
+    // Distinguishes the "before start" position (where next() should yield
+    // the head) from being positioned on a node.
+    private bool beforeStart;
 
     this(LinkedList!T* list) {
         this.list = list;
-        this.node = list.head;
-    }
-
-    /** 
-     * Returns: Whether there is another item in the list.
-     */
-    bool hasNext() {
-        return node !is null;
-    }
-
-    /** 
-     * Returns: Whether there is a previous item in the list.
-     */
-    bool hasPrevious() {
-        return node !is null && node.prev !is null;
+        this.node = null;
+        this.beforeStart = true;
     }
 
     /**
+     * Returns: Whether there is another item after the current position.
+     */
+    bool hasNext() {
+        if (beforeStart) {
+            return list.head !is null;
+        }
+
+        return node !is null && node.next !is null;
+    }
+
+    /**
+     * Returns: Whether there is an item before the current position.
+     */
+    bool hasPrevious() {
+        return !beforeStart && node !is null && node.prev !is null;
+    }
+
+    /**
+     * Advance to the next item and return it.
+     *
      * Returns: The next item in the list, or none if there is no next item.
      */
     Option!T next() {
+        if (beforeStart) {
+            beforeStart = false;
+            node = list.head;
+        } else if (node !is null) {
+            node = node.next;
+        }
+
         if (node is null) {
             return none!T;
         }
 
-        T value = node.value;
-        node = node.next;
-        return value.some;
+        return node.value.some;
     }
 
     /**
+     * Move back to the previous item and return it.
+     *
      * Returns: The previous item in the list, or none if there is no previous item.
      */
     Option!T previous() {
-        if (node is null || node.prev is null) {
+        if (beforeStart || node is null || node.prev is null) {
             return none!T;
         }
 
@@ -1850,15 +1869,19 @@ struct LinkedListIterator(T) {
         return node.value.some;
     }
 
-    /** 
-     * Reset the iterator to the start of the list.
+    /**
+     * Reset the iterator to before the start of the list.
      */
     void reset() {
-        node = list.head;
+        node = null;
+        beforeStart = true;
     }
 
-    /** 
-     * Remove the item at the current position of the iterator and move forward.
+    /**
+     * Remove the item at the current position of the iterator.
+     *
+     * After removal the iterator is repositioned so that the next call to
+     * next() yields the item that followed the removed one.
      */
     void remove() {
         if (node is null) {
@@ -1879,14 +1902,29 @@ struct LinkedListIterator(T) {
             list.head = next;
         }
 
+        if (list.tail is node) {
+            list.tail = prev;
+        }
+
         list._length--;
 
         free(node);
-        node = next;
+
+        // Reposition onto the predecessor so that next() lands on the
+        // successor of the removed node. If there was no predecessor the
+        // removed node was the head, so fall back to the before-start state.
+        node = prev;
+        if (prev is null) {
+            beforeStart = true;
+        }
     }
 
-    /** 
-     * Insert an item at the current position of the iterator.
+    /**
+     * Insert an item directly after the current position of the iterator.
+     *
+     * If the iterator is positioned before the start of the list (no call to
+     * next() yet), the item is inserted at the head. The cursor is not moved,
+     * so the inserted item is returned by the following call to next().
      *
      * Params:
      *   value = The value to insert.
@@ -1894,22 +1932,33 @@ struct LinkedListIterator(T) {
     void insert(T value) {
         NodePtr newNode = allocateRaw!(LinkedListNode!T);
         newNode.value = value;
-        newNode.next = node;
-        newNode.prev = node.prev;
 
-        if (node.prev !is null) {
-            node.prev.next = newNode;
-        }
+        if (node is null) {
+            newNode.prev = null;
+            newNode.next = list.head;
+            if (list.head !is null) {
+                list.head.prev = newNode;
+            } else {
+                list.tail = newNode;
+            }
 
-        if (node is list.head) {
             list.head = newNode;
+        } else {
+            newNode.prev = node;
+            newNode.next = node.next;
+            if (node.next !is null) {
+                node.next.prev = newNode;
+            } else {
+                list.tail = newNode;
+            }
+
+            node.next = newNode;
         }
 
-        node.prev = newNode;
         list._length++;
     }
 
-    /** 
+    /**
      * Replace the item at the current position of the iterator.
      *
      * Params:
@@ -2861,9 +2910,11 @@ void runLinkedListTests() {
             assert(iterator.next.value == expected[i++]);
         }
 
-        i = 2;
+        // The cursor rests on the last item (3); stepping back visits 2 then 1.
+        int[2] expectedBack = [2, 1];
+        i = 0;
         while (iterator.hasPrevious) {
-            assert(iterator.previous.value == expected[i--]);
+            assert(iterator.previous.value == expectedBack[i++]);
         }
     });
 
@@ -2895,6 +2946,63 @@ void runLinkedListTests() {
         iterator.next;
         iterator.remove;
         assert(list.length == 2);
+
+        int[2] expected = [2, 3];
+        iterator.reset;
+        int i = 0;
+        while (iterator.hasNext) {
+            assert(iterator.next.value == expected[i++]);
+        }
+    });
+
+    test("Remove every item while iterating in a single pass", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        list.add(3);
+        auto iterator = list.iterator;
+        while (iterator.hasNext) {
+            iterator.next;
+            iterator.remove;
+        }
+
+        assert(list.length == 0);
+    });
+
+    test("Remove only matching items while iterating in a single pass", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        list.add(3);
+        list.add(4);
+        auto iterator = list.iterator;
+        while (iterator.hasNext) {
+            if (iterator.next.value % 2 == 0) {
+                iterator.remove;
+            }
+        }
+
+        assert(list.length == 2);
+
+        int[2] expected = [1, 3];
+        iterator.reset;
+        int i = 0;
+        while (iterator.hasNext) {
+            assert(iterator.next.value == expected[i++]);
+        }
+    });
+
+    test("Remove the tail item via the iterator keeps add working", () {
+        LinkedList!int list;
+        list.add(1);
+        list.add(2);
+        auto iterator = list.iterator;
+        iterator.next;
+        iterator.next;
+        iterator.remove; // removes tail (2)
+        assert(list.length == 1);
+
+        list.add(3); // must append correctly after tail was removed
 
         int[2] expected = [1, 3];
         iterator.reset;
@@ -2932,7 +3040,7 @@ void runLinkedListTests() {
         iterator.replace(10);
         assert(list.length == 3);
 
-        int[3] expected = [1, 10, 3];
+        int[3] expected = [10, 2, 3];
         iterator.reset;
         int i = 0;
         while (iterator.hasNext) {
