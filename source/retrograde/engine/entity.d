@@ -14,7 +14,7 @@ module retrograde.engine.entity;
 import retrograde.std.string : String, s;
 import retrograde.std.stringid : StringId;
 import retrograde.std.memory : UniquePtr, free;
-import retrograde.std.collections : Array, SlotList, Slot, LinkedList;
+import retrograde.std.collections : Array, SlotList, Slot;
 import retrograde.std.result : OperationResult, Result, success, failure;
 import retrograde.std.option : Option, some, none;
 import retrograde.std.dlang : CopyConstructors;
@@ -164,16 +164,6 @@ Option!String getEntityName(EntityId entityId) {
 
 void addEntityProcessor(ProcessorFunction processor) {
     processors.add(processor);
-}
-
-private LinkedList!(bool function()) entityFactoryQueue;
-
-void addEntityFactory(bool function() fn) {
-    entityFactoryQueue.add(fn);
-}
-
-void processEntityFactoryQueue() {
-    entityFactoryQueue.removeWhere((bool function() fn) => fn());
 }
 
 void updateEntities() {
