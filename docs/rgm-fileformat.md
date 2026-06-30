@@ -182,6 +182,8 @@ Referencing textures by their declared index (rather than by file position) mean
 
 The path length is the byte length of the UTF-8 encoded path, not the codepoint count. The path has no null terminator.
 
+The path is a virtual asset path used as-is: it is passed directly to the asset system to fetch the referenced image, without any resolution relative to the model's own location.
+
 ### Embedded Payload (type = 1)
 
 The `Embedded` texture type is **reserved** and **not yet implemented**. Its payload layout is undefined; writers never emit it and readers reject any texture declaring this type.

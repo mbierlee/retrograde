@@ -6,8 +6,8 @@ Retrograde is a D language game engine compiled with **`-betterC`** (no GC, no D
 
 ## Build & Test
 
-- **Build:** `make build-lib` (uses `dub build --config=library`)
-- **Test:** `make test-native` (uses `dub test --config=unittest-native`, enables `Native` + `UnitTesting` versions)
+- **Build:** `make build-lib` (uses `dub build --config=library`). **NOTE:** building the native lib does not currently work — several native platform implementations are still missing, so the link/build fails. Do not rely on `make build-lib` to verify changes; prefer running the native unit tests instead.
+- **Test:** `make test-native` (uses `dub test --config=unittest-native`, enables `Native` + `UnitTesting` versions). This is the preferred way to verify changes.
 - **WASM build:** from `wasmtest/`, `make build-wasm` (requires LDC2, targets `wasm32-unknown-unknown-wasm`)
 
 ## Critical Constraints (betterC)

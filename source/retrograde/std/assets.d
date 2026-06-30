@@ -138,11 +138,6 @@ Result!AssetHandle fetchAsset(String virtualPath) {
     return success(handle);
 }
 
-/// Ditto
-Result!AssetHandle fetchAsset(string virtualPath) {
-    return fetchAsset(virtualPath.s);
-}
-
 /**
  * Returns: $(D true) if the asset identified by $(D handle) has finished loading successfully.
  */
@@ -369,10 +364,23 @@ void assetFetchError(uint handle, String message) {
 
 version (UnitTesting)  :  ///
 
-private void resetState() {
-    mounts.clear();
-    pathToHandle.clear();
-    assets.clear();
+/// Resets all module-level asset state. Test-only; also used by dependent modules' tests.
+void resetState() {
+    version (WasmMemTest) {
+        // The WasmMemTest harness wipes the heap before each test, so these globals already
+        // hold dangling pointers. Reset them to their init state without freeing: clear()/free
+        // would log benign "invalid block" errors for the already-wiped memory.
+        import retrograde.std.memory : memset;
+
+        memset(&mounts, 0, mounts.sizeof);
+        memset(&pathToHandle, 0, pathToHandle.sizeof);
+        memset(&assets, 0, assets.sizeof);
+    } else {
+        mounts.clear();
+        pathToHandle.clear();
+        assets.clear();
+    }
+
     nextHandle = 1;
 }
 

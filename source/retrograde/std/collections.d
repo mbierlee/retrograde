@@ -2324,13 +2324,13 @@ struct HashMap(K, V) {
             auto node = cast(Node*) buckets[i];
             while (node !is null) {
                 ulong pairHash;
-                static if (__traits(hasMember, K, "toHash")) {
+                static if (__traits(compiles, node.key.toHash())) {
                     pairHash = node.key.toHash();
                 } else {
                     pairHash = hashOf(node.key);
                 }
 
-                static if (__traits(hasMember, V, "toHash")) {
+                static if (__traits(compiles, node.value.toHash())) {
                     pairHash = pairHash * 33 + node.value.toHash();
                 } else {
                     pairHash = pairHash * 33 + hashOf(node.value);

@@ -18,8 +18,8 @@ module encoders.rgi;
 import std.array : Appender, appender;
 import std.bitmanip : nativeToLittleEndian;
 
-import retrograde.data.assets.rgi : ColorMode, CompressionType, IndexFormat, rgiMagicNumber;
-import retrograde.data.image : ChannelFormat;
+import retrograde.assets.rgi : ColorMode, CompressionType, IndexFormat, rgiMagicNumber;
+import retrograde.assets.image : ChannelFormat;
 
 import image : DecodedImage, PixelFormat, channelCount, bytesPerPixel;
 

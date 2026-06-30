@@ -21,12 +21,12 @@ import std.file : exists, isDir, isFile, read, dirEntries, SpanMode;
 import std.algorithm : sort;
 import std.array : array;
 
-import retrograde.data.assets.rgm : loadModel, loadModelHeader, ModelHeader, rgmMagicNumber;
-import retrograde.data.assets.rgi : loadImageHeader, ImageHeader, rgiMagicNumber,
+import retrograde.assets.rgm : loadModel, loadModelHeader, ModelHeader, rgmMagicNumber;
+import retrograde.assets.rgi : loadImageHeader, ImageHeader, rgiMagicNumber,
     CompressionType, ColorMode, IndexFormat, bytesPerIndex;
-import retrograde.data.model : Model, Mesh, Material, MaterialType, noMaterial,
+import retrograde.assets.model : Model, Mesh, Material, MaterialType, noMaterial,
     Texture, TextureType;
-import retrograde.data.image : ChannelFormat, bytesPerChannel;
+import retrograde.assets.image : ChannelFormat, bytesPerChannel;
 
 private enum AssetKind {
     unknown,

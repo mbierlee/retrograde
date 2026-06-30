@@ -20,12 +20,14 @@ import retrograde.engine.entity : EntityId, hasComponent, withComponentData, add
 import retrograde.engine.rendering : Color, RenderPass, Viewport, renderPasses, MaterialShader;
 
 import retrograde.assets.model : ModelComponentType, Model, MaterialType, MaterialIndex, noMaterial;
+import retrograde.assets.assetlibrary : getModel;
 
 import retrograde.std.memory : makeRaw, unique;
 import retrograde.std.collections : Array, HashMap;
 import retrograde.std.stringid : StringId, sid;
 import retrograde.std.math : Matrix4, Vector3, Quaternion, toTranslationMatrix4, toScalingMatrix4;
 import retrograde.std.geometry : PositionComponentType, OrientationComponentType, ScaleComponentType;
+import retrograde.std.assets : AssetHandle;
 import retrograde.std.dlang : CopyConstructors;
 
 version (WebAssembly) {
@@ -95,7 +97,15 @@ void loadEntityModel(EntityId entity) {
         return;
     }
 
-    entity.withComponentData(ModelComponentType, (Model* model) {
+    entity.withComponentData(ModelComponentType, (AssetHandle* modelHandle) {
+        auto modelResult = getModel(*modelHandle);
+        if (modelResult.isFailure) {
+            return;
+        }
+
+        auto modelRef = modelResult.value;
+        Model* model = modelRef.ptr;
+
         // if (loadedModels.exists(model.name)) {
         //     //TODO: Attach a GlModelInfoComponent to this entity with the loaded model.
         //     //      Probably need to make loadedModels into a map
