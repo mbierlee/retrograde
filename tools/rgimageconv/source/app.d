@@ -18,7 +18,7 @@ import std.getopt;
 import std.file : exists, isDir, read;
 import std.path : baseName, stripExtension, buildPath;
 
-import retrograde.data.assets.rgi : IndexFormat;
+import retrograde.assets.rgi : IndexFormat;
 
 import decoder : decodeImage, supportedList;
 import encoders.rgi : encodeRgi, Mode, EncodeOutcome;

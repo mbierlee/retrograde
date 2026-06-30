@@ -24,16 +24,17 @@ import std.path : baseName, stripExtension, buildPath, setExtension;
 
 import bindbc.assimp;
 
-import retrograde.data.assets.rgm : rgmMagicNumber;
-import retrograde.data.model : MaterialType, MaterialFlags, maxUvChannels, noMaterial, TextureType;
+import retrograde.assets.rgm : rgmMagicNumber;
+import retrograde.assets.model : MaterialType, MaterialFlags, maxUvChannels, noMaterial, TextureType;
 
 int main(string[] args) {
     string inputFile;
     string outputFile;
     bool showStats;
     bool noRenameImages;
+    string texturePath;
 
-    int argsResult = parseArgs(args, inputFile, outputFile, showStats, noRenameImages);
+    int argsResult = parseArgs(args, inputFile, outputFile, showStats, noRenameImages, texturePath);
     if (argsResult != -1) {
         return argsResult;
     }
@@ -80,7 +81,7 @@ int main(string[] args) {
 
     try {
         auto output = File(outputFile, "wb");
-        writeRgmFile(output, scene, !noRenameImages);
+        writeRgmFile(output, scene, !noRenameImages, texturePath);
 
         writefln("Converted '%s' -> '%s'", inputFile, outputFile);
 
@@ -121,7 +122,7 @@ int main(string[] args) {
  *   1  if there was a usage error.
  */
 int parseArgs(ref string[] args, out string inputFile, out string outputFile, out bool showStats,
-    out bool noRenameImages) {
+    out bool noRenameImages, out string texturePath) {
     try {
         auto opts = getopt(args,
             "input|i", "Input model file path", &inputFile,
@@ -130,6 +131,9 @@ int parseArgs(ref string[] args, out string inputFile, out string outputFile, ou
             "no-rename-images",
             "Keep original texture image names instead of rewriting their extension to .rgi",
             &noRenameImages,
+            "texture-path",
+            "Prefix all texture paths with the given path",
+            &texturePath,
         );
 
         if (opts.helpWanted) {
@@ -155,7 +159,7 @@ int parseArgs(ref string[] args, out string inputFile, out string outputFile, ou
     return -1;
 }
 
-void writeRgmFile(ref File output, const(aiScene)* scene, bool renameImages) {
+void writeRgmFile(ref File output, const(aiScene)* scene, bool renameImages, string texturePathPrefix) {
     // Map Assimp material index -> RGM material index. Assimp's glTF2 importer
     // always appends exactly one synthesized default material at the highest
     // index and points materialless primitives at it (see
@@ -193,6 +197,9 @@ void writeRgmFile(ref File output, const(aiScene)* scene, bool renameImages) {
             materialTypes[i] = MaterialType.unlit;
             string texturePath = renameImages
                 ? setExtension(unlitTextureName, "rgi") : unlitTextureName;
+            if (texturePathPrefix.length > 0) {
+                texturePath = buildPath(texturePathPrefix, texturePath);
+            }
             uint* existing = texturePath in texturePathToIndex;
             if (existing !is null) {
                 materialTextureIndices[i] = *existing;

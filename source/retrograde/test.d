@@ -29,6 +29,7 @@ void runTests() {
     import retrograde.assets.rgi : runRgiTests;
     import retrograde.assets.image : runImageTests;
     import retrograde.std.assets : runAssetsTests;
+    import retrograde.assets.assetlibrary : runAssetLibraryTests;
 
     runStdMemoryTests();
     runStringTests();
@@ -45,6 +46,7 @@ void runTests() {
     runRgiTests();
     runImageTests();
     runAssetsTests();
+    runAssetLibraryTests();
 
     writeln();
     writeln("Tests run: ", testCount);
