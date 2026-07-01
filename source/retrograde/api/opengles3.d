@@ -19,8 +19,10 @@ import retrograde.engine.entity : EntityId, hasComponent, withComponentData, add
     getComponentData;
 import retrograde.engine.rendering : Color, RenderPass, Viewport, renderPasses, MaterialShader;
 
-import retrograde.assets.model : ModelComponentType, Model, MaterialType, MaterialIndex, noMaterial;
-import retrograde.assets.assetlibrary : getModel;
+import retrograde.assets.model : ModelComponentType, Model, MaterialType, MaterialIndex, noMaterial,
+    TextureIndex, Texture;
+import retrograde.assets.image : Image, ChannelFormat;
+import retrograde.assets.assetlibrary : getModel, getTexture;
 
 import retrograde.std.memory : makeRaw, unique;
 import retrograde.std.collections : Array, HashMap;
@@ -29,6 +31,7 @@ import retrograde.std.math : Matrix4, Vector3, Quaternion, toTranslationMatrix4,
 import retrograde.std.geometry : PositionComponentType, OrientationComponentType, ScaleComponentType;
 import retrograde.std.assets : AssetHandle;
 import retrograde.std.dlang : CopyConstructors;
+import retrograde.std.stdio : writeErrLn;
 
 version (WebAssembly) {
     import retrograde.wasm.opengles3;
@@ -81,6 +84,11 @@ void initMaterialShader(ref MaterialShader materialShader) {
 
     if (materialShader.materialType == MaterialType.vertexColors) {
         shaderInfo.colorsAttribLocation = glGetAttribLocation(program, "color");
+    }
+
+    if (materialShader.materialType == MaterialType.unlit) {
+        shaderInfo.textureCoordsAttribLocation = glGetAttribLocation(program, "textureCoords");
+        shaderInfo.albedoTextureUniformLocation = glGetUniformLocation(program, "albedoTexture");
     }
 
     materialShaderInfos.put(materialShader.materialType, shaderInfo);
@@ -180,11 +188,13 @@ void loadEntityModel(EntityId entity) {
             }
 
             meshInfo.materialIndex = mesh.materialIndex;
+            TextureIndex materialTextureIndex = 0;
             if (mesh.materialIndex != noMaterial) {
                 foreach (ref material; model.materials) {
                     if (material.index == mesh.materialIndex) {
                         meshInfo.materialType = material.type;
                         meshInfo.doubleSided = material.doubleSided;
+                        materialTextureIndex = material.textureIndex;
                         break;
                     }
                 }
@@ -210,6 +220,24 @@ void loadEntityModel(EntityId entity) {
                         glBufferDataFloat(GL_ARRAY_BUFFER, colorData.arr, GL_STATIC_DRAW);
                     }
 
+                    if (meshInfo.materialType == MaterialType.unlit && mesh.uvChannelCount > 0) {
+                        // The first UV channel occupies the first `vertices.length` entries
+                        // of the channel-major `uvCoords` array.
+                        Array!GLfloat textureCoordsData;
+                        textureCoordsData.capacity = mesh.vertices.length * 2;
+                        foreach (i; 0 .. mesh.vertices.length) {
+                            auto uv = mesh.uvCoords[i];
+                            textureCoordsData.add(cast(GLfloat) uv.u);
+                            textureCoordsData.add(cast(GLfloat) uv.v);
+                        }
+
+                        meshInfo.textureCoordsBufferObject = glCreateBuffer();
+                        glBindBuffer(GL_ARRAY_BUFFER, meshInfo.textureCoordsBufferObject);
+                        glBufferDataFloat(GL_ARRAY_BUFFER, textureCoordsData.arr, GL_STATIC_DRAW);
+
+                        meshInfo.textureObject = createMaterialTexture(model, materialTextureIndex);
+                    }
+
                     auto materialVao = glCreateVertexArray();
                     glBindVertexArray(materialVao);
 
@@ -225,6 +253,14 @@ void loadEntityModel(EntityId entity) {
                         glBindBuffer(GL_ARRAY_BUFFER, meshInfo.colorBufferObject);
                         glEnableVertexAttribArray(materialShaderInfo.colorsAttribLocation);
                         glVertexAttribPointer(materialShaderInfo.colorsAttribLocation, 4, GL_FLOAT, false, 0, 0);
+                    }
+
+                    if (meshInfo.materialType == MaterialType.unlit
+                    && meshInfo.textureCoordsBufferObject != 0
+                    && materialShaderInfo.textureCoordsAttribLocation >= 0) {
+                        glBindBuffer(GL_ARRAY_BUFFER, meshInfo.textureCoordsBufferObject);
+                        glEnableVertexAttribArray(materialShaderInfo.textureCoordsAttribLocation);
+                        glVertexAttribPointer(materialShaderInfo.textureCoordsAttribLocation, 2, GL_FLOAT, false, 0, 0);
                     }
 
                     if (meshInfo.elementBufferObject != 0) {
@@ -247,12 +283,134 @@ void loadEntityModel(EntityId entity) {
     });
 }
 
+/**
+ * Expands an 8-bit single-channel grayscale image into a tightly packed RGB byte buffer,
+ * replicating the gray value across R, G and B. The result is appended to `rgb`.
+ */
+private void expandGrayscaleToRgb(const ref Image image, ref Array!ubyte rgb) {
+    size_t pixelCount = cast(size_t) image.width * image.height;
+    rgb.capacity = pixelCount * 3;
+    foreach (i; 0 .. pixelCount) {
+        ubyte gray = image.pixelData[i];
+        rgb.add(gray);
+        rgb.add(gray);
+        rgb.add(gray);
+    }
+}
+
+/**
+ * Expands an 8-bit grayscale + alpha (2 channel) image into a tightly packed RGBA byte buffer,
+ * replicating the gray value across R, G and B and taking the alpha from the second channel.
+ * The result is appended to `rgba`.
+ */
+private void expandGrayscaleAlphaToRgba(const ref Image image, ref Array!ubyte rgba) {
+    size_t pixelCount = cast(size_t) image.width * image.height;
+    rgba.capacity = pixelCount * 4;
+    foreach (i; 0 .. pixelCount) {
+        ubyte gray = image.pixelData[i * 2];
+        ubyte alpha = image.pixelData[i * 2 + 1];
+        rgba.add(gray);
+        rgba.add(gray);
+        rgba.add(gray);
+        rgba.add(alpha);
+    }
+}
+
+/**
+ * Creates and uploads a GL texture for the referenced texture of an unlit material.
+ * Returns the GL texture handle, or 0 when the texture could not be resolved or uploaded.
+ */
+private GLuint createMaterialTexture(Model* model, TextureIndex textureIndex) {
+    if (textureIndex == 0) {
+        return 0;
+    }
+
+    Texture* texture = null;
+    foreach (ref candidate; model.textures) {
+        if (candidate.index == textureIndex) {
+            texture = &candidate;
+            break;
+        }
+    }
+
+    if (texture is null) {
+        writeErrLn("Unlit material in model ", model.name, " references unknown texture index ",
+            textureIndex, "; skipping texture.");
+        return 0;
+    }
+
+    auto textureResult = getTexture(texture.path);
+    if (textureResult.isFailure) {
+        writeErrLn("Failed to resolve texture '", texture.path, "' (index ", textureIndex,
+            ") for unlit material in model ", model.name, "; skipping texture.");
+        return 0;
+    }
+
+    auto imageRef = textureResult.value;
+    Image* image = imageRef.ptr;
+
+    if (image.channelFormat != ChannelFormat.u8) {
+        writeErrLn("Unlit material texture '", texture.path,
+            "' is not 8-bit per channel; skipping texture.");
+        return 0;
+    }
+
+    // GL_LUMINANCE(_ALPHA) are removed from core GL 3.1+ and deprecated in WebGL2, so the
+    // sampler is only ever fed the portable RGB/RGBA formats. Grayscale (1) is expanded to RGB
+    // and grayscale + alpha (2) to RGBA on the CPU; 3/4-channel data is uploaded as-is.
+    GLenum format;
+    Array!ubyte expandedPixels;
+    const(ubyte)[] pixels;
+    if (image.channelCount == 1) {
+        format = GL_RGB;
+        expandGrayscaleToRgb(*image, expandedPixels);
+        pixels = expandedPixels.arr;
+    } else if (image.channelCount == 2) {
+        format = GL_RGBA;
+        expandGrayscaleAlphaToRgba(*image, expandedPixels);
+        pixels = expandedPixels.arr;
+    } else if (image.channelCount == 3) {
+        format = GL_RGB;
+        pixels = image.pixelData.arr;
+    } else if (image.channelCount == 4) {
+        format = GL_RGBA;
+        pixels = image.pixelData.arr;
+    } else {
+        writeErrLn("Unlit material texture '", texture.path, "' has an unsupported channel count ",
+            cast(uint) image.channelCount, "; skipping texture.");
+        return 0;
+    }
+
+    auto textureObject = glCreateTexture();
+    glBindTexture(GL_TEXTURE_2D, textureObject);
+
+    // Pixel data is tightly packed with no per-row padding; the default unpack alignment of 4
+    // would misread rows of e.g. RGB textures whose row length is not a multiple of 4.
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, format, image.width, image.height, 0, format,
+        GL_UNSIGNED_BYTE, pixels);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    return textureObject;
+}
+
 void unloadEntityModel(EntityId entity) {
     entity.withComponentData(GlModelInfoComponentType, (GlModelInfo* modelInfo) {
         foreach (ref meshInfo; modelInfo.meshes) {
             glDeleteBuffer(meshInfo.positionBufferObject);
             glDeleteBuffer(meshInfo.colorBufferObject);
+            glDeleteBuffer(meshInfo.textureCoordsBufferObject);
             glDeleteBuffer(meshInfo.elementBufferObject);
+            if (meshInfo.textureObject != 0) {
+                glDeleteTexture(meshInfo.textureObject);
+            }
+
             foreach (ref GLuint vao; meshInfo.vertexArrayObjects) {
                 glDeleteVertexArray(vao);
             }
@@ -316,6 +474,7 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
         foreach (ref meshInfo; modelInfo.meshes) {
             GLuint shaderProgram;
             GLint mvpMatrixUniformLocation = -1;
+            GLint albedoTextureUniformLocation = -1;
             GLuint vao = 0;
             auto useMaterial = false;
 
@@ -327,6 +486,7 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
                     auto materialShaderInfo = maybeMaterialShaderInfo.value;
                     shaderProgram = materialShaderInfo.shaderProgram;
                     mvpMatrixUniformLocation = materialShaderInfo.mvpMatrixUniformLocation;
+                    albedoTextureUniformLocation = materialShaderInfo.albedoTextureUniformLocation;
                     vao = meshInfo.materialVertexArrayObject;
                     useMaterial = true;
                 }
@@ -350,6 +510,13 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
             glUseProgram(shaderProgram);
             if (mvpMatrixUniformLocation >= 0) {
                 glUniformMatrix4fv(mvpMatrixUniformLocation, 1, true, modelViewProjectionMatrixData);
+            }
+
+            if (useMaterial && meshInfo.materialType == MaterialType.unlit
+                && meshInfo.textureObject != 0 && albedoTextureUniformLocation >= 0) {
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, meshInfo.textureObject);
+                glUniform1i(albedoTextureUniformLocation, 0);
             }
 
             if (meshInfo.doubleSided) {
@@ -404,6 +571,8 @@ private HashMap!(MaterialType, GlMaterialShaderInfo) materialShaderInfos;
 private struct GlMeshInfo {
     GLuint positionBufferObject;
     GLuint colorBufferObject;
+    GLuint textureCoordsBufferObject;
+    GLuint textureObject;
     HashMap!(StringId, GLuint) vertexArrayObjects;
     GLuint materialVertexArrayObject;
     GLuint elementBufferObject;
@@ -435,4 +604,6 @@ private struct GlMaterialShaderInfo {
     GLint mvpMatrixUniformLocation;
     GLint positionAttribLocation;
     GLint colorsAttribLocation;
+    GLint textureCoordsAttribLocation;
+    GLint albedoTextureUniformLocation;
 }

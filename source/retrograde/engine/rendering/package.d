@@ -18,7 +18,7 @@ import retrograde.engine.entity : addEntityFinalizedHook, addEntityRemovedHook, 
 import retrograde.engine.graphicsapi : clearShaderProgram, getViewport, initFrame, initRenderApi,
     initRenderPass, initMaterialShader, loadEntityModel, setClearColor, unloadEntityModel, useRenderPassShaderProgram;
 import retrograde.engine.rendering.renderpass : genericModelRenderPass;
-import retrograde.engine.rendering.materialshader : vertexColorsMaterialShader;
+import retrograde.engine.rendering.materialshader : vertexColorsMaterialShader, unlitMaterialShader;
 
 import retrograde.std.collections : Array, HashMap;
 import retrograde.std.geometry : OrientationComponentType, PositionComponentType;
@@ -259,6 +259,7 @@ private void initRenderPasses() {
 private void initMaterialShaders() {
     if (materialShaders.length == 0) {
         materialShaders.put(vertexColorsMaterialShader.materialType, vertexColorsMaterialShader);
+        materialShaders.put(unlitMaterialShader.materialType, unlitMaterialShader);
     }
 
     foreach (ref materialShader; materialShaders.values) {

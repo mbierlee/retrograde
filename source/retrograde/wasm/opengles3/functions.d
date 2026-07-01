@@ -42,3 +42,13 @@ void glUniformMatrix4fv(GLint location, GLsizei count, GLbool transpose, GLfloat
 void glDepthFunc(GLenum func);
 void glStencilFunc(GLenum func, GLint refVal, GLuint mask);
 void glBlendFunc(GLenum sfactor, GLenum dfactor);
+GLuint glCreateTexture();
+void glDeleteTexture(GLuint texture);
+void glBindTexture(GLenum target, GLuint texture);
+void glActiveTexture(GLenum texture);
+void glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height,
+    GLint border, GLenum format, GLenum type, const(ubyte)[] pixels);
+void glTexParameteri(GLenum target, GLenum pname, GLint param);
+void glGenerateMipmap(GLenum target);
+void glPixelStorei(GLenum pname, GLint param);
+void glUniform1i(GLint location, GLint value);

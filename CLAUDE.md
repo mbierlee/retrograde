@@ -43,6 +43,10 @@ On WebAssembly, functions that need OS or browser APIs are declared `extern (C)`
 
 When adding new `extern (C)` functions on the D/WASM side, you must also add matching implementations in `retrograde-runtime.js` under the `imports` object. Memory is shared via WASM linear memory — use pointer + length pairs for strings/arrays.
 
+**Keep the `gl*` methods in `retrograde-runtime.js` thin.** Each should simply relay its arguments to the corresponding `glContext` method — the only extra work permitted is reading buffer/string data out of WASM linear memory (e.g. `getFloat32Array`, `getUint8Array`) and the occasional handle caching (e.g. the `uniformLocations` dict). Do not bury implicit GL state changes (extra `pixelStorei`, `bindTexture`, parameter setup, etc.) inside these wrappers: that behavior belongs in the D renderer so it stays explicit and survives a future port to native OpenGL.
+
+**Only edit `webruntime/retrograde-runtime.js`.** The copy at `wasmtest/web/retrograde-runtime.js` is generated — the `copy-runtime` target (run automatically by `make build-wasm`) overwrites it from `webruntime/`. Editing the `wasmtest/web/` copy directly will have your changes clobbered on the next build.
+
 ## Version Flags
 
 Use D `version` conditions (not `#ifdef`). Key flags: `Native`, `WebAssembly`, `UnitTesting`, `MemoryDebug`, `OpenGLES3`, `DoublePrecision`, `Windows`. See README.md for full list.

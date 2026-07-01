@@ -20,3 +20,10 @@ MaterialShader vertexColorsMaterialShader = MaterialShader(
     import("opengles3/material_vertex_colors_vertex.glsl"),
     import("opengles3/material_vertex_colors_fragment.glsl"),
 );
+
+MaterialShader unlitMaterialShader = MaterialShader(
+    "Unlit",
+    MaterialType.unlit,
+    import("opengles3/material_unlit_vertex.glsl"),
+    import("opengles3/material_unlit_fragment.glsl"),
+);
