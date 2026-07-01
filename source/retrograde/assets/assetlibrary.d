@@ -55,17 +55,13 @@ private HashMap!(AssetHandle, Array!AssetHandle) textureDependents;
 /// Texture handles whose asset data is still being fetched.
 private LinkedList!AssetHandle fetchingTextures;
 
-version (UnitTesting) {
-    private bool suppressErrorLogging = false;
-}
+/// When true, the asset library's error logs (e.g. a texture that failed to load) are muted. Off by default.
+bool suppressErrorLogging = false;
 
-/// Log an error to standard error. During unit tests it can be muted via
-/// `suppressErrorLogging` so tests that deliberately exercise failure paths stay quiet.
+/// Log an error to standard error, unless muted via `suppressErrorLogging`.
 private void logError(Args...)(Args args) {
-    version (UnitTesting) {
-        if (suppressErrorLogging) {
-            return;
-        }
+    if (suppressErrorLogging) {
+        return;
     }
 
     writeErrLn(args);
@@ -279,13 +275,11 @@ private bool processReadyModel(AssetHandle handle) {
     Model* model = modelResult.ptr();
     loadedModels.put(handle, modelResult.share());
 
-    // A model is only finished once all of its referenced textures are loaded too.
+    // A model finishes once all of its referenced textures have resolved. Textures that fail to
+    // fetch or load are simply left out; a model always finishes, with whatever textures could
+    // be loaded.
     size_t pendingTextures;
-    if (!fetchModelTextures(handle, model, pendingTextures)) {
-        // A texture could not be fetched; the model can never finish.
-        abandonModel(handle);
-        return true;
-    }
+    fetchModelTextures(handle, model, pendingTextures);
 
     if (pendingTextures == 0) {
         finishModel(handle);
@@ -297,16 +291,15 @@ private bool processReadyModel(AssetHandle handle) {
 /**
  * Fetch every external texture referenced by a freshly loaded model, deduplicating against
  * textures that are already loaded or in flight. Records how many of them the model must
- * still wait on so it can be finished once they all arrive.
+ * still wait on so it can be finished once they all arrive. A texture that cannot be fetched
+ * is skipped and the model is loaded without it.
  *
  * Params:
  *  modelHandle = The handle of the model whose textures should be fetched.
  *  model       = The parsed model to inspect.
  *  pending     = Receives the number of textures the model is still waiting on.
- * Returns: true if all textures were fetched (or already available), false if a texture
- *          could not be fetched, meaning the model can never finish.
  */
-private bool fetchModelTextures(AssetHandle modelHandle, Model* model, out size_t pending) {
+private void fetchModelTextures(AssetHandle modelHandle, Model* model, out size_t pending) {
     pending = 0;
     foreach (ref texture; model.textures) {
         if (texture.type != TextureType.reference || texture.path.length == 0) {
@@ -325,21 +318,18 @@ private bool fetchModelTextures(AssetHandle modelHandle, Model* model, out size_
             if (fetchRes.isFailure()) {
                 logError("Failed to fetch model texture '", texture.path, "': ", fetchRes
                         .errorMessage());
-                return false;
+                // The texture cannot be fetched; load the model without it.
+                continue;
             }
 
             textureHandle = fetchRes.value;
             textureHandles.put(texture.path, textureHandle);
 
             // Fast-fetches (e.g. assets that resolved synchronously) may already be ready.
+            // Whether the texture stored successfully or failed to load, the model need not
+            // wait on it once it has been processed.
             if (isAssetReady(textureHandle) && processReadyTexture(textureHandle)) {
-                if (loadedTextures.contains(textureHandle)) {
-                    // Stored synchronously; the model need not wait on it.
-                    continue;
-                }
-
-                // The texture was processed but failed to load; the model can never finish.
-                return false;
+                continue;
             }
 
             fetchingTextures.add(textureHandle);
@@ -353,8 +343,6 @@ private bool fetchModelTextures(AssetHandle modelHandle, Model* model, out size_
     if (pending > 0) {
         pendingTextureCounts.put(modelHandle, pending);
     }
-
-    return true;
 }
 
 private void addTextureDependent(AssetHandle textureHandle, AssetHandle modelHandle) {
@@ -377,27 +365,27 @@ private void processFetchingTextures() {
 private bool processReadyTexture(AssetHandle handle) {
     auto dataRes = getAssetData(handle);
     if (dataRes.isFailure()) {
-        logError("Failed to read fetched texture asset data: ", dataRes.errorMessage());
-        return false;
+        failTexture(handle, dataRes.errorMessage());
+        return true;
     }
 
     auto imageResult = loadImage(dataRes.value());
     if (imageResult.isFailure()) {
-        logError("Failed to load fetched texture: ", imageResult.errorMessage());
-        failTexture(handle);
+        failTexture(handle, imageResult.errorMessage());
         return true;
     }
 
     loadedTextures.put(handle, imageResult.share());
-    notifyTextureLoaded(handle);
+    notifyTextureResolved(handle);
     return true;
 }
 
 /**
- * Notify every model waiting on the given texture that it has loaded, finishing any model
- * whose last outstanding texture this was.
+ * Notify every model waiting on the given texture that it has resolved, finishing any model
+ * whose last outstanding texture this was. A texture resolves whether it loaded successfully
+ * or failed; a failed texture is simply left out of the models that referenced it.
  */
-private void notifyTextureLoaded(AssetHandle textureHandle) {
+private void notifyTextureResolved(AssetHandle textureHandle) {
     Array!AssetHandle dependents;
     if (!textureDependents.tryGet(textureHandle, dependents)) {
         return;
@@ -445,20 +433,21 @@ private void abandonModel(AssetHandle handle) {
 }
 
 /**
- * Drop all bookkeeping for a texture that failed to load and abandon every model that was
- * waiting on it, since those models can no longer finish.
+ * Log why a texture failed to load, drop its path mapping so nothing mistakes it for a loaded
+ * texture, then resolve it for every model waiting on it. Those models still finish; they are
+ * simply loaded without this texture.
  */
-private void failTexture(AssetHandle handle) {
-    removeHandleByValue(textureHandles, handle);
-
-    Array!AssetHandle dependents;
-    if (textureDependents.tryGet(handle, dependents)) {
-        foreach (modelHandle; dependents) {
-            abandonModel(modelHandle);
+private void failTexture(AssetHandle handle, String reason) {
+    foreach (ref path, ref storedHandle; textureHandles) {
+        if (storedHandle == handle) {
+            logError("Texture '", path, "' failed to load (", reason,
+                "); models referencing it will be loaded without it");
+            break;
         }
-
-        textureDependents.remove(handle);
     }
+
+    removeHandleByValue(textureHandles, handle);
+    notifyTextureResolved(handle);
 }
 
 /// Remove the first entry mapping a virtual path to the given handle, if any.
@@ -773,7 +762,7 @@ void runAssetLibraryTests() {
         assert(getModelHandle("lib/model.rgm".s).isFailure);
     });
 
-    test("a model whose texture fails to load is abandoned", () {
+    test("a model whose texture fails to load still finishes without that texture", () {
         resetState();
         suppressErrorLogging = true;
         mountAssetsPath("unittest://lib/".s, "lib/".s);
@@ -787,8 +776,32 @@ void runAssetLibraryTests() {
         assetFetchComplete(textureHandle, garbage[]);
         processLibraryAssets();
 
-        assert(!testCallbackFired);
-        assert(getModel(modelHandle).isFailure);
+        // The model is loaded despite its only texture failing; the texture is not retrievable.
+        assert(testCallbackFired);
+        assert(getModel(modelHandle).isSuccessful);
         assert(getTexture(textureHandle).isFailure);
+    });
+
+    test("a model finishes when only some of its textures fail to load", () {
+        resetState();
+        suppressErrorLogging = true;
+        mountAssetsPath("unittest://lib/".s, "lib/".s);
+
+        ubyte[4] garbage = [0x00, 0x00, 0x00, 0x00];
+        auto modelHandle = fetchModel("lib/model.rgm".s, &markCallbackFired).value;
+        assetFetchComplete(modelHandle, bytes(twoTextureRgm));
+        processLibraryAssets();
+
+        // The first texture loads successfully, the second fails to parse.
+        auto textureA = getTextureHandle("lib/a.rgi".s).value;
+        auto textureB = getTextureHandle("lib/b.rgi".s).value;
+        assetFetchComplete(textureA, bytes(imageRgi));
+        assetFetchComplete(textureB, garbage[]);
+        processLibraryAssets();
+
+        assert(testCallbackFired);
+        assert(getModel(modelHandle).isSuccessful);
+        assert(getTexture(textureA).isSuccessful);
+        assert(getTexture(textureB).isFailure);
     });
 }
