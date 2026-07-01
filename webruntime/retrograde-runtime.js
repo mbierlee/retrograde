@@ -13,6 +13,7 @@ export default class RetrogradeRuntime {
   shaderPrograms = [];
   buffers = [];
   vertextArrayObjects = [];
+  textures = [];
 
   uniformLocations = [];
   uniformLocationDict = {};
@@ -356,6 +357,69 @@ export default class RetrogradeRuntime {
         this.glContext.blendFunc(sfactor, dfactor);
       },
 
+      glCreateTexture: () => {
+        const texture = this.glContext.createTexture();
+        this.textures.push(texture);
+        return this.textures.length;
+      },
+
+      glDeleteTexture: (texture) => {
+        const textureObject = this.getTextureObject(texture);
+        this.glContext.deleteTexture(textureObject);
+      },
+
+      glBindTexture: (target, texture) => {
+        const textureObject = this.getTextureObject(texture);
+        this.glContext.bindTexture(target, textureObject);
+      },
+
+      glActiveTexture: (texture) => {
+        this.glContext.activeTexture(texture);
+      },
+
+      glTexImage2D: (
+        target,
+        level,
+        internalformat,
+        width,
+        height,
+        border,
+        format,
+        type,
+        pixelsLength,
+        pixelsPtr
+      ) => {
+        const pixels = this.getUint8Array(pixelsPtr, pixelsLength);
+        this.glContext.texImage2D(
+          target,
+          level,
+          internalformat,
+          width,
+          height,
+          border,
+          format,
+          type,
+          pixels
+        );
+      },
+
+      glTexParameteri: (target, pname, param) => {
+        this.glContext.texParameteri(target, pname, param);
+      },
+
+      glGenerateMipmap: (target) => {
+        this.glContext.generateMipmap(target);
+      },
+
+      glPixelStorei: (pname, param) => {
+        this.glContext.pixelStorei(pname, param);
+      },
+
+      glUniform1i: (location, value) => {
+        const locationObject = this.getUniformLocationObject(location);
+        this.glContext.uniform1i(locationObject, value);
+      },
+
       // Asset Loading
       
       startAssetFetch: (urlPtr, urlLen, handle) => {
@@ -471,6 +535,10 @@ export default class RetrogradeRuntime {
     return array;
   }
 
+  getUint8Array(pointer, length) {
+    return new Uint8Array(this.memory.buffer, pointer, length).slice();
+  }
+
   getUnsignedInt32Array(pointer, length) {
     const uintSize = 4;
     const array = new Uint32Array(length);
@@ -558,6 +626,10 @@ export default class RetrogradeRuntime {
 
   getUniformLocationObject(name) {
     return this.getGlObject(this.uniformLocations, name, "Uniform Location");
+  }
+
+  getTextureObject(name) {
+    return this.getGlObject(this.textures, name, "Texture");
   }
 
   setupCanvas() {

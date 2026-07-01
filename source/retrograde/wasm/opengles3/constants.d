@@ -48,5 +48,26 @@ enum GL_EQUAL = 0x0202;
 enum GL_LEQUAL = 0x0203;
 
 // Data types
+enum GL_UNSIGNED_BYTE = 0x1401;
 enum GL_UNSIGNED_INT = 0x1405;
 enum GL_FLOAT = 0x1406;
+
+// Pixel formats
+enum GL_RGB = 0x1907;
+enum GL_RGBA = 0x1908;
+
+// Pixel storage modes
+enum GL_UNPACK_ALIGNMENT = 0x0CF5;
+
+// Textures
+enum GL_TEXTURE_2D = 0x0DE1;
+enum GL_TEXTURE0 = 0x84C0;
+enum GL_TEXTURE_MAG_FILTER = 0x2800;
+enum GL_TEXTURE_MIN_FILTER = 0x2801;
+enum GL_TEXTURE_WRAP_S = 0x2802;
+enum GL_TEXTURE_WRAP_T = 0x2803;
+enum GL_NEAREST = 0x2600;
+enum GL_LINEAR = 0x2601;
+enum GL_LINEAR_MIPMAP_LINEAR = 0x2703;
+enum GL_REPEAT = 0x2901;
+enum GL_CLAMP_TO_EDGE = 0x812F;

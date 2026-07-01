@@ -134,11 +134,6 @@ struct Vertex {
     VertexComponent g; /// Green component
     VertexComponent b; /// Blue component
     VertexComponent a; /// Alpha component (transparency)
-
-    // Texture Coordinates
-    // VertexComponent u;
-    // VertexComponent v;
-    // VertexComponent tw;
 }
 
 /**
@@ -148,8 +143,6 @@ struct Face {
     VertexIndex vA; /// Index of the first vertex
     VertexIndex vB; /// Index of the second vertex
     VertexIndex vC; /// Index of the third vertex
-
-    // TextureCoordinateIndex vtA, vtB, vtC;
 }
 
 /**
