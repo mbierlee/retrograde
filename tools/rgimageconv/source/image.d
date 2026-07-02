@@ -12,6 +12,8 @@
 module image;
 
 enum PixelFormat : ubyte {
+    y8,
+    ya8,
     rgb8,
     rgba8,
 }
@@ -25,6 +27,10 @@ struct DecodedImage {
 
 ubyte channelCount(PixelFormat f) {
     final switch (f) {
+    case PixelFormat.y8:
+        return 1;
+    case PixelFormat.ya8:
+        return 2;
     case PixelFormat.rgb8:
         return 3;
     case PixelFormat.rgba8:
@@ -34,6 +40,10 @@ ubyte channelCount(PixelFormat f) {
 
 ubyte bytesPerChannel(PixelFormat f) {
     final switch (f) {
+    case PixelFormat.y8:
+        return 1;
+    case PixelFormat.ya8:
+        return 1;
     case PixelFormat.rgb8:
         return 1;
     case PixelFormat.rgba8:
