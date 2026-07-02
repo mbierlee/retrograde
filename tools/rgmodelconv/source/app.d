@@ -61,7 +61,7 @@ int main(string[] args) {
     const(aiScene)* scene = aiImportFile(
         inputFile.toStringz(),
         aiPostProcessSteps.Triangulate | aiPostProcessSteps.JoinIdenticalVertices | aiPostProcessSteps
-            .SortByPType
+            .SortByPType | aiPostProcessSteps.FlipUVs
     );
 
     if (scene is null) {
