@@ -8,6 +8,7 @@
   "targetType": "executable",
   "versions": ["Native", "NoGraphicsApi"],
   "dependencies": {
-    "retrograde": { "path": "../../" }
+    "retrograde": { "path": "../../" },
+    "imageformats": { "path": "../../third-party/imageformats" }
   }
 }

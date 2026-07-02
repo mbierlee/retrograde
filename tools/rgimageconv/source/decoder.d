@@ -21,6 +21,9 @@ import std.uni : toLower;
 
 import image : DecodedImage;
 import decoders.bmp : bmpDecoder;
+import decoders.png : pngDecoder;
+import decoders.tga : tgaDecoder;
+import decoders.jpeg : jpegDecoder;
 
 struct DecodeResult {
     bool ok;
@@ -38,7 +41,7 @@ struct DecoderEntry {
     DecodeFn decode;
 }
 
-immutable DecoderEntry[] decoders = [bmpDecoder];
+immutable DecoderEntry[] decoders = [bmpDecoder, pngDecoder, tgaDecoder, jpegDecoder];
 
 DecodeResult decodeImage(string path, const(ubyte)[] bytes) {
     foreach (entry; decoders) {

@@ -44,6 +44,10 @@ struct EncodeOutcome {
 
 private ChannelFormat toRgiChannelFormat(PixelFormat f) {
     final switch (f) {
+    case PixelFormat.y8:
+        return ChannelFormat.u8;
+    case PixelFormat.ya8:
+        return ChannelFormat.u8;
     case PixelFormat.rgb8:
         return ChannelFormat.u8;
     case PixelFormat.rgba8:
