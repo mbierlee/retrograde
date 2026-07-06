@@ -75,7 +75,7 @@ Note: Only position and color are stored in the file. When loaded into the engin
 
 Each face is a triangle polygon represented by three 0-based vertex indices. The face section is variable in size because the number of faces in a mesh can vary; the total size of the face section is `faceCount × 12`.
 
-Vertex indices are wound in **counter-clockwise (CCW)** order when viewed from the front face. The engine enables back-face culling using the OpenGL ES 3 default front-face convention (CCW).
+Vertex indices are wound in **counter-clockwise (CCW)** order when viewed from the front face. This is the front-face convention the engine uses for back-face culling.
 
 | Offset | Size | Type | Description    |
 | ------ | ---- | ---- | -------------- |
@@ -85,7 +85,7 @@ Vertex indices are wound in **counter-clockwise (CCW)** order when viewed from t
 
 ### UV Channel Data (uvChannelCount × vertexCount × 8 bytes)
 
-When `uvChannelCount` is greater than zero, UV texture coordinates follow the face data. The data is laid out **channel-major**: all UV pairs for channel 0 first (one pair per vertex, in vertex order), then all UV pairs for channel 1, and so on through channel `uvChannelCount - 1`. Channels must be contiguous starting at 0 (matching the glTF `TEXCOORD_0`, `TEXCOORD_1`, ... convention). Each pair is two 32-bit little-endian IEEE 754 floats.
+When `uvChannelCount` is greater than zero, UV texture coordinates follow the face data. The data is laid out **channel-major**: all UV pairs for channel 0 first (one pair per vertex, in vertex order), then all UV pairs for channel 1, and so on through channel `uvChannelCount - 1`. Channels must be contiguous starting at 0 (channel 0, channel 1, ...). Each pair is two 32-bit little-endian IEEE 754 floats.
 
 The maximum number of UV channels is 8.
 
@@ -164,14 +164,48 @@ Referencing textures by their declared index (rather than by file position) mean
 | ------ | ---- | ----- | --------------------------------------- |
 | 0x00   | 4    | uint  | Texture index (≥ 1, unique within file) |
 | 0x04   | 1    | ubyte | Texture type                            |
-| 0x05   | ...  | ...   | Type-specific payload                   |
+| 0x05   | 1    | ubyte | Magnification filter (`magFilter`)      |
+| 0x06   | 1    | ubyte | Minification filter (`minFilter`)       |
+| 0x07   | ...  | ...   | Type-specific payload                   |
+
+The `magFilter` and `minFilter` bytes are common to every texture type and precede the
+type-specific payload (see "Sampler Filters" below).
 
 ### Texture Types
 
-| Value | Name      | Description                                                       |
+| Value | Name      | Description                                                      |
 | ----- | --------- | ---------------------------------------------------------------- |
 | 0     | Reference | The payload is a path to an external image file.                 |
 | 1     | Embedded  | Reserved: image data embedded in the model. Not yet implemented. |
+
+### Sampler Filters
+
+Two `ubyte` filter fields describe how the texture should be sampled: `magFilter` selects
+how it is magnified (scaled up) and `minFilter` how it is minified (scaled down). A value
+of `0` (`unspecified`) means no filter is stored and the engine chooses its own default when
+sampling.
+
+Magnification filter (`magFilter`):
+
+| Value | Name        |
+| ----- | ----------- |
+| 0     | Unspecified |
+| 1     | Nearest     |
+| 2     | Linear      |
+
+Minification filter (`minFilter`):
+
+| Value | Name                   |
+| ----- | ---------------------- |
+| 0     | Unspecified            |
+| 1     | Nearest                |
+| 2     | Linear                 |
+| 3     | Nearest Mipmap Nearest |
+| 4     | Linear Mipmap Nearest  |
+| 5     | Nearest Mipmap Linear  |
+| 6     | Linear Mipmap Linear   |
+
+Readers reject any value not listed above.
 
 ### Reference Payload (type = 0)
 

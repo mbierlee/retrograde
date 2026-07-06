@@ -106,6 +106,36 @@ enum TextureType : ubyte {
 }
 
 /**
+ * Magnification filter used when sampling a texture.
+ *
+ * Mirrors the option set of the glTF sampler `magFilter` (and OpenGL's
+ * `GL_TEXTURE_MAG_FILTER`), but uses engine-local sequential values rather than
+ * the glTF/GL constant numbers. `unspecified` means the engine picks a default.
+ */
+enum TextureMagFilter : ubyte {
+    unspecified = 0, /// No filter stored; the renderer chooses its default.
+    nearest = 1,
+    linear = 2
+}
+
+/**
+ * Minification filter used when sampling a texture.
+ *
+ * Mirrors the option set of the glTF sampler `minFilter` (and OpenGL's
+ * `GL_TEXTURE_MIN_FILTER`), but uses engine-local sequential values rather than
+ * the glTF/GL constant numbers. `unspecified` means the engine picks a default.
+ */
+enum TextureMinFilter : ubyte {
+    unspecified = 0, /// No filter stored; the renderer chooses its default.
+    nearest = 1,
+    linear = 2,
+    nearestMipmapNearest = 3,
+    linearMipmapNearest = 4,
+    nearestMipmapLinear = 5,
+    linearMipmapLinear = 6
+}
+
+/**
  * Represents a texture referenced by one or more materials.
  *
  * Textures are stored in a flat list on `Model` and looked up by their unique
@@ -114,6 +144,8 @@ enum TextureType : ubyte {
 struct Texture {
     TextureIndex index; /// 1-based unique index used by materials to reference this texture.
     TextureType type;
+    TextureMagFilter magFilter; /// Magnification filter. `unspecified` (default) lets the renderer choose.
+    TextureMinFilter minFilter; /// Minification filter. `unspecified` (default) lets the renderer choose.
     String path; /// Populated when `type == TextureType.reference`: the path to the external image file. Empty otherwise.
 
     mixin CopyConstructors!Texture;

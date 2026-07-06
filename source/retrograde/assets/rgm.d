@@ -13,7 +13,7 @@ module retrograde.assets.rgm;
 
 import retrograde.assets.model : Model, Vertex, Face, Mesh, UvCoord, maxUvChannels,
     Material, MaterialIndex, MaterialType, MaterialFlags, noMaterial,
-    Texture, TextureIndex, TextureType;
+    Texture, TextureIndex, TextureType, TextureMagFilter, TextureMinFilter;
 import retrograde.assets.readercommon : readUInt, readUShort, readFloat;
 import retrograde.std.endian : toPlatformEndian, Endian;
 import retrograde.std.memory : ResultPtr, failedPtr, makeRaw, successPtr;
@@ -414,6 +414,45 @@ private OperationResult readTextureData(const(ubyte)[] data, ref size_t offset, 
         return failure("Unknown texture type.");
     }
 
+    // Read sampler filters (common to every texture type).
+    if (data.length - offset < 1) {
+        return failure("Cannot read texture magFilter: Unexpected end of data.");
+    }
+
+    ubyte magFilterByte = data[offset];
+    offset += 1;
+
+    bool knownMagFilter = false;
+    static foreach (member; __traits(allMembers, TextureMagFilter)) {
+        if (magFilterByte == cast(ubyte) __traits(getMember, TextureMagFilter, member)) {
+            texture.magFilter = __traits(getMember, TextureMagFilter, member);
+            knownMagFilter = true;
+        }
+    }
+
+    if (!knownMagFilter) {
+        return failure("Unknown texture magFilter.");
+    }
+
+    if (data.length - offset < 1) {
+        return failure("Cannot read texture minFilter: Unexpected end of data.");
+    }
+
+    ubyte minFilterByte = data[offset];
+    offset += 1;
+
+    bool knownMinFilter = false;
+    static foreach (member; __traits(allMembers, TextureMinFilter)) {
+        if (minFilterByte == cast(ubyte) __traits(getMember, TextureMinFilter, member)) {
+            texture.minFilter = __traits(getMember, TextureMinFilter, member);
+            knownMinFilter = true;
+        }
+    }
+
+    if (!knownMinFilter) {
+        return failure("Unknown texture minFilter.");
+    }
+
     // Type-specific payload.
     if (texture.type == TextureType.embedded) {
         return failure("Embedded textures are not yet implemented.");
@@ -778,7 +817,7 @@ void runRgmTests() {
     });
 
     test("Load model with one Unlit material referencing a texture", {
-        ubyte[143] modelData = [
+        ubyte[145] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -816,6 +855,8 @@ void runRgmTests() {
             // Texture 1
             0x01, 0x00, 0x00, 0x00, // Texture index (1)
             0x00, // Texture type (reference)
+            0x02, // magFilter (linear)
+            0x06, // minFilter (linearMipmapLinear)
             0x0B, 0x00, // Path length (11)
             'd', 'i', 'f', 'f', 'u', 's', 'e', '.', 'r', 'g', 'i', // Path
         ];
@@ -834,6 +875,8 @@ void runRgmTests() {
         assert(model.textures.length == 1);
         assert(model.textures[0].index == 1);
         assert(model.textures[0].type == TextureType.reference);
+        assert(model.textures[0].magFilter == TextureMagFilter.linear);
+        assert(model.textures[0].minFilter == TextureMinFilter.linearMipmapLinear);
         assert(model.textures[0].path == "diffuse.rgi");
     });
 
@@ -887,7 +930,7 @@ void runRgmTests() {
     });
 
     test("Load model with multiple materials using non-sequential indices", {
-        ubyte[161] modelData = [
+        ubyte[163] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -936,6 +979,8 @@ void runRgmTests() {
             // Texture 1: reference at index 2 (declared index is independent of file order)
             0x02, 0x00, 0x00, 0x00, // Texture index (2)
             0x00, // Texture type (reference)
+            0x00, // magFilter (unspecified)
+            0x00, // minFilter (unspecified)
             0x0A, 0x00, // Path length (10)
             'a', 'l', 'b', 'e', 'd', 'o', '.', 'r', 'g', 'i',
         ];
@@ -959,6 +1004,8 @@ void runRgmTests() {
         assert(model.textures.length == 1);
         assert(model.textures[0].index == 2);
         assert(model.textures[0].type == TextureType.reference);
+        assert(model.textures[0].magFilter == TextureMagFilter.unspecified);
+        assert(model.textures[0].minFilter == TextureMinFilter.unspecified);
         assert(model.textures[0].path == "albedo.rgi");
     });
 
@@ -1103,7 +1150,7 @@ void runRgmTests() {
     });
 
     test("Reject duplicate texture indices", {
-        ubyte[29] modelData = [
+        ubyte[31] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -1114,6 +1161,8 @@ void runRgmTests() {
             // Texture 1
             0x01, 0x00, 0x00, 0x00, // Texture index (1)
             0x00, // Texture type (reference)
+            0x00, // magFilter (unspecified)
+            0x00, // minFilter (unspecified)
             0x00, 0x00, // Path length (0)
 
             // Texture 2 (duplicate index)
@@ -1125,7 +1174,7 @@ void runRgmTests() {
     });
 
     test("Reject embedded texture as not yet implemented", {
-        ubyte[23] modelData = [
+        ubyte[25] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -1136,6 +1185,47 @@ void runRgmTests() {
             // Texture 1: embedded (reserved, not implemented)
             0x01, 0x00, 0x00, 0x00, // Texture index (1)
             0x01, // Texture type (embedded)
+            0x00, // magFilter (unspecified)
+            0x00, // minFilter (unspecified)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
+    test("Reject texture with unknown magFilter", {
+        ubyte[24] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of textures (1)
+
+            // Texture 1: reference with an out-of-range magFilter
+            0x01, 0x00, 0x00, 0x00, // Texture index (1)
+            0x00, // Texture type (reference)
+            0xFF, // magFilter (unknown)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
+    test("Reject texture with unknown minFilter", {
+        ubyte[25] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of textures (1)
+
+            // Texture 1: reference with a valid magFilter but out-of-range minFilter
+            0x01, 0x00, 0x00, 0x00, // Texture index (1)
+            0x00, // Texture type (reference)
+            0x02, // magFilter (linear)
+            0xFF, // minFilter (unknown)
         ];
 
         auto result = loadModel(modelData);
