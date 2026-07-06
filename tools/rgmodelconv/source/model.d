@@ -52,10 +52,9 @@ struct TextureRef {
 }
 
 /**
- * Classification inputs extracted from a single glTF material. Mirrors the
- * material properties the previous Assimp-based converter relied on: the unlit
- * shading model (`KHR_materials_unlit`), the double-sided flag, and the material's
- * texture references.
+ * Classification inputs extracted from a single glTF material: the unlit shading
+ * model (`KHR_materials_unlit`), the double-sided flag, and the material's texture
+ * references.
  */
 struct MaterialInfo {
     bool unlit; /// True when the material declares the KHR_materials_unlit extension.
