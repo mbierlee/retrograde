@@ -2,14 +2,13 @@
 
 This guide explains how to set up materials in **Blender 5.1** so that
 `rgmodelconv` classifies them into the right Retrograde [material type](rgm-fileformat.md)
-when you export to glTF/FBX and convert to `.rgm`.
+when you export to glTF and convert to `.rgm`.
 
-**Export via glTF (`.glb`/`.gltf`) is the preferred and tested route.** While
-`rgmodelconv` accepts any format Assimp can read (FBX, COLLADA, OBJ, …), the
-material classification described here is validated against Blender's glTF
-exporter — material types are inferred from glTF concepts such as
-`KHR_materials_unlit` and the `doubleSided` flag. Other exporters may surface
-these differently and are not guaranteed to classify correctly.
+**`rgmodelconv` reads glTF 2.0 only** — specifically a `.gltf` text file with an
+external `.bin` buffer and external image files. Binary `.glb` containers are not
+supported, so in Blender's glTF exporter pick the **glTF Separate (.gltf + .bin +
+textures)** format. Material classification is driven by glTF concepts such as
+`KHR_materials_unlit` and the `doubleSided` flag.
 
 Retrograde does not read a custom "material type" property. Instead,
 `rgmodelconv` infers the type from how the material is shaded and what it

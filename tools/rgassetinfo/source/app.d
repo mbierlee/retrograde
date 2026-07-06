@@ -25,7 +25,7 @@ import retrograde.assets.rgm : loadModel, loadModelHeader, ModelHeader, rgmMagic
 import retrograde.assets.rgi : loadImageHeader, ImageHeader, rgiMagicNumber,
     CompressionType, ColorMode, IndexFormat, bytesPerIndex;
 import retrograde.assets.model : Model, Mesh, Material, MaterialType, noMaterial,
-    Texture, TextureType;
+    Texture, TextureType, TextureMagFilter, TextureMinFilter;
 import retrograde.assets.image : ChannelFormat, bytesPerChannel;
 
 private enum AssetKind {
@@ -288,8 +288,9 @@ int showModelInfo(string inputFile, const(ubyte)[] data, ref bool printedAny) {
     if (textures.length > 0) {
         writeln("Per-texture:");
         foreach (i, ref texture; textures) {
-            writefln("  Texture %d: index %d, type %s%s",
+            writefln("  Texture %d: index %d, type %s, magFilter %s, minFilter %s%s",
                 i, texture.index, textureTypeName(texture.type),
+                magFilterName(texture.magFilter), minFilterName(texture.minFilter),
                 texturePayloadDescription(texture));
         }
     }
@@ -341,6 +342,36 @@ string textureTypeName(TextureType type) {
         return "reference";
     case TextureType.embedded:
         return "embedded";
+    }
+}
+
+string magFilterName(TextureMagFilter filter) {
+    final switch (filter) {
+    case TextureMagFilter.unspecified:
+        return "unspecified";
+    case TextureMagFilter.nearest:
+        return "nearest";
+    case TextureMagFilter.linear:
+        return "linear";
+    }
+}
+
+string minFilterName(TextureMinFilter filter) {
+    final switch (filter) {
+    case TextureMinFilter.unspecified:
+        return "unspecified";
+    case TextureMinFilter.nearest:
+        return "nearest";
+    case TextureMinFilter.linear:
+        return "linear";
+    case TextureMinFilter.nearestMipmapNearest:
+        return "nearestMipmapNearest";
+    case TextureMinFilter.linearMipmapNearest:
+        return "linearMipmapNearest";
+    case TextureMinFilter.nearestMipmapLinear:
+        return "nearestMipmapLinear";
+    case TextureMinFilter.linearMipmapLinear:
+        return "linearMipmapLinear";
     }
 }
 
