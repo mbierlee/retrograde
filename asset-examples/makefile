@@ -21,8 +21,8 @@ cube-vertexcolors.rgm: cube-vertexcolors.gltf
 cube-unlit-textured.rgm: cube-unlit-textured.gltf
 	$(RGMODELCONV) -i cube-unlit-textured.gltf -o cube-unlit-textured.rgm
 
-test1024.rgi: test1024.bmp
-	$(RGIMAGECONV) -i test1024.bmp -o test1024.rgi
+test1024.rgi: test1024.png
+	$(RGIMAGECONV) -i test1024.png -o test1024.rgi
 
 clean:
 	$(RM) cube-nomat.rgm cube-vertexcolors.rgm cube-unlit-textured.rgm test1024.rgi
