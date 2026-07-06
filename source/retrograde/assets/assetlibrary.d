@@ -486,7 +486,7 @@ private immutable ubyte[18] emptyModelRgm = [
 ];
 
 // RGM referencing a single texture at "lib/a.rgi".
-private immutable ubyte[34] oneTextureRgm = [
+private immutable ubyte[36] oneTextureRgm = [
     0x52, 0x47, 0x4D, 0x20, // Magic
     0x01, 0x00, // Version
     0x00, 0x00, 0x00, 0x00, // Meshes (0)
@@ -495,22 +495,24 @@ private immutable ubyte[34] oneTextureRgm = [
     // Texture 1
     0x01, 0x00, 0x00, 0x00, // Index (1)
     0x00, // Type (reference)
+    0x00, // magFilter (unspecified)
+    0x00, // minFilter (unspecified)
     0x09, 0x00, // Path length (9)
     'l', 'i', 'b', '/', 'a', '.', 'r', 'g', 'i',
 ];
 
 // RGM referencing two textures at "lib/a.rgi" and "lib/b.rgi".
-private immutable ubyte[50] twoTextureRgm = [
+private immutable ubyte[54] twoTextureRgm = [
     0x52, 0x47, 0x4D, 0x20, // Magic
     0x01, 0x00, // Version
     0x00, 0x00, 0x00, 0x00, // Meshes (0)
     0x00, 0x00, 0x00, 0x00, // Materials (0)
     0x02, 0x00, 0x00, 0x00, // Textures (2)
     // Texture 1
-    0x01, 0x00, 0x00, 0x00, 0x00, 0x09, 0x00, 'l', 'i', 'b', '/', 'a', '.', 'r',
+    0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x00, 'l', 'i', 'b', '/', 'a', '.', 'r',
     'g', 'i',
     // Texture 2
-    0x02, 0x00, 0x00, 0x00, 0x00, 0x09, 0x00, 'l', 'i', 'b', '/', 'b', '.', 'r',
+    0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x00, 'l', 'i', 'b', '/', 'b', '.', 'r',
     'g', 'i',
 ];
 
