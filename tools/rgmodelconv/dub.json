@@ -8,23 +8,6 @@
   "targetType": "executable",
   "versions": ["Native", "NoGraphicsApi"],
   "dependencies": {
-    "bindbc-assimp5": { "path": "../../third-party/bindbc-assimp5" },
     "retrograde": { "path": "../../" }
-  },
-  "configurations": [
-    {
-      "name": "windows",
-      "platforms": ["windows"],
-      "postBuildCommands": [
-        "copy /Y $PACKAGE_DIR\\lib\\assimp-vc143-mt.dll $PACKAGE_DIR\\bin\\assimp-vc143-mt.dll"
-      ]
-    },
-    {
-      "name": "linux",
-      "platforms": ["linux"],
-      "postBuildCommands": [
-        "cp -f $PACKAGE_DIR/lib/libassimp.so.5 $PACKAGE_DIR/bin/libassimp.so.5"
-      ]
-    }
-  ]
+  }
 }

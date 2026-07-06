@@ -1,7 +1,4 @@
 {
   "fileVersion": 1,
-  "versions": {
-    "bindbc-assimp5": { "path": "../../third-party/bindbc-assimp5" },
-    "bindbc-loader": { "path": "../../third-party/bindbc-loader" }
-  }
+  "versions": {}
 }
