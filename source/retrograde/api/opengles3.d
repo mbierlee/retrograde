@@ -20,7 +20,7 @@ import retrograde.engine.entity : EntityId, hasComponent, withComponentData, add
 import retrograde.engine.rendering : Color, RenderPass, Viewport, renderPasses, MaterialShader;
 
 import retrograde.assets.model : ModelComponentType, Model, MaterialType, MaterialIndex, noMaterial,
-    TextureIndex, Texture;
+    TextureIndex, Texture, TextureMagFilter, TextureMinFilter;
 import retrograde.assets.image : Image, ChannelFormat;
 import retrograde.assets.assetlibrary : getModel, getTexture;
 
@@ -390,14 +390,57 @@ private GLuint createMaterialTexture(Model* model, TextureIndex textureIndex) {
     glTexImage2D(GL_TEXTURE_2D, 0, format, image.width, image.height, 0, format,
         GL_UNSIGNED_BYTE, pixels);
 
+    GLenum minFilter = resolveMinFilter(texture.minFilter);
+    GLenum magFilter = resolveMagFilter(texture.magFilter);
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glGenerateMipmap(GL_TEXTURE_2D);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minFilter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magFilter);
+
+    if (minFilterUsesMipmaps(minFilter)) {
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
 
     glBindTexture(GL_TEXTURE_2D, 0);
     return textureObject;
+}
+
+private GLenum resolveMagFilter(TextureMagFilter filter) {
+    final switch (filter) {
+        case TextureMagFilter.nearest:
+            return GL_NEAREST;
+        case TextureMagFilter.linear:
+            return GL_LINEAR;
+        case TextureMagFilter.unspecified:
+            return GL_LINEAR;
+    }
+}
+
+private GLenum resolveMinFilter(TextureMinFilter filter) {
+    final switch (filter) {
+        case TextureMinFilter.nearest:
+            return GL_NEAREST;
+        case TextureMinFilter.linear:
+            return GL_LINEAR;
+        case TextureMinFilter.nearestMipmapNearest:
+            return GL_NEAREST_MIPMAP_NEAREST;
+        case TextureMinFilter.linearMipmapNearest:
+            return GL_LINEAR_MIPMAP_NEAREST;
+        case TextureMinFilter.nearestMipmapLinear:
+            return GL_NEAREST_MIPMAP_LINEAR;
+        case TextureMinFilter.linearMipmapLinear:
+            return GL_LINEAR_MIPMAP_LINEAR;
+        case TextureMinFilter.unspecified:
+            return GL_LINEAR_MIPMAP_LINEAR;
+    }
+}
+
+private bool minFilterUsesMipmaps(GLenum minFilter) {
+    return minFilter == GL_NEAREST_MIPMAP_NEAREST
+        || minFilter == GL_LINEAR_MIPMAP_NEAREST
+        || minFilter == GL_NEAREST_MIPMAP_LINEAR
+        || minFilter == GL_LINEAR_MIPMAP_LINEAR;
 }
 
 void unloadEntityModel(EntityId entity) {

@@ -95,6 +95,25 @@ to the engine/runtime.
 
 See `asset-examples/cube-unlit-textured.blend` for a working example.
 
+### Texture filtering (min/mag filter)
+
+Blender 5.1 does not expose the glTF `magFilter` / `minFilter` sampler fields
+directly. The exporter derives **both** from the **Interpolation** dropdown on
+the **Image Texture** node (visible on the node itself in the Shader Editor, or
+under **Sidebar ▸ Item ▸ Node** when the node is selected):
+
+| Node Interpolation              | glTF magFilter | glTF minFilter           | `.rgm` filters (mag / min)             |
+| ------------------------------- | -------------- | ------------------------ | -------------------------------------- |
+| **Closest**                     | `NEAREST`      | `NEAREST_MIPMAP_NEAREST` | Nearest / Nearest Mipmap Nearest       |
+| **Linear** (also Cubic / Smart) | `LINEAR`       | `LINEAR_MIPMAP_LINEAR`   | Linear / Linear Mipmap Linear          |
+
+Pick **Closest** for crisp, blocky pixel-art textures, or **Linear** (Blender's
+default) for smooth bilinear/trilinear filtering. Because both filters are driven
+by the single Interpolation setting, you cannot mix them from Blender alone
+(e.g. nearest magnification with a linear-mipmapped minification) — that requires
+editing the glTF sampler by hand. See the [RGM format spec](rgm-fileformat.md)
+for the full list of filter values `rgmodelconv` can store.
+
 ---
 
 ## Backface culling
