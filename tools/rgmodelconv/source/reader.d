@@ -146,8 +146,7 @@ private Primitive parsePrimitive(ref JSONValue gltf, const(ubyte)[][] buffers, J
     result.vertexCount = cast(uint) positions.count;
     result.positions = positions.values;
 
-    // Vertex colors (COLOR_0). Assimp exposed this as mColors[0]; the RGB
-    // components are kept and any alpha is dropped.
+    // Vertex colors (COLOR_0). The RGB components are kept and any alpha is dropped.
     if (auto colorP = "COLOR_0" in attrs.object) {
         AccessorData colors = readFloatAccessor(gltf, buffers, cast(size_t) jsonInt(*colorP));
         if (colors.count != result.vertexCount) {
@@ -163,8 +162,9 @@ private Primitive parsePrimitive(ref JSONValue gltf, const(ubyte)[][] buffers, J
         }
     }
 
-    // UV channels (TEXCOORD_0, TEXCOORD_1, ...), contiguous from 0. V is flipped
-    // (v -> 1 - v) to match the previous converter's FlipUVs post-process.
+    // UV channels (TEXCOORD_0, TEXCOORD_1, ...), contiguous from 0. UVs are kept
+    // exactly as glTF stores them (top-left origin), which is the convention the
+    // engine expects; V is not flipped.
     for (uint channel = 0;; channel++) {
         auto uvP = ("TEXCOORD_" ~ channel.to!string) in attrs.object;
         if (uvP is null) {
@@ -179,7 +179,7 @@ private Primitive parsePrimitive(ref JSONValue gltf, const(ubyte)[][] buffers, J
         float[] channelData = new float[result.vertexCount * 2];
         for (uint i = 0; i < result.vertexCount; i++) {
             channelData[i * 2 + 0] = uv.values[i * uv.componentCount + 0];
-            channelData[i * 2 + 1] = 1.0f - uv.values[i * uv.componentCount + 1];
+            channelData[i * 2 + 1] = uv.values[i * uv.componentCount + 1];
         }
 
         result.uvChannels ~= channelData;
@@ -214,11 +214,10 @@ private MaterialInfo parseMaterial(ref JSONValue gltf, JSONValue mat) {
 
     info.doubleSided = optBool(mat, "doubleSided", false);
 
-    // Gather the material's texture references in the same priority order the
-    // Assimp converter observed (base color first, then emissive, normal,
-    // occlusion and finally metallic-roughness). `hasAnyTexture` records whether
-    // the material references any texture at all; `texture` takes the first one
-    // that resolves to an external image file.
+    // Gather the material's texture references in priority order (base color
+    // first, then emissive, normal, occlusion and finally metallic-roughness).
+    // `hasAnyTexture` records whether the material references any texture at all;
+    // `texture` takes the first one that resolves to an external image file.
     JSONValue[] textureInfos;
     JSONValue* pbrP = "pbrMetallicRoughness" in mat.object;
     if (pbrP !is null) {
