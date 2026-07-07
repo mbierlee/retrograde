@@ -114,6 +114,37 @@ by the single Interpolation setting, you cannot mix them from Blender alone
 editing the glTF sampler by hand. See the [RGM format spec](rgm-fileformat.md)
 for the full list of filter values `rgmodelconv` can store.
 
+### Texture wrapping (wrap / extension mode)
+
+Wrap modes decide how the texture is addressed when a UV coordinate falls outside
+the `[0, 1]` range. As with filtering, Blender 5.1 does not expose the glTF
+`wrapS` / `wrapT` sampler fields directly — the exporter derives **both** axes
+from the **Extension** dropdown on the **Image Texture** node (same place as
+Interpolation: on the node itself, or under **Sidebar ▸ Item ▸ Node** when the
+node is selected):
+
+| Node Extension       | glTF `wrapS` / `wrapT` | `.rgm` wrap mode  |
+| -------------------- | ---------------------- | ----------------- |
+| **Repeat** (default) | `REPEAT`               | Repeat            |
+| **Extend**           | `CLAMP_TO_EDGE`        | Clamp To Edge     |
+| **Mirror**           | `MIRRORED_REPEAT`      | Mirrored Repeat   |
+| **Clip**             | `CLAMP_TO_EDGE`        | Clamp To Edge     |
+
+Pick **Repeat** to tile the texture across a surface, **Extend** to clamp the
+edge texels outward (avoids seams on a texture that shouldn't tile), or
+**Mirror** to tile with every other copy flipped. Because both axes are driven by
+the single Extension setting, you cannot give S and T different wrap modes from
+Blender alone — that requires editing the glTF sampler by hand.
+
+> Blender's **Clip** extension (which renders coordinates outside `[0, 1]` as
+> transparent in the viewport) has no glTF equivalent — glTF lacks a border/clip
+> mode — so the exporter falls back to `CLAMP_TO_EDGE`, making it behave exactly
+> like **Extend** in the engine. Prefer **Extend** for clarity, and don't rely on
+> Clip's transparent-border look surviving the export.
+
+See the [RGM format spec](rgm-fileformat.md) for the full list of wrap-mode
+values `rgmodelconv` can store.
+
 ---
 
 ## Backface culling
