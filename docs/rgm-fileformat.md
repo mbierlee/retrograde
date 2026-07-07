@@ -166,10 +166,12 @@ Referencing textures by their declared index (rather than by file position) mean
 | 0x04   | 1    | ubyte | Texture type                            |
 | 0x05   | 1    | ubyte | Magnification filter (`magFilter`)      |
 | 0x06   | 1    | ubyte | Minification filter (`minFilter`)       |
-| 0x07   | ...  | ...   | Type-specific payload                   |
+| 0x07   | 1    | ubyte | S-axis wrap mode (`wrapS`)              |
+| 0x08   | 1    | ubyte | T-axis wrap mode (`wrapT`)              |
+| 0x09   | ...  | ...   | Type-specific payload                   |
 
-The `magFilter` and `minFilter` bytes are common to every texture type and precede the
-type-specific payload (see "Sampler Filters" below).
+The `magFilter`, `minFilter`, `wrapS` and `wrapT` bytes are common to every texture type and
+precede the type-specific payload (see "Sampler Filters" and "Sampler Wrap Modes" below).
 
 ### Texture Types
 
@@ -183,27 +185,45 @@ type-specific payload (see "Sampler Filters" below).
 Two `ubyte` filter fields describe how the texture should be sampled: `magFilter` selects
 how it is magnified (scaled up) and `minFilter` how it is minified (scaled down). A value
 of `0` (`unspecified`) means no filter is stored and the engine chooses its own default when
-sampling.
+sampling. The engine's current defaults are `Linear` for `magFilter` and `Linear Mipmap Linear`
+(trilinear) for `minFilter`.
 
 Magnification filter (`magFilter`):
 
-| Value | Name        |
-| ----- | ----------- |
-| 0     | Unspecified |
-| 1     | Nearest     |
-| 2     | Linear      |
+| Value | Name        | Description                                                       |
+| ----- | ----------- | ---------------------------------------------------------------- |
+| 0     | Unspecified | No filter stored; the engine picks its own default.              |
+| 1     | Nearest     | Use the nearest texel — sharp, blocky magnification.             |
+| 2     | Linear      | Bilinearly blend the four nearest texels — smooth magnification. |
 
 Minification filter (`minFilter`):
 
-| Value | Name                   |
-| ----- | ---------------------- |
-| 0     | Unspecified            |
-| 1     | Nearest                |
-| 2     | Linear                 |
-| 3     | Nearest Mipmap Nearest |
-| 4     | Linear Mipmap Nearest  |
-| 5     | Nearest Mipmap Linear  |
-| 6     | Linear Mipmap Linear   |
+| Value | Name                   | Description                                                                        |
+| ----- | ---------------------- | --------------------------------------------------------------------------------- |
+| 0     | Unspecified            | No filter stored; the engine picks its own default.                               |
+| 1     | Nearest                | Use the nearest texel on the base image; no mipmapping.                           |
+| 2     | Linear                 | Bilinearly blend the nearest texels on the base image; no mipmapping.             |
+| 3     | Nearest Mipmap Nearest | Pick the nearest mipmap level, then the nearest texel within it.                   |
+| 4     | Linear Mipmap Nearest  | Pick the nearest mipmap level, then bilinearly filter within it.                   |
+| 5     | Nearest Mipmap Linear  | Blend the two nearest mipmap levels, taking the nearest texel in each.            |
+| 6     | Linear Mipmap Linear   | Blend the two nearest mipmap levels, bilinearly filtering each (trilinear).       |
+
+Readers reject any value not listed above.
+
+### Sampler Wrap Modes
+
+Two `ubyte` wrap fields describe how texture coordinates outside the `[0, 1]` range are
+addressed: `wrapS` applies to the S (horizontal) axis and `wrapT` to the T (vertical) axis.
+A value of `0` (`unspecified`) means no wrap mode is stored and the engine chooses its own
+default when sampling; the engine's current default is `Repeat` for both axes. Both fields
+share the same value set:
+
+| Value | Name            | Description                                                                       |
+| ----- | --------------- | --------------------------------------------------------------------------------- |
+| 0     | Unspecified     | No wrap mode stored; the engine picks its own default.                            |
+| 1     | Repeat          | Tile the texture, wrapping the coordinate back into `[0, 1]` (ignores the integer part). |
+| 2     | Clamp To Edge   | Clamp the coordinate to `[0, 1]`, stretching the edge texel outward.              |
+| 3     | Mirrored Repeat | Tile the texture, mirroring it on every other repeat.                             |
 
 Readers reject any value not listed above.
 

@@ -20,7 +20,7 @@ import retrograde.engine.entity : EntityId, hasComponent, withComponentData, add
 import retrograde.engine.rendering : Color, RenderPass, Viewport, renderPasses, MaterialShader;
 
 import retrograde.assets.model : ModelComponentType, Model, MaterialType, MaterialIndex, noMaterial,
-    TextureIndex, Texture, TextureMagFilter, TextureMinFilter;
+    TextureIndex, Texture, TextureMagFilter, TextureMinFilter, TextureWrap;
 import retrograde.assets.image : Image, ChannelFormat;
 import retrograde.assets.assetlibrary : getModel, getTexture;
 
@@ -392,9 +392,11 @@ private GLuint createMaterialTexture(Model* model, TextureIndex textureIndex) {
 
     GLenum minFilter = resolveMinFilter(texture.minFilter);
     GLenum magFilter = resolveMagFilter(texture.magFilter);
+    GLenum wrapS = resolveWrap(texture.wrapS);
+    GLenum wrapT = resolveWrap(texture.wrapT);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapS);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minFilter);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magFilter);
 
@@ -441,6 +443,19 @@ private bool minFilterUsesMipmaps(GLenum minFilter) {
         || minFilter == GL_LINEAR_MIPMAP_NEAREST
         || minFilter == GL_NEAREST_MIPMAP_LINEAR
         || minFilter == GL_LINEAR_MIPMAP_LINEAR;
+}
+
+private GLenum resolveWrap(TextureWrap wrap) {
+    final switch (wrap) {
+        case TextureWrap.repeat:
+            return GL_REPEAT;
+        case TextureWrap.clampToEdge:
+            return GL_CLAMP_TO_EDGE;
+        case TextureWrap.mirroredRepeat:
+            return GL_MIRRORED_REPEAT;
+        case TextureWrap.unspecified:
+            return GL_REPEAT;
+    }
 }
 
 void unloadEntityModel(EntityId entity) {

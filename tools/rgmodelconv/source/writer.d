@@ -22,19 +22,22 @@ import std.path : buildPath, setExtension;
 
 import retrograde.assets.rgm : rgmMagicNumber;
 import retrograde.assets.model : MaterialType, MaterialFlags, maxUvChannels, noMaterial,
-    TextureType, TextureMagFilter, TextureMinFilter;
+    TextureType, TextureMagFilter, TextureMinFilter, TextureWrap;
 
 import model : Primitive, MaterialInfo, ModelData;
 
 enum ushort rgmVersion = 1;
 
 /// A resolved texture entry as it will be written: the final (renamed/prefixed)
-/// path and its sampling filters. Used as the de-duplication key so two materials
-/// sharing an image *and* sampler collapse to a single texture entry.
+/// path and its sampling filters and wrap modes. Used as the de-duplication key
+/// so two materials sharing an image *and* sampler collapse to a single texture
+/// entry.
 private struct OutTexture {
     string path;
     TextureMagFilter magFilter;
     TextureMinFilter minFilter;
+    TextureWrap wrapS;
+    TextureWrap wrapT;
 }
 
 /**
@@ -87,7 +90,8 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
                 path = buildPath(texturePathPrefix, path);
             }
 
-            OutTexture texture = OutTexture(path, material.texture.magFilter, material.texture.minFilter);
+            OutTexture texture = OutTexture(path, material.texture.magFilter, material.texture.minFilter,
+                material.texture.wrapS, material.texture.wrapT);
             uint* existing = texture in textureToIndex;
             if (existing !is null) {
                 materialTextureIndices[i] = *existing;
@@ -148,13 +152,15 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
 
     // Emit the Textures list. Every texture produced here is a `reference`: its payload
     // is the (optionally renamed) texture path. The `embedded` texture type is not yet
-    // implemented and is never written. Sampler filters come from the glTF sampler,
-    // falling back to `unspecified` when the source left them unset.
+    // implemented and is never written. Sampler filters and wrap modes come from the glTF
+    // sampler, falling back to `unspecified` when the source left them unset.
     foreach (idx, texture; textures) {
         writeUint(buf, cast(uint)(idx + 1)); // Texture index (1-based)
         writeUbyte(buf, cast(ubyte) TextureType.reference); // Texture type
         writeUbyte(buf, cast(ubyte) texture.magFilter); // magFilter
         writeUbyte(buf, cast(ubyte) texture.minFilter); // minFilter
+        writeUbyte(buf, cast(ubyte) texture.wrapS); // wrapS
+        writeUbyte(buf, cast(ubyte) texture.wrapT); // wrapT
         writeString(buf, texture.path); // Path payload
     }
 

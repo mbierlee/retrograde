@@ -24,7 +24,7 @@ import std.uri : decodeComponent;
 import std.file : read, readText;
 import std.path : buildPath, dirName, extension;
 
-import retrograde.assets.model : TextureMagFilter, TextureMinFilter;
+import retrograde.assets.model : TextureMagFilter, TextureMinFilter, TextureWrap;
 
 import model : Primitive, MaterialInfo, ModelData, TextureRef;
 
@@ -259,9 +259,9 @@ private MaterialInfo parseMaterial(ref JSONValue gltf, JSONValue mat) {
 /**
  * Resolve a glTF `textureInfo` (an object carrying an `index` into `textures`)
  * to a `TextureRef`: the backing image's URI plus the sampler's magnification and
- * minification filters. `path` is "" when the image is embedded (no `uri`) or
- * cannot be resolved. Filters default to `unspecified` when the texture has no
- * sampler or the sampler omits them.
+ * minification filters and its S/T wrap modes. `path` is "" when the image is
+ * embedded (no `uri`) or cannot be resolved. Filters and wrap modes default to
+ * `unspecified` when the texture has no sampler or the sampler omits them.
  */
 private TextureRef resolveTextureRef(ref JSONValue gltf, JSONValue textureInfo) {
     TextureRef result;
@@ -289,6 +289,8 @@ private TextureRef resolveTextureRef(ref JSONValue gltf, JSONValue textureInfo) 
             JSONValue sampler = samplersP.array[jsonInt(*samplerP)];
             result.magFilter = mapMagFilter(optInt(sampler, "magFilter", 0));
             result.minFilter = mapMinFilter(optInt(sampler, "minFilter", 0));
+            result.wrapS = mapWrap(optInt(sampler, "wrapS", 0));
+            result.wrapT = mapWrap(optInt(sampler, "wrapT", 0));
         }
     }
 
@@ -324,6 +326,20 @@ private TextureMinFilter mapMinFilter(long glFilter) {
         return TextureMinFilter.linearMipmapLinear;
     default:
         return TextureMinFilter.unspecified;
+    }
+}
+
+/// Map a glTF/OpenGL wrap (address) mode constant to the engine `TextureWrap`.
+private TextureWrap mapWrap(long glWrap) {
+    switch (glWrap) {
+    case 10_497: // GL_REPEAT
+        return TextureWrap.repeat;
+    case 33_071: // GL_CLAMP_TO_EDGE
+        return TextureWrap.clampToEdge;
+    case 33_648: // GL_MIRRORED_REPEAT
+        return TextureWrap.mirroredRepeat;
+    default:
+        return TextureWrap.unspecified;
     }
 }
 
