@@ -13,7 +13,7 @@ module retrograde.assets.rgm;
 
 import retrograde.assets.model : Model, Vertex, Face, Mesh, UvCoord, maxUvChannels,
     Material, MaterialIndex, MaterialType, MaterialFlags, noMaterial,
-    Texture, TextureIndex, TextureType, TextureMagFilter, TextureMinFilter;
+    Texture, TextureIndex, TextureType, TextureMagFilter, TextureMinFilter, TextureWrap;
 import retrograde.assets.readercommon : readUInt, readUShort, readFloat;
 import retrograde.std.endian : toPlatformEndian, Endian;
 import retrograde.std.memory : ResultPtr, failedPtr, makeRaw, successPtr;
@@ -453,6 +453,45 @@ private OperationResult readTextureData(const(ubyte)[] data, ref size_t offset, 
         return failure("Unknown texture minFilter.");
     }
 
+    // Read sampler wrap modes (common to every texture type).
+    if (data.length - offset < 1) {
+        return failure("Cannot read texture wrapS: Unexpected end of data.");
+    }
+
+    ubyte wrapSByte = data[offset];
+    offset += 1;
+
+    bool knownWrapS = false;
+    static foreach (member; __traits(allMembers, TextureWrap)) {
+        if (wrapSByte == cast(ubyte) __traits(getMember, TextureWrap, member)) {
+            texture.wrapS = __traits(getMember, TextureWrap, member);
+            knownWrapS = true;
+        }
+    }
+
+    if (!knownWrapS) {
+        return failure("Unknown texture wrapS.");
+    }
+
+    if (data.length - offset < 1) {
+        return failure("Cannot read texture wrapT: Unexpected end of data.");
+    }
+
+    ubyte wrapTByte = data[offset];
+    offset += 1;
+
+    bool knownWrapT = false;
+    static foreach (member; __traits(allMembers, TextureWrap)) {
+        if (wrapTByte == cast(ubyte) __traits(getMember, TextureWrap, member)) {
+            texture.wrapT = __traits(getMember, TextureWrap, member);
+            knownWrapT = true;
+        }
+    }
+
+    if (!knownWrapT) {
+        return failure("Unknown texture wrapT.");
+    }
+
     // Type-specific payload.
     if (texture.type == TextureType.embedded) {
         return failure("Embedded textures are not yet implemented.");
@@ -817,7 +856,7 @@ void runRgmTests() {
     });
 
     test("Load model with one Unlit material referencing a texture", {
-        ubyte[145] modelData = [
+        ubyte[147] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -857,6 +896,8 @@ void runRgmTests() {
             0x00, // Texture type (reference)
             0x02, // magFilter (linear)
             0x06, // minFilter (linearMipmapLinear)
+            0x02, // wrapS (clampToEdge)
+            0x01, // wrapT (repeat)
             0x0B, 0x00, // Path length (11)
             'd', 'i', 'f', 'f', 'u', 's', 'e', '.', 'r', 'g', 'i', // Path
         ];
@@ -877,6 +918,8 @@ void runRgmTests() {
         assert(model.textures[0].type == TextureType.reference);
         assert(model.textures[0].magFilter == TextureMagFilter.linear);
         assert(model.textures[0].minFilter == TextureMinFilter.linearMipmapLinear);
+        assert(model.textures[0].wrapS == TextureWrap.clampToEdge);
+        assert(model.textures[0].wrapT == TextureWrap.repeat);
         assert(model.textures[0].path == "diffuse.rgi");
     });
 
@@ -930,7 +973,7 @@ void runRgmTests() {
     });
 
     test("Load model with multiple materials using non-sequential indices", {
-        ubyte[163] modelData = [
+        ubyte[165] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -981,6 +1024,8 @@ void runRgmTests() {
             0x00, // Texture type (reference)
             0x00, // magFilter (unspecified)
             0x00, // minFilter (unspecified)
+            0x00, // wrapS (unspecified)
+            0x00, // wrapT (unspecified)
             0x0A, 0x00, // Path length (10)
             'a', 'l', 'b', 'e', 'd', 'o', '.', 'r', 'g', 'i',
         ];
@@ -1006,6 +1051,8 @@ void runRgmTests() {
         assert(model.textures[0].type == TextureType.reference);
         assert(model.textures[0].magFilter == TextureMagFilter.unspecified);
         assert(model.textures[0].minFilter == TextureMinFilter.unspecified);
+        assert(model.textures[0].wrapS == TextureWrap.unspecified);
+        assert(model.textures[0].wrapT == TextureWrap.unspecified);
         assert(model.textures[0].path == "albedo.rgi");
     });
 
@@ -1150,7 +1197,7 @@ void runRgmTests() {
     });
 
     test("Reject duplicate texture indices", {
-        ubyte[31] modelData = [
+        ubyte[33] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -1163,6 +1210,8 @@ void runRgmTests() {
             0x00, // Texture type (reference)
             0x00, // magFilter (unspecified)
             0x00, // minFilter (unspecified)
+            0x00, // wrapS (unspecified)
+            0x00, // wrapT (unspecified)
             0x00, 0x00, // Path length (0)
 
             // Texture 2 (duplicate index)
@@ -1174,7 +1223,7 @@ void runRgmTests() {
     });
 
     test("Reject embedded texture as not yet implemented", {
-        ubyte[25] modelData = [
+        ubyte[27] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -1187,6 +1236,8 @@ void runRgmTests() {
             0x01, // Texture type (embedded)
             0x00, // magFilter (unspecified)
             0x00, // minFilter (unspecified)
+            0x00, // wrapS (unspecified)
+            0x00, // wrapT (unspecified)
         ];
 
         auto result = loadModel(modelData);
@@ -1226,6 +1277,49 @@ void runRgmTests() {
             0x00, // Texture type (reference)
             0x02, // magFilter (linear)
             0xFF, // minFilter (unknown)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
+    test("Reject texture with unknown wrapS", {
+        ubyte[26] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of textures (1)
+
+            // Texture 1: reference with valid filters but an out-of-range wrapS
+            0x01, 0x00, 0x00, 0x00, // Texture index (1)
+            0x00, // Texture type (reference)
+            0x02, // magFilter (linear)
+            0x02, // minFilter (linear)
+            0xFF, // wrapS (unknown)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
+    test("Reject texture with unknown wrapT", {
+        ubyte[27] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of textures (1)
+
+            // Texture 1: reference with a valid wrapS but out-of-range wrapT
+            0x01, 0x00, 0x00, 0x00, // Texture index (1)
+            0x00, // Texture type (reference)
+            0x02, // magFilter (linear)
+            0x02, // minFilter (linear)
+            0x01, // wrapS (repeat)
+            0xFF, // wrapT (unknown)
         ];
 
         auto result = loadModel(modelData);

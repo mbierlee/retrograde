@@ -136,6 +136,21 @@ enum TextureMinFilter : ubyte {
 }
 
 /**
+ * Wrap (address) mode used when sampling a texture outside the `[0, 1]` range.
+ *
+ * Applied independently to the S and T axes. Mirrors the option set of the
+ * glTF sampler `wrapS`/`wrapT` (and OpenGL's `GL_TEXTURE_WRAP_S`/`_T`), but uses
+ * engine-local sequential values rather than the glTF/GL constant numbers.
+ * `unspecified` means the engine picks a default.
+ */
+enum TextureWrap : ubyte {
+    unspecified = 0, /// No wrap mode stored; the renderer chooses its default.
+    repeat = 1,
+    clampToEdge = 2,
+    mirroredRepeat = 3
+}
+
+/**
  * Represents a texture referenced by one or more materials.
  *
  * Textures are stored in a flat list on `Model` and looked up by their unique
@@ -146,6 +161,8 @@ struct Texture {
     TextureType type;
     TextureMagFilter magFilter; /// Magnification filter. `unspecified` (default) lets the renderer choose.
     TextureMinFilter minFilter; /// Minification filter. `unspecified` (default) lets the renderer choose.
+    TextureWrap wrapS; /// Wrap mode on the S axis. `unspecified` (default) lets the renderer choose.
+    TextureWrap wrapT; /// Wrap mode on the T axis. `unspecified` (default) lets the renderer choose.
     String path; /// Populated when `type == TextureType.reference`: the path to the external image file. Empty otherwise.
 
     mixin CopyConstructors!Texture;

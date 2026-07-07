@@ -25,7 +25,7 @@ import retrograde.assets.rgm : loadModel, loadModelHeader, ModelHeader, rgmMagic
 import retrograde.assets.rgi : loadImageHeader, ImageHeader, rgiMagicNumber,
     CompressionType, ColorMode, IndexFormat, bytesPerIndex;
 import retrograde.assets.model : Model, Mesh, Material, MaterialType, noMaterial,
-    Texture, TextureType, TextureMagFilter, TextureMinFilter;
+    Texture, TextureType, TextureMagFilter, TextureMinFilter, TextureWrap;
 import retrograde.assets.image : ChannelFormat, bytesPerChannel;
 
 private enum AssetKind {
@@ -288,9 +288,10 @@ int showModelInfo(string inputFile, const(ubyte)[] data, ref bool printedAny) {
     if (textures.length > 0) {
         writeln("Per-texture:");
         foreach (i, ref texture; textures) {
-            writefln("  Texture %d: index %d, type %s, magFilter %s, minFilter %s%s",
+            writefln("  Texture %d: index %d, type %s, magFilter %s, minFilter %s, wrapS %s, wrapT %s%s",
                 i, texture.index, textureTypeName(texture.type),
                 magFilterName(texture.magFilter), minFilterName(texture.minFilter),
+                wrapName(texture.wrapS), wrapName(texture.wrapT),
                 texturePayloadDescription(texture));
         }
     }
@@ -372,6 +373,19 @@ string minFilterName(TextureMinFilter filter) {
         return "nearestMipmapLinear";
     case TextureMinFilter.linearMipmapLinear:
         return "linearMipmapLinear";
+    }
+}
+
+string wrapName(TextureWrap wrap) {
+    final switch (wrap) {
+    case TextureWrap.unspecified:
+        return "unspecified";
+    case TextureWrap.repeat:
+        return "repeat";
+    case TextureWrap.clampToEdge:
+        return "clampToEdge";
+    case TextureWrap.mirroredRepeat:
+        return "mirroredRepeat";
     }
 }
 

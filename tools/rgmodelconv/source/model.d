@@ -16,7 +16,7 @@
 
 module model;
 
-import retrograde.assets.model : TextureMagFilter, TextureMinFilter;
+import retrograde.assets.model : TextureMagFilter, TextureMinFilter, TextureWrap;
 
 /**
  * A single glTF primitive, flattened from `meshes[].primitives[]`. Each primitive
@@ -40,15 +40,18 @@ struct Primitive {
 
 /**
  * A material's resolved external texture: the image path plus the sampling
- * filters glTF associated with it. `path` is empty when the material references
- * no external image. The filters use the engine's `TextureMagFilter` /
- * `TextureMinFilter` directly; `unspecified` means the source left the choice to
- * the renderer (no glTF sampler, or the sampler omitted the filter).
+ * filters and wrap modes glTF associated with it. `path` is empty when the
+ * material references no external image. The filters and wrap modes use the
+ * engine's `TextureMagFilter` / `TextureMinFilter` / `TextureWrap` directly;
+ * `unspecified` means the source left the choice to the renderer (no glTF
+ * sampler, or the sampler omitted that property).
  */
 struct TextureRef {
     string path;
     TextureMagFilter magFilter = TextureMagFilter.unspecified;
     TextureMinFilter minFilter = TextureMinFilter.unspecified;
+    TextureWrap wrapS = TextureWrap.unspecified;
+    TextureWrap wrapT = TextureWrap.unspecified;
 }
 
 /**
