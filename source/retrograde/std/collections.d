@@ -289,7 +289,11 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
 
         items = newItems;
         _length = other._length;
-        _capacity = other._capacity;
+
+        // Only other._length slots were allocated above, so capacity must match
+        // that allocation (as the copy constructor does) — not other._capacity,
+        // which would let a later add() write past the buffer.
+        _capacity = other._length;
     }
 
     /**
@@ -1139,7 +1143,11 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
         items = newItems;
         serials = newSerials;
         _length = other._length;
-        _capacity = other._capacity;
+        
+        // Only other._length slots were allocated above, so capacity must match
+        // that allocation (as the copy constructor does) — not other._capacity,
+        // which would let a later add() write past the buffer.
+        _capacity = other._length;
         nextSerial = other.nextSerial;
     }
 
@@ -2670,6 +2678,64 @@ void runArrayTests() {
         assert(array[0 .. $] == [6, 7, 8, 9, 10]);
     });
 
+    test("Assigning a chunk-grown array keeps capacity in sync with its allocation", () {
+        // Regression: opAssign allocates other._length slots but used to set
+        // _capacity = other._capacity. When the source grew via add() (so
+        // capacity > length), the destination claimed spare capacity it never
+        // allocated, and the next add() wrote one slot past the buffer.
+        Array!int source;
+        source.add(1);
+        assert(source.length == 1);
+        assert(source.capacity == defaultChunkSize);
+
+        Array!int dest;
+        dest = source;
+        assert(dest.length == 1);
+        assert(dest.capacity == 1); // Must match the slots actually allocated.
+
+        // Before the fix this landed one slot past the buffer (heap overflow).
+        dest.add(2);
+        dest.add(3);
+        assert(dest.length == 3);
+        assert(dest[0 .. $] == [1, 2, 3]);
+    });
+
+    test("Indexing an Array of structs with inner Arrays by value is safe", () {
+        // Regression: structs that own inner Arrays (via CopyConstructors) were
+        // suspected of driving Array.opAssign with an uninitialized `this` when
+        // opIndex returned them by value. The by-value copy is construction (the
+        // copy constructor allocates fresh), not opAssign, so the pattern is
+        // safe. Iterate by value repeatedly to guard against regressions.
+        import retrograde.std.dlang : CopyConstructors;
+
+        static struct Inner {
+            Array!int values;
+            int tag;
+
+            mixin CopyConstructors!Inner;
+        }
+
+        Array!Inner items;
+        for (int i = 0; i < 8; i++) {
+            Inner inner;
+            inner.values.add(i);
+            inner.values.add(i * 2);
+            inner.tag = 100 + i;
+            items.add(inner);
+        }
+
+        long acc = 0;
+        for (int iter = 0; iter < 50; iter++) {
+            for (size_t i = 0; i < items.length; i++) {
+                acc += items[i].tag; // by-value Inner copy
+                acc += items[i].values.length; // by-value Inner copy again
+            }
+        }
+
+        assert(items.length == 8);
+        assert(acc == 42_200); // 50 * (sum(100..107) + 8 * 2)
+    });
+
     test("Copy empty array", () {
         Array!int empty1;
         auto empty2 = empty1;
@@ -3458,6 +3524,29 @@ void runSlotListTests() {
         assert(list2[0] == 10);
         assert(list2[1] == 20);
         assert(list2[2] == 30);
+    });
+
+    test("Assigning a chunk-grown SlotList keeps capacity in sync with its allocation", () {
+        // Regression: like Array.opAssign, SlotList.opAssign allocates
+        // other._length slots but used to set _capacity = other._capacity, so a
+        // later add() could append past the items/serials buffers.
+        SlotList!int source;
+        source.add(1);
+        assert(source.physicalLength == 1);
+        assert(source.capacity == defaultChunkSize);
+
+        SlotList!int dest;
+        dest = source;
+        assert(dest.physicalLength == 1);
+        assert(dest.capacity == 1); // Must match the slots actually allocated.
+
+        // Before the fix these appends landed past the buffers (heap overflow).
+        dest.add(2);
+        dest.add(3);
+        assert(dest.physicalLength == 3);
+        assert(dest[0] == 1);
+        assert(dest[1] == 2);
+        assert(dest[2] == 3);
     });
 
     test("Copy constructor creates independent copy", () {

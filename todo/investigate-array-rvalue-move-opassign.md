@@ -87,11 +87,15 @@ of "why won't this compile / why did it crash in release" papercuts.
 
 ## Related
 
-- [investigate-array-opassign-uninitialized-this.md](investigate-array-opassign-uninitialized-this.md)
-  — the *other* side of `Array.opAssign`: the existing lvalue copy path
-  corrupting memory under release inlining because it trusts `this.items` to be
-  a valid/`null` pointer. Any move-assign added here has the same "don't trust
-  `this` on entry, don't leak/​double-free the old buffer" hazards, so the two
-  should be designed together.
+- `Array.opAssign` was separately investigated (resolved, ticket removed) for a
+  suspected "corrupts memory under release inlining because it trusts
+  `this.items`" bug. That premise was disproven: indexing a container by value
+  goes through the copy *constructor* (which allocates fresh), not `opAssign`,
+  on DMD debug/release and LDC `-O3` alike. The real defect was a
+  capacity/allocation mismatch — `opAssign` set `_capacity = other._capacity`
+  while allocating only `other._length` slots — now fixed with regression tests.
+  Still relevant to a move-assign added here: it must free `this`'s current
+  buffer and leave the moved-from temporary in a destructible empty state to
+  avoid a double-free.
 - [investigate-required-copy-constructors.md](investigate-required-copy-constructors.md)
   — same `CopyConstructors` mixin / value-semantics area.
