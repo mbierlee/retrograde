@@ -2452,6 +2452,15 @@ struct HashMap(K, V) {
 
 version (UnitTesting)  :  ///
 
+import retrograde.std.dlang : CopyConstructors;
+
+private struct InnerArrayOwner {
+    Array!int values;
+    int tag;
+
+    mixin CopyConstructors!InnerArrayOwner;
+}
+
 void runCollectionsTests() {
     runArrayTests();
     runSlotListTests();
@@ -2706,18 +2715,11 @@ void runArrayTests() {
         // opIndex returned them by value. The by-value copy is construction (the
         // copy constructor allocates fresh), not opAssign, so the pattern is
         // safe. Iterate by value repeatedly to guard against regressions.
-        import retrograde.std.dlang : CopyConstructors;
-
-        static struct Inner {
-            Array!int values;
-            int tag;
-
-            mixin CopyConstructors!Inner;
-        }
-
-        Array!Inner items;
+        // InnerArrayOwner must stay at module scope; declaring it in this
+        // lambda traps on WASM — see docs/wasm-pitfalls.md.
+        Array!InnerArrayOwner items;
         for (int i = 0; i < 8; i++) {
-            Inner inner;
+            InnerArrayOwner inner;
             inner.values.add(i);
             inner.values.add(i * 2);
             inner.tag = 100 + i;
@@ -2727,8 +2729,8 @@ void runArrayTests() {
         long acc = 0;
         for (int iter = 0; iter < 50; iter++) {
             for (size_t i = 0; i < items.length; i++) {
-                acc += items[i].tag; // by-value Inner copy
-                acc += items[i].values.length; // by-value Inner copy again
+                acc += items[i].tag; // by-value InnerArrayOwner copy
+                acc += items[i].values.length; // by-value InnerArrayOwner copy again
             }
         }
 

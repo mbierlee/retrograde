@@ -7,3 +7,6 @@ build-wasm: copy-runtime
 
 run-tests: build-wasm
 	cd web && python -m http.server 8080
+
+run-tests-headless: build-wasm
+	node run-tests-headless.mjs
