@@ -362,16 +362,18 @@ export extern (C) void* memmove(void* dest, const void* src, size_t count) {
     return dest;
 }
 
-/** 
- * Initializes the heap memoery. 
+/**
+ * Initializes the heap memory.
  * This function must be called before any other memory function.
- * Params: 
- *   _heapOffset: The offset from the end of the static data section to the start of the heap.
- *                Defaults to 64KiB, which is recommended because LDC stores some global function
- *                pointers and vars on the heap, which can cause problems if the memory manager is
- *                also working in that area.
+ * Params:
+ *   _heapOffset: Extra offset from __heap_base to the start of the managed heap.
+ *                Defaults to 0: __heap_base is provided by the linker and already points
+ *                past all static data, including zero-initialized globals (.bss) and the
+ *                shadow stack, so no offset is needed. (The former 64 KiB default worked
+ *                around __heap_base being shadowed by a D-side definition; see the
+ *                declaration of __heap_base below.)
  */
-OperationResult initializeHeapMemory(size_t _heapOffset = _64KiB) {
+OperationResult initializeHeapMemory(size_t _heapOffset = 0) {
     firstFreeBlock = null;
     heapOffset = _heapOffset;
 
@@ -413,69 +415,21 @@ void wipeHeap() {
     memset(heapStart, 0, heapSize);
 }
 
-/** 
- * Metrics about the heap.
- */
-struct MemoryMetrics {
-    ulong heapSizeBytes;
-    ulong usedHeapBytes;
-    ulong usedAllocatedBytes;
-    ulong freeHeapBytes;
-    ulong freeBlockBytes;
-    ulong numBlocks;
-
-    void print() {
-        writeln("Heap Size:");
-        writeln(heapSizeBytes);
-        writeln("Used Heap Bytes:");
-        writeln(usedHeapBytes);
-        writeln("Used Allocated Bytes:");
-        writeln(usedAllocatedBytes);
-        writeln("Free Heap Bytes:");
-        writeln(freeHeapBytes);
-        writeln("Free Blockspace Bytes:");
-        writeln(freeBlockBytes);
-        writeln("Number of Blocks:");
-        writeln(numBlocks);
-    }
-}
-
-/** 
- * Returns: metrics about the heap.
- */
-MemoryMetrics getMemoryMetrics() {
-    MemoryMetrics metrics;
-    metrics.heapSizeBytes = heapSize;
-
-    auto block = cast(MemoryBlock*) heapStart;
-    auto endOfHeap = cast(void*) heapEnd;
-    while (cast(void*) block < endOfHeap && block.isValidBlock()) {
-        metrics.numBlocks++;
-
-        if (block.isAllocated) {
-            metrics.usedAllocatedBytes += block.usedSize;
-            metrics.usedHeapBytes += MemoryBlock.sizeof + block.blockSize;
-        } else {
-            metrics.freeBlockBytes += block.blockSize;
-            metrics.freeHeapBytes += MemoryBlock.sizeof + block.blockSize;
-        }
-
-        block = block.nextBlock;
-    }
-
-    return metrics;
-}
-
 private enum _64KiB = 65_536;
 private enum initialHeapSize = _64KiB;
 private size_t heapOffset;
 private MemoryBlock* firstFreeBlock;
 
-// End of static data. Take an address of it (&__data_end) to get the actual address. Provided by LDC.
-private extern (C) ubyte __data_end;
+// End of static data. Take an address of it (&__data_end) to get the actual address.
+// Provided by the linker (wasm-ld). The `extern` storage class is essential: without it,
+// D *defines* a new 1-byte variable in .bss that shadows the linker's symbol, making all
+// zero-initialized globals appear to live past the start of the heap.
+private extern extern (C) __gshared ubyte __data_end;
 
-// Start of heap. Take an address of it (&__heap_base) to get the actual address. Provided by LDC.
-private extern (C) ubyte __heap_base;
+// Start of heap: the first address past all static data (including .bss) and the shadow
+// stack. Take an address of it (&__heap_base) to get the actual address. Provided by the
+// linker (wasm-ld). See __data_end regarding the `extern` storage class.
+private extern extern (C) __gshared ubyte __heap_base;
 
 // Size of the full heap, including unusable memory.
 private size_t fullHeapSize() {
