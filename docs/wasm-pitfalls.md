@@ -99,3 +99,70 @@ fs.writeFileSync("out.wat", mod.toText({ foldExprs: false }));
 Then grep the `.wat` for the suspect `__lambda_` name: an `M` before `FZv` in
 the mangling, or a `(param i32)` where sibling lambdas have none, confirms the
 mismatch.
+
+## `extern (C)` variable declarations are *definitions* — they shadow external symbols
+
+### Symptom
+
+Module-level globals appear to live "on the heap": writes to zero-initialized
+D globals corrupt allocated memory, or allocations corrupt the globals. In
+this engine the symptom was `initFunction`/`updateFunction`/`renderFunction`
+seemingly being stored past `__heap_base`, which was masked for years by a
+64 KiB `heapOffset` in `initializeHeapMemory` (removed 2026-07-10).
+
+### Cause
+
+C's `extern` does two jobs that D splits into two separate features:
+
+- `extern (C)` — **linkage attribute**: sets the symbol's name/ABI only.
+  It says nothing about where the variable is defined.
+- bare `extern` — **storage class**: "defined elsewhere, emit no storage."
+
+So this, which reads perfectly fine to a C programmer:
+
+```d
+private extern (C) ubyte __heap_base; // WRONG: defines a variable!
+```
+
+*defines* a fresh 1-byte variable named `__heap_base` in `.bss`. wasm-ld only
+synthesizes the real `__heap_base` (the first address past all static data)
+when the symbol is undefined — since the object file now defines it, the D
+variable wins. It lands at the start of `.bss`, so every zero-initialized
+global in the program sits *after* it: the allocator believed the heap
+started in the middle of the program's own globals. Initialized globals live
+in `.data` below it, which made the corruption look like it only affected
+some variables.
+
+The same mistake bites outside linker magic: any D binding to an external C
+global — `errno` or library-exported state on native, symbols from another
+object file — silently becomes a second, separate variable. On native it may
+also surface as a duplicate-symbol link error; on WASM the linker simply
+skips synthesizing its symbol and nothing warns. Functions are immune
+(bodyless declarations are automatically external); only variables have this
+trap.
+
+### Fix / rule
+
+Bindings to external C globals need all three modifiers:
+
+```d
+private extern extern (C) __gshared ubyte __heap_base;
+//      ^      ^          ^
+//      |      |          └─ plain global, not thread-local (D globals default to TLS)
+//      |      └─ linkage: symbol is literally named "__heap_base"
+//      └─ storage class: defined elsewhere — emit no storage
+```
+
+Rule of thumb: if a variable declaration is meant to *reference* something
+that already exists (linker symbol, libc global, another module's export), it
+must carry the bare `extern` storage class and `__gshared`. `extern (C)`
+alone always defines.
+
+### How to diagnose
+
+Link with `-L-Map=out.map` and find the symbol in the map: if it appears as
+`yourobject.o:(.bss.__heap_base)` it is your (wrong) definition; the real
+linker-synthesized symbol has no object file. At runtime, a healthy
+`&__heap_base` sits past *all* globals — if taking the address of any D
+global returns something larger, the symbol is being shadowed. See
+`source/retrograde/wasm/memory.d` for the corrected declarations.
