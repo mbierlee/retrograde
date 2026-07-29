@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Retrograde — Current WASM Allocator (Inline Block Headers)</title>
+<style>
+  :root {
+    --page:        #f9f9f7;
+    --surface:     #fcfcfb;
+    --ink:         #0b0b0b;
+    --ink-2:       #52514e;
+    --muted:       #898781;
+    --grid:        #e1e0d9;
+    --baseline:    #c3c2b7;
+    --border:      rgba(11, 11, 11, 0.10);
+    --meta:        #4a3aa7; /* allocator metadata (headers) */
+    --meta-soft:   rgba(74, 58, 167, 0.14);
+    --alloc:       #2a78d6; /* used bytes of an allocation */
+    --alloc-slack: #9ec5f4; /* allocated but unused (blockSize > usedSize) */
+    --free-fill:   #f0efec;
+    --corrupt:     #d03b3b;
+    --accent-link: #256abf;
+    --code-bg:     #f0efec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page:        #0d0d0d;
+      --surface:     #1a1a19;
+      --ink:         #ffffff;
+      --ink-2:       #c3c2b7;
+      --muted:       #898781;
+      --grid:        #2c2c2a;
+      --baseline:    #383835;
+      --border:      rgba(255, 255, 255, 0.10);
+      --meta:        #9085e9;
+      --meta-soft:   rgba(144, 133, 233, 0.18);
+      --alloc:       #3987e5;
+      --alloc-slack: #1c5cab;
+      --free-fill:   #262624;
+      --corrupt:     #d03b3b;
+      --accent-link: #6da7ec;
+      --code-bg:     #262624;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 980px; margin: 0 auto; padding: 32px 20px 80px; }
+  h1 { font-size: 1.7rem; line-height: 1.25; margin: 0 0 4px; }
+  h2 { font-size: 1.2rem; margin: 44px 0 10px; }
+  p  { color: var(--ink-2); max-width: 72ch; }
+  .subtitle { color: var(--muted); margin-top: 0; }
+  a { color: var(--accent-link); }
+  code, .mono {
+    font-family: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.86em;
+  }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  .nav {
+    display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap;
+    padding-bottom: 14px; border-bottom: 1px solid var(--grid); margin-bottom: 8px;
+    font-size: 0.9rem;
+  }
+  .nav .tag {
+    background: var(--meta-soft); color: var(--meta);
+    padding: 2px 10px; border-radius: 99px; font-weight: 600; font-size: 0.8rem;
+  }
+  .panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px;
+  }
+
+  /* ---- linear-memory overview strip ---- */
+  .memstrip { display: flex; height: 54px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+  .memstrip > div {
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.72rem; color: var(--ink-2); text-align: center; padding: 2px 4px;
+    border-right: 1px solid var(--baseline); min-width: 0;
+  }
+  .memstrip > div:last-child { border-right: 0; }
+  .seg-static { flex: 12; background: var(--free-fill); }
+  .seg-offset { flex: 10; background: var(--free-fill); color: var(--muted); }
+  .seg-heap   { flex: 46; background: transparent; padding: 0 !important; }
+  .heap-mini { display: flex; width: 100%; height: 100%; }
+  .heap-mini > div { display:flex; align-items:center; justify-content:center; font-size: 0.68rem; min-width: 0; }
+  .mini-hdr  { background: var(--meta); color: #fff; flex: 2; }
+  .mini-data { background: var(--alloc); color: #fff; flex: 9; }
+  .mini-free { background: var(--free-fill); color: var(--muted); flex: 9; border-left: 1px dashed var(--baseline); }
+  .strip-caption { color: var(--muted); font-size: 0.78rem; margin-top: 6px; }
+
+  /* ---- header anatomy ---- */
+  .bytes { display: flex; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); margin: 10px 0 6px; }
+  .bytes > div {
+    flex: 1; text-align: center; padding: 10px 2px 8px; font-size: 0.72rem;
+    border-right: 1px solid var(--baseline); background: var(--meta-soft); color: var(--ink);
+  }
+  .bytes > div:last-child { border-right: 0; }
+  .bytes b { display: block; font-size: 0.78rem; }
+  .bytes .off { color: var(--muted); font-size: 0.66rem; }
+  table.fields { border-collapse: collapse; font-size: 0.86rem; margin-top: 10px; }
+  table.fields th, table.fields td { text-align: left; padding: 5px 14px 5px 0; border-bottom: 1px solid var(--grid); color: var(--ink-2); vertical-align: top; }
+  table.fields th { color: var(--ink); font-weight: 600; }
+
+  /* ---- simulator ---- */
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; align-items: center; }
+  button {
+    font: 600 0.85rem/1 system-ui, sans-serif; color: var(--ink);
+    background: var(--surface); border: 1px solid var(--baseline);
+    border-radius: 7px; padding: 8px 13px; cursor: pointer;
+  }
+  button:hover { border-color: var(--ink-2); }
+  button.danger { color: var(--corrupt); border-color: var(--corrupt); }
+  input[type=number] {
+    width: 90px; padding: 7px 8px; border-radius: 7px; border: 1px solid var(--baseline);
+    background: var(--surface); color: var(--ink); font: 0.9rem ui-monospace, monospace;
+  }
+  .heapview {
+    display: flex; height: 72px; border-radius: 8px; overflow: hidden;
+    border: 1px solid var(--border); background: var(--surface);
+  }
+  .heapview .seg {
+    display: flex; align-items: center; justify-content: center;
+    min-width: 0; font-size: 0.72rem; color: #fff; overflow: hidden; white-space: nowrap;
+    border-right: 1px solid var(--surface); position: relative;
+  }
+  .seg.hdr   { background: var(--meta); min-width: 13px; }
+  .seg.used  { background: var(--alloc); cursor: pointer; }
+  .seg.slack { background: var(--alloc-slack); color: var(--ink); cursor: pointer; }
+  .seg.free  { background: var(--free-fill); color: var(--muted); }
+  .seg.hdr.corrupt {
+    background: repeating-linear-gradient(45deg, var(--corrupt) 0 6px, #7d2020 6px 12px);
+    min-width: 22px; font-weight: 700;
+  }
+  .seg.unreachable { filter: grayscale(0.7) opacity(0.55); }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; font-size: 0.78rem; color: var(--ink-2); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 13px; height: 13px; border-radius: 3px; border: 1px solid var(--border); display: inline-block; }
+  .metrics { display: flex; gap: 26px; flex-wrap: wrap; margin-top: 14px; }
+  .metric  { font-size: 0.8rem; color: var(--muted); }
+  .metric b { display: block; font-size: 1.15rem; color: var(--ink); font-weight: 650; }
+  .metric.bad b { color: var(--corrupt); }
+  .log {
+    margin-top: 14px; background: var(--code-bg); border-radius: 8px; padding: 10px 14px;
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.76rem;
+    height: 150px; overflow-y: auto; color: var(--ink-2); white-space: pre-wrap;
+  }
+  .log .err { color: var(--corrupt); font-weight: 600; }
+  .log .op  { color: var(--ink); }
+  #tooltip {
+    position: fixed; display: none; z-index: 10; pointer-events: none;
+    background: var(--surface); border: 1px solid var(--baseline); border-radius: 8px;
+    padding: 8px 11px; font-family: ui-monospace, Menlo, monospace; font-size: 0.72rem;
+    color: var(--ink-2); box-shadow: 0 4px 14px rgba(0,0,0,0.18); max-width: 300px;
+  }
+  #tooltip b { color: var(--ink); }
+  #tooltip .bad { color: var(--corrupt); font-weight: 700; }
+  .callout {
+    border-left: 3px solid var(--corrupt); background: var(--surface);
+    border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 16px 0; color: var(--ink-2);
+    font-size: 0.92rem; max-width: 76ch;
+  }
+  ul { color: var(--ink-2); max-width: 76ch; }
+  li { margin: 5px 0; }
+</style>
+</head>
+<body>
+<main>
+  <div class="nav">
+    <span class="tag">current design</span>
+    <a href="wasm-allocator-proposed.html">→ compare with the proposed page-map allocator</a>
+  </div>
+
+  <h1>The current WASM allocator: inline block headers</h1>
+  <p class="subtitle">How <code>source/retrograde/wasm/memory.d</code> manages the heap today — and why its metadata is exposed.</p>
+
+  <p>
+    The allocator divides the heap into a chain of <strong>variable-size blocks</strong>. Every block
+    is a 20-byte <code>MemoryBlock</code> header followed immediately by its data. There is no index
+    or table: the heap <em>is</em> the data structure. To find anything, the allocator starts at the
+    first block and hops from header to header (<code>nextBlock = dataStart + blockSize</code>).
+  </p>
+
+  <h2>1 · Where the heap lives in linear memory</h2>
+  <div class="panel">
+    <div class="memstrip">
+      <div class="seg-static"><span>static data<br>&amp; globals<br><span class="mono">__heap_base ↑</span></span></div>
+      <div class="seg-offset"><span>heapOffset<br>(default 0)</span></div>
+      <div class="seg-heap">
+        <div class="heap-mini">
+          <div class="mini-hdr">hdr</div>
+          <div class="mini-data">allocation</div>
+          <div class="mini-hdr">hdr</div>
+          <div class="mini-data">allocation</div>
+          <div class="mini-hdr">hdr</div>
+          <div class="mini-free">free block</div>
+        </div>
+      </div>
+    </div>
+    <p class="strip-caption">
+      WASM linear memory, address 0 → right. Everything after <code>heapStart</code> alternates
+      header / data / header / data. Headers (violet) sit <em>between</em> user allocations — flush
+      against the end of the previous allocation's bytes.
+    </p>
+  </div>
+
+  <h2>2 · Anatomy of a block header (20 bytes on wasm32)</h2>
+  <div class="panel">
+    <div class="bytes">
+      <div style="flex:4"><b>header</b><span class="off">bytes 0–3</span>magic <code class="mono">"BLOK"</code></div>
+      <div style="flex:1"><b>alloc?</b><span class="off">4</span>bool</div>
+      <div style="flex:3"><b>padding</b><span class="off">5–7</span>—</div>
+      <div style="flex:4"><b>blockSize</b><span class="off">8–11</span>capacity</div>
+      <div style="flex:4"><b>usedSize</b><span class="off">12–15</span>requested</div>
+      <div style="flex:4"><b>checksum</b><span class="off">16–19</span><code class="mono">blockSize ^ "CHEK"</code></div>
+    </div>
+    <table class="fields">
+      <tr><th>Validity check</th><td><code>isValidBlock()</code> = magic matches <em>and</em> checksum matches. That's it — any 20 bytes that happen to satisfy two XOR-able constants pass. A stale header copy or unlucky user data validates fine.</td></tr>
+      <tr><th>Reachability</th><td>User code holding a <code>void*</code> can read the header at <code>ptr − 20</code>, or write it. Nothing is hidden; "internal" is a convention.</td></tr>
+      <tr><th>Cost</th><td>20 bytes <em>per allocation</em>. An 8-byte <code>String</code> buffer pays 250% overhead.</td></tr>
+    </table>
+  </div>
+
+  <h2>3 · Interactive simulator</h2>
+  <p>
+    A scaled-down heap (<b>640 bytes</b>) running the real algorithms: first-fit search,
+    lazy coalescing during the walk, splitting on allocation. Allocate with the buttons,
+    <strong>click an allocation to <code>free()</code> it</strong>, hover anything for its header fields.
+    Then press <em>“Overrun 1 byte”</em> to see what a single out-of-bounds write does.
+  </p>
+
+  <div class="panel">
+    <div class="controls">
+      <button data-alloc="24">malloc(24)</button>
+      <button data-alloc="64">malloc(64)</button>
+      <button data-alloc="120">malloc(120)</button>
+      <input type="number" id="customSize" min="1" max="620" value="48" aria-label="custom size">
+      <button id="mallocCustom">malloc(custom)</button>
+      <button class="danger" id="corrupt">Overrun 1 byte ⚠</button>
+      <button id="reset">Reset heap</button>
+    </div>
+
+    <div class="heapview" id="heap" aria-label="heap visualization"></div>
+
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--meta)"></span> block header (allocator metadata)</span>
+      <span><span class="swatch" style="background:var(--alloc)"></span> allocated — used bytes</span>
+      <span><span class="swatch" style="background:var(--alloc-slack)"></span> allocated — slack (blockSize &gt; usedSize)</span>
+      <span><span class="swatch" style="background:var(--free-fill)"></span> free block</span>
+      <span><span class="swatch" style="background:repeating-linear-gradient(45deg,var(--corrupt) 0 4px,#7d2020 4px 8px)"></span> ⚠ corrupted header</span>
+    </div>
+
+    <div class="metrics" id="metrics"></div>
+    <div class="log" id="log" aria-live="polite"></div>
+  </div>
+
+  <div class="callout" id="corruptNote" style="display:none">
+    <b>What just happened:</b> the user wrote <i>one byte</i> past the end of their own buffer.
+    Because the next block's header starts at exactly <code>dataStart + blockSize</code>, that byte
+    landed on a neighboring <code>"BLOK"</code> magic. Every heap walk —
+    <code>findFreeBlock</code>, coalescing — now stops at the damaged
+    header. Blocks beyond it (greyed out) are unreachable: <code>malloc</code> fails even though free
+    space exists, and the metrics silently undercount.
+  </div>
+
+  <h2>4 · The structural problems</h2>
+  <ul>
+    <li><b>Metadata is adjacent to user data.</b> The most common bug — overrunning your own buffer — lands on allocator state, not on neighboring data.</li>
+    <li><b>Validation is heuristic.</b> <code>getBlock(ptr)</code> trusts a magic + checksum at <code>ptr − 20</code>; it cannot distinguish a real header from a lucky bit pattern, and cannot resolve interior pointers at all.</li>
+    <li><b>Allocation is O(heap).</b> First-fit walks the block chain, coalescing as it goes; cost grows with fragmentation.</li>
+    <li><b>20-byte tax on every allocation</b>, and returned pointers are only 4-byte aligned by accident of the header size.</li>
+  </ul>
+  <p>
+    The proposed replacement moves all metadata into a reserved region and makes every lookup O(1)
+    arithmetic — see the <a href="wasm-allocator-proposed.html">page-map allocator explainer</a> and the full
+    write-up in <a href="../todo/redesign-wasm-allocator-size-class-pages.md">todo/redesign-wasm-allocator-size-class-pages.md</a>.
+  </p>
+</main>
+
+<div id="tooltip"></div>
+
+<script>
+"use strict";
+(() => {
+  const HEAP = 640;           // scaled demo heap in bytes
+  const HDR  = 20;            // MemoryBlock.sizeof on wasm32
+  const MAGIC = 0x4B4F4C42;   // "BLOK"
+  const CHEK  = 0x4B454843;   // "CHEK"
+
+  /** blocks: { addr, blockSize, isAllocated, usedSize, corrupt } — addr of the header */
+  let blocks = [];
+  let allocCounter = 0;
+
+  const $ = id => document.getElementById(id);
+  const heapEl = $("heap"), logEl = $("log"), metricsEl = $("metrics"), tip = $("tooltip");
+
+  function reset() {
+    blocks = [{ addr: 0, blockSize: HEAP - HDR, isAllocated: false, usedSize: 0, corrupt: false, tag: null }];
+    allocCounter = 0;
+    $("corruptNote").style.display = "none";
+    logEl.textContent = "";
+    log("initializeHeapMemory(): one free block, blockSize = " + (HEAP - HDR) + " B", "op");
+    render();
+  }
+
+  function log(msg, cls) {
+    const line = document.createElement("div");
+    if (cls) { line.className = cls; }
+    line.textContent = msg;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function fmtHex(v) { return "0x" + (v >>> 0).toString(16).toUpperCase().padStart(8, "0"); }
+
+  /* Mirrors findFreeBlock(): walk from the start, coalesce adjacent free blocks,
+     stop dead when a header fails isValidBlock() — exactly like the D code. */
+  function findFreeBlock(wanted) {
+    let walked = 0;
+    for (let i = 0; i < blocks.length; i++) {
+      const b = blocks[i];
+      if (b.corrupt) {
+        log("  walk hit an invalid header @" + b.addr + " — isValidBlock() failed, search ABORTED", "err");
+        return { block: null, walked, blockedByCorruption: true };
+      }
+      walked++;
+      const prev = blocks[i - 1];
+      if (prev && !prev.corrupt && !prev.isAllocated && !b.isAllocated) {
+        prev.blockSize += HDR + b.blockSize;          // combineBlocks()
+        blocks.splice(i, 1);
+        log("  coalesced two free neighbours @" + prev.addr + " → blockSize " + prev.blockSize, null);
+        i--;
+        continue;
+      }
+      if (!b.isAllocated && b.blockSize >= wanted) {
+        return { block: b, walked, blockedByCorruption: false };
+      }
+    }
+    return { block: null, walked, blockedByCorruption: false };
+  }
+
+  function malloc(size) {
+    size = Math.floor(size);
+    if (!(size > 0)) { log("malloc(" + size + ") → null (size must be > 0)", "err"); return; }
+    log("malloc(" + size + ")", "op");
+    const res = findFreeBlock(size);
+    if (!res.block) {
+      if (!res.blockedByCorruption) {
+        log("  no free block ≥ " + size + " B after walking " + res.walked +
+            " block(s) — real allocator would grow linear memory here (demo heap is fixed)", "err");
+      } else {
+        log("  free space may exist beyond the corruption, but the allocator can never reach it", "err");
+      }
+      render();
+      return;
+    }
+    const b = res.block;
+    log("  first fit after walking " + res.walked + " block(s): free block @" + b.addr +
+        " (blockSize " + b.blockSize + ")");
+    // splitBlock(): only if the remainder can hold another header
+    if (size + HDR < b.blockSize) {
+      const rest = b.blockSize - size - HDR;
+      const idx = blocks.indexOf(b);
+      blocks.splice(idx + 1, 0, {
+        addr: b.addr + HDR + size, blockSize: rest,
+        isAllocated: false, usedSize: 0, corrupt: false, tag: null
+      });
+      b.blockSize = size;
+      log("  split: block trimmed to " + size + " B, new free block @" + (b.addr + HDR + size) +
+          " (" + rest + " B)");
+    }
+    b.isAllocated = true;
+    b.usedSize = size;
+    b.tag = "A" + (++allocCounter);
+    log("  → ptr = heapStart+" + (b.addr + HDR) + "  (allocation " + b.tag + ")");
+    render();
+  }
+
+  function freeBlock(b) {
+    if (b.corrupt) { return; }
+    log("free(heapStart+" + (b.addr + HDR) + ")   // " + b.tag, "op");
+    b.isAllocated = false;
+    b.usedSize = 0;
+    b.tag = null;
+    log("  header flipped to free — coalescing waits for the next malloc walk");
+    render();
+  }
+
+  function corruptDemo() {
+    // "The user writes one byte past the end of an allocation."
+    for (let i = 0; i < blocks.length - 1; i++) {
+      if (blocks[i].isAllocated && blocks[i].usedSize === blocks[i].blockSize && !blocks[i + 1].corrupt) {
+        blocks[i + 1].corrupt = true;
+        log("user bug: wrote " + (blocks[i].usedSize + 1) + " bytes into a " + blocks[i].usedSize +
+            "-byte buffer (" + blocks[i].tag + ")", "err");
+        log("  the stray byte clobbered the NEXT block's header magic @" + blocks[i + 1].addr, "err");
+        $("corruptNote").style.display = "block";
+        render();
+        return;
+      }
+    }
+    log("make at least one allocation first (with a block after it), then try again", "err");
+  }
+
+  /* Heap-walk metrics: walk while isValidBlock() holds — undercounts after corruption. */
+  function metrics() {
+    let n = 0, used = 0, freeB = 0, reachable = 0, stopped = false;
+    for (const b of blocks) {
+      if (b.corrupt) { stopped = true; break; }
+      n++;
+      reachable += HDR + b.blockSize;
+      if (b.isAllocated) { used += b.usedSize; } else { freeB += b.blockSize; }
+    }
+    const lost = HEAP - reachable;
+    metricsEl.innerHTML =
+      metric("blocks reachable", n) +
+      metric("used bytes", used) +
+      metric("free bytes (visible)", freeB) +
+      (stopped ? metric("bytes unreachable ⚠", lost, true) : "");
+    function metric(label, val, bad) {
+      return '<div class="metric' + (bad ? " bad" : "") + '"><b>' + val + "</b>" + label + "</div>";
+    }
+  }
+
+  function render() {
+    heapEl.innerHTML = "";
+    let afterCorruption = false;
+    for (const b of blocks) {
+      const hdr = document.createElement("div");
+      hdr.className = "seg hdr" + (b.corrupt ? " corrupt" : "") + (afterCorruption ? " unreachable" : "");
+      hdr.style.flexGrow = HDR;
+      hdr.textContent = b.corrupt ? "⚠" : "";
+      attachTip(hdr, b, true);
+      heapEl.appendChild(hdr);
+      if (b.corrupt) { afterCorruption = true; }
+
+      const mk = (cls, bytes, label, clickFree) => {
+        if (bytes <= 0) { return; }
+        const d = document.createElement("div");
+        d.className = "seg " + cls + (afterCorruption ? " unreachable" : "");
+        d.style.flexGrow = bytes;
+        d.textContent = bytes / HEAP > 0.045 ? label : "";
+        if (clickFree) {
+          d.addEventListener("click", () => freeBlock(b));
+          d.setAttribute("role", "button");
+          d.title = "click to free()";
+        }
+        attachTip(d, b, false);
+        heapEl.appendChild(d);
+      };
+      if (b.isAllocated) {
+        mk("used", b.usedSize, (b.tag || "") + " · " + b.usedSize + " B", true);
+        mk("slack", b.blockSize - b.usedSize, "slack", true);
+      } else {
+        mk("free", b.blockSize, "free · " + b.blockSize + " B", false);
+      }
+    }
+    metrics();
+  }
+
+  function attachTip(el, b, isHeader) {
+    el.addEventListener("mousemove", e => {
+      const checksum = b.blockSize ^ CHEK;
+      tip.innerHTML =
+        "<b>" + (isHeader ? "MemoryBlock header" : (b.isAllocated ? "allocation " + (b.tag || "") : "free block")) +
+        "</b> @ heapStart+" + b.addr + "<br>" +
+        (b.corrupt
+          ? '<span class="bad">header:   CLOBBERED (magic ≠ "BLOK")<br>isValidBlock() → false</span>'
+          : "header:   " + fmtHex(MAGIC) + ' ("BLOK")<br>' +
+            "isAllocated: " + b.isAllocated + "<br>" +
+            "blockSize:  " + b.blockSize + " B<br>" +
+            "usedSize:   " + b.usedSize + " B<br>" +
+            "checksum:   " + fmtHex(checksum) + " (blockSize ^ \"CHEK\")<br>" +
+            "data at:    ptr − 20 = header  ← user-reachable");
+      tip.style.display = "block";
+      tip.style.left = Math.min(e.clientX + 14, window.innerWidth - 320) + "px";
+      tip.style.top = (e.clientY + 16) + "px";
+    });
+    el.addEventListener("mouseleave", () => { tip.style.display = "none"; });
+  }
+
+  document.querySelectorAll("[data-alloc]").forEach(btn =>
+    btn.addEventListener("click", () => malloc(parseInt(btn.dataset.alloc, 10))));
+  $("mallocCustom").addEventListener("click", () => malloc(parseInt($("customSize").value, 10)));
+  $("corrupt").addEventListener("click", corruptDemo);
+  $("reset").addEventListener("click", reset);
+
+  reset();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Retrograde — Proposed WASM Allocator (Size-Class Pages + Page Map)</title>
+<style>
+  :root {
+    --page:        #f9f9f7;
+    --surface:     #fcfcfb;
+    --ink:         #0b0b0b;
+    --ink-2:       #52514e;
+    --muted:       #898781;
+    --grid:        #e1e0d9;
+    --baseline:    #c3c2b7;
+    --border:      rgba(11, 11, 11, 0.10);
+    --meta:        #4a3aa7; /* allocator metadata (page map) */
+    --meta-soft:   rgba(74, 58, 167, 0.14);
+    --alloc:       #2a78d6; /* live small slot */
+    --large:       #1baf7a; /* large page run */
+    --free-fill:   #f0efec;
+    --corrupt:     #d03b3b;
+    --good:        #0ca30c;
+    --accent-link: #256abf;
+    --code-bg:     #f0efec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page:        #0d0d0d;
+      --surface:     #1a1a19;
+      --ink:         #ffffff;
+      --ink-2:       #c3c2b7;
+      --muted:       #898781;
+      --grid:        #2c2c2a;
+      --baseline:    #383835;
+      --border:      rgba(255, 255, 255, 0.10);
+      --meta:        #9085e9;
+      --meta-soft:   rgba(144, 133, 233, 0.18);
+      --alloc:       #3987e5;
+      --large:       #199e70;
+      --free-fill:   #262624;
+      --corrupt:     #d03b3b;
+      --good:        #0ca30c;
+      --accent-link: #6da7ec;
+      --code-bg:     #262624;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 1020px; margin: 0 auto; padding: 32px 20px 80px; }
+  h1 { font-size: 1.7rem; line-height: 1.25; margin: 0 0 4px; }
+  h2 { font-size: 1.2rem; margin: 44px 0 10px; }
+  h3 { font-size: 0.95rem; margin: 18px 0 6px; color: var(--ink); }
+  p  { color: var(--ink-2); max-width: 74ch; }
+  .subtitle { color: var(--muted); margin-top: 0; }
+  a { color: var(--accent-link); }
+  code, .mono {
+    font-family: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.86em;
+  }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  .nav {
+    display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap;
+    padding-bottom: 14px; border-bottom: 1px solid var(--grid); margin-bottom: 8px; font-size: 0.9rem;
+  }
+  .nav .tag {
+    background: var(--meta-soft); color: var(--meta);
+    padding: 2px 10px; border-radius: 99px; font-weight: 600; font-size: 0.8rem;
+  }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+
+  /* ---- overview strip ---- */
+  .memstrip { display: flex; height: 54px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+  .memstrip > div {
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    font-size: 0.72rem; color: var(--ink-2); padding: 2px 4px;
+    border-right: 1px solid var(--baseline); min-width: 0;
+  }
+  .memstrip > div:last-child { border-right: 0; }
+  .strip-caption { color: var(--muted); font-size: 0.78rem; margin-top: 6px; }
+
+  /* ---- size class ruler ---- */
+  .classes { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
+  .classes span {
+    font: 0.72rem ui-monospace, monospace; padding: 4px 8px; border-radius: 5px;
+    background: var(--code-bg); color: var(--ink-2); border: 1px solid var(--border);
+  }
+  .classes span.demo { background: var(--meta-soft); color: var(--ink); font-weight: 600; }
+
+  /* ---- simulator ---- */
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; align-items: center; }
+  button {
+    font: 600 0.85rem/1 system-ui, sans-serif; color: var(--ink);
+    background: var(--surface); border: 1px solid var(--baseline);
+    border-radius: 7px; padding: 8px 13px; cursor: pointer;
+  }
+  button:hover { border-color: var(--ink-2); }
+  button.warn { color: var(--corrupt); border-color: var(--corrupt); }
+  input[type=number] {
+    width: 100px; padding: 7px 8px; border-radius: 7px; border: 1px solid var(--baseline);
+    background: var(--surface); color: var(--ink); font: 0.9rem ui-monospace, monospace;
+  }
+  .maprow-label { font-size: 0.78rem; color: var(--muted); margin: 12px 0 4px; }
+  .mapview {
+    display: grid; grid-template-columns: repeat(16, 1fr); gap: 3px;
+    background: var(--meta-soft); border: 1px solid var(--meta); border-radius: 8px; padding: 7px;
+  }
+  .mapcell {
+    text-align: center; font: 600 0.66rem/1.25 ui-monospace, monospace;
+    border-radius: 4px; padding: 5px 1px; color: var(--ink-2);
+    background: var(--surface); border: 1px solid var(--border); cursor: default;
+    min-width: 0; overflow: hidden;
+  }
+  .mapcell .idx { display: block; font-weight: 400; color: var(--muted); font-size: 0.6rem; }
+  .mapcell.k-meta  { background: var(--meta); color: #fff; }
+  .mapcell.k-small { border-color: var(--alloc); color: var(--ink); }
+  .mapcell.k-large { border-color: var(--large); color: var(--ink); }
+  .mapcell.hl { outline: 2px solid var(--ink); outline-offset: 1px; }
+
+  .pagesview { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; margin-top: 10px; }
+  .pagebox {
+    border: 1px solid var(--baseline); border-radius: 7px; min-height: 86px;
+    background: var(--free-fill); position: relative; padding: 18px 4px 4px; overflow: hidden;
+  }
+  .pagebox .plabel {
+    position: absolute; top: 2px; left: 6px; right: 4px; font: 600 0.62rem/1.4 ui-monospace, monospace;
+    color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .pagebox.k-meta  { background: var(--meta-soft); border-color: var(--meta); }
+  .pagebox.k-meta .plabel { color: var(--meta); }
+  .pagebox.k-free .plabel { color: var(--muted); }
+  .pagebox.k-large { background: color-mix(in srgb, var(--large) 22%, var(--surface)); border-color: var(--large); }
+  .pagebox.k-largecont { background: color-mix(in srgb, var(--large) 22%, var(--surface)); border-color: var(--large); border-left-style: dashed; }
+  .pagebox.k-large .plabel, .pagebox.k-largecont .plabel { color: var(--ink); }
+  .pagebox.hl { outline: 2px solid var(--ink); outline-offset: 1px; }
+  .slotgrid { display: grid; gap: 2px; height: 100%; }
+  .slot {
+    border-radius: 2px; background: var(--surface); border: 1px solid var(--grid);
+    min-height: 9px; cursor: default; position: relative;
+  }
+  .slot.live { background: var(--alloc); border-color: var(--alloc); cursor: pointer; }
+  .slot.dirty { background: repeating-linear-gradient(45deg, var(--corrupt) 0 3px, var(--alloc) 3px 6px); }
+  .slot.inspected { outline: 2px solid var(--ink); }
+  .runlabel {
+    position: absolute; inset: 18px 4px 4px; display: flex; align-items: center; justify-content: center;
+    font: 600 0.68rem/1.3 system-ui, sans-serif; color: var(--ink); text-align: center; cursor: pointer;
+  }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; font-size: 0.78rem; color: var(--ink-2); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 13px; height: 13px; border-radius: 3px; border: 1px solid var(--border); display: inline-block; }
+  .metrics { display: flex; gap: 26px; flex-wrap: wrap; margin-top: 14px; }
+  .metric  { font-size: 0.8rem; color: var(--muted); }
+  .metric b { display: block; font-size: 1.15rem; color: var(--ink); font-weight: 650; }
+  .log {
+    margin-top: 14px; background: var(--code-bg); border-radius: 8px; padding: 10px 14px;
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.76rem;
+    height: 150px; overflow-y: auto; color: var(--ink-2); white-space: pre-wrap;
+  }
+  .log .err { color: var(--corrupt); font-weight: 600; }
+  .log .op  { color: var(--ink); }
+
+  /* ---- pointer inspector ---- */
+  .inspector { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .inspector { grid-template-columns: 1fr; } }
+  .verdict {
+    font-family: ui-monospace, Menlo, monospace; font-size: 0.78rem; color: var(--ink-2);
+    background: var(--code-bg); border-radius: 8px; padding: 12px 14px; min-height: 130px; white-space: pre-wrap;
+  }
+  .verdict .ok  { color: var(--good); font-weight: 700; }
+  .verdict .bad { color: var(--corrupt); font-weight: 700; }
+  .verdict b { color: var(--ink); }
+
+  table.compare { border-collapse: collapse; font-size: 0.85rem; width: 100%; }
+  table.compare th, table.compare td {
+    text-align: left; padding: 7px 12px 7px 0; border-bottom: 1px solid var(--grid);
+    color: var(--ink-2); vertical-align: top;
+  }
+  table.compare th { color: var(--ink); font-weight: 600; }
+  ul { color: var(--ink-2); max-width: 76ch; }
+  li { margin: 5px 0; }
+  .callout {
+    border-left: 3px solid var(--good); background: var(--surface);
+    border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 16px 0; color: var(--ink-2);
+    font-size: 0.92rem; max-width: 78ch;
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="nav">
+    <span class="tag">proposed design</span>
+    <a href="wasm-allocator-current.html">← compare with the current block allocator</a>
+    <a href="../todo/redesign-wasm-allocator-size-class-pages.md">full proposal (todo/)</a>
+  </div>
+
+  <h1>The proposed WASM allocator: size-class pages + page map</h1>
+  <p class="subtitle">All metadata lives in a reserved region; finding it is pure arithmetic, never a header read.</p>
+
+  <p>
+    The heap is carved into fixed <strong>4&nbsp;KiB logical pages</strong>. Small allocations
+    (≤&nbsp;2048&nbsp;B) are rounded up to a <strong>size class</strong> and become one <em>slot</em> in a
+    page dedicated to that class; larger allocations take a <em>run</em> of whole pages. The only
+    bookkeeping structure is the <strong>page map</strong> — a flat array, one 8-byte entry per page,
+    stored in pages of its own. <b>No header precedes any allocation.</b>
+  </p>
+
+  <h2>1 · Where everything lives in linear memory</h2>
+  <div class="panel">
+    <div class="memstrip">
+      <div style="flex:10; background:var(--free-fill)">static data &amp; globals</div>
+      <div style="flex:8;  background:var(--free-fill); color:var(--muted)">heapOffset (default 0)</div>
+      <div style="flex:2;  background:var(--free-fill); color:var(--muted)">pad</div>
+      <div style="flex:6;  background:var(--meta); color:#fff"><b>page map</b></div>
+      <div style="flex:44; background:transparent; padding:0 !important">
+        <div style="display:flex; width:100%; height:100%">
+          <div style="flex:2; background:var(--alloc); color:#fff; display:flex;align-items:center;justify-content:center; font-size:0.68rem">slots</div>
+          <div style="flex:2; background:var(--alloc); color:#fff; display:flex;align-items:center;justify-content:center; font-size:0.68rem; border-left:1px solid var(--surface)">slots</div>
+          <div style="flex:3; background:var(--large); color:#fff; display:flex;align-items:center;justify-content:center; font-size:0.68rem; border-left:1px solid var(--surface)">large run</div>
+          <div style="flex:3; background:var(--free-fill); color:var(--muted); display:flex;align-items:center;justify-content:center; font-size:0.68rem; border-left:1px dashed var(--baseline)">free pages</div>
+        </div>
+      </div>
+    </div>
+    <p class="strip-caption">
+      <code>pagesBase</code> = <code>heapStart</code> aligned up to 4&nbsp;KiB. The page map (violet)
+      is the only metadata, and it sits in its own pages — one region, rather than scattered between
+      allocations. Finding any pointer's metadata is one shift and one array read:
+      <code>pageMap[(ptr − pagesBase) >> 12]</code>.
+    </p>
+  </div>
+
+  <h2>2 · Size classes</h2>
+  <p>
+    <code>sizeToClass(n)</code> rounds a request up to the nearest class. Slack within a class is the
+    only per-allocation overhead — bounded at ~25%, versus the flat 20-byte header tax today.
+    The demo below uses the five highlighted classes so the slot grids stay readable.
+  </p>
+  <div class="panel">
+    <div class="classes">
+      <span>8</span><span>16</span><span>24</span><span>32</span><span>48</span><span>64</span><span>80</span><span>96</span><span>112</span>
+      <span class="demo">128</span><span>160</span><span>192</span><span>224</span><span class="demo">256</span><span>320</span><span>384</span>
+      <span>448</span><span class="demo">512</span><span>640</span><span>768</span><span>896</span><span class="demo">1024</span>
+      <span>1280</span><span>1536</span><span>1792</span><span class="demo">2048</span>
+    </div>
+    <p class="strip-caption">bytes per slot · anything &gt; 2048 B becomes a page run (rounded up to 4 KiB)</p>
+  </div>
+
+  <h2>3 · Interactive simulator</h2>
+  <p>
+    16 logical pages (64&nbsp;KiB — one WASM memory grow). Page 0 holds the page map itself. Allocate
+    with the buttons; <strong>click a live slot or a large run to <code>free()</code> it</strong>. The
+    top row is the page map — watch it track the pages below, and hover either row to see the pairing.
+  </p>
+
+  <div class="panel">
+    <div class="controls">
+      <button data-alloc="100">malloc(100)</button>
+      <button data-alloc="200">malloc(200)</button>
+      <button data-alloc="900">malloc(900)</button>
+      <button data-alloc="2000">malloc(2000)</button>
+      <input type="number" id="customSize" min="1" max="49152" value="6000" aria-label="custom size">
+      <button id="mallocCustom">malloc(custom)</button>
+      <button class="warn" id="overrun">Overrun 1 byte ⚠</button>
+      <button id="reset">Reset heap</button>
+    </div>
+
+    <div class="maprow-label">page map — one 8-byte entry per page, lives inside page 0 (violet region)</div>
+    <div class="mapview" id="mapview"></div>
+
+    <div class="maprow-label">the 16 logical pages (4 KiB each)</div>
+    <div class="pagesview" id="pagesview"></div>
+
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--meta)"></span> metadata (the page map)</span>
+      <span><span class="swatch" style="background:var(--alloc)"></span> live slot (small allocation)</span>
+      <span><span class="swatch" style="background:var(--large)"></span> large run (whole pages)</span>
+      <span><span class="swatch" style="background:var(--free-fill)"></span> free page / free slot</span>
+      <span><span class="swatch" style="background:repeating-linear-gradient(45deg,var(--corrupt) 0 3px,var(--alloc) 3px 6px)"></span> ⚠ user data damaged by overrun</span>
+    </div>
+
+    <div class="metrics" id="metrics"></div>
+    <div class="log" id="log" aria-live="polite"></div>
+  </div>
+
+  <div class="callout" id="overrunNote" style="display:none">
+    <b>Compare with the block allocator:</b> the overrun byte landed in the <em>next slot's user
+    data</em> (striped) — a real bug, but a contained one. The page map was untouched: metrics stay
+    exact, walks don't break, no memory becomes unreachable. In the
+    <a href="wasm-allocator-current.html">current design</a> the same single byte destroys a header and
+    cuts off the rest of the heap.
+  </div>
+
+  <h2>4 · Pointer inspector — exact validation, no guesswork</h2>
+  <p>
+    Today, <code>getBlock(ptr)</code> trusts a magic number found at <code>ptr − 20</code>. Here the
+    verdict is computed from the map, so it is <em>authoritative</em>. Enter any offset from
+    <code>pagesBase</code> (0–65535), or use the presets — they pick real addresses from the
+    simulator's current state above.
+  </p>
+  <div class="panel inspector">
+    <div>
+      <div class="controls" style="margin-top:0">
+        <input type="number" id="inspectAddr" min="0" max="65535" value="4096" aria-label="offset from pagesBase">
+        <button id="inspectBtn">inspect</button>
+      </div>
+      <div class="controls">
+        <button id="presetValid">a live slot start</button>
+        <button id="presetInterior">an interior pointer</button>
+        <button id="presetFree">a pointer into a free page</button>
+      </div>
+      <p style="font-size:0.85rem">
+        Interior pointers are <em>resolved</em>, not rejected blindly: the slot start is recomputed
+        with one division, which is what lets <code>memmove</code> bounds-check mid-buffer pointers.
+        The inspected slot is outlined in the simulator above.
+      </p>
+    </div>
+    <div class="verdict" id="verdict">enter an address and press inspect…</div>
+  </div>
+
+  <h2>5 · Why this fixes the block allocator's problems</h2>
+  <div class="panel">
+    <table class="compare">
+      <tr><th></th><th>current — inline blocks</th><th>proposed — page map</th></tr>
+      <tr><th>metadata location</th><td>20-byte header touching every allocation</td><td>reserved map pages; only the map region's edges border live data</td></tr>
+      <tr><th>overrun by 1 byte hits</th><td>the next block's header → heap walks break</td><td>the neighbour's data — allocator state stays consistent</td></tr>
+      <tr><th>"is this a heap pointer?"</th><td>magic + checksum guess, forgeable</td><td>range check + map entry — exact</td></tr>
+      <tr><th>interior pointers</th><td>unresolvable</td><td>O(1) arithmetic</td></tr>
+      <tr><th>malloc (small)</th><td>O(heap) first-fit walk</td><td>O(1): class → partial page → pop slot</td></tr>
+      <tr><th>overhead on an 8-byte alloc</th><td>20 B (250%)</td><td>≤ 25% slack + 0.2% map</td></tr>
+      <tr><th>alignment</th><td>4, by accident</td><td>≥ 8, guaranteed</td></tr>
+    </table>
+  </div>
+  <p>
+    Full design — map growth, realloc policy, <code>free_sized</code> semantics, debug instrumentation,
+    migration plan — in
+    <a href="../todo/redesign-wasm-allocator-size-class-pages.md">todo/redesign-wasm-allocator-size-class-pages.md</a>.
+  </p>
+</main>
+
+<script>
+"use strict";
+(() => {
+  const PAGE = 4096, NPAGES = 16;
+  const CLASSES = [128, 256, 512, 1024, 2048];    // demo subset of the real table
+
+  /** pageMap[i]: {kind:'meta'|'free'|'small'|'largeStart'|'largeCont',
+   *               cls, used, bump, freeList:[], slots:[{live,tag,dirty}], runLen, runBytes, runTag} */
+  let map = [];
+  let allocCounter = 0, inspected = null;
+
+  const $ = id => document.getElementById(id);
+  const mapEl = $("mapview"), pagesEl = $("pagesview"), logEl = $("log"),
+        metricsEl = $("metrics"), verdictEl = $("verdict");
+
+  function reset() {
+    map = Array.from({ length: NPAGES }, (_, i) =>
+      i === 0 ? { kind: "meta" } : { kind: "free" });
+    allocCounter = 0;
+    inspected = null;
+    $("overrunNote").style.display = "none";
+    logEl.textContent = "";
+    verdictEl.textContent = "enter an address and press inspect…";
+    log("initializeHeapMemory(): page 0 → metadata (the map), pages 1–15 → one free run", "op");
+    render();
+  }
+
+  function log(msg, cls) {
+    const line = document.createElement("div");
+    if (cls) { line.className = cls; }
+    line.textContent = msg;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  const sizeToClass = n => CLASSES.find(c => c >= n);
+  const slotsPerPage = cls => PAGE / cls;
+
+  function malloc(size) {
+    size = Math.floor(size);
+    if (!(size > 0)) { log("malloc(" + size + ") → null (size must be > 0)", "err"); return; }
+    log("malloc(" + size + ")", "op");
+    if (size <= 2048) { mallocSmall(size); } else { mallocLarge(size); }
+    render();
+  }
+
+  function mallocSmall(size) {
+    const cls = sizeToClass(size);
+    log("  sizeToClass(" + size + ") → " + cls + " B slots (" + slotsPerPage(cls) + " per page)");
+    // partial page for this class?
+    let pi = map.findIndex(p => p.kind === "small" && p.cls === cls && p.used < slotsPerPage(cls));
+    if (pi < 0) {
+      pi = map.findIndex(p => p.kind === "free");
+      if (pi < 0) {
+        log("  no free page — real allocator calls memory.grow (+16 pages); demo heap is fixed", "err");
+        return;
+      }
+      map[pi] = { kind: "small", cls, used: 0, bump: 0, freeList: [],
+                  slots: Array.from({ length: slotsPerPage(cls) }, () => ({ live: false, tag: null, dirty: false })) };
+      log("  no partial page of class " + cls + " — claimed free page " + pi);
+    } else {
+      log("  page " + pi + " is a partial " + cls + "-class page");
+    }
+    const p = map[pi];
+    let slot;
+    if (p.freeList.length > 0) {
+      slot = p.freeList.pop();
+      log("  popped slot " + slot + " from the page's free list");
+    } else {
+      slot = p.bump++;
+      log("  bump-allocated never-used slot " + slot);
+    }
+    p.slots[slot] = { live: true, tag: "A" + (++allocCounter), dirty: false };
+    p.used++;
+    log("  → ptr = pagesBase + " + pi + "·4096 + " + slot + "·" + cls + " = pagesBase+" + (pi * PAGE + slot * cls));
+  }
+
+  function mallocLarge(size) {
+    const need = Math.ceil(size / PAGE);
+    log("  " + size + " B > 2048 → large run of " + need + " page(s) (" + (need * PAGE) + " B)");
+    for (let i = 1; i <= NPAGES - need; i++) {
+      if (map.slice(i, i + need).every(p => p.kind === "free")) {
+        map[i] = { kind: "largeStart", runLen: need, runBytes: size, runTag: "A" + (++allocCounter) };
+        for (let j = 1; j < need; j++) { map[i + j] = { kind: "largeCont", start: i }; }
+        log("  first-fit free run found at pages " + i + "–" + (i + need - 1));
+        log("  → ptr = pagesBase + " + i + "·4096 = pagesBase+" + (i * PAGE));
+        return;
+      }
+    }
+    log("  no free run of " + need + " page(s) — real allocator calls memory.grow; demo heap is fixed", "err");
+  }
+
+  function freeSlot(pi, slot) {
+    const p = map[pi];
+    const cls = p.cls;
+    log("free(pagesBase+" + (pi * PAGE + slot * cls) + ")   // " + p.slots[slot].tag, "op");
+    log("  map[" + pi + "] → small page, class " + cls + " · slot " + slot + " is a valid slot start ✓");
+    p.slots[slot] = { live: false, tag: null, dirty: false };
+    p.freeList.push(slot);
+    p.used--;
+    if (p.used === 0) {
+      map[pi] = { kind: "free" };
+      log("  page " + pi + " is now empty → returned to the free-run pool (coalesces with free neighbours)");
+    }
+    render();
+  }
+
+  function freeRun(pi) {
+    const p = map[pi];
+    log("free(pagesBase+" + (pi * PAGE) + ")   // " + p.runTag, "op");
+    log("  map[" + pi + "] → largeStart, run of " + p.runLen + " page(s) — freeing whole run");
+    for (let j = 0; j < p.runLen; j++) { map[pi + j] = { kind: "free" }; }
+    render();
+  }
+
+  function overrunDemo() {
+    for (let pi = 1; pi < NPAGES; pi++) {
+      const p = map[pi];
+      if (p.kind !== "small") { continue; }
+      for (let s = 0; s < p.slots.length - 1; s++) {
+        if (p.slots[s].live && p.slots[s + 1].live && !p.slots[s + 1].dirty) {
+          p.slots[s + 1].dirty = true;
+          log("user bug: wrote " + (p.cls + 1) + " bytes into a " + p.cls + "-byte slot (" + p.slots[s].tag + ")", "err");
+          log("  the stray byte damaged NEIGHBOUR DATA (slot " + (s + 1) + ", " + p.slots[s + 1].tag + ") — a real bug…", "err");
+          log("  …but the page map is untouched: metrics stay exact, nothing becomes unreachable", "op");
+          $("overrunNote").style.display = "block";
+          render();
+          return;
+        }
+      }
+    }
+    log("allocate two small slots of the same class first (e.g. malloc(100) twice), then try again", "err");
+  }
+
+  function inspect(addr) {
+    inspected = null;
+    addr = Math.floor(addr);
+    let out = "";
+    const line = (s) => { out += s + "\n"; };
+    line("<b>ptr = pagesBase + " + addr + "</b>");
+    if (addr < 0 || addr >= NPAGES * PAGE) {
+      line('<span class="bad">out of heap range → not a heap pointer</span> (stack/static — memmove skips bounds check)');
+      done(); return;
+    }
+    const pi = addr >> 12;
+    line("pageIndex = " + addr + " >> 12 = <b>" + pi + "</b>");
+    const p = map[pi];
+    if (p.kind === "meta") {
+      line("map[" + pi + "].kind = metadata");
+      line('<span class="bad">✗ points into the allocator\'s own map — free()/writes here are detected as invalid</span>');
+    } else if (p.kind === "free") {
+      line("map[" + pi + "].kind = freeRun");
+      line('<span class="bad">✗ no allocation here — invalid free, detected exactly</span>');
+    } else if (p.kind === "largeCont") {
+      line("map[" + pi + "].kind = largeCont (run starts at page " + p.start + ")");
+      line("allocation base = pagesBase+" + (p.start * PAGE));
+      line('<span class="bad">✗ interior of a large allocation — free() rejects; base recovered for bounds checks</span>');
+    } else if (p.kind === "largeStart") {
+      line("map[" + pi + "].kind = largeStart · runLength " + p.runLen + " (" + (p.runLen * PAGE) + " B capacity)");
+      if (addr % PAGE === 0) {
+        line('<span class="ok">✓ valid allocation start (' + p.runTag + ") — capacity " + (p.runLen * PAGE) + " B</span>");
+      } else {
+        line("slot start = pagesBase+" + (pi * PAGE));
+        line('<span class="bad">✗ interior pointer — free() rejects; base + capacity recovered for memmove</span>');
+      }
+    } else { // small
+      const off = addr % PAGE;
+      const slot = Math.floor(off / p.cls);
+      const slotStart = pi * PAGE + slot * p.cls;
+      line("map[" + pi + "].kind = smallPage · sizeClass " + p.cls + " B");
+      line("slot = (" + addr + " mod 4096) / " + p.cls + " = <b>" + slot + "</b> · slot start = pagesBase+" + slotStart);
+      inspected = { pi, slot };
+      if (off % p.cls !== 0) {
+        line('<span class="bad">✗ interior pointer</span> — exact slot start recomputed above; free() rejects it, memmove can still bounds-check against ' + p.cls + " B");
+      } else if (!p.slots[slot].live) {
+        line('<span class="bad">✗ slot is on the free list — double-free / stale pointer, detectable in debug builds</span>');
+      } else {
+        line('<span class="ok">✓ valid live slot start (' + p.slots[slot].tag + ") — capacity " + p.cls + " B</span>");
+      }
+    }
+    done();
+    function done() { verdictEl.innerHTML = out; render(); }
+  }
+
+  function presetAddr(kind) {
+    if (kind === "valid" || kind === "interior") {
+      for (let pi = 1; pi < NPAGES; pi++) {
+        const p = map[pi];
+        if (p.kind !== "small") { continue; }
+        for (let s = 0; s < p.slots.length; s++) {
+          if (p.slots[s].live) {
+            return pi * PAGE + s * p.cls + (kind === "interior" ? Math.min(13, p.cls - 1) : 0);
+          }
+        }
+      }
+      log("no live small slot yet — malloc something first", "err");
+      return null;
+    }
+    const pi = map.findIndex(p => p.kind === "free");
+    if (pi < 0) { log("no free page right now", "err"); return null; }
+    return pi * PAGE + 100;
+  }
+
+  function metrics() {
+    let live = 0, liveBytes = 0, freePages = 0, largePages = 0, smallPages = 0;
+    for (const p of map) {
+      if (p.kind === "free") { freePages++; }
+      else if (p.kind === "small") { smallPages++; live += p.used; liveBytes += p.used * p.cls; }
+      else if (p.kind === "largeStart") { largePages += p.runLen; live++; liveBytes += p.runLen * PAGE; }
+    }
+    metricsEl.innerHTML =
+      m("live allocations", live) + m("allocated bytes (capacity)", liveBytes) +
+      m("small pages", smallPages) + m("large-run pages", largePages) +
+      m("free pages", freePages) + m("map overhead", (NPAGES * 8) + " B");
+    function m(l, v) { return '<div class="metric"><b>' + v + "</b>" + l + "</div>"; }
+  }
+
+  function render() {
+    // --- page map row ---
+    mapEl.innerHTML = "";
+    map.forEach((p, i) => {
+      const c = document.createElement("div");
+      let label, cls = "";
+      if (p.kind === "meta") { label = "M"; cls = "k-meta"; c.title = "page " + i + ": metadata — the page map itself"; }
+      else if (p.kind === "free") { label = "·"; c.title = "page " + i + ": free"; }
+      else if (p.kind === "small") { label = "S" + p.cls; cls = "k-small"; c.title = "page " + i + ": smallPage · class " + p.cls + " · " + p.used + "/" + slotsPerPage(p.cls) + " slots used"; }
+      else if (p.kind === "largeStart") { label = "L×" + p.runLen; cls = "k-large"; c.title = "page " + i + ": largeStart · run of " + p.runLen; }
+      else { label = "↳"; cls = "k-large"; c.title = "page " + i + ": largeCont (run starts at page " + p.start + ")"; }
+      c.className = "mapcell " + cls;
+      c.dataset.page = i;
+      c.innerHTML = '<span class="idx">' + i + "</span>" + label;
+      hoverSync(c, i);
+      mapEl.appendChild(c);
+    });
+
+    // --- pages row ---
+    pagesEl.innerHTML = "";
+    map.forEach((p, i) => {
+      const box = document.createElement("div");
+      box.dataset.page = i;
+      const plabel = (t) => '<span class="plabel">' + t + "</span>";
+      if (p.kind === "meta") {
+        box.className = "pagebox k-meta";
+        box.innerHTML = plabel("pg 0 · page map") +
+          '<div style="display:flex;align-items:center;justify-content:center;height:100%;font:600 0.65rem ui-monospace,monospace;color:var(--meta)">16 × 8 B entries</div>';
+      } else if (p.kind === "free") {
+        box.className = "pagebox k-free";
+        box.innerHTML = plabel("pg " + i + " · free");
+      } else if (p.kind === "small") {
+        box.className = "pagebox";
+        box.innerHTML = plabel("pg " + i + " · " + p.cls + " B × " + slotsPerPage(p.cls));
+        const grid = document.createElement("div");
+        grid.className = "slotgrid";
+        const n = slotsPerPage(p.cls);
+        grid.style.gridTemplateColumns = "repeat(" + (n >= 16 ? 8 : n >= 4 ? 4 : 2) + ", 1fr)";
+        p.slots.forEach((s, si) => {
+          const el = document.createElement("div");
+          el.className = "slot" + (s.live ? " live" : "") + (s.dirty ? " dirty" : "") +
+            (inspected && inspected.pi === i && inspected.slot === si ? " inspected" : "");
+          el.title = "slot " + si + " @ pagesBase+" + (i * PAGE + si * p.cls) +
+            (s.live ? " · " + s.tag + (s.dirty ? " · ⚠ data damaged by neighbour overrun" : "") + " · click to free()" : " · free");
+          if (s.live) {
+            el.addEventListener("click", () => freeSlot(i, si));
+            el.setAttribute("role", "button");
+          }
+          grid.appendChild(el);
+        });
+        box.appendChild(grid);
+      } else if (p.kind === "largeStart") {
+        box.className = "pagebox k-large";
+        box.innerHTML = plabel("pg " + i + " · large") +
+          '<div class="runlabel" role="button" title="click to free()">' + p.runTag + "<br>" + p.runBytes + " B<br>(" + p.runLen + " pg run)</div>";
+        box.querySelector(".runlabel").addEventListener("click", () => freeRun(i));
+      } else {
+        box.className = "pagebox k-largecont";
+        box.innerHTML = plabel("pg " + i + " · cont.") +
+          '<div class="runlabel" role="button" title="part of the run starting at page ' + p.start + ' — click to free()">(cont.)</div>';
+        box.querySelector(".runlabel").addEventListener("click", () => freeRun(p.start));
+      }
+      hoverSync(box, i);
+      pagesEl.appendChild(box);
+    });
+    metrics();
+  }
+
+  function hoverSync(el, i) {
+    el.addEventListener("mouseenter", () => setHl(i, true));
+    el.addEventListener("mouseleave", () => setHl(i, false));
+  }
+  function setHl(i, on) {
+    document.querySelectorAll('[data-page="' + i + '"]').forEach(e => e.classList.toggle("hl", on));
+  }
+
+  document.querySelectorAll("[data-alloc]").forEach(btn =>
+    btn.addEventListener("click", () => malloc(parseInt(btn.dataset.alloc, 10))));
+  $("mallocCustom").addEventListener("click", () => malloc(parseInt($("customSize").value, 10)));
+  $("overrun").addEventListener("click", overrunDemo);
+  $("reset").addEventListener("click", reset);
+  $("inspectBtn").addEventListener("click", () => inspect(parseInt($("inspectAddr").value, 10)));
+  $("presetValid").addEventListener("click", () => { const a = presetAddr("valid"); if (a !== null) { $("inspectAddr").value = a; inspect(a); } });
+  $("presetInterior").addEventListener("click", () => { const a = presetAddr("interior"); if (a !== null) { $("inspectAddr").value = a; inspect(a); } });
+  $("presetFree").addEventListener("click", () => { const a = presetAddr("free"); if (a !== null) { $("inspectAddr").value = a; inspect(a); } });
+
+  reset();
+  // seed a representative state so the first view isn't empty
+  malloc(100); malloc(100); malloc(900); malloc(6000);
+})();
+</script>
+</body>
+</html>
