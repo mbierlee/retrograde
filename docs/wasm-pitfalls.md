@@ -4,6 +4,9 @@ Gotchas that only surface in the WASM build. Code that is technically wrong in
 the same way on native often passes there by ABI luck, so "native tests are
 green" is not proof that the WASM build is fine.
 
+For gotchas that come from `-betterC` itself and bite every target, see
+[betterc-pitfalls.md](betterc-pitfalls.md).
+
 ## Structs with template mixins inside test lambdas break `call_indirect`
 
 ### Symptom

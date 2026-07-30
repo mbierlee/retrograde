@@ -11,7 +11,7 @@
 
 module retrograde.std.collections;
 
-import retrograde.std.memory : malloc, realloc, free, calloc, allocateRaw, memset;
+import retrograde.std.memory : malloc, realloc, free, calloc, allocateRaw, memset, memcpy;
 import retrograde.std.math : ceil;
 import retrograde.std.option : Option, some, none;
 import retrograde.std.hash : hashOf;
@@ -2450,6 +2450,483 @@ struct HashMap(K, V) {
     }
 }
 
+/**
+ * A first-in-first-out queue backed by a circular buffer.
+ * Items are stored in a contiguous memory block that wraps around, so
+ * enqueueing and dequeueing never shift the remaining items.
+ *
+ * The queue grows automatically by `chunkSize` elements when capacity is
+ * exceeded. When it grows, the items are laid out again from the start of
+ * the new buffer. Memory is managed manually using malloc/free from
+ * retrograde.std.memory.
+ *
+ * Key features:
+ * - Constant time enqueue, dequeue and peek
+ * - Direct indexed access to items without dequeueing them, where index 0 is the front
+ * - Automatic resizing with configurable chunk size
+ * - Copy and assignment operations with deep copy semantics
+ *
+ * This implementation is not thread-safe.
+ *
+ * Template_Params:
+ *  T = the type of elements stored in the queue
+ *  chunkSize = the number of elements to allocate when growing (default: 8)
+ */
+struct Queue(T, size_t chunkSize = defaultChunkSize) {
+    private T* items = null;
+    private size_t _length = 0;
+    private size_t _capacity = 0;
+    private size_t head = 0;
+
+    /**
+     * Copy constructor.
+     * Creates a deep copy of another queue. Items retain their order.
+     *
+     * Params:
+     *  other = the queue to copy from.
+     */
+    this(ref return scope inout typeof(this) other) {
+        copyFrom(other);
+    }
+
+    /**
+     * Constructor from a D array.
+     * Creates a deep copy of the given array, where the first element of the
+     * array becomes the front of the queue.
+     *
+     * Params:
+     *  other = the D array to copy from.
+     */
+    this(scope inout T[] other) {
+        copyFrom(other);
+    }
+
+    /**
+     * Destructor.
+     * Automatically clears and deallocates all memory.
+     */
+    ~this() {
+        clear();
+    }
+
+    /**
+     * Returns: the amount of items currently in the queue.
+     */
+    size_t length() const {
+        return _length;
+    }
+
+    /**
+     * Returns: the allocated capacity of the queue in number of items.
+     */
+    size_t capacity() const {
+        return _capacity;
+    }
+
+    /**
+     * Returns: whether the queue contains no items.
+     */
+    bool isEmpty() const {
+        return _length == 0;
+    }
+
+    /**
+     * Add an item to the back of the queue.
+     * Alternatively, you can use the ~= operator to enqueue an item.
+     *
+     * Params:
+     *  item = the item to add.
+     */
+    void enqueue(T item) {
+        considerResize();
+
+        if (items is null) {
+            return;
+        }
+
+        items[slotIndex(_length)] = item;
+        _length++;
+    }
+
+    /**
+     * Remove the item at the front of the queue and return it.
+     * The queue no longer owns the returned item.
+     *
+     * Returns: a successful result with the dequeued item, or a failure when the queue is empty.
+     */
+    Result!T dequeue() {
+        if (_length == 0) {
+            return failure!T("Cannot dequeue from an empty queue");
+        }
+
+        size_t index = head;
+        T item = items[index];
+        items[index].destroy();
+        head = slotIndex(1);
+        _length--;
+        return success(item);
+    }
+
+    /**
+     * Remove the item at the front of the queue, if there is any.
+     * The queue no longer owns the returned item.
+     *
+     * Params:
+     *  item = out parameter that receives the dequeued item. Left at its initial value when the queue is empty.
+     * Returns: true when an item was dequeued, false when the queue is empty.
+     */
+    bool tryDequeue(out T item) {
+        auto result = dequeue();
+        if (result.isFailure) {
+            return false;
+        }
+
+        // Assigned via a local because types with a copy-assignment operator
+        // cannot be assigned from the rvalue that value() returns.
+        auto value = result.value;
+        item = value;
+        return true;
+    }
+
+    /**
+     * Look at the item at the front of the queue without removing it.
+     *
+     * Returns: a successful result with the item at the front, or a failure when the queue is empty.
+     */
+    Result!T peek() {
+        if (_length == 0) {
+            return failure!T("Cannot peek into an empty queue");
+        }
+
+        return success(items[head]);
+    }
+
+    /**
+     * Clear all items in the queue.
+     * Calls destructors on all items and deallocates memory.
+     * After calling this, length and capacity will both be 0.
+     */
+    void clear() {
+        if (items !is null) {
+            for (size_t i = 0; i < _length; i++) {
+                items[slotIndex(i)].destroy();
+            }
+
+            free(items);
+            items = null;
+        }
+
+        _length = 0;
+        _capacity = 0;
+        head = 0;
+    }
+
+    /**
+     * Assignment operator for copying another Queue.
+     * Creates a deep copy of the other queue.
+     *
+     * Params:
+     *  other = the queue to copy from.
+     */
+    void opAssign(ref return scope inout typeof(this) other) {
+        if (this is other) {
+            return;
+        }
+
+        clear();
+        copyFrom(other);
+    }
+
+    /**
+     * Assignment operator for copying a D array.
+     * Creates a deep copy of the given array, where the first element of the
+     * array becomes the front of the queue.
+     *
+     * Params:
+     *  other = the D array to copy from.
+     */
+    void opAssign(scope inout T[] other) {
+        clear();
+        copyFrom(other);
+    }
+
+    /**
+     * Append operator (~=) for enqueueing a single item.
+     * Equivalent to calling enqueue().
+     *
+     * Params:
+     *  rhs = the item to enqueue.
+     */
+    void opOpAssign(string op : "~")(T rhs) {
+        enqueue(rhs);
+    }
+
+    /**
+     * Index operator for read access.
+     * Index 0 is the item at the front of the queue, the one that would be dequeued next.
+     * Accessing an item does not remove it from the queue.
+     *
+     * Params:
+     *  i = the index of the item to access.
+     * Returns: the item at the given index.
+     */
+    auto opIndex(size_t i) {
+        assert(i < _length, "Index out of bounds");
+        return items[slotIndex(i)];
+    }
+
+    /// Idem
+    auto opIndex(size_t i) const {
+        assert(i < _length, "Index out of bounds");
+        return items[slotIndex(i)];
+    }
+
+    /**
+     * Dollar operator for index expressions.
+     * Allows usage like queue[$ - 1].
+     *
+     * Returns: the length of the queue.
+     */
+    size_t opDollar() const {
+        return _length;
+    }
+
+    /**
+     * Index assignment operator for replacing a single item.
+     * Index 0 is the item at the front of the queue.
+     *
+     * Params:
+     *  value = the value to assign.
+     *  i = the index to assign to.
+     * Returns: the assigned value.
+     */
+    T opIndexAssign(T value, size_t i) {
+        assert(i < _length, "Index out of bounds");
+        items[slotIndex(i)] = value;
+        return value;
+    }
+
+    /**
+     * Equality comparison operator (const D array by reference).
+     * Compares element-by-element, from the front of the queue to the back.
+     *
+     * Params:
+     *  other = the D array to compare with.
+     * Returns: true if the queue and array have the same length and all elements are equal.
+     */
+    bool opEquals(ref const T[] other) const {
+        return equalsArray(other);
+    }
+
+    /**
+     * Equality comparison operator (const D array by value).
+     *
+     * Params:
+     *  other = the D array to compare with.
+     * Returns: true if the queue and array have the same length and all elements are equal.
+     */
+    bool opEquals(const T[] other) const {
+        return equalsArray(other);
+    }
+
+    /**
+     * Equality comparison operator (const Queue by reference).
+     * Compares element-by-element, from the front of the queue to the back.
+     *
+     * Params:
+     *  other = the queue to compare with.
+     * Returns: true if both queues have the same length and all elements are equal.
+     */
+    bool opEquals(ref const typeof(this) other) const {
+        return equalsQueue(other);
+    }
+
+    /**
+     * Equality comparison operator (const Queue by value).
+     *
+     * Params:
+     *  other = the queue to compare with.
+     * Returns: true if both queues have the same length and all elements are equal.
+     */
+    bool opEquals(const typeof(this) other) const {
+        return equalsQueue(other);
+    }
+
+    /**
+     * Compute a hash of the queue.
+     * Uses a polynomial rolling hash over all elements, from front to back.
+     *
+     * Returns: the hash value of the queue.
+     */
+    ulong toHash() nothrow @trusted const {
+        ulong hash = 0;
+        for (size_t i = 0; i < _length; i++) {
+            hash = hash * 33 + items[slotIndex(i)].hashOf;
+        }
+
+        return hash;
+    }
+
+    /**
+     * Foreach iteration support.
+     * Iterates from the front of the queue to the back without dequeueing.
+     *
+     * Params:
+     *  dg = the delegate to call for each item.
+     * Returns: non-zero if iteration was stopped early, 0 otherwise.
+     */
+    int opApply(int delegate(ref T) dg) {
+        foreach (size_t i; 0 .. _length) {
+            auto result = dg(items[slotIndex(i)]);
+            if (result) {
+                return result;
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Foreach iteration support with index.
+     * Iterates from the front of the queue to the back without dequeueing.
+     *
+     * Params:
+     *  dg = the delegate to call for each item with its index.
+     * Returns: non-zero if iteration was stopped early, 0 otherwise.
+     */
+    int opApply(int delegate(size_t, ref T) dg) {
+        foreach (size_t i; 0 .. _length) {
+            auto result = dg(i, items[slotIndex(i)]);
+            if (result) {
+                return result;
+            }
+        }
+
+        return 0;
+    }
+
+    private bool equalsArray(const T[] other) const {
+        if (other.length != _length) {
+            return false;
+        }
+
+        for (size_t i = 0; i < _length; i++) {
+            if (items[slotIndex(i)] != other[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool equalsQueue(ref const typeof(this) other) const {
+        if (other._length != _length) {
+            return false;
+        }
+
+        for (size_t i = 0; i < _length; i++) {
+            if (items[slotIndex(i)] != other.items[other.slotIndex(i)]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private size_t slotIndex(size_t i) const {
+        assert(_capacity > 0, "Queue has no capacity");
+
+        // head is always below the capacity and i never exceeds the length, so
+        // the sum wraps around the buffer at most once. A conditional
+        // subtraction is therefore enough and avoids a division.
+        size_t index = head + i;
+        return index >= _capacity ? index - _capacity : index;
+    }
+
+    private void considerResize() {
+        if (items is null || _length == _capacity) {
+            resize(chunkSize);
+        }
+    }
+
+    private void resize(size_t growSize) {
+        size_t newCapacity = _capacity + growSize;
+        T* newItems = cast(T*) malloc(T.sizeof * newCapacity);
+        assert(newItems !is null, "Failed to allocate memory during resizing of queue");
+        if (newItems is null) {
+            return;
+        }
+
+        memset(newItems, 0, T.sizeof * newCapacity);
+
+        // Items are moved to the front of the new buffer as raw memory so that
+        // they are relocated instead of copied; the old buffer is abandoned
+        // without destructing them.
+        for (size_t i = 0; i < _length; i++) {
+            memcpy(&newItems[i], &items[slotIndex(i)], T.sizeof);
+        }
+
+        for (size_t i = _length; i < newCapacity; i++) {
+            auto init = T.init;
+            newItems[i] = init;
+        }
+
+        if (items !is null) {
+            free(items);
+        }
+
+        items = newItems;
+        _capacity = newCapacity;
+        head = 0;
+    }
+
+    private void copyFrom(ref inout typeof(this) other) {
+        if (other._length == 0) {
+            return;
+        }
+
+        items = cast(T*) malloc(T.sizeof * other._length);
+        assert(items !is null, "Failed to allocate memory during copy of queue");
+        if (items is null) {
+            return;
+        }
+
+        memset(items, 0, T.sizeof * other._length);
+        // Cast away inout to allow assignment
+        T* mutableOtherItems = cast(T*) other.items;
+        for (size_t i = 0; i < other._length; i++) {
+            items[i] = mutableOtherItems[other.slotIndex(i)];
+        }
+
+        _length = other._length;
+        _capacity = other._length;
+        head = 0;
+    }
+
+    private void copyFrom(scope inout T[] other) {
+        if (other.length == 0) {
+            return;
+        }
+
+        items = cast(T*) malloc(T.sizeof * other.length);
+        assert(items !is null, "Failed to allocate memory during copy of queue");
+        if (items is null) {
+            return;
+        }
+
+        memset(items, 0, T.sizeof * other.length);
+        // Cast away inout to allow assignment
+        T[] mutableOther = cast(T[]) other;
+        for (size_t i = 0; i < other.length; i++) {
+            items[i] = mutableOther[i];
+        }
+
+        _length = other.length;
+        _capacity = other.length;
+        head = 0;
+    }
+}
+
 version (UnitTesting)  :  ///
 
 import retrograde.std.dlang : CopyConstructors;
@@ -2466,6 +2943,7 @@ void runCollectionsTests() {
     runSlotListTests();
     runLinkedListTests();
     runHashMapTests();
+    runQueueTests();
 }
 
 void runArrayTests() {
@@ -3986,5 +4464,369 @@ void runHashMapTests() {
         for (int i = 0; i < 20; i++) {
             assert(map.get(i).value == i * 10);
         }
+    });
+}
+
+void runQueueTests() {
+    import retrograde.std.test : test, writeSection;
+    import retrograde.std.string : String, s;
+
+    writeSection("-- Queue tests --");
+
+    test("Create a Queue", {
+        Queue!int queue;
+        assert(queue.length == 0);
+        assert(queue.capacity == 0);
+        assert(queue.isEmpty);
+    });
+
+    test("Enqueue items into a Queue", {
+        Queue!int queue;
+        queue.enqueue(1);
+        assert(queue.length == 1);
+        assert(queue.capacity == defaultChunkSize);
+        assert(!queue.isEmpty);
+
+        queue.enqueue(2);
+        assert(queue.length == 2);
+        assert(queue.capacity == defaultChunkSize);
+    });
+
+    test("Enqueue item into a Queue with concat operator", {
+        Queue!int queue;
+        queue ~= 1;
+        queue ~= 2;
+        assert(queue.length == 2);
+        assert(queue[0] == 1);
+        assert(queue[1] == 2);
+    });
+
+    test("Dequeue items from a Queue in FIFO order", {
+        Queue!int queue;
+        queue.enqueue(1);
+        queue.enqueue(2);
+        queue.enqueue(3);
+
+        auto first = queue.dequeue();
+        assert(first.isSuccessful);
+        assert(first.value == 1);
+        assert(queue.length == 2);
+
+        assert(queue.dequeue().value == 2);
+        assert(queue.dequeue().value == 3);
+        assert(queue.length == 0);
+        assert(queue.isEmpty);
+    });
+
+    test("Dequeue from an empty Queue fails", {
+        Queue!int queue;
+        auto result = queue.dequeue();
+        assert(result.isFailure);
+        assert(result.errorMessage == "Cannot dequeue from an empty queue");
+    });
+
+    test("Dequeueing does not deallocate the Queue's memory", {
+        Queue!int queue;
+        queue.enqueue(1);
+        queue.dequeue();
+        assert(queue.length == 0);
+        assert(queue.capacity == defaultChunkSize);
+    });
+
+    test("tryDequeue returns the item and true when the Queue has items", {
+        Queue!int queue;
+        queue.enqueue(42);
+        queue.enqueue(66);
+
+        int item;
+        assert(queue.tryDequeue(item));
+        assert(item == 42);
+        assert(queue.length == 1);
+
+        assert(queue.tryDequeue(item));
+        assert(item == 66);
+        assert(queue.isEmpty);
+    });
+
+    test("tryDequeue returns false when the Queue is empty", {
+        Queue!int queue;
+        int item = 33;
+        assert(!queue.tryDequeue(item));
+        assert(item == 0);
+    });
+
+    test("Peek at the front of a Queue without dequeueing", {
+        Queue!int queue;
+        queue.enqueue(1);
+        queue.enqueue(2);
+
+        auto result = queue.peek();
+        assert(result.isSuccessful);
+        assert(result.value == 1);
+        assert(queue.length == 2);
+        assert(queue.peek().value == 1);
+    });
+
+    test("Peek into an empty Queue fails", {
+        Queue!int queue;
+        auto result = queue.peek();
+        assert(result.isFailure);
+        assert(result.errorMessage == "Cannot peek into an empty queue");
+    });
+
+    test("Access Queue items by index without dequeueing", {
+        Queue!int queue;
+        queue.enqueue(1);
+        queue.enqueue(2);
+        queue.enqueue(3);
+
+        assert(queue[0] == 1);
+        assert(queue[1] == 2);
+        assert(queue[2] == 3);
+        assert(queue.opDollar == 3);
+        assert(queue[$ - 1] == 3);
+        assert(queue.length == 3);
+    });
+
+    test("Indexed access of a Queue is relative to its front", {
+        Queue!int queue;
+        queue.enqueue(1);
+        queue.enqueue(2);
+        queue.enqueue(3);
+        queue.dequeue();
+
+        assert(queue[0] == 2);
+        assert(queue[1] == 3);
+    });
+
+    test("Assign Queue item through index", {
+        Queue!int queue;
+        queue.enqueue(1);
+        queue.enqueue(2);
+        queue[1] = 5;
+        assert(queue[1] == 5);
+        assert(queue.dequeue().value == 1);
+        assert(queue.dequeue().value == 5);
+    });
+
+    test("Clear a Queue", {
+        Queue!int queue;
+        queue.enqueue(1);
+        queue.enqueue(2);
+        queue.clear();
+
+        assert(queue.length == 0);
+        assert(queue.capacity == 0);
+        assert(queue.isEmpty);
+        assert(queue.dequeue().isFailure);
+
+        queue.enqueue(3);
+        assert(queue.length == 1);
+        assert(queue[0] == 3);
+    });
+
+    test("Queue wraps around its buffer", {
+        Queue!(int, 4) queue;
+        for (int i = 1; i <= 4; i++) {
+            queue.enqueue(i);
+        }
+
+        assert(queue.capacity == 4);
+        assert(queue.dequeue().value == 1);
+        assert(queue.dequeue().value == 2);
+
+        // These wrap around to the start of the buffer.
+        queue.enqueue(5);
+        queue.enqueue(6);
+        assert(queue.length == 4);
+        assert(queue.capacity == 4);
+
+        assert(queue[0] == 3);
+        assert(queue[3] == 6);
+        assert(queue.dequeue().value == 3);
+        assert(queue.dequeue().value == 4);
+        assert(queue.dequeue().value == 5);
+        assert(queue.dequeue().value == 6);
+        assert(queue.isEmpty);
+    });
+
+    test("Queue grows while wrapped around and retains order", {
+        Queue!(int, 4) queue;
+        for (int i = 1; i <= 4; i++) {
+            queue.enqueue(i);
+        }
+
+        queue.dequeue();
+        queue.dequeue();
+        queue.enqueue(5);
+        queue.enqueue(6);
+
+        // Buffer is full and wrapped: this grows it.
+        queue.enqueue(7);
+        assert(queue.length == 5);
+        assert(queue.capacity == 8);
+
+        for (int i = 3; i <= 7; i++) {
+            assert(queue.dequeue().value == i);
+        }
+
+        assert(queue.isEmpty);
+    });
+
+    test("Initialize a Queue through static assignment", {
+        Queue!int queue = [1, 2, 3];
+        assert(queue.length == 3);
+        assert(queue.capacity == 3);
+        assert(queue.dequeue().value == 1);
+        assert(queue.dequeue().value == 2);
+        assert(queue.dequeue().value == 3);
+    });
+
+    test("Assign a D array to a Queue", {
+        Queue!int queue;
+        queue.enqueue(9);
+        queue = [1, 2];
+        assert(queue.length == 2);
+        assert(queue[0] == 1);
+        assert(queue[1] == 2);
+    });
+
+    test("Make a copy of a Queue through assignment", {
+        Queue!int queue;
+        queue.enqueue(1);
+        queue.enqueue(2);
+        queue.enqueue(3);
+        queue.dequeue();
+
+        auto queue2 = queue;
+        assert(queue2.length == 2);
+        assert(queue2[0] == 2);
+        assert(queue2[1] == 3);
+
+        queue.enqueue(4);
+        queue2.enqueue(5);
+        assert(queue.length == 3);
+        assert(queue2.length == 3);
+        assert(queue[2] == 4);
+        assert(queue2[2] == 5);
+    });
+
+    test("Compare a Queue with a D array", {
+        Queue!(int, 4) queue;
+        for (int i = 1; i <= 4; i++) {
+            queue.enqueue(i);
+        }
+
+        queue.dequeue();
+        queue.enqueue(5);
+
+        static immutable int[4] sameItems = [2, 3, 4, 5];
+        static immutable int[3] tooFewItems = [2, 3, 4];
+        static immutable int[4] reversedItems = [5, 4, 3, 2];
+
+        assert(queue == sameItems[]);
+        assert(queue != tooFewItems[]);
+        assert(queue != reversedItems[]);
+    });
+
+    test("Compare two Queues", {
+        Queue!int queue;
+        queue.enqueue(1);
+        queue.enqueue(2);
+
+        Queue!int queue2;
+        queue2.enqueue(1);
+        queue2.enqueue(2);
+
+        assert(queue == queue2);
+
+        queue2.dequeue();
+        assert(queue != queue2);
+    });
+
+    test("Iterate over a Queue", {
+        Queue!int queue;
+        queue.enqueue(1);
+        queue.enqueue(2);
+        queue.enqueue(3);
+        queue.dequeue();
+        queue.enqueue(4);
+
+        int sum = 0;
+        foreach (item; queue) {
+            sum += item;
+        }
+
+        assert(sum == 9);
+        assert(queue.length == 3);
+
+        int indexSum = 0;
+        int valueAtIndexOne = 0;
+        foreach (index, item; queue) {
+            indexSum += cast(int) index;
+            if (index == 1) {
+                valueAtIndexOne = item;
+            }
+        }
+
+        assert(indexSum == 3);
+        assert(valueAtIndexOne == 3);
+    });
+
+    test("Queue of Strings", {
+        Queue!String queue;
+        queue.enqueue("hello".s);
+        queue.enqueue("world".s);
+
+        assert(queue[0] == "hello");
+        assert(queue.dequeue().value == "hello");
+        assert(queue.peek().value == "world");
+        assert(queue.length == 1);
+    });
+
+    test("Dequeued item of a Queue is no longer owned by the Queue", {
+        InnerArrayOwner owner;
+        owner.values ~= 1;
+        owner.values ~= 2;
+        owner.tag = 7;
+
+        Queue!InnerArrayOwner queue;
+        queue.enqueue(owner);
+
+        auto dequeued = queue.dequeue();
+        assert(dequeued.isSuccessful);
+
+        queue.clear();
+
+        auto item = dequeued.value;
+        assert(item.tag == 7);
+        assert(item.values.length == 2);
+        assert(item.values[0] == 1);
+        assert(item.values[1] == 2);
+    });
+
+    test("Queue of pointers does not own what they point at", {
+        int* first = cast(int*) malloc(int.sizeof);
+        int* second = cast(int*) malloc(int.sizeof);
+        *first = 42;
+        *second = 66;
+
+        Queue!(int*) queue;
+        queue.enqueue(first);
+        queue.enqueue(second);
+
+        auto dequeued = queue.dequeue();
+        assert(dequeued.isSuccessful);
+        assert(dequeued.value is first);
+        assert(*dequeued.value == 42);
+
+        // Clearing only releases the queue's own storage; the pointees remain
+        // the caller's responsibility.
+        queue.clear();
+        assert(*first == 42);
+        assert(*second == 66);
+
+        free(first);
+        free(second);
     });
 }
