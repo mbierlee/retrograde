@@ -9,6 +9,7 @@ Retrograde is a D language game engine compiled with **`-betterC`** (no GC, no D
 - **Build:** `make build-lib` (uses `dub build --config=library`). **NOTE:** building the native lib does not currently work — several native platform implementations are still missing, so the link/build fails. Do not rely on `make build-lib` to verify changes; prefer running the native unit tests instead.
 - **Test:** `make test-native` (uses `dub test --config=unittest-native`, enables `Native` + `UnitTesting` versions). This is the preferred way to verify changes.
 - **WASM build:** from `wasmtest/`, `make build-wasm` (requires LDC2, targets `wasm32-unknown-unknown-wasm`)
+- **WASM test:** from `wasmtest/`, `make run-tests-headless` (builds the suite and runs it under Node via `run-tests-headless.mjs`; exits non-zero on a trap or failed assert). Use this to check that a change also holds up on WASM — a green native suite does not prove it.
 
 ## Critical Constraints (betterC)
 
@@ -19,6 +20,13 @@ Retrograde is a D language game engine compiled with **`-betterC`** (no GC, no D
 - Use `retrograde.std.string.String` (not D `string` literals for dynamic strings), `Array(T)` from `retrograde.std.collections` (not built-in slices for dynamic arrays).
 
 **Note:** The betterC constraints apply to the engine code in `source/retrograde/`. Tools in `./tools/` (e.g., `rgmodelconv`) are stand-alone D programs that are **not** compiled with `-betterC` and **can use** the standard library (Phobos) and full D runtime features.
+
+## Known Compiler Traps
+
+Constructs that compile clean but fail at link time or at runtime. Both docs are written as Symptom / Cause / Fix — read the relevant one before spending time debugging a mysterious build or WASM failure.
+
+- **`docs/betterc-pitfalls.md`** — traps from `-betterC` itself, on any target. Most important: never pass a bare array literal to a parameter that takes a slice. Inside a lambda that also involves a template, the "requires the GC" error is swallowed and the lambda's body is silently dropped, so the only symptom is an `undefined reference to ...__lambda_L<line>_C<col>...` at link time. Use `static immutable T[N] x = [...];` and pass `x[]`.
+- **`docs/wasm-pitfalls.md`** — traps that only surface on WASM, where native passes by ABI luck. Most important: do not declare a struct with a template mixin inside a test lambda (it makes the lambda take a hidden context pointer and `call_indirect` traps) — hoist it to module scope in the `version (UnitTesting)` section. Also: bindings to external C globals need `extern extern (C) __gshared`, since `extern (C)` alone *defines* a variable.
 
 ## Platform Abstraction Pattern
 
