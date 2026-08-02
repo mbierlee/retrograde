@@ -8,23 +8,30 @@ when you export to glTF and convert to `.rgm`.
 external `.bin` buffer and external image files. Binary `.glb` containers are not
 supported, so in Blender's glTF exporter pick the **glTF Separate (.gltf + .bin +
 textures)** format. Material classification is driven by glTF concepts such as
-`KHR_materials_unlit` and the `doubleSided` flag.
+the `pbrMetallicRoughness` base color texture and the `doubleSided` flag.
 
 Retrograde does not read a custom "material type" property. Instead,
-`rgmodelconv` infers the type from how the material is shaded and what it
-references:
+`rgmodelconv` infers the type from what the material references:
 
-| Retrograde type         | How it's recognized                                             |
-| ----------------------- | --------------------------------------------------------------- |
-| no material / `invalid` | No material is assigned to the mesh.                            |
-| `vertexColors`          | Unlit shading + the mesh has a color attribute + no textures.   |
-| `unlit`                 | Unlit shading + the material references a single image texture. |
+| Retrograde type         | How it's recognized                                            |
+| ----------------------- | -------------------------------------------------------------- |
+| no material / `invalid` | No material is assigned to the mesh.                           |
+| `vertexColors`          | The mesh has a color attribute + the material has no textures. |
+| `unlit`                 | The material references a base color (albedo) image texture.   |
 
-In every case the trick to getting **unlit** shading exported is the same:
-wire your color source **directly into the `Surface` socket of the `Material
-Output` node**, bypassing the `Principled BSDF`. A surface fed by a raw color
-(rather than a lighting shader) is exported with the `KHR_materials_unlit`
-extension, which is exactly what the converter looks for.
+**Lit materials are converted as unlit.** A regular `Principled BSDF` material
+exports as glTF PBR (metallic-roughness), and the converter currently keeps only
+its **Base Color** texture, dropping every other PBR input (metallic, roughness,
+normal, occlusion, emissive). So a `Principled BSDF` with an image texture in
+Base Color lands in the `.rgm` as an `unlit` material using that image — the
+model simply renders at full brightness, with no lighting applied.
+
+If you want the material to *be* unlit in Blender's own viewport and in other
+glTF viewers as well, wire your color source **directly into the `Surface`
+socket of the `Material Output` node**, bypassing the `Principled BSDF`. A
+surface fed by a raw color (rather than a lighting shader) is exported with the
+`KHR_materials_unlit` extension. The converter accepts either form and produces
+the same `.rgm` material.
 
 ---
 
@@ -49,7 +56,10 @@ Use this when the look of the mesh comes entirely from colors painted onto the
 vertices, with no texture.
 
 1. Add a material to the object.
-2. In the **Shader Editor**, delete the `Principled BSDF`.
+2. In the **Shader Editor**, delete the `Principled BSDF`. (Feeding the Color
+   Attribute into a `Principled BSDF` **Base Color** works too — the converter
+   classifies lit materials the same way — but then the Blender viewport shades
+   the mesh, so what you see there won't match the engine.)
 3. Add an **Input ▸ Color Attribute** node. (Formerly "Vertex Color".)
    - In **Object Data Properties ▸ Color Attributes**, add a color attribute
      and select it in the node so it reads the layer you painted.
@@ -62,9 +72,10 @@ vertices, with no texture.
 [Color Attribute] --Color--> [Material Output] Surface
 ```
 
-The converter only emits `vertexColors` when the material is unlit, the mesh
-actually has a color attribute, **and** no textures are referenced — so don't
-add an image texture if you want this type.
+The converter only emits `vertexColors` when the mesh actually has a color
+attribute **and** the material references no textures at all — so don't add an
+image texture (of any kind, including a normal or roughness map) if you want
+this type.
 
 See `asset-examples/cube-vertexcolors.blend` for a working example.
 
@@ -89,6 +100,18 @@ with no lighting applied.
 The exported texture's name becomes the `unlit` material's texture-name
 reference in the `.rgm`; how that name resolves to an actual texture asset is up
 to the engine/runtime.
+
+Alternatively, keep the `Principled BSDF` and plug the Image Texture into its
+**Base Color** socket:
+
+```
+[Image Texture] --Color--> [Principled BSDF] Base Color --BSDF--> [Material Output] Surface
+```
+
+This exports as a PBR material, and the converter takes the base color texture
+from it and writes the same `unlit` material. The rest of the Principled inputs
+(Metallic, Roughness, Normal, Emission, ...) are **not** converted — they are
+dropped, including any image textures plugged into them.
 
 > At the moment `unlit` only works when exporting as a **`.gltf`** file, because
 > embedded images (as produced by `.glb`) are not supported yet.

@@ -6,6 +6,10 @@
  * the invalid sentinel) and emitted in first-referenced order, and the textures
  * they reference are collected into a shared, de-duplicated texture list.
  *
+ * Lit (PBR) source materials are written as `unlit` ones: only their base color
+ * (albedo) texture is carried over, as the RGM format cannot express the
+ * metallic-roughness inputs yet.
+ *
  * Authors:
  *  Mike Bierlee, m.bierlee@lostmoment.com
  * Copyright: 2014-2026 Mike Bierlee
@@ -68,10 +72,10 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
     uint usedMaterialCount = nextRgmIndex - 1;
 
     // Pre-pass: classify every used material and, for unlit materials, resolve the
-    // texture path into a shared Textures list. Identical paths are deduplicated, so
-    // several materials can reference the same texture by its 1-based index. The
-    // classification is recorded here so the material write pass below does not have
-    // to re-run it.
+    // base color texture path into a shared Textures list. Identical paths are
+    // deduplicated, so several materials can reference the same texture by its 1-based
+    // index. The classification is recorded here so the material write pass below does
+    // not have to re-run it.
     MaterialType[] materialTypes = new MaterialType[materialCount];
     uint[] materialTextureIndices = new uint[materialCount];
     OutTexture[] textures; // Texture at position p has the 1-based index (p + 1).
@@ -82,16 +86,17 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
         }
 
         MaterialInfo material = data.materials[i];
-        if (material.unlit && material.texture.path.length > 0) {
+        if (material.baseColorTexture.path.length > 0) {
             materialTypes[i] = MaterialType.unlit;
             string path = renameImages
-                ? setExtension(material.texture.path, "rgi") : material.texture.path;
+                ? setExtension(material.baseColorTexture.path, "rgi") : material.baseColorTexture.path;
             if (texturePathPrefix.length > 0) {
                 path = buildPath(texturePathPrefix, path);
             }
 
-            OutTexture texture = OutTexture(path, material.texture.magFilter, material.texture.minFilter,
-                material.texture.wrapS, material.texture.wrapT);
+            OutTexture texture = OutTexture(path, material.baseColorTexture.magFilter,
+                material.baseColorTexture.minFilter, material.baseColorTexture.wrapS,
+                material.baseColorTexture.wrapT);
             uint* existing = texture in textureToIndex;
             if (existing !is null) {
                 materialTextureIndices[i] = *existing;
@@ -101,8 +106,7 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
                 textures ~= texture;
                 materialTextureIndices[i] = textureIndex;
             }
-        } else if (material.unlit && !material.hasAnyTexture
-            && materialHasVertexColors(data.primitives, i)) {
+        } else if (!material.hasAnyTexture && materialHasVertexColors(data.primitives, i)) {
             materialTypes[i] = MaterialType.vertexColors;
         } else {
             materialTypes[i] = MaterialType.invalid;
@@ -123,10 +127,9 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
     }
 
     // Emit one material entry per used material, in the order they were first
-    // referenced. A material maps to `unlit` when it uses the unlit shading model
-    // and references an external texture, or to `vertexColors` when it is unlit,
-    // textureless and drawn with per-vertex colors; anything else falls back to
-    // the `invalid` sentinel.
+    // referenced. A material maps to `unlit` when it references an external base
+    // color texture, or to `vertexColors` when it is textureless and drawn with
+    // per-vertex colors; anything else falls back to the `invalid` sentinel.
     for (uint i = 0; i < materialCount; i++) {
         if (materialIndexMap[i] == 0) {
             continue;
