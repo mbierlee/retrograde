@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Retrograde — Proposed WASM Allocator (Size-Class Pages + Page Map)</title>
+<title>Retrograde — WASM Memory Allocator (Size-Class Pages + Page Map)</title>
 <style>
   :root {
     --page:        #f9f9f7;
@@ -174,12 +174,12 @@
   .verdict .bad { color: var(--corrupt); font-weight: 700; }
   .verdict b { color: var(--ink); }
 
-  table.compare { border-collapse: collapse; font-size: 0.85rem; width: 100%; }
-  table.compare th, table.compare td {
+  table.props { border-collapse: collapse; font-size: 0.85rem; width: 100%; }
+  table.props th, table.props td {
     text-align: left; padding: 7px 12px 7px 0; border-bottom: 1px solid var(--grid);
     color: var(--ink-2); vertical-align: top;
   }
-  table.compare th { color: var(--ink); font-weight: 600; }
+  table.props th { color: var(--ink); font-weight: 600; }
   ul { color: var(--ink-2); max-width: 76ch; }
   li { margin: 5px 0; }
   .callout {
@@ -192,20 +192,20 @@
 <body>
 <main>
   <div class="nav">
-    <span class="tag">proposed design</span>
-    <a href="wasm-allocator-current.html">← compare with the current block allocator</a>
-    <a href="../todo/redesign-wasm-allocator-size-class-pages.md">full proposal (todo/)</a>
+    <span class="tag">interactive documentation</span>
+    <a href="../source/retrograde/wasm/memory.d">source: retrograde/wasm/memory.d</a>
   </div>
 
-  <h1>The proposed WASM allocator: size-class pages + page map</h1>
-  <p class="subtitle">All metadata lives in a reserved region; finding it is pure arithmetic, never a header read.</p>
+  <h1>The WASM memory allocator: size-class pages + page map</h1>
+  <p class="subtitle">All metadata lives in reserved pages; finding it is pure arithmetic, never a header read.</p>
 
   <p>
     The heap is carved into fixed <strong>4&nbsp;KiB logical pages</strong>. Small allocations
     (≤&nbsp;2048&nbsp;B) are rounded up to a <strong>size class</strong> and become one <em>slot</em> in a
-    page dedicated to that class; larger allocations take a <em>run</em> of whole pages. The only
-    bookkeeping structure is the <strong>page map</strong> — a flat array, one 8-byte entry per page,
-    stored in pages of its own. <b>No header precedes any allocation.</b>
+    page dedicated to that class; larger allocations take a <em>run</em> of whole pages. The central
+    bookkeeping structure is the <strong>page map</strong> — a flat array, one 20-byte entry per page
+    (24 under <code>MemoryDebug</code>), stored in pages of its own. <b>No header precedes any
+    allocation.</b>
   </p>
 
   <h2>1 · Where everything lives in linear memory</h2>
@@ -225,18 +225,20 @@
       </div>
     </div>
     <p class="strip-caption">
-      <code>pagesBase</code> = <code>heapStart</code> aligned up to 4&nbsp;KiB. The page map (violet)
-      is the only metadata, and it sits in its own pages — one region, rather than scattered between
-      allocations. Finding any pointer's metadata is one shift and one array read:
-      <code>pageMap[(ptr − pagesBase) >> 12]</code>.
+      <code>pagesBase</code> = <code>heapStart</code> aligned up to 4&nbsp;KiB. All metadata (violet)
+      lives in dedicated pages — the page map here, plus slot-bitmap cell pools claimed on demand —
+      never scattered between allocations. Finding any pointer's metadata is one shift and one array
+      read: <code>pageMap[(ptr − pagesBase) >> 12]</code>.
     </p>
   </div>
 
   <h2>2 · Size classes</h2>
   <p>
     <code>sizeToClass(n)</code> rounds a request up to the nearest class. Slack within a class is the
-    only per-allocation overhead — bounded at ~25%, versus the flat 20-byte header tax today.
-    The demo below uses the five highlighted classes so the slot grids stay readable.
+    only per-allocation overhead — roughly 8-byte granularity at the bottom of the table, ~25%
+    geometric steps above 256&nbsp;B. Every class is a multiple of 8, so returned pointers are always
+    at least 8-byte aligned. The demo below uses the five highlighted classes so the slot grids stay
+    readable.
   </p>
   <div class="panel">
     <div class="classes">
@@ -253,6 +255,9 @@
     16 logical pages (64&nbsp;KiB — one WASM memory grow). Page 0 holds the page map itself. Allocate
     with the buttons; <strong>click a live slot or a large run to <code>free()</code> it</strong>. The
     top row is the page map — watch it track the pages below, and hover either row to see the pairing.
+    (For readability the demo leaves out two things the real allocator also keeps in metadata pages:
+    the per-small-page <em>slot bitmaps</em> that make double-free detection exact, and — under
+    <code>MemoryDebug</code> — the requested-size shadow cells.)
   </p>
 
   <div class="panel">
@@ -267,7 +272,7 @@
       <button id="reset">Reset heap</button>
     </div>
 
-    <div class="maprow-label">page map — one 8-byte entry per page, lives inside page 0 (violet region)</div>
+    <div class="maprow-label">page map — one 20-byte entry per page, lives inside page 0 (violet region)</div>
     <div class="mapview" id="mapview"></div>
 
     <div class="maprow-label">the 16 logical pages (4 KiB each)</div>
@@ -286,19 +291,21 @@
   </div>
 
   <div class="callout" id="overrunNote" style="display:none">
-    <b>Compare with the block allocator:</b> the overrun byte landed in the <em>next slot's user
-    data</em> (striped) — a real bug, but a contained one. The page map was untouched: metrics stay
-    exact, walks don't break, no memory becomes unreachable. In the
-    <a href="wasm-allocator-current.html">current design</a> the same single byte destroys a header and
-    cuts off the rest of the heap.
+    <b>What an overrun can and cannot damage:</b> the stray byte landed in the <em>next slot's user
+    data</em> (striped) — a real bug, but a contained one. No allocator metadata sits between slots,
+    so the page map is untouched: metrics stay exact, heap walks don't break, no memory becomes
+    unreachable. Under <code>MemoryDebug</code>, a write that runs past the <em>requested</em> size
+    also tramples the slack canary inside the writer's own slot and is reported when that slot is
+    freed.
   </div>
 
   <h2>4 · Pointer inspector — exact validation, no guesswork</h2>
   <p>
-    Today, <code>getBlock(ptr)</code> trusts a magic number found at <code>ptr − 20</code>. Here the
-    verdict is computed from the map, so it is <em>authoritative</em>. Enter any offset from
-    <code>pagesBase</code> (0–65535), or use the presets — they pick real addresses from the
-    simulator's current state above.
+    Every verdict below is computed from the page map alone, so it is <em>authoritative</em> — there
+    are no magic numbers or checksums to forge, and no way for user data to masquerade as metadata.
+    This is exactly what <code>free</code>, <code>realloc</code> and <code>memmove</code> consult.
+    Enter any offset from <code>pagesBase</code> (0–65535), or use the presets — they pick real
+    addresses from the simulator's current state above.
   </p>
   <div class="panel inspector">
     <div>
@@ -320,23 +327,28 @@
     <div class="verdict" id="verdict">enter an address and press inspect…</div>
   </div>
 
-  <h2>5 · Why this fixes the block allocator's problems</h2>
+  <h2>5 · Guarantees and costs at a glance</h2>
   <div class="panel">
-    <table class="compare">
-      <tr><th></th><th>current — inline blocks</th><th>proposed — page map</th></tr>
-      <tr><th>metadata location</th><td>20-byte header touching every allocation</td><td>reserved map pages; only the map region's edges border live data</td></tr>
-      <tr><th>overrun by 1 byte hits</th><td>the next block's header → heap walks break</td><td>the neighbour's data — allocator state stays consistent</td></tr>
-      <tr><th>"is this a heap pointer?"</th><td>magic + checksum guess, forgeable</td><td>range check + map entry — exact</td></tr>
-      <tr><th>interior pointers</th><td>unresolvable</td><td>O(1) arithmetic</td></tr>
-      <tr><th>malloc (small)</th><td>O(heap) first-fit walk</td><td>O(1): class → partial page → pop slot</td></tr>
-      <tr><th>overhead on an 8-byte alloc</th><td>20 B (250%)</td><td>≤ 25% slack + 0.2% map</td></tr>
-      <tr><th>alignment</th><td>4, by accident</td><td>≥ 8, guaranteed</td></tr>
+    <table class="props">
+      <tr><th>property</th><th>behaviour</th></tr>
+      <tr><th>metadata location</th><td>reserved <code>metadata</code> pages (page map + slot-bitmap cell pool); nothing is stored next to an allocation</td></tr>
+      <tr><th>malloc / free (small)</th><td>O(1): class → partial page → pop a slot from the free list or the bump pointer</td></tr>
+      <tr><th>large allocations</th><td>first-fit over the free-run list; coalescing is O(1) at free time via boundary mirrors</td></tr>
+      <tr><th>pointer validation</th><td>exact in every build: range check + page kind + slot-start check + slot bitmap — double frees and interior/foreign pointers are detected, reported and rejected</td></tr>
+      <tr><th>interior pointers</th><td>resolved to their allocation in O(1); <code>memmove</code> bounds-checks mid-buffer pointers (class/page-granular in release, byte-exact under <code>MemoryDebug</code>)</td></tr>
+      <tr><th>alignment</th><td>≥ 8 bytes, guaranteed (all classes are multiples of 8, pages are 4 KiB-aligned)</td></tr>
+      <tr><th>metadata overhead</th><td>~0.5% page map (20 B / 4 KiB page) + 64 B bitmap per small page (~1.6%)</td></tr>
+      <tr><th>per-allocation overhead</th><td>class slack only — 8-byte steps below 128 B, ~25% bounded above</td></tr>
+      <tr><th><code>calloc</code></th><td>always returns zeroed memory; the memset is skipped only on pages provably still in their <code>memory.grow</code> state (watermark)</td></tr>
+      <tr><th>freed memory</th><td>not inert: the first two bytes of a freed slot hold the intrusive free-list link, and freed pointers are rejected by <code>free</code>, <code>realloc</code> and <code>memmove</code></td></tr>
+      <tr><th><code>MemoryDebug</code> extras</th><td>requested-size shadow (byte-exact bounds), slack canaries checked on free, bitmap/usedSlots cross-checks, <code>dumpPageMap()</code></td></tr>
     </table>
   </div>
   <p>
-    Full design — map growth, realloc policy, <code>free_sized</code> semantics, debug instrumentation,
-    migration plan — in
-    <a href="../todo/redesign-wasm-allocator-size-class-pages.md">todo/redesign-wasm-allocator-size-class-pages.md</a>.
+    The authoritative reference is the module itself —
+    <a href="../source/retrograde/wasm/memory.d"><code>source/retrograde/wasm/memory.d</code></a>:
+    its header documents the public contract, and the co-located tests in
+    <code>runWasmMemTests()</code> pin every behaviour shown on this page.
   </p>
 </main>
 
@@ -515,7 +527,7 @@
       if (off % p.cls !== 0) {
         line('<span class="bad">✗ interior pointer</span> — exact slot start recomputed above; free() rejects it, memmove can still bounds-check against ' + p.cls + " B");
       } else if (!p.slots[slot].live) {
-        line('<span class="bad">✗ slot is on the free list — double-free / stale pointer, detectable in debug builds</span>');
+        line('<span class="bad">✗ slot is not live — double free / stale pointer, detected exactly in every build (slot bitmap)</span>');
       } else {
         line('<span class="ok">✓ valid live slot start (' + p.slots[slot].tag + ") — capacity " + p.cls + " B</span>");
       }
@@ -553,7 +565,7 @@
     metricsEl.innerHTML =
       m("live allocations", live) + m("allocated bytes (capacity)", liveBytes) +
       m("small pages", smallPages) + m("large-run pages", largePages) +
-      m("free pages", freePages) + m("map overhead", (NPAGES * 8) + " B");
+      m("free pages", freePages) + m("map overhead", (NPAGES * 20) + " B");
     function m(l, v) { return '<div class="metric"><b>' + v + "</b>" + l + "</div>"; }
   }
 
@@ -584,7 +596,7 @@
       if (p.kind === "meta") {
         box.className = "pagebox k-meta";
         box.innerHTML = plabel("pg 0 · page map") +
-          '<div style="display:flex;align-items:center;justify-content:center;height:100%;font:600 0.65rem ui-monospace,monospace;color:var(--meta)">16 × 8 B entries</div>';
+          '<div style="display:flex;align-items:center;justify-content:center;height:100%;font:600 0.65rem ui-monospace,monospace;color:var(--meta)">16 × 20 B entries</div>';
       } else if (p.kind === "free") {
         box.className = "pagebox k-free";
         box.innerHTML = plabel("pg " + i + " · free");
