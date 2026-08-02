@@ -214,42 +214,24 @@ private MaterialInfo parseMaterial(ref JSONValue gltf, JSONValue mat) {
 
     info.doubleSided = optBool(mat, "doubleSided", false);
 
-    // Gather the material's texture references in priority order (base color
-    // first, then emissive, normal, occlusion and finally metallic-roughness).
-    // `hasAnyTexture` records whether the material references any texture at all;
-    // `texture` takes the first one that resolves to an external image file.
-    JSONValue[] textureInfos;
+    // Only the base color (albedo) texture is converted, whether the material is
+    // unlit or a lit PBR one: the remaining PBR slots (metallic-roughness, normal,
+    // occlusion and emissive) have no RGM equivalent yet. They are still counted in
+    // `hasAnyTexture`, so a material carrying only, say, a normal map is not
+    // mistaken for a textureless vertex-colored one.
     JSONValue* pbrP = "pbrMetallicRoughness" in mat.object;
-    if (pbrP !is null) {
-        if (auto t = "baseColorTexture" in pbrP.object) {
-            textureInfos ~= *t;
-        }
-    }
+    JSONValue* baseColorP = pbrP is null ? null : "baseColorTexture" in pbrP.object;
 
-    if (auto t = "emissiveTexture" in mat.object) {
-        textureInfos ~= *t;
-    }
+    info.hasAnyTexture = baseColorP !is null
+        || hasKey(mat, "emissiveTexture")
+        || hasKey(mat, "normalTexture")
+        || hasKey(mat, "occlusionTexture")
+        || (pbrP !is null && hasKey(*pbrP, "metallicRoughnessTexture"));
 
-    if (auto t = "normalTexture" in mat.object) {
-        textureInfos ~= *t;
-    }
-
-    if (auto t = "occlusionTexture" in mat.object) {
-        textureInfos ~= *t;
-    }
-
-    if (pbrP !is null) {
-        if (auto t = "metallicRoughnessTexture" in pbrP.object) {
-            textureInfos ~= *t;
-        }
-    }
-
-    info.hasAnyTexture = textureInfos.length > 0;
-    foreach (textureInfo; textureInfos) {
-        TextureRef texture = resolveTextureRef(gltf, textureInfo);
+    if (baseColorP !is null) {
+        TextureRef texture = resolveTextureRef(gltf, *baseColorP);
         if (texture.path.length > 0 && !startsWith(texture.path, "data:")) {
-            info.texture = texture;
-            break;
+            info.baseColorTexture = texture;
         }
     }
 
@@ -529,6 +511,11 @@ private long jsonInt(JSONValue value) {
     default:
         throw new Exception("Expected a JSON number.");
     }
+}
+
+/// Returns true when the JSON object has a field under `key`.
+private bool hasKey(JSONValue obj, string key) {
+    return (key in obj.object) !is null;
 }
 
 /// Fetch an optional integer field from a JSON object, falling back to `defaultValue`.

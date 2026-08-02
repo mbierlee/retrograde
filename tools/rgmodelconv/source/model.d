@@ -41,7 +41,7 @@ struct Primitive {
 /**
  * A material's resolved external texture: the image path plus the sampling
  * filters and wrap modes glTF associated with it. `path` is empty when the
- * material references no external image. The filters and wrap modes use the
+ * material references no such external image. The filters and wrap modes use the
  * engine's `TextureMagFilter` / `TextureMinFilter` / `TextureWrap` directly;
  * `unspecified` means the source left the choice to the renderer (no glTF
  * sampler, or the sampler omitted that property).
@@ -55,15 +55,19 @@ struct TextureRef {
 }
 
 /**
- * Classification inputs extracted from a single glTF material: the unlit shading
- * model (`KHR_materials_unlit`), the double-sided flag, and the material's texture
+ * Classification inputs extracted from a single glTF material: the shading model
+ * (`KHR_materials_unlit`), the double-sided flag, and the material's texture
  * references.
+ *
+ * Lit (PBR) materials are converted as if they were unlit: only the base color
+ * (albedo) texture is carried over, since the RGM format has no material type
+ * that can express the metallic-roughness inputs yet.
  */
 struct MaterialInfo {
-    bool unlit; /// True when the material declares the KHR_materials_unlit extension.
+    bool unlit; /// True when the material declares the KHR_materials_unlit extension. Recorded for future use; it does not affect classification, as lit materials are converted as unlit too.
     bool doubleSided; /// glTF `material.doubleSided` (defaults to false).
-    bool hasAnyTexture; /// True when the material references at least one texture of any slot.
-    TextureRef texture; /// First externally referenced texture (path + filters); `path` is "" when none.
+    bool hasAnyTexture; /// True when the material references at least one texture of any slot, including the slots that are not converted.
+    TextureRef baseColorTexture; /// The externally referenced base color (albedo) texture (path + filters); `path` is "" when the material has none.
 }
 
 /**
