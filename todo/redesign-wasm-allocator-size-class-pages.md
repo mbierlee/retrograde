@@ -1,6 +1,9 @@
 # TODO: Replace the WASM block allocator with size-class pages + page map (Option C)
 
-**Status: proposal — do not implement yet.**
+**Status: ready for implementation.** Before writing any code, read
+"Implementation notes (toolchain and harness)" — environment facts not
+derivable from this document — and follow "Implementation workflow" for the
+build/test/iterate loop, both near the end of this document.
 
 Target: `source/retrograde/wasm/memory.d`. The public `extern (C)` surface
 (`malloc`, `calloc`, `realloc`, `free`, `free_sized`, `memset`, `memcmp`,
@@ -146,7 +149,9 @@ private enum PageKind : ubyte {
 
 private enum uint NoPage = uint.max;
 private enum ushort NoSlot = ushort.max;
-private enum uint NoCell = uint.max;
+private enum uint CellIdMask = 0x03FF_FFFF; // bits 0..25
+private enum uint NoCell = CellIdMask;      // 26-bit all-ones, *not* uint.max
+private enum uint BumpZeroedBit = 1u << 31;
 
 private enum MetaKind : ubyte { pageMap, cellPool } // goes in sizeClass when kind == metadata
 
@@ -176,6 +181,9 @@ private struct PageEntry {      // exactly 20 bytes on wasm32
                                 //            metadata: unused (the map's extent is in
                                 //            mapStartPage/mapPageCount; pool pages are
                                 //            always one page).
+        uint runStart;          //            largeCont: page index of the run's
+                                //            largeStart page. Written when the run is
+                                //            carved and when realloc absorbs pages.
     }
 }
 ```
@@ -194,10 +202,24 @@ per-page flag into a spare bit of `slotState` is what makes 20 exact. Assert
 `PageEntry.sizeof == 20` in the implementation so a later field addition
 cannot silently inflate the map by 40%.
 
-`slotState` and `runLength` never overlap in meaning: only `smallPage` needs
-a bitmap cell, and only the run kinds need a length. Cell ids occupy 26 bits
-(20-bit page index << 6 | 6-bit cell index), leaving bit 31 free for
-`bumpZeroed`.
+`slotState`, `runLength` and `runStart` never overlap in meaning: each is read
+for exactly one set of kinds. `runStart` on `largeCont` is what makes interior
+pointers into large runs resolve in O(1) (`heapAllocationInfo` reads it, jumps
+to the `largeStart` entry, and has base + length) — without it, resolving an
+interior large pointer would mean walking backwards page by page. Cell ids
+occupy 26 bits (20-bit page index << 6 | 6-bit cell index), leaving bit 31
+free for `bumpZeroed`.
+
+Because `bumpZeroed` shares the word, the "no cell" sentinel **must be the
+26-bit all-ones value and must be compared against the masked field**:
+`(slotState & CellIdMask) == NoCell`. A `uint.max` sentinel would be
+indistinguishable from "cell id all-ones with `bumpZeroed` set", and
+`slotState == NoCell` as a whole-word comparison is wrong the moment
+`bumpZeroed` is set on a page whose cell is not yet assigned. Never compare
+`slotState` as a whole word. (The sentinel cannot collide with a real cell id:
+all-ones-26 would name cell 63 of page 2^20 − 1, and page index 2^20 − 1 is
+unreachable because `pagesBase > 0` keeps `numPages < 2^20` even at the wasm32
+memory ceiling.)
 
 **On sentinels.** "No page" is unavoidable as a *concept*, not just as an
 encoding: at init no class owns a page yet (giving each of the 26 classes one
@@ -246,6 +268,11 @@ free cells** into a list headed by `firstCellPoolPage`:
   `bumpIndex++`; `usedSlots++`; if the page is now full, unlink it. If the list
   is empty, claim a page from the free-run list, tag it `metadata` with
   `sizeClass = MetaKind.cellPool`, and push it.
+  **The claimed cell must be memset to zero before use.** A recycled cell holds
+  the previous owner's bits plus the freelist link, and a bump cell on a
+  recycled pool page holds whatever the page held before — stale set bits mean
+  spurious double-free traps, stale clear bits mean missed detection, and the
+  MemoryDebug popcount cross-check reads the *whole* cell. 64 bytes, always.
 - **Release a cell:** push it onto its own page's `freeHead`, `usedSlots--`;
   full → has-free means link the page back in. When `usedSlots` reaches 0,
   unlink the page and convert it to a free run, coalescing as usual.
@@ -407,6 +434,12 @@ checking.)
    `carvePages` returns (**not** re-read from `neverTouchedFrom`, which the
    carve has already advanced — see calloc), then push it as the partial page.
    If no free run exists, grow the heap.
+   **Order within this step:** write the page's full `smallPage` entry —
+   `sizeClass`, zeroed counts, `freeHead = NoSlot`, `slotState = NoCell` with
+   the `bumpZeroed` bit — *before* claiming the bitmap cell. The cell claim can
+   carve a pool page, grow the heap, and relocate the map, and all of those
+   walk or copy entries they did not write; the entry must already be
+   self-describing when that happens. Then claim the cell and store its id.
    Claiming the bitmap cell can itself claim a page and therefore relocate the
    map — re-index `pageMap[page]` afterwards rather than holding a pointer
    across it (see the caching rule above).
@@ -417,6 +450,29 @@ checking.)
 4. Set the slot's bit, `usedSlots++`; if the page is now full
    (`usedSlots == slotsPerPage(class)`), unlink it from the partial list.
 5. Return `pageBase + slot * classSize`.
+
+### Failure paths must not leak or half-apply
+
+Every step of the small path can fail with OOM, including steps that run
+*after* state has already changed. The rule is that `malloc` either succeeds
+or leaves the allocator exactly as it found it:
+
+- **Cell claim fails after the page was carved** (step 2: page obtained, cell
+  pool empty, no free run for a pool page, `memory.grow` refused). The carved
+  page must be returned to the free-run list — coalescing as usual — before
+  returning null. Leaking it is not merely wasteful: it would sit forever as a
+  `smallPage` with `slotState == NoCell` and no slots, which every later
+  `free`, the invariant walker and the debug dump must then treat as a
+  permanent special case. Roll it back instead.
+- **Map relocation fails.** Already specified under "Page map growth": the old
+  map stays authoritative and the whole operation is abandoned. Nothing else
+  may have been mutated before the relocation attempt.
+- **`realloc` fallback `malloc` fails.** The original allocation must be left
+  intact and null returned — the caller still owns its old pointer. This is
+  the glibc contract and today's behaviour; do not free the old block first.
+
+Order the small path so that as much as possible of the failure-capable work
+happens before any state mutation, and roll back explicitly where it cannot.
 
 ### malloc — large path
 
@@ -453,6 +509,9 @@ in-place grow, which must absorb from the front of the *following* run because
 that is the only run adjacent to the allocation.
 
 ### calloc — the contract first, the optimization second
+
+The existing `nitems * size` overflow guard (`size != 0 && nitems >
+size_t.max / size` → null) is part of the public contract and stays verbatim.
 
 **`calloc` must return memory that is entirely zero, every time, without
 exception.** That is the whole contract, it is what callers rely on, and it is
@@ -500,24 +559,52 @@ the **single shared helper that carves pages out of a free run**, so that no
 carving path can exist that forgets to:
 
 ```d
-private uint carvePages(uint runStart, uint count) {  // front-carve, see above
-    ...
-    if (runStart + count > neverTouchedFrom) {
-        neverTouchedFrom = runStart + count;
+// Sole owner of the watermark. Both page sources below call it and nothing else does.
+private bool claimPages(uint firstPage, uint count) {  // returns wasUntouched
+    auto wasUntouched = firstPage >= neverTouchedFrom;
+    if (firstPage + count > neverTouchedFrom) {
+        neverTouchedFrom = firstPage + count;
     }
-    ...
+
+    return wasUntouched;
+}
+
+private bool carvePages(uint runStart, uint count) {  // front-carve, see above
+    ...                                               // unlink/split the free run
+    return claimPages(runStart, count);               // relay wasUntouched
 }
 ```
 
-Every caller — small page, large run, cell pool, map relocation — goes through
-it. There is no second way to obtain a page.
+(`carvePages` returns `bool wasUntouched`, not a page index — the caller chose
+the run, so it already knows the carved pages are `[runStart, runStart + count)`.)
+
+There are exactly **two** ways a page is obtained, and both must go through
+`claimPages`:
+
+1. **`carvePages`** — carved out of a free run recorded in the current map.
+   Small pages, large runs, cell-pool pages and map-relocation branch 1 all
+   use this.
+2. **Fresh `memory.grow` space that the current map cannot describe.** This is
+   not a bug in the layering, it is unavoidable: `initializeHeapMemory` runs
+   before any map exists, and map-growth branch 2 (grow to fit the new map)
+   deliberately places the new map in a region the *old* map has no capacity
+   to cover. In neither case is there a free run to carve from — the free-run
+   list itself is being created. These paths write page entries directly and
+   must call `claimPages` themselves for every page they write into (the map
+   pages in both cases; the caller's large run in branch 2).
+
+An earlier draft claimed "there is no second way to obtain a page". That is not
+achievable — the bootstrap and branch 2 are exactly the second way. What *is*
+achievable, and what the split above buys, is that the watermark still has one
+owner. Do not attempt to route the bootstrap through `carvePages`; it has no
+run to operate on and would have to fabricate one.
 
 Because the helper advances the watermark, a caller that reads
 `neverTouchedFrom` *after* calling it always sees "touched" and the skip is
-dead. Rather than rely on every caller remembering to snapshot first, have
-`carvePages` report it: return `wasUntouched = (runStart >= neverTouchedFrom)`
-sampled before the update, and let callers use that. One ordering trap removed
-from every call site instead of documented at each of them.
+dead. Rather than rely on every caller remembering to snapshot first,
+`claimPages` reports it — `wasUntouched` is sampled before the update — and
+`carvePages` relays that return value to its own callers. One ordering trap
+removed from every call site instead of documented at each of them.
 
 Given that, the two skips are:
 
@@ -538,12 +625,13 @@ is the safe direction and it is why front-carving matters (see above) — but a
 stranded page being memset is never a bug, while the reverse always is.
 
 `initializeHeapMemory` may only mark pages never-touched if it grew them itself
-in this call; on re-initialization over an existing heap every existing page is
-conservatively marked touched (`neverTouchedFrom = numPages`). Without that
-rule the `wipeHeap(); initializeHeapMemory();` test pattern and any bare re-init
-would let `calloc` hand back dirty memory — `wipeHeap` zeroing the heap does
-*not* license marking it untouched, because init must not depend on having been
-preceded by a wipe.
+in this call **and** the initial map was not written into them; on
+re-initialization over an existing heap every existing page is conservatively
+marked touched (`neverTouchedFrom = numPages`). Without that rule the
+`wipeHeap(); initializeHeapMemory();` test pattern and any bare re-init would
+let `calloc` hand back dirty memory — `wipeHeap` zeroing the heap does *not*
+license marking it untouched, because init must not depend on having been
+preceded by a wipe. See the init section for the exact formula.
 
 **Test this directly.** "calloc skips the memset on never-touched pages and does
 not skip it on recycled ones" is in the migration plan, but it needs to cover
@@ -570,8 +658,12 @@ growth will pass against the broken version.
    the slot onto `freeHead`, `usedSlots--`. Transitions: full → partial (push
    to partial-list head); `usedSlots == 0` → unlink and convert to a free run
    (see below).
-4. `largeStart`: free the whole run, coalesce with adjacent free runs (see
-   "Free-run coalescing").
+4. `largeStart`: **require `(ptr - pagesBase) % PageSize == 0`** — a pointer
+   into the interior of the *first* page of a large run is not the allocation
+   start and must be an invalid free (report, return), exactly like an
+   unaligned small pointer. The kind check alone does not catch this case:
+   without the offset check, `free(base + 1)` would free the whole run. Then
+   free the run, coalesce with adjacent free runs (see "Free-run coalescing").
 5. `largeCont`, `freeRun`, `freeCont`, `metadata`: invalid free — report and
    return. Freeing a pointer into the middle of a large allocation is now
    *detected*, not undefined.
@@ -638,8 +730,10 @@ doubly linked.
 
 Returning the bitmap cell can empty its **pool** page, which then converts to a
 free run and coalesces too — so a single `free` can perform two independent
-page conversions and two coalesces. Sequence them: finish the small page's
-conversion and coalescing completely, *then* release the cell, so the second
+page conversions and two coalesces. Sequence them: **read the cell id out of
+`slotState` first** (converting the entry to `freeRun` overwrites the union
+with `runLength`, destroying the id), then finish the small page's conversion
+and coalescing completely, *then* release the saved cell, so the second
 coalesce never observes a half-updated run. Both are still O(1), and the
 cascade cannot go deeper than two levels (a pool page owns no bitmap cell of
 its own).
@@ -677,8 +771,9 @@ There is no stored `usedSize` anymore — only the class/run capacity. Policy:
   change a run's extent and must rewrite the boundary mirrors accordingly — the
   partial-absorb case is called out under "Mirror maintenance, spelled out".
 - Like `free`, `realloc` requires the exact allocation start: an interior
-  pointer fails the slot-alignment / kind check → report and return null. This
-  matches today's behaviour, where `getBlock` fails on interior pointers.
+  pointer fails the slot-alignment check (small) or the page-offset-zero check
+  on the `largeStart` page (large) → report and return null. This matches
+  today's behaviour, where `getBlock` fails on interior pointers.
 - **Under `MemoryDebug`, the in-place cases still have to update the shadow.**
   "Return `ptr` unchanged" is only true of the *user* bytes: the requested-size
   shadow entry and the end canary describe the old size and are now wrong. Every
@@ -729,14 +824,26 @@ should be a deliberate debugging/introspection API with a native story, not
 this.
 
 - Resolves **interior pointers** (`slotStart = pageBase + (offset / classSize)
-  * classSize`), which `getBlock` cannot do at all. The bounds check is
-  therefore offset-relative:
+  * classSize`), which `getBlock` cannot do at all. For large runs, a pointer
+  landing on a `largeCont` page resolves through that entry's `runStart` field:
+  `base = pagesBase + runStart * PageSize`, `capacity = pageMap[runStart]
+  .runLength * PageSize` — O(1), no backwards walk. (If `pageMap[runStart]`
+  is not `largeStart`, that is a broken internal invariant — trap.) The bounds
+  check is therefore offset-relative:
   `(ptr - info.base) + count <= info.capacity` — *not* `count <= capacity`,
   which is the start-relative form the current code uses and the one most
   likely to get ported over by accident.
 - `notHeap` (via the range check) replaces today's "header magic didn't match
   so probably not heap" guess; memmove proceeds unchecked for stack/static
   pointers, as today.
+- **`metadata` pages resolve to `freed`, not `notHeap`.** A pointer into the
+  page map or a cell-pool page is inside the range check but is not an
+  allocation, so the three-way enum has to say something about it. `notHeap`
+  would mean "no bounds check possible, proceed" — i.e. memmove would happily
+  write over the page map. Treat it as a bounds failure like `freed`: no
+  legitimate caller memmoves into allocator metadata. (Naming the enum value
+  `freed` for this is a slight stretch; either rename it to something like
+  `notAnAllocation` or document the two cases it covers.)
 - `freed` is deliberately distinct from `notHeap`: a pointer into freed heap
   memory is a use-after-free, and folding it into "no bounds check possible"
   would let memmove silently write through it. memmove treats `freed` as a
@@ -816,47 +923,111 @@ The map is a flat array indexed by page number, stored in pages tagged
 `metadata`. Growing it means **relocating** it: old and new copies must
 coexist during the copy, so the new map needs a contiguous free run big
 enough for the *entire* new map — not just the added entries. One 4 KiB map
-page holds 204 entries (20 B each) → covers 816 KiB of heap before the map
-must grow. Past a 12.75 MiB heap (3264 pages) the whole map no longer fits in
+page holds `PageSize / PageEntry.sizeof` entries — 204 at the release entry
+width (20 B) → covers 816 KiB of heap before the map must grow; **170 under
+MemoryDebug** (24 B entries, and MemoryDebug is the width the wasmtest build
+runs) → 680 KiB. Every capacity computation must derive from
+`PageEntry.sizeof`, never a hardcoded 204 — the illustrative numbers in this
+document assume the release width. Past a 12.75 MiB heap (3264 pages) the whole map no longer fits in
 a single 64 KiB grow, and a fragmented heap may have no interior run that fits
 it either. The grow policy must account for this:
 
-1. Compute the needed map pages for the *new* total page count. Adding map
-   pages adds heap pages, which can in turn require another map page — so this
-   is self-referential: `mapPages = ceil((P + mapPages) / entriesPerMapPage)`
-   where `P = numPages + userPages`. **Solve it in closed form, do not
-   iterate:**
+1. Compute the needed map pages for the *new* total page count. **Two**
+   roundings feed this, and both must be folded in:
+
+   - Adding map pages adds heap pages, which can in turn require another map
+     page — the self-reference `mapPages = ceil((P + mapPages) / E)`.
+   - `memory.grow` is 64 KiB-granular: the combined branch-2 request
+     `userPages + mapPages` rounds up to a multiple of 16 logical pages,
+     appending **up to 15 slop pages that the map must also cover**.
+
+   Solve both in closed form, do not iterate:
 
    ```d
-   // from  E * m >= P + m  <=>  (E - 1) * m >= P
-   auto mapPages = (P + (entriesPerMapPage - 1) - 1) / (entriesPerMapPage - 1);
-   // i.e. ceil(P / 203) at 204 entries per page
+   enum entriesPerMapPage = PageSize / PageEntry.sizeof; // E: 204 release, 170 MemoryDebug
+   auto P = numPages + userPages; // userPages: logical pages the pending grow must deliver
+   auto mapPages = (P + 15 + (entriesPerMapPage - 2)) / (entriesPerMapPage - 1);
+   // i.e. ceil((P + 15) / (E - 1))
    ```
 
-   Verified equal to the fixed point for every `P` from 1 to the wasm32 page
-   ceiling (2^20). An earlier draft prescribed iterating "until stable" and
-   claimed **up to two refinements (three evaluations)** suffice. That bound is
-   wrong: `P = 41616` runs `204 → 205 → 206 → 206`, four evaluations, and 7674
-   values of `P` below the wasm32 ceiling need four. Anyone who unrolls the
-   stated bound into a fixed two-pass correction gets a map one page too small
-   and writes past the end of the map region. The closed form removes the loop
-   and the bound together.
+   Derivation: `(E-1)·m ≥ P + 15` ⟹ `E·m ≥ P + m + 15 ≥ numPages +
+   16·ceil((userPages + m)/16)` = the new total including slop (using
+   `16·ceil(x/16) ≤ x + 15`). Verified exhaustively at both entry widths.
+
+   Two earlier drafts got this wrong in two different ways, both of which
+   write past the end of the map region — do not resurrect either:
+
+   - *Iterating "until stable" with a claimed bound of three evaluations.* The
+     bound is false (`P = 41616` needs four); an unrolled two-pass correction
+     under-sizes the map.
+   - *The bare closed form `ceil(P / (E-1))` without the `+15`.* It ignores
+     grow-request rounding. Concrete failure at `E = 204`: `numPages = 187`,
+     `userPages = 16` → `P = 203` → `m = 1`, capacity 204; the combined grow
+     requests 17 logical pages → 2 wasm pages → **32** appended → new total
+     219 > 204. The map is one page short and page indices 204..218 index past
+     its end. (928 such `(n, u)` pairs exist below `n = 4000` alone.)
+
+   The `+15` occasionally costs one map page that turns out unneeded —
+   capacity ≥ coverage is the harmless direction (see below).
 2. If an existing free run fits the new map, use it. Otherwise size the
    `memory.grow` request as `userNeed + newMapSize` and place the new map at
-   the start of the freshly grown region — WASM growth is append-only and
+   the **start** of the freshly grown region — WASM growth is append-only and
    contiguous, so fresh space is always one contiguous run; there is never a
-   fragmentation problem in new space, only in old space.
+   fragmentation problem in new space, only in old space. Start-placement is
+   deliberate, not cosmetic: the map pages are written immediately, so the
+   watermark must advance past them; placed at the start, the pages beyond
+   map + user stay above the watermark and keep their `calloc` zero-skip.
+   Placing the map at the *end* of the grown region (tempting, because the
+   user run would then coalesce with a trailing old free run) forces the
+   watermark past the entire append and strands the slop pages — the same
+   back-carve mistake in different clothes.
 3. `memcpy` old map → new, tag new pages `metadata` (`sizeClass =
    MetaKind.pageMap`), retag old map pages as a free run, update
    `mapStartPage`/`mapPageCount`/`mapCapacity`. All of this is written into the
    **new** map; the old one is not modified and stays authoritative until
    `mapStartPage` is switched over.
 
-Both branches of step 2 obtain their pages through the same front-carve helper
-as everything else, so the new map region advances `neverTouchedFrom` and the
-freed old map region is correctly treated as recycled. See the calloc section —
-this is one of the two paths where forgetting that is a correctness bug rather
-than a lost optimization.
+Both branches must advance `neverTouchedFrom` over the new map region, and both
+must let the freed old map region be treated as recycled. See the calloc
+section — this is one of the two paths where forgetting that is a correctness
+bug rather than a lost optimization. The two branches get there by different
+routes, and conflating them does not work:
+
+- **Branch 1** carves the new map out of an existing free run, so it goes
+  through `carvePages` and the watermark is handled for it.
+- **Branch 2 cannot.** Its pages come from fresh `memory.grow` space that the
+  *old* map has no capacity to describe and that is on no free-run list —
+  which is the whole reason this branch exists. It writes the new map's page
+  entries directly and must call `claimPages` itself for the map pages (and
+  for the caller's run carved out of the same fresh region). This is the
+  second of the two legitimate page sources; see the calloc section.
+
+Ordering in branch 2: grow first, then build the new map sized for the new
+total, then copy the old entries in, then describe the fresh pages (map pages
+`metadata`, remainder a free run) in the new map, then switch `mapStartPage`
+over, then release the old map region as a free run.
+
+**Call flow — who performs which grow.** This is the seam an implementation
+gets wrong, so pin it down: `growHeap` is the **only** caller of the map-growth
+machinery. `growHeap(wantedBytes)` computes its append as whole wasm pages
+(`newPages = 16 * wasmPages`, post-rounding) and calls
+`ensureMapCapacity(newPages)` first. Three outcomes:
+
+- **Covered** — existing capacity suffices. `growHeap` performs its own
+  `memory.grow` and appends the new pages as a free run.
+- **Relocated (branch 1)** — the map moved into an existing free run; no
+  memory was grown. `growHeap` then performs its own grow exactly as in the
+  covered case (and that grow may still fail — see the branch-1 residue note
+  below).
+- **GrewAndAppended (branch 2)** — `ensureMapCapacity` performed the single
+  combined grow itself, built the new map, and appended user pages + slop as
+  a free run. `growHeap` must **not** grow again; it returns success
+  immediately, and its caller's retry (malloc: no run → grow → retry carve)
+  finds the pages on the free-run list.
+
+Collapsing this into "growHeap always grows after ensuring capacity" double-
+grows in branch 2; making ensure never grow re-opens the fragmentation dead
+end branch 2 exists to solve. The three-outcome contract is the design.
 
 Failure is total, never partial: the old map stays valid until the new one is
 fully built, so if `memory.grow` refuses (browser limit, wasm32 4 GiB ceiling)
@@ -897,20 +1068,45 @@ heap sizes; revisit only if map relocation ever shows up in profiles.
 ### initializeHeapMemory / wipeHeap
 
 - `initializeHeapMemory(heapOffset)`: compute `pagesBase`, `maybeGrowInitialHeap`
-  as today, set all page-index globals to `NoPage`, tag page 0 `metadata`
-  (`MetaKind.pageMap`), build the initial map (page 0 = metadata, pages
-  1..N-1 = one free run), and set `neverTouchedFrom` per the calloc rule above
-  — the first new page if this call grew the heap, otherwise `numPages`
-  (everything conservatively touched).
-- Init assumes **one** map page is enough for the initial heap. That holds
-  today only incidentally: `initialHeapSize` is 64 KiB, which yields at most 16
-  logical pages and at most 15 after the sub-4 KiB pad — comfortably under the
-  204 a single map page covers. It is an unstated precondition of the
-  "page 0 = metadata, pages 1..N-1 = one free run" shape, so assert it rather
-  than rely on `initialHeapSize` never changing:
-  `assert(numPages <= entriesPerMapPage)`. If a future larger initial
-  reservation trips it, init needs the general multi-page map build; that is a
-  problem to solve when it arrives, not now.
+  as today, set all page-index globals to `NoPage`, compute `numPages` from the
+  *current* memory size, build the map at the bottom of the page area, and set
+  `neverTouchedFrom` per the calloc rule below.
+- **Init must do the general multi-page map build, not a one-page shortcut.**
+  A single map page covers 204 logical pages (816 KiB), and `initialHeapSize`
+  is 64 KiB, so "page 0 = metadata, pages 1..N-1 = one free run" looks
+  sufficient. It is not, because init is not only called on a fresh module:
+  `retrograde.std.test.test()` calls `wipeHeap(); initializeHeapMemory();`
+  **before every single test**, and WASM linear memory never shrinks. Once any
+  one test has grown the heap past 816 KiB, every subsequent re-init starts
+  with `numPages > 204`. A one-page map then covers a fraction of the heap and
+  every page index past 203 reads and writes past the end of the map region —
+  and an `assert` guarding it is no guard at all in a `-release` build (see
+  "Detection response policy"). So:
+
+  ```d
+  auto mapPages = (numPages + (entriesPerMapPage - 1) - 1) / (entriesPerMapPage - 1);
+  // pages [0 .. mapPages)        -> metadata, MetaKind.pageMap
+  // pages [mapPages .. numPages) -> one free run (if any remain)
+  ```
+
+  This is the "Page map growth" closed form *without* the `+15` slop term —
+  correctly so: at init `numPages` is already final (any growth happened in
+  `maybeGrowInitialHeap` before the map is sized), so there is no pending
+  64 KiB rounding to cover. About ten lines. The degenerate case
+  `mapPages >= numPages` (a heap too small to hold its own map) must fail init
+  rather than produce a heap with no free run.
+- `mapStartPage = 0`, `mapPageCount = mapPages`, `mapCapacity` computed the
+  same way it is indexed (see the flat-indexing note in the implementation
+  notes).
+- `neverTouchedFrom = max(firstNewPage, mapPages)` where `firstNewPage` is the
+  first page index this call grew into, or `numPages` if it grew nothing. The
+  `max` matters: the map is written into pages `[0 .. mapPages)` at the
+  *bottom* of the page area, so on a first-ever init that grew from nothing
+  `firstNewPage` is 0 and the map pages would otherwise be claimed untouched
+  while holding map bytes. Re-initialization over an existing heap grows
+  nothing and conservatively marks everything touched.
+- `wipeHeap()` zeroing the heap does **not** license marking pages untouched
+  (see calloc); init must not depend on having been preceded by a wipe.
 - `wipeHeap` keeps its contract (zero everything from `heapStart`); the
   `WasmMemTest` harness pattern `wipeHeap(); initializeHeapMemory();` between
   tests must keep working unchanged — init must fully rebuild state from
@@ -943,6 +1139,18 @@ call site. In practice this is a bigger win than the O(1) malloc.
 
 ## Debug instrumentation (MemoryDebug)
 
+**MemoryDebug is not an optional extra here — it is the configuration every
+WASM test runs under.** `wasmtest/dub.json` builds with
+`["WasmMemTest", "MemoryDebug", "UnitTesting", "NoGraphicsApi"]`, so the
+shadow/canary machinery below is on the only path the test suite exercises,
+and it has to be implemented in the same change, not deferred. The corollary is
+uncomfortable and worth stating: **release-mode class-granular bounds behaviour
+is exercised by no test by default.** The workflow section below closes this
+with a two-config sweep; the requirement it imposes on test code is that every
+byte-exact assertion is `version (MemoryDebug)`-guarded with a class-granular
+variant in the `else` branch, so the suite passes unedited in both
+configurations.
+
 The always-on checks (range, kind, slot alignment, slot bitmap, freelist index
 validation) are release-mode features and are specified above, not here.
 MemoryDebug adds forensics on top, without changing whether any call succeeds:
@@ -961,8 +1169,41 @@ MemoryDebug adds forensics on top, without changing whether any call succeeds:
   it only *sharpens* a bound that still exists at class granularity, protecting
   bytes that are inside the caller's own slot. (Canary coverage is inherently
   partial anyway: an exact-size request has no slack to put one in.)
+- **Where the shadow lives (unspecified in earlier drafts — decide before
+  coding).** "A shadow array" needs actual storage, and it is bigger than the
+  bitmap: one byte per slot is up to 512 bytes per small page, versus 64 for
+  the bitmap. Three workable options, in order of preference:
+  1. **Widen `PageEntry` under `version (MemoryDebug)`** and keep a second
+     cell pool with 512-byte cells — **8 cells per pool page**, not 64; the
+     64-per-page figure is specific to 64-byte bitmap cells. Parameterize the
+     pool mechanism by cell size (`cellsPerPage = PageSize / cellSize`, cell
+     address `pagesBase + (id / cellsPerPage) * PageSize + (id % cellsPerPage)
+     * cellSize`) rather than duplicating it. Costs one extra `uint` in the
+     entry for the shadow cell id. The shadow cell needs no zeroing on claim:
+     every shadow byte that `free`/`memmove` reads belongs to a slot whose
+     bitmap bit is set, and setting that bit (malloc) writes the byte first.
+     Zero it anyway if it simplifies the cross-checks — it is debug-only cost.
+  2. One dedicated shadow page per small page — simpler, wastes up to 3.5 KiB
+     per small page. Acceptable for a debug build, ugly at scale.
+  3. A parallel shadow map allocated alongside the page map — has to relocate
+     in lockstep with it, which is the one thing the design otherwise avoids.
+  Whichever is chosen, `PageEntry.sizeof == 20` becomes a **release-only**
+  static assert; state the debug size separately.
+- **Large runs need their exact requested size too**, for the same
+  `memmove`/`free_sized` sharpening. There is no slack byte to hide it in
+  (a run's slack can be up to `PageSize - 1`), so put it in the
+  MemoryDebug-only `PageEntry` extension on the `largeStart` page.
 - **Cross-check the bitmap against `usedSlots`** on every page transition.
-- Keep `printDebugInfo`; add a `dumpPageMap()` debug dump.
+- **A `callocMemsetSkips` counter** (`__gshared uint`, MemoryDebug-only),
+  incremented once per skipped memset. This exists because the zero-skip is
+  **behaviourally invisible**: skipped or not, calloc returns zeros, so no
+  black-box assertion can tell the paths apart — and never-touched pages
+  cannot be pre-dirtied to force a difference, because dirtying them is
+  touching them. Tests assert the counter moved (skip taken) or stayed
+  (recycled path memset). Co-located tests read it directly; it needs no
+  accessor.
+- Keep `printDebugInfo`; add a `dumpPageMap()` debug dump. Printing numbers
+  from inside the allocator is safe on WASM — see the implementation notes.
 
 ## Known limitations
 
@@ -1007,9 +1248,12 @@ MemoryDebug adds forensics on top, without changing whether any call succeeds:
        first 2 bytes. Rewrite to assert from offset 2, or drop the assertion.
      - "memmove returns null when count exceeds src block bounds" and "…dest
        block bounds" use `malloc(2)` with `count == 5`, which is now within
-       the 8-byte class. Rewrite against class-sized bounds (e.g. `malloc(2)`
-       with a count past 8) or move them under MemoryDebug where the
-       requested-size shadow makes the original assertion true again.
+       the 8-byte class in *release* but still rejected under `MemoryDebug`
+       (the requested-size shadow restores byte-exact bounds). Per the
+       two-config rule: keep the `count == 5` assertion under
+       `version (MemoryDebug)`, and assert the class-granular behaviour
+       (`count == 5` succeeds, count past the class size fails — e.g. 9
+       against class 8) in the `else` branch.
    - Drop block-mechanics tests (`splitBlock`, `combineBlocks`,
      `findFreeBlock`, checksum tests); add equivalents for: size-class
      rounding, slot reuse order, page full→partial transitions, eager
@@ -1034,6 +1278,28 @@ MemoryDebug adds forensics on top, without changing whether any call succeeds:
      free — now detected in release too).
    - Mind the known WASM test pitfall: no struct definitions inside test
      lambdas (call_indirect trap) — keep test helper structs at module scope.
+     See `docs/wasm-pitfalls.md`.
+   - **The harness re-inits before every test, which makes the calloc
+     zero-skip unreachable by default.** `retrograde.std.test.test()` runs
+     `wipeHeap(); initializeHeapMemory();` first, and re-init over an existing
+     heap marks *everything* touched. So a test that merely callocs sees the
+     memset path, always. Any test of the zero-skip must **grow the heap
+     inside its own body first** (allocate past the current memory size), then
+     calloc into the fresh pages. And because skip-vs-memset is behaviourally
+     invisible (both return zeros), the assertion medium is the
+     `callocMemsetSkips` counter from the debug section: skip tests assert it
+     incremented, recycled-path tests assert zeros **and** that it did not.
+   - Add a test that re-inits over a heap larger than one map page's coverage
+     (grow past `entriesPerMapPage` logical pages — 170 under the wasmtest
+     build's MemoryDebug entry width, 204 in release — then
+     `initializeHeapMemory()`), which is the case the one-page-map shortcut
+     got wrong. The harness reaches this state naturally the moment any single
+     test allocates that much, so it should be pinned down deliberately rather
+     than discovered.
+   - Note that the existing "Initial heap size is usable" test writes 42 over
+     `heapStart[0 .. heapSize]`, which now clobbers the page map. That stays
+     harmless only because the next `test()` re-inits — the test must not make
+     any allocator call after the fill.
 4. Verify with the wasmtest suite (`wasmtest/`, headless Node runner) and
    `make test-native` for the modules that consume the allocator indirectly.
 5. Docs: delete `docs/wasm-allocator-current.html` and
@@ -1046,6 +1312,188 @@ MemoryDebug adds forensics on top, without changing whether any call succeeds:
    elements (`defaultChunkSize`), which crosses a class boundary on almost
    every resize and keeps the O(n²) behaviour the class table would otherwise
    amortize away.
+
+## Implementation notes (toolchain and harness)
+
+Environment facts that are not derivable from the design and that will cost a
+day each if rediscovered the hard way.
+
+### Trapping
+
+"Report and trap" needs a mechanism, and the codebase currently has none.
+`assert` is not it: betterC has no `Throwable`, and asserts vanish under
+`-release`, which is precisely the build where an internal-invariant violation
+must still stop the program. Use:
+
+```d
+version (LDC) {
+    import ldc.intrinsics : llvm_trap;
+}
+```
+
+Confirmed present in the toolchain in use (`ldc2-1.42.0`, `ldc/intrinsics.di`).
+It lowers to the WASM `unreachable` instruction. The headless Node runner
+(`wasmtest/run-tests-headless.mjs`) surfaces that as a non-zero exit with a
+stack trace, so trapping is CI-visible.
+
+### Diagnostics do not allocate on WASM
+
+Always-on reporting means `writeErrLn` moves out of the current
+`version (MemoryDebug)` import block in `retrograde/wasm/memory.d`. That is
+safe: on WASM, `writeln`/`writeErrLn` of integers dispatch straight to
+`extern (C)` imports (`writeErrLnUint`, `writeErrLnStr`, …) that hand the raw
+value or a pointer+length to JS, which does the formatting. **No allocation, so
+no re-entry into `malloc` from inside the allocator** — including from
+`dumpPageMap`, which can print freely.
+
+This is a WASM-only property. The native path formats via
+`retrograde.std.conv.to!String`, which allocates. Do not copy allocator
+diagnostics into shared code on that assumption.
+
+### LLVM turns byte loops into calls to the functions being defined
+
+`memset` and `calloc` carry `version (LDC) @optStrategy("none")` for a reason:
+wasmtest builds at `-O3`, and LLVM recognizes byte-copy/fill loops and rewrites
+them into calls to `memset`/`memcpy` — which are these very functions.
+Consequences for the rewrite:
+
+- Keep the existing attributes. Do not "clean them up".
+- Any new byte loop (page zeroing, map relocation copy, canary fill) must
+  either call the existing exported `memset`/`memcpy` or carry
+  `@optStrategy("none")` itself.
+- `memcpy` currently lacks the attribute and survives by luck of the current
+  optimizer's decisions; treat it as fragile and do not restructure its loop.
+
+Related performance note: `memset`/`memcpy` are byte-at-a-time. `calloc` of a
+*recycled* multi-MiB large run pays that in full, and the zero-skip does not
+help there. A word-wise loop with a byte tail is a bigger win for that workload
+than anything else in this design; worth doing as part of the rewrite.
+
+### Module globals: use `__gshared`
+
+D module-level variables are thread-local by default. The current allocator's
+globals are zero-initialized, which is why this has never mattered. The new
+globals have **non-zero initializers** (`= NoPage`), which places them in a
+`.tdata` segment whose initialization depends on TLS setup that a betterC WASM
+module does not perform. Declare them `__gshared`, and — since
+`initializeHeapMemory` must fully rebuild state from nothing on every call
+anyway — assign every one of them explicitly in init rather than relying on a
+declaration-site initializer.
+
+### Page-map indexing: pick flat, and make capacity agree
+
+4096 / 20 = 204.8, so entries do not tile a page evenly. Two consistent
+choices exist: index flat over the contiguous region (`mapBase + i *
+PageEntry.sizeof`, entries may straddle a page boundary — harmless, the region
+is contiguous), or index per page and waste the remainder per map page. Take
+the flat form. Define `enum entriesPerMapPage = PageSize / PageEntry.sizeof`
+**once** and derive everything from it — it is 204 in release and **170 under
+MemoryDebug** (24-byte entries), and the wasmtest build is MemoryDebug, so a
+hardcoded 204 anywhere is a bug in the tested configuration, not a latent one.
+`mapCapacity = mapPageCount * entriesPerMapPage` is a *lower* bound on what
+the region physically holds — safe; the only requirement is that the value
+used for the bounds check is computed the same way everywhere.
+
+`mapCapacity >= numPages` is the invariant, never equality (see "Page map
+growth").
+
+### Range checks in subtraction form
+
+Spell pointer range checks as `cast(size_t)(ptr - pagesBase) <
+numPages * PageSize`, not as a comparison against a computed end pointer.
+`pagesBase + numPages * PageSize` equals the end of linear memory, which at
+the wasm32 4 GiB ceiling is 2^32 and wraps to 0 as a 32-bit pointer, turning
+the upper bound into nonsense. The subtraction form is immune (the product
+fits: `numPages < 2^20`), and unsigned wraparound makes `ptr < pagesBase`
+fail the same single comparison for free.
+
+### Slot index computation without magic-number tables
+
+`free` needs `(ptr - pageBase) / classSize` and the `% classSize == 0` check
+without a runtime division by a non-constant. Hand-rolled reciprocal-multiply
+constants are 26 chances to be subtly wrong. Prefer a `switch` over the size
+class with compile-time-constant divisors per case (generate the cases with
+`static foreach` over the class table) — LLVM produces the multiply-shift
+itself, and the `/` and `%` in the same arm fold into one sequence. Note it
+cannot be `final switch`: `sizeClass` is a raw `ubyte`, and D's `final switch`
+over an integral type demands all 256 cases. A plain `switch` whose `default`
+treats the unknown class as a broken internal invariant (trap) is both legal
+and exactly the response policy anyway. Same technique for `slotsPerPage`.
+
+### Interaction with `_d_array_slice_copy`
+
+`source/retrograde/compiler/ldc.d:22` implements the compiler's array-slice
+copy hook and, in debug builds, asserts `memmove(...) is dest`. Two of this
+design's changes land there:
+
+- memmove now rejects `freed` pointers, so a use-after-free slice copy that
+  used to succeed silently becomes a **hard assert failure**. Intended, but
+  this is the mechanism by which the behaviour change becomes visible.
+- memmove now resolves **interior** pointers, so slice copies into the middle
+  of an `Array`/`String` buffer — previously unchecked, because `getBlock`
+  failed on them — become bounds-checked for the first time.
+
+Both are improvements, and both mean the first green-to-red transition after
+the rewrite may well be a pre-existing bug in `Array`/`String`, not in the
+allocator. Budget for that rather than assuming a regression.
+
+## Implementation workflow
+
+The loop is: **implement → rewrite the co-located tests → run the WASM suite →
+iterate until green → sweep the second config → native suite.** Concretely,
+and in this order, because the order localizes failures:
+
+1. **Read `docs/wasm-pitfalls.md` first.** Both pitfalls in it (lambda-local
+   structs with template mixins; `extern (C)` variable shadowing) are directly
+   relevant to this module and its tests.
+2. **Scaffold with compile-time proof.** `PageEntry` + enums + globals, plus
+   `static assert`s: entry size (20 release / stated size under MemoryDebug),
+   `entriesPerMapPage` derived from `sizeof`, and a CTFE check that the
+   `sizeToClass` table and the class-size array agree (for every size 1..2048:
+   the mapped class covers the size and the next-smaller class does not).
+   These cost nothing at runtime and turn table typos into build failures.
+3. **Build the debug lens before the machinery that needs debugging:**
+   `dumpPageMap()` and the invariant walker (free-run list ↔ mirror agreement,
+   runs tile without overlap, bitmap popcount vs `usedSlots`). Every later
+   step is diagnosed with these; writing them last means debugging the hard
+   parts blind.
+4. **Implement bottom-up:** map indexing and init → `claimPages`/`carvePages`
+   → free-run convert/coalesce → cell pool → small malloc/free → large paths
+   → calloc → realloc → `free_sized` → `heapAllocationInfo` + memmove → heap
+   growth and map relocation → MemoryDebug shadow/canary.
+5. **Rewrite `runWasmMemTests` in the same file as you go**, per the migration
+   plan. Tests are co-located and may read private state (`pageMap` entries,
+   `neverTouchedFrom`, `callocMemsetSkips`) directly — do not export anything
+   for their benefit.
+6. **Run the WASM suite and iterate:**
+
+   ```
+   cd wasmtest && make run-tests-headless
+   ```
+
+   - Exit is non-zero on any trap or failed assert, with a wasm stack trace;
+     mangled D names identify the frame. There is no single-test filter — the
+     suite always runs whole, `runWasmMemTests` first.
+   - After the memory tests pass, the rest of the suite (String, Array,
+     entity, assets) hammers the allocator as integration coverage. A failure
+     there with green memory tests is often a **pre-existing caller bug
+     surfaced by the new checks** (see the `_d_array_slice_copy` note), not an
+     allocator regression — diagnose with `dumpPageMap` and the invariant
+     walker before "fixing" the allocator.
+   - Iterate here until fully green.
+7. **Sweep the second configuration.** Temporarily remove `"MemoryDebug"` from
+   the `versions` array in `wasmtest/dub.json`, rebuild, rerun, restore. This
+   is the only exercise the release-mode paths (class-granular bounds,
+   always-on bitmap checks without the shadow) get. It passes without editing
+   tests only if the byte-exact assertions were `version (MemoryDebug)`-
+   guarded as the migration plan requires.
+8. **`make test-native`** — the allocator is version-gated out of it, but it
+   guards the shared modules touched along the way (test registration, any
+   facade edits). `make build-lib` does not work (missing native platform
+   implementations) — do not use it to validate anything.
+9. Only after both configs are green: delete the two comparison HTML docs
+   (migration step 5). The `Array` growth-factor follow-up (migration step 6)
+   is a separate change — do not fold it into this one.
 
 ## Open questions
 
