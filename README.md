@@ -35,3 +35,4 @@ The following table lists all [version conditions](https://dlang.org/spec/versio
 | OpenGLES3       | Use the OpenGL ES 3 render API. Available in WebAssembly (via WebGL2) and native.                                                      |
 | NoGraphicsApi   | Use a no-op graphics API stub. Useful for headless builds, testing, or when no rendering is required.                                  |
 | DoublePrecision | Use double precision (64-bit) for scalar math operations instead of single precision (32-bit float). Affects Vector and Matrix types.  |
+| LargeEventData  | Add 64-bit members (long, ulong, double) to event data, growing it from 4 to 8 bytes. Omit it to keep events small.                    |
