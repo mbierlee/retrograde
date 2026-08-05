@@ -20,10 +20,10 @@ public import retrograde.wasm.opengles3.functions;
 
 import retrograde.api.opengles3 : glesSetViewport = setViewport;
 
-export extern (C) void resizeCanvasToDisplaySize();
+extern (C) void resizeCanvasToDisplaySize();
 
 export extern (C) void setViewport(uint width, uint height) {
     glesSetViewport(width, height);
 }
 
-export extern (C) GLuint compileShaderProgram(string name, string vertexShader, string fragmentShader);
+extern (C) GLuint compileShaderProgram(string name, string vertexShader, string fragmentShader);

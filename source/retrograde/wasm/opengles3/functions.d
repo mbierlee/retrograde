@@ -16,7 +16,7 @@ version (OpenGLES3)  :  //
 
 import retrograde.wasm.opengles3.types;
 
-export extern (C):
+extern (C):
 
 GLuint glCreateBuffer();
 void glDeleteBuffer(GLuint buffer);

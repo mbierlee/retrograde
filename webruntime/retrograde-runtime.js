@@ -4,6 +4,7 @@ export default class RetrogradeRuntime {
   instance;
   imports;
 
+  eventCapturer;
   glContext;
 
   displayWidth;
@@ -17,6 +18,8 @@ export default class RetrogradeRuntime {
 
   uniformLocations = [];
   uniformLocationDict = {};
+
+  heldModifierKeys = new Set();
 
   constructor(wasmModulePath) {
     this.wasmModulePath = wasmModulePath;
@@ -54,7 +57,7 @@ export default class RetrogradeRuntime {
         console.log(String.fromCharCode(value));
       },
       writelnDChar: (value) => {
-        console.log(String.fromCharCode(value));
+        console.log(String.fromCodePoint(value));
       },
       writelnUbyte: (value) => {
         console.log(value);
@@ -93,7 +96,7 @@ export default class RetrogradeRuntime {
         console.error(String.fromCharCode(value));
       },
       writeErrLnDChar: (value) => {
-        console.error(String.fromCharCode(value));
+        console.error(String.fromCodePoint(value));
       },
       writeErrLnUbyte: (value) => {
         console.error(value);
@@ -142,8 +145,36 @@ export default class RetrogradeRuntime {
         const assertionMessage = this.getCString(assertionMsgPtr);
         const srcFile = this.getCString(srcFilePtr);
         console.error(
-          `Assertion error: ${assertionMessage}\n    at ${srcFile}:${srcLineNumber}`
+          `Assertion error: ${assertionMessage}\n    at ${srcFile}:${srcLineNumber}`,
         );
+      },
+
+      // Input
+
+      setupKeyboardCallback: () => {
+        const dispatchKeyEvent = (e, action) => {
+          this.trackModifierKey(e.code, action);
+          this.instance.exports.onKey(
+            this.mapKeyChar(e.key),
+            this.mapKeyCode(e.code),
+            action,
+            this.mapKeyModifiers(e),
+          );
+          e.preventDefault();
+        };
+
+        this.eventCapturer.addEventListener("keydown", (e) => {
+          // Held keys produce a stream of keydown events after the initial
+          // press, which the browser marks as repeats.
+          dispatchKeyEvent(
+            e,
+            e.repeat ? InputEventAction.repeat : InputEventAction.press,
+          );
+        });
+
+        this.eventCapturer.addEventListener("keyup", (e) => {
+          dispatchKeyEvent(e, InputEventAction.release);
+        });
       },
 
       // GL API
@@ -154,41 +185,41 @@ export default class RetrogradeRuntime {
         vertexShaderLength,
         vertexShaderPtr,
         fragmentShaderLength,
-        fragmentShaderPtr
+        fragmentShaderPtr,
       ) => {
         const name = this.getString(namePtr, nameLength);
 
         if (!this.glContext) {
           console.error(
-            `failed to compile shader program ${name} GL context is not initialized`
+            `failed to compile shader program ${name} GL context is not initialized`,
           );
         }
 
         const vertexShaderSource = this.getString(
           vertexShaderPtr,
-          vertexShaderLength
+          vertexShaderLength,
         );
         const fragmentShaderSource = this.getString(
           fragmentShaderPtr,
-          fragmentShaderLength
+          fragmentShaderLength,
         );
 
         const vertexShader = this.createShader(
           this.glContext,
           this.glContext.VERTEX_SHADER,
-          vertexShaderSource
+          vertexShaderSource,
         );
 
         const fragmentShader = this.createShader(
           this.glContext,
           this.glContext.FRAGMENT_SHADER,
-          fragmentShaderSource
+          fragmentShaderSource,
         );
 
         const program = this.createShaderProgram(
           this.glContext,
           vertexShader,
-          fragmentShader
+          fragmentShader,
         );
 
         this.shaderPrograms.push(program);
@@ -245,7 +276,7 @@ export default class RetrogradeRuntime {
 
       glDeleteVertexArray: (vertextArrayObjectName) => {
         const vertextArrayObject = this.getVertexArrayObject(
-          vertextArrayObjectName
+          vertextArrayObjectName,
         );
 
         this.glContext.deleteVertexArray(vertextArrayObject);
@@ -253,7 +284,7 @@ export default class RetrogradeRuntime {
 
       glBindVertexArray: (vertextArrayObjectName) => {
         const vertextArrayObject = this.getVertexArrayObject(
-          vertextArrayObjectName
+          vertextArrayObjectName,
         );
 
         this.glContext.bindVertexArray(vertextArrayObject);
@@ -269,7 +300,7 @@ export default class RetrogradeRuntime {
         type,
         normalized,
         stride,
-        offset
+        offset,
       ) => {
         this.glContext.vertexAttribPointer(
           index,
@@ -277,7 +308,7 @@ export default class RetrogradeRuntime {
           type,
           normalized,
           stride,
-          offset
+          offset,
         );
       },
 
@@ -338,7 +369,7 @@ export default class RetrogradeRuntime {
         count,
         transpose,
         valueLength,
-        valuePtr
+        valuePtr,
       ) => {
         const valueData = this.getFloat32Array(valuePtr, valueLength);
         const locationObject = this.getUniformLocationObject(location);
@@ -387,7 +418,7 @@ export default class RetrogradeRuntime {
         format,
         type,
         pixelsLength,
-        pixelsPtr
+        pixelsPtr,
       ) => {
         const pixels = this.getUint8Array(pixelsPtr, pixelsLength);
         this.glContext.texImage2D(
@@ -399,7 +430,7 @@ export default class RetrogradeRuntime {
           border,
           format,
           type,
-          pixels
+          pixels,
         );
       },
 
@@ -421,13 +452,15 @@ export default class RetrogradeRuntime {
       },
 
       // Asset Loading
-      
+
       startAssetFetch: (urlPtr, urlLen, handle) => {
         const url = this.getString(urlPtr, urlLen);
         fetch(url)
           .then((response) => {
             if (!response.ok) {
-              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+              throw new Error(
+                `HTTP ${response.status}: ${response.statusText}`,
+              );
             }
 
             return response.arrayBuffer();
@@ -438,16 +471,16 @@ export default class RetrogradeRuntime {
             const wasmBuf = new Uint8Array(
               this.memory.buffer,
               wasmPtr,
-              data.length
+              data.length,
             );
 
             wasmBuf.set(data);
             this.instance.exports.onAssetFetchComplete(
               handle,
               wasmPtr,
-              data.length
+              data.length,
             );
-            
+
             this.instance.exports.free(wasmPtr);
           })
           .catch((err) => {
@@ -457,14 +490,14 @@ export default class RetrogradeRuntime {
             const errBuf = new Uint8Array(
               this.memory.buffer,
               errPtr,
-              encoded.length
+              encoded.length,
             );
 
             errBuf.set(encoded);
             this.instance.exports.onAssetFetchError(
               handle,
               errPtr,
-              encoded.length
+              encoded.length,
             );
 
             this.instance.exports.free(errPtr);
@@ -524,7 +557,7 @@ export default class RetrogradeRuntime {
     const dataview = new DataView(
       this.memory.buffer,
       pointer,
-      length * floatSize
+      length * floatSize,
     );
 
     for (let i = 0; i < length; i++) {
@@ -545,7 +578,7 @@ export default class RetrogradeRuntime {
     const dataview = new DataView(
       this.memory.buffer,
       pointer,
-      length * uintSize
+      length * uintSize,
     );
 
     for (let i = 0; i < length; i++) {
@@ -560,7 +593,7 @@ export default class RetrogradeRuntime {
     const encodedString = new TextEncoder("utf-8").encode(string);
     if (encodedString.length > maxLength) {
       throw new Error(
-        `String too large for storage destination: '${string}' (allocated size: ${maxLength}, encoded string size: ${encodedString.length})`
+        `String too large for storage destination: '${string}' (allocated size: ${maxLength}, encoded string size: ${encodedString.length})`,
       );
     }
 
@@ -620,7 +653,7 @@ export default class RetrogradeRuntime {
     return this.getGlObject(
       this.vertextArrayObjects,
       name,
-      "Vertex Array Object"
+      "Vertex Array Object",
     );
   }
 
@@ -680,4 +713,419 @@ export default class RetrogradeRuntime {
   setViewport(width, height) {
     this.instance.exports.setViewport(width, height);
   }
+
+  /**
+   * Maps a KeyboardEvent.code value to its KeyboardKeyCode value.
+   * Unmapped keys become KeyboardKeyCode.unknown.
+   */
+  mapKeyCode(jsKeyCode) {
+    const keyCode = keyCodeMap[jsKeyCode];
+    return keyCode === undefined ? KeyboardKeyCode.unknown : keyCode;
+  }
+
+  /**
+   * Maps a KeyboardEvent.key value to the Unicode code point of the character
+   * it produced. Keys that do not produce a character have a key value that is
+   * a name rather than a character, such as "Enter", and become 0.
+   */
+  mapKeyChar(jsKey) {
+    const codePoint = jsKey.codePointAt(0);
+    if (codePoint === undefined) {
+      return 0;
+    }
+
+    // Code points outside the BMP are two UTF-16 code units long, so the key
+    // value is only a single character when it is as long as its first code
+    // point.
+    return String.fromCodePoint(codePoint).length === jsKey.length
+      ? codePoint
+      : 0;
+  }
+
+  /**
+   * Records whether a left or right modifier key is currently held, so that
+   * the events of other keys can tell which side of a modifier is active.
+   * Keys that are not a sided modifier are ignored.
+   */
+  trackModifierKey(jsKeyCode, action) {
+    if (modifierKeyCodes[jsKeyCode] === undefined) {
+      return;
+    }
+
+    if (action === InputEventAction.release) {
+      this.heldModifierKeys.delete(jsKeyCode);
+    } else {
+      this.heldModifierKeys.add(jsKeyCode);
+    }
+  }
+
+  /**
+   * Collects the modifiers active during a keyboard event into a
+   * KeyboardKeyModifier bit mask.
+   *
+   * Keyboard events only report that a modifier is active, not which side of
+   * the keyboard it is held on, so the left and right specific flags come from
+   * the modifier keys tracked by trackModifierKey instead.
+   */
+  mapKeyModifiers(e) {
+    let modifiers = KeyboardKeyModifier.none;
+
+    for (const jsKeyCode of this.heldModifierKeys) {
+      const modifierKey = modifierKeyCodes[jsKeyCode];
+      if (modifierKey.states.some((state) => e.getModifierState(state))) {
+        modifiers |= modifierKey.flag;
+      } else {
+        // The key was released while the page was not receiving events, so its
+        // keyup never arrived and it is only known to be up now.
+        this.heldModifierKeys.delete(jsKeyCode);
+      }
+    }
+
+    if (e.getModifierState("Shift")) {
+      modifiers |= KeyboardKeyModifier.shift;
+    }
+
+    if (e.getModifierState("Control")) {
+      modifiers |= KeyboardKeyModifier.ctrl;
+    }
+
+    if (e.getModifierState("Alt")) {
+      modifiers |= KeyboardKeyModifier.alt;
+    }
+
+    if (e.getModifierState("Meta")) {
+      modifiers |= KeyboardKeyModifier.gui;
+    }
+
+    if (e.getModifierState("AltGraph")) {
+      modifiers |= KeyboardKeyModifier.mode;
+    }
+
+    if (e.getModifierState("CapsLock")) {
+      modifiers |= KeyboardKeyModifier.capslock;
+    }
+
+    if (e.getModifierState("NumLock")) {
+      modifiers |= KeyboardKeyModifier.numlock;
+    }
+
+    return modifiers;
+  }
 }
+
+/**
+ * Mirror of KeyboardKeyCode in source/retrograde/engine/input.d, in declaration
+ * order. The D enum assigns no explicit values, so a name's index here is its
+ * numeric value. Keep this list in sync with the enum; inserting a name in the
+ * middle shifts every value after it.
+ */
+// prettier-ignore
+const keyCodeNames = [
+  "unknown", "a", "acBack", "acBookmarks", "acForward", "acHome", "acRefresh",
+  "acSearch", "acStop", "again", "alterase", "apostrophe", "app1", "app2",
+  "application", "audioMute", "audioNext", "audioPlay", "audioPrev",
+  "audioStop", "b", "backslash", "backspace", "brightnessDown", "brightnessUp",
+  "c", "calculator", "cancel", "capslock", "clear", "clearAgain", "comma",
+  "computer", "copy", "crsel", "currencySubunit", "currencyUnit", "cut", "d",
+  "decimalSeparator", "deleteKey", "displaySwitch", "down", "e", "eight",
+  "eject", "end", "equals", "escape", "execute", "exsel", "f", "f1", "f10",
+  "f11", "f12", "f13", "f14", "f15", "f16", "f17", "f18", "f19", "f2", "f20",
+  "f21", "f22", "f23", "f24", "f25", "f3", "f4", "f5", "f6", "f7", "f8", "f9",
+  "find", "five", "four", "g", "grave", "h", "help", "home", "i", "insert",
+  "international1", "international2", "international3", "international4",
+  "international5", "international6", "international7", "international8",
+  "international9", "j", "k", "kbdIllumDown", "kbdIllumToggle", "kbdIllumUp",
+  "keypad00", "keypad000", "keypadComma", "keypadDivide", "keypadEight",
+  "keypadEnter", "keypadEquals", "keypadEqualsas400", "keypadFive",
+  "keypadFour", "keypadMinus", "keypadMultiply", "keypadNine", "keypadOne",
+  "keypadPeriod", "keypadPlus", "keypadSeven", "keypadSix", "keypadThree",
+  "keypadTwo", "keypadZero", "kpA", "kpAmpersand", "kpAt", "kpB",
+  "kpBackspace", "kpBinary", "kpC", "kpClear", "kpClearentry", "kpColon",
+  "kpD", "kpDblampersand", "kpDblverticalbar", "kpDecimal", "kpE", "kpExclam",
+  "kpF", "kpGreater", "kpHash", "kpHexadecimal", "kpLeftbrace", "kpLeftparen",
+  "kpLess", "kpMemadd", "kpMemclear", "kpMemdivide", "kpMemmultiply",
+  "kpMemrecall", "kpMemstore", "kpMemsubtract", "kpOctal", "kpPercent",
+  "kpPlusminus", "kpPower", "kpRightbrace", "kpRightparen", "kpSpace", "kpTab",
+  "kpVerticalbar", "kpXor", "l", "leftAlt", "lang1", "lang2", "lang3", "lang4",
+  "lang5", "lang6", "lang7", "lang8", "lang9", "leftCtrl", "left",
+  "leftBracket", "leftGui", "leftShift", "m", "mail", "mediaSelect", "menu",
+  "minus", "mode", "mute", "n", "nine", "nonusBackslash", "nonusHash",
+  "numlockClear", "o", "one", "oper", "outKey", "p", "pageDown", "pageUp",
+  "paste", "pause", "period", "power", "printscreen", "prior", "q", "r",
+  "rightAlt", "rightCtrl", "enter", "enter2", "rightGui", "right",
+  "rightBracket", "rightShift", "s", "scrolllock", "select", "semicolon",
+  "separator", "seven", "six", "slash", "sleep", "space", "stop", "sysreq",
+  "t", "tab", "thousandsSeparator", "three", "two", "u", "undo", "up", "v",
+  "volumedown", "volumeup", "w", "www", "x", "y", "z", "zero",
+];
+
+const KeyboardKeyCode = Object.fromEntries(
+  keyCodeNames.map((name, value) => [name, value]),
+);
+
+/**
+ * Mirror of InputEventAction in source/retrograde/engine/input.d. As with
+ * KeyboardKeyCode, the D enum assigns no explicit values, so these are the
+ * members' positions.
+ */
+const InputEventAction = {
+  unknown: 0,
+  press: 1,
+  release: 2,
+  repeat: 3,
+};
+
+/**
+ * Mirror of KeyboardKeyModifier in source/retrograde/engine/input.d. Unlike the
+ * other input enums this one assigns explicit bit flags, so the values are
+ * copied as-is rather than derived from their position.
+ */
+const KeyboardKeyModifier = {
+  none: 0,
+  leftShift: 1 << 1,
+  rightShift: 1 << 2,
+  leftCtrl: 1 << 3,
+  rightCtrl: 1 << 4,
+  leftAlt: 1 << 5,
+  rightAlt: 1 << 6,
+  leftGui: 1 << 7,
+  rightGui: 1 << 8,
+  numlock: 1 << 9,
+  capslock: 1 << 10,
+  mode: 1 << 11,
+  ctrl: 1 << 12,
+  shift: 1 << 13,
+  alt: 1 << 14,
+  gui: 1 << 15,
+};
+
+/**
+ * The modifier keys that come in a left and a right variant, keyed by their
+ * KeyboardEvent.code value.
+ *
+ * Keyboard events report which side was pressed in the code of the modifier's
+ * own key event, but not in the events of the keys pressed after it, so which
+ * side is held has to be tracked over time. The states are the modifier names
+ * that KeyboardEvent.getModifierState reports the key as, used to notice that
+ * a key was released while the page was not receiving events.
+ */
+const modifierKeyCodes = {
+  ShiftLeft: { flag: KeyboardKeyModifier.leftShift, states: ["Shift"] },
+  ShiftRight: { flag: KeyboardKeyModifier.rightShift, states: ["Shift"] },
+  ControlLeft: { flag: KeyboardKeyModifier.leftCtrl, states: ["Control"] },
+  ControlRight: { flag: KeyboardKeyModifier.rightCtrl, states: ["Control"] },
+  AltLeft: { flag: KeyboardKeyModifier.leftAlt, states: ["Alt"] },
+  // The right alt key doubles as AltGr on layouts that have one, in which case
+  // it is reported as AltGraph instead of as Alt.
+  AltRight: { flag: KeyboardKeyModifier.rightAlt, states: ["Alt", "AltGraph"] },
+  MetaLeft: { flag: KeyboardKeyModifier.leftGui, states: ["Meta"] },
+  MetaRight: { flag: KeyboardKeyModifier.rightGui, states: ["Meta"] },
+};
+
+/**
+ * Maps KeyboardEvent.code values to KeyboardKeyCode values.
+ *
+ * Code values identify the physical key, independent of keyboard layout and
+ * modifier state, which is what KeyboardKeyCode describes as well: it names
+ * the key by its position on a US layout, tells left and right modifiers
+ * apart and has separate entries for the keypad.
+ */
+const keyCodeMap = {
+  // Letters
+  KeyA: KeyboardKeyCode.a,
+  KeyB: KeyboardKeyCode.b,
+  KeyC: KeyboardKeyCode.c,
+  KeyD: KeyboardKeyCode.d,
+  KeyE: KeyboardKeyCode.e,
+  KeyF: KeyboardKeyCode.f,
+  KeyG: KeyboardKeyCode.g,
+  KeyH: KeyboardKeyCode.h,
+  KeyI: KeyboardKeyCode.i,
+  KeyJ: KeyboardKeyCode.j,
+  KeyK: KeyboardKeyCode.k,
+  KeyL: KeyboardKeyCode.l,
+  KeyM: KeyboardKeyCode.m,
+  KeyN: KeyboardKeyCode.n,
+  KeyO: KeyboardKeyCode.o,
+  KeyP: KeyboardKeyCode.p,
+  KeyQ: KeyboardKeyCode.q,
+  KeyR: KeyboardKeyCode.r,
+  KeyS: KeyboardKeyCode.s,
+  KeyT: KeyboardKeyCode.t,
+  KeyU: KeyboardKeyCode.u,
+  KeyV: KeyboardKeyCode.v,
+  KeyW: KeyboardKeyCode.w,
+  KeyX: KeyboardKeyCode.x,
+  KeyY: KeyboardKeyCode.y,
+  KeyZ: KeyboardKeyCode.z,
+
+  // Digit row
+  Digit0: KeyboardKeyCode.zero,
+  Digit1: KeyboardKeyCode.one,
+  Digit2: KeyboardKeyCode.two,
+  Digit3: KeyboardKeyCode.three,
+  Digit4: KeyboardKeyCode.four,
+  Digit5: KeyboardKeyCode.five,
+  Digit6: KeyboardKeyCode.six,
+  Digit7: KeyboardKeyCode.seven,
+  Digit8: KeyboardKeyCode.eight,
+  Digit9: KeyboardKeyCode.nine,
+
+  // Punctuation
+  Backquote: KeyboardKeyCode.grave,
+  Minus: KeyboardKeyCode.minus,
+  Equal: KeyboardKeyCode.equals,
+  BracketLeft: KeyboardKeyCode.leftBracket,
+  BracketRight: KeyboardKeyCode.rightBracket,
+  Backslash: KeyboardKeyCode.backslash,
+  Semicolon: KeyboardKeyCode.semicolon,
+  Quote: KeyboardKeyCode.apostrophe,
+  Comma: KeyboardKeyCode.comma,
+  Period: KeyboardKeyCode.period,
+  Slash: KeyboardKeyCode.slash,
+  IntlBackslash: KeyboardKeyCode.nonusBackslash,
+
+  // Whitespace and editing
+  Space: KeyboardKeyCode.space,
+  Enter: KeyboardKeyCode.enter,
+  Tab: KeyboardKeyCode.tab,
+  Backspace: KeyboardKeyCode.backspace,
+  Delete: KeyboardKeyCode.deleteKey,
+  Insert: KeyboardKeyCode.insert,
+  Escape: KeyboardKeyCode.escape,
+
+  // Navigation
+  ArrowUp: KeyboardKeyCode.up,
+  ArrowDown: KeyboardKeyCode.down,
+  ArrowLeft: KeyboardKeyCode.left,
+  ArrowRight: KeyboardKeyCode.right,
+  Home: KeyboardKeyCode.home,
+  End: KeyboardKeyCode.end,
+  PageUp: KeyboardKeyCode.pageUp,
+  PageDown: KeyboardKeyCode.pageDown,
+
+  // Modifiers and locks
+  ShiftLeft: KeyboardKeyCode.leftShift,
+  ShiftRight: KeyboardKeyCode.rightShift,
+  ControlLeft: KeyboardKeyCode.leftCtrl,
+  ControlRight: KeyboardKeyCode.rightCtrl,
+  AltLeft: KeyboardKeyCode.leftAlt,
+  AltRight: KeyboardKeyCode.rightAlt,
+  MetaLeft: KeyboardKeyCode.leftGui,
+  MetaRight: KeyboardKeyCode.rightGui,
+  ContextMenu: KeyboardKeyCode.application,
+  CapsLock: KeyboardKeyCode.capslock,
+  NumLock: KeyboardKeyCode.numlockClear,
+  ScrollLock: KeyboardKeyCode.scrolllock,
+
+  // Function keys
+  F1: KeyboardKeyCode.f1,
+  F2: KeyboardKeyCode.f2,
+  F3: KeyboardKeyCode.f3,
+  F4: KeyboardKeyCode.f4,
+  F5: KeyboardKeyCode.f5,
+  F6: KeyboardKeyCode.f6,
+  F7: KeyboardKeyCode.f7,
+  F8: KeyboardKeyCode.f8,
+  F9: KeyboardKeyCode.f9,
+  F10: KeyboardKeyCode.f10,
+  F11: KeyboardKeyCode.f11,
+  F12: KeyboardKeyCode.f12,
+  F13: KeyboardKeyCode.f13,
+  F14: KeyboardKeyCode.f14,
+  F15: KeyboardKeyCode.f15,
+  F16: KeyboardKeyCode.f16,
+  F17: KeyboardKeyCode.f17,
+  F18: KeyboardKeyCode.f18,
+  F19: KeyboardKeyCode.f19,
+  F20: KeyboardKeyCode.f20,
+  F21: KeyboardKeyCode.f21,
+  F22: KeyboardKeyCode.f22,
+  F23: KeyboardKeyCode.f23,
+  F24: KeyboardKeyCode.f24,
+  F25: KeyboardKeyCode.f25,
+
+  // Keypad
+  Numpad0: KeyboardKeyCode.keypadZero,
+  Numpad1: KeyboardKeyCode.keypadOne,
+  Numpad2: KeyboardKeyCode.keypadTwo,
+  Numpad3: KeyboardKeyCode.keypadThree,
+  Numpad4: KeyboardKeyCode.keypadFour,
+  Numpad5: KeyboardKeyCode.keypadFive,
+  Numpad6: KeyboardKeyCode.keypadSix,
+  Numpad7: KeyboardKeyCode.keypadSeven,
+  Numpad8: KeyboardKeyCode.keypadEight,
+  Numpad9: KeyboardKeyCode.keypadNine,
+  NumpadAdd: KeyboardKeyCode.keypadPlus,
+  NumpadSubtract: KeyboardKeyCode.keypadMinus,
+  NumpadMultiply: KeyboardKeyCode.keypadMultiply,
+  NumpadStar: KeyboardKeyCode.keypadMultiply,
+  NumpadDivide: KeyboardKeyCode.keypadDivide,
+  NumpadDecimal: KeyboardKeyCode.keypadPeriod,
+  NumpadComma: KeyboardKeyCode.keypadComma,
+  NumpadEnter: KeyboardKeyCode.keypadEnter,
+  NumpadEqual: KeyboardKeyCode.keypadEquals,
+  NumpadHash: KeyboardKeyCode.kpHash,
+  NumpadBackspace: KeyboardKeyCode.kpBackspace,
+  NumpadClear: KeyboardKeyCode.kpClear,
+  NumpadClearEntry: KeyboardKeyCode.kpClearentry,
+  NumpadParenLeft: KeyboardKeyCode.kpLeftparen,
+  NumpadParenRight: KeyboardKeyCode.kpRightparen,
+  NumpadMemoryAdd: KeyboardKeyCode.kpMemadd,
+  NumpadMemorySubtract: KeyboardKeyCode.kpMemsubtract,
+  NumpadMemoryClear: KeyboardKeyCode.kpMemclear,
+  NumpadMemoryRecall: KeyboardKeyCode.kpMemrecall,
+  NumpadMemoryStore: KeyboardKeyCode.kpMemstore,
+
+  // System
+  PrintScreen: KeyboardKeyCode.printscreen,
+  Pause: KeyboardKeyCode.pause,
+  Power: KeyboardKeyCode.power,
+  Sleep: KeyboardKeyCode.sleep,
+  Eject: KeyboardKeyCode.eject,
+  Help: KeyboardKeyCode.help,
+
+  // Editing commands
+  Again: KeyboardKeyCode.again,
+  Undo: KeyboardKeyCode.undo,
+  Cut: KeyboardKeyCode.cut,
+  Copy: KeyboardKeyCode.copy,
+  Paste: KeyboardKeyCode.paste,
+  Find: KeyboardKeyCode.find,
+  Select: KeyboardKeyCode.select,
+  Open: KeyboardKeyCode.execute,
+
+  // Media
+  MediaPlayPause: KeyboardKeyCode.audioPlay,
+  MediaStop: KeyboardKeyCode.audioStop,
+  MediaTrackNext: KeyboardKeyCode.audioNext,
+  MediaTrackPrevious: KeyboardKeyCode.audioPrev,
+  MediaSelect: KeyboardKeyCode.mediaSelect,
+  AudioVolumeMute: KeyboardKeyCode.audioMute,
+  AudioVolumeUp: KeyboardKeyCode.volumeup,
+  AudioVolumeDown: KeyboardKeyCode.volumedown,
+
+  // Launch and browser
+  LaunchApp1: KeyboardKeyCode.app1,
+  LaunchApp2: KeyboardKeyCode.app2,
+  LaunchMail: KeyboardKeyCode.mail,
+  BrowserBack: KeyboardKeyCode.acBack,
+  BrowserForward: KeyboardKeyCode.acForward,
+  BrowserHome: KeyboardKeyCode.acHome,
+  BrowserRefresh: KeyboardKeyCode.acRefresh,
+  BrowserSearch: KeyboardKeyCode.acSearch,
+  BrowserStop: KeyboardKeyCode.acStop,
+  BrowserFavorites: KeyboardKeyCode.acBookmarks,
+
+  // Japanese and Korean input keys
+  IntlRo: KeyboardKeyCode.international1,
+  KanaMode: KeyboardKeyCode.international2,
+  IntlYen: KeyboardKeyCode.international3,
+  Convert: KeyboardKeyCode.international4,
+  NonConvert: KeyboardKeyCode.international5,
+  Lang1: KeyboardKeyCode.lang1,
+  Lang2: KeyboardKeyCode.lang2,
+  Lang3: KeyboardKeyCode.lang3,
+  Lang4: KeyboardKeyCode.lang4,
+  Lang5: KeyboardKeyCode.lang5,
+};

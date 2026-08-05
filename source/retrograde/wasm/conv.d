@@ -36,6 +36,6 @@ String toString(T)(T val)
     return str.ptr.cStrToString();
 }
 
-export extern (C) void integralToString(char* str, uint ptrLength, long val);
-export extern (C) void unsignedIntegralToString(char* str, uint ptrLength, ulong val);
-export extern (C) void scalarToString(char* str, uint ptrLength, double val);
+extern (C) void integralToString(char* str, uint ptrLength, long val);
+extern (C) void unsignedIntegralToString(char* str, uint ptrLength, ulong val);
+extern (C) void scalarToString(char* str, uint ptrLength, double val);

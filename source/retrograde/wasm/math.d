@@ -30,7 +30,7 @@ version (LDC) {
     alias sin = llvm_sin;
     alias sinf = llvm_sin;
 
-    export extern (C) float tan(float value);
+    extern (C) float tan(float value);
 
     T pow(T)(T base, T exponent) {
         return cast(T) llvm_pow(cast(float) base, cast(float) exponent);
