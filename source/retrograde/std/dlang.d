@@ -25,7 +25,13 @@ mixin template CopyConstructors(T) {
                         !__traits(isTemplate, MemberType) &&
                         !is(typeof(MemberType) == function)
                         ) {
-                        mixin("this." ~ member ~ " = other." ~ member ~ ";");
+                        static if (__traits(compiles, mixin("this." ~ member ~ " = other." ~ member))) {
+                            mixin("this." ~ member ~ " = other." ~ member ~ ";");
+                        } else {
+                            // Member has mutable indirections (e.g. a pointer), so inout doesn't
+                            // implicitly convert. The copy is a shallow one by design.
+                            mixin("this." ~ member ~ " = cast(typeof(this." ~ member ~ ")) other." ~ member ~ ";");
+                        }
                     }
                 }
             }
@@ -46,7 +52,13 @@ mixin template CopyConstructors(T) {
                         !__traits(isTemplate, MemberType) &&
                         !is(typeof(MemberType) == function)
                         ) {
-                        mixin("this." ~ member ~ " = other." ~ member ~ ";");
+                        static if (__traits(compiles, mixin("this." ~ member ~ " = other." ~ member))) {
+                            mixin("this." ~ member ~ " = other." ~ member ~ ";");
+                        } else {
+                            // Member has mutable indirections (e.g. a pointer), so inout doesn't
+                            // implicitly convert. The copy is a shallow one by design.
+                            mixin("this." ~ member ~ " = cast(typeof(this." ~ member ~ ")) other." ~ member ~ ";");
+                        }
                     }
                 }
             }

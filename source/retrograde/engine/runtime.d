@@ -136,7 +136,7 @@ export extern (C) void executeEngineLoopCycle(double elapsedTimeMs) {
 /** 
  * Initializes the engine.
  * This function should be called before calling runLoop.
- * initFunction and updateFunction should be set before calling this function.
+ * initFunction, updateFunction and renderFunction should be set before calling this function.
  */
 export extern (C) void initEngine() {
     assert(initFunction != null, "initFunction cannot be null. Set it before engine initialization.");

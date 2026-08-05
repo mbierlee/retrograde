@@ -1790,9 +1790,7 @@ version (MemoryDebug) {
  *   _heapOffset: Extra offset from __heap_base to the start of the managed heap.
  *                Defaults to 0: __heap_base is provided by the linker and already points
  *                past all static data, including zero-initialized globals (.bss) and the
- *                shadow stack, so no offset is needed. (The former 64 KiB default worked
- *                around __heap_base being shadowed by a D-side definition; see the
- *                declaration of __heap_base below.)
+ *                shadow stack, so no offset is needed.
  */
 OperationResult initializeHeapMemory(size_t _heapOffset = 0) {
     heapOffset = _heapOffset;

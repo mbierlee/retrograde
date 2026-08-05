@@ -24,8 +24,8 @@ extern (C) {
     void writelnDouble(double number);
     void writelnFloat(float number);
     void writelnChar(char character);
-    void writelnWChar(char character);
-    void writelnDChar(char character);
+    void writelnWChar(wchar character);
+    void writelnDChar(dchar character);
     void writelnUbyte(ubyte number);
     void writelnByte(byte number);
     void writelnBool(bool value);
@@ -38,8 +38,8 @@ extern (C) {
     void writeErrLnDouble(double number);
     void writeErrLnFloat(float number);
     void writeErrLnChar(char character);
-    void writeErrLnWChar(char character);
-    void writeErrLnDChar(char character);
+    void writeErrLnWChar(wchar character);
+    void writeErrLnDChar(dchar character);
     void writeErrLnUbyte(ubyte number);
     void writeErrLnByte(byte number);
     void writeErrLnBool(bool value);
