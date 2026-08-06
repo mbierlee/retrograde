@@ -103,6 +103,104 @@ Then grep the `.wat` for the suspect `__lambda_` name: an `M` before `FZv` in
 the mangling, or a `(param i32)` where sibling lambdas have none, confirms the
 mismatch.
 
+## Test resets that `clear()` module globals free memory the harness already wiped
+
+### Symptom
+
+Under the WASM suite only, tests that reset module-level state spam the log
+with allocator complaints, one per collection being reset:
+
+```
+removing the last event of a key unmaps the key
+free: double free or pointer into free memory
+free: double free or pointer into free memory
+free: double free or pointer into free memory
+  OK!
+```
+
+The tests still pass. The tell-tale shape is that the messages appear *after*
+`test()` has printed the name but before the body can have allocated anything,
+and that the **first** test of a section is clean while every later one warns —
+so what is being freed is whatever the previous test left in the globals.
+
+With a `LinkedList` global it is not benign: `clear()` walks `node = node.next`
+through wiped memory and the suite dies with a fatal
+`RuntimeError: memory access out of bounds`. That is how this was first found,
+via the asset library's `fetchingModels` / `fetchingTextures`.
+
+Native is always clean, so this cannot be caught by `make test-native`.
+
+### Cause
+
+`wasmtest/dub.json` enables `WasmMemTest`, which makes
+`retrograde.std.test.test()` run before **every** test:
+
+```d
+version (WasmMemTest) {
+    wipeHeap();             // memset(heapStart, 0, heapSize)
+    initializeHeapMemory(); // hand the whole heap back to the allocator
+}
+```
+
+Module-level globals are not in the heap — they live in the data segment, which
+the wipe does not touch. So a global `HashMap`/`Array`/`Queue`/`LinkedList`
+keeps its `buckets`/`items`/`head` pointers into heap memory that has just been
+zeroed and returned to the free pool. The next test's `resetX()` then calls
+`clear()` through those dangling pointers, and the allocator correctly rejects
+freeing memory it considers free. The reset is doing exactly the right thing on
+native and exactly the wrong thing here.
+
+### Fix / rule
+
+A test-only reset of module globals must not free under `WasmMemTest` — the
+memory it would free is already gone. Drop the references instead:
+
+```d
+void resetInput() {
+    version (WasmMemTest) {
+        // The WasmMemTest harness wipes the heap before each test, so these globals already
+        // hold dangling pointers. Reset them to their init state without freeing: clear()/free
+        // would log benign "invalid block" errors for the already-wiped memory.
+        import retrograde.std.memory : memset;
+
+        memset(&keyEvents, 0, keyEvents.sizeof);
+        memset(&eventQueue, 0, eventQueue.sizeof);
+        memset(&keyMapping, 0, keyMapping.sizeof);
+    } else {
+        keyEvents.clear();
+        eventQueue.clear();
+        clearKeyMappings();
+    }
+}
+```
+
+`memset` is right here precisely because it runs no destructors: `.init` for
+these collections is all-zero (null pointers, zero lengths). Keep the `clear()`
+on the native side — there the heap is never wiped and skipping it would leak.
+
+Existing instances: `resetInput()` in `source/retrograde/engine/input.d`,
+`resetState()` in `source/retrograde/std/assets.d` and
+`source/retrograde/assets/assetlibrary.d`. Not every suite has been converted
+yet — see
+[../todo/investigate-wasm-test-global-collection-reset.md](../todo/investigate-wasm-test-global-collection-reset.md)
+for the audit and for ideas on fixing this once centrally instead of per suite.
+
+### How to diagnose
+
+Run `cd wasmtest && make run-tests-headless` and count the messages
+(`grep -c "double free"`), rather than reading the log — a handful are
+legitimate, emitted by the allocator's own tests in
+`source/retrograde/wasm/memory.d` that deliberately double-free. Compare the
+count against the same command on a clean checkout, and check which section the
+new ones fall in:
+
+```
+awk '/-- Input tests --/,0' out.txt | grep -c "double free"
+```
+
+If they line up with test-name boundaries in a suite that has a reset helper,
+it is this pitfall and not a real double free.
+
 ## `extern (C)` variable declarations are *definitions* — they shadow external symbols
 
 ### Symptom

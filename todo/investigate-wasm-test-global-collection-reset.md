@@ -27,9 +27,11 @@ segment — so after a wipe their internal pointers (`buckets`, `head`/`tail`,
 test's `resetState()` then operates on those dangling pointers:
 
 - **`HashMap.clear()`** bottoms out in `free()` on a stale pointer. The WASM
-  allocator (`source/retrograde/wasm/memory.d`) handles this gracefully: with
-  `MemoryDebug` it logs `Failed to get block: pointer does not point to the start
-  of valid block data` and returns. **Benign**, but it spams the test log.
+  allocator (`source/retrograde/wasm/memory.d`) handles this gracefully: it
+  rejects the free and returns. **Benign**, but it spams the test log with
+  `free: double free or pointer into free memory` — one line per collection
+  being reset. Note this goes through `reportInvalid`, which is *not* gated on
+  `MemoryDebug`: the messages show up in every build.
 - **`LinkedList.clear()`** walks the chain via `node = node.next`
   (`source/retrograde/std/collections.d`, `LinkedList.clear`). On a wiped chain
   that read yields a bad address and the loop keeps following it →
@@ -60,6 +62,8 @@ Already done:
   bookkeeping; the `LinkedList` globals here caused the original crash).
 - `source/retrograde/std/assets.d` — `resetState()` (silences the benign
   warnings that several asset tests were emitting).
+- `source/retrograde/engine/input.d` — `resetInput()` (`keyEvents`,
+  `eventQueue` and `keyMapping`; written with the branch from the start).
 
 ## Action items
 
@@ -88,4 +92,6 @@ Rather than special-casing every `resetState()`, consider one of:
   wipe, so `resetState()` never sees dangling pointers.
 
 See also [investigate-collection-destructors.md](investigate-collection-destructors.md)
-for related destructor/cleanup concerns in the collections themselves.
+for related destructor/cleanup concerns in the collections themselves, and
+[../docs/wasm-pitfalls.md](../docs/wasm-pitfalls.md) for the write-up of this
+issue as a pitfall (symptom, cause, and the fix to apply).

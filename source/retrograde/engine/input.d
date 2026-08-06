@@ -11,7 +11,7 @@
 
 module retrograde.engine.input;
 
-import retrograde.std.collections : Queue, HashMap;
+import retrograde.std.collections : Array, Queue, HashMap;
 import retrograde.std.stringid : StringId;
 
 import retrograde.engine.event : eventQueue, Event;
@@ -26,19 +26,110 @@ version (Native) {
 
 Queue!KeyboardKeyEvent keyEvents;
 
+/**
+ * The events a physical key emits when it is pressed, held or released.
+ *
+ * A key can drive more than one event at a time, such as W driving both
+ * ev_moveForward and ev_menuUp; every event mapped to the key is emitted.
+ * Prefer $(D addKeyMapping) and $(D removeKeyMapping) over manipulating
+ * this map directly.
+ */
 // TODO: allow mapping on modifiers too
-// TODO: Support mapping to multiple stringids? e.g. for W -> ev_moveFoward and ev_menuUp
-HashMap!(KeyboardScanCode, StringId) keyMapping;
+HashMap!(KeyboardScanCode, Array!StringId) keyMapping;
+
+/**
+ * Make the given key emit the given event, on top of any events it already
+ * emits.
+ *
+ * Mapping the same event to the same key again does nothing; a key never
+ * emits the same event twice.
+ *
+ * Params:
+ *  scanCode = The physical key to map.
+ *  eventName = Name of the event the key should emit.
+ */
+void addKeyMapping(KeyboardScanCode scanCode, StringId eventName) {
+    auto eventNames = keyMapping.getRef(scanCode);
+    if (eventNames.isDefined) {
+        auto mappedEvents = eventNames.value;
+        if (!mappedEvents.exists(eventName)) {
+            mappedEvents.add(eventName);
+        }
+
+        return;
+    }
+
+    Array!StringId newEvents;
+    newEvents.add(eventName);
+    keyMapping.put(scanCode, newEvents);
+}
+
+/**
+ * Stop the given key from emitting the given event, leaving the other events
+ * mapped to it in place.
+ *
+ * Params:
+ *  scanCode = The physical key to unmap the event from.
+ *  eventName = Name of the event the key should no longer emit.
+ * Returns: Whether the key was mapped to the event.
+ */
+bool removeKeyMapping(KeyboardScanCode scanCode, StringId eventName) {
+    auto eventNames = keyMapping.getRef(scanCode);
+    if (!eventNames.isDefined) {
+        return false;
+    }
+
+    auto mappedEvents = eventNames.value;
+    auto index = mappedEvents.find(eventName);
+    if (index == -1) {
+        return false;
+    }
+
+    mappedEvents.remove(index);
+    if (mappedEvents.length == 0) {
+        keyMapping.remove(scanCode);
+    }
+
+    return true;
+}
+
+/**
+ * Stop the given key from emitting any event at all.
+ *
+ * Params:
+ *  scanCode = The physical key to unmap.
+ * Returns: Whether the key was mapped to any event.
+ */
+bool removeKeyMappings(KeyboardScanCode scanCode) {
+    return keyMapping.remove(scanCode);
+}
+
+/**
+ * Returns: Whether the given key emits the given event.
+ */
+bool hasKeyMapping(KeyboardScanCode scanCode, StringId eventName) {
+    auto eventNames = keyMapping.getRef(scanCode);
+    return eventNames.isDefined && eventNames.value.exists(eventName);
+}
+
+/**
+ * Unmap every key, leaving no key emitting any event.
+ */
+void clearKeyMappings() {
+    keyMapping.clear();
+}
 
 void processInput() {
     KeyboardKeyEvent keyEvent;
     while (keyEvents.tryDequeue(keyEvent)) {
-        StringId eventName;
-        if (keyMapping.tryGet(keyEvent.scanCode, eventName)) {
-            eventQueue.enqueue(Event(
-                    eventName,
-                    keyEvent.action == InputEventAction.release ? 0 : 1
-            ));
+        auto eventNames = keyMapping.getRef(keyEvent.scanCode);
+        if (!eventNames.isDefined) {
+            continue;
+        }
+
+        auto magnitude = keyEvent.action == InputEventAction.release ? 0 : 1;
+        foreach (eventName; *eventNames.value) {
+            eventQueue.enqueue(Event(eventName, magnitude));
         }
     }
 }
@@ -618,9 +709,180 @@ struct KeyboardKeyEvent {
 version (UnitTesting)  :  ///
 
 import retrograde.std.test : test, writeSection;
+import retrograde.std.stringid : sid;
+
+void resetInput() {
+    version (WasmMemTest) {
+        // The WasmMemTest harness wipes the heap before each test, so these globals already
+        // hold dangling pointers. Reset them to their init state without freeing: clear()/free
+        // would log benign "invalid block" errors for the already-wiped memory.
+        import retrograde.std.memory : memset;
+
+        memset(&keyEvents, 0, keyEvents.sizeof);
+        memset(&eventQueue, 0, eventQueue.sizeof);
+        memset(&keyMapping, 0, keyMapping.sizeof);
+    } else {
+        keyEvents.clear();
+        eventQueue.clear();
+        clearKeyMappings();
+    }
+}
+
+private void pressKey(KeyboardScanCode scanCode, InputEventAction action = InputEventAction.press) {
+    KeyboardKeyEvent keyEvent;
+    keyEvent.scanCode = scanCode;
+    keyEvent.action = action;
+    keyEvents.enqueue(keyEvent);
+}
 
 void runInputTests() {
     writeSection("-- Input tests --");
+
+    test("a mapped key emits its event", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"));
+        pressKey(KeyboardScanCode.w);
+        processInput();
+
+        Event event;
+        assert(eventQueue.tryDequeue(event));
+        assert(event.name == sid("ev_moveForward"));
+        assert(event.magnitude == 1);
+        assert(eventQueue.length == 0);
+    });
+
+    test("an unmapped key emits nothing", () {
+        resetInput();
+        pressKey(KeyboardScanCode.w);
+        processInput();
+        assert(eventQueue.length == 0);
+    });
+
+    test("a key mapped to multiple events emits all of them", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"));
+        addKeyMapping(KeyboardScanCode.w, sid("ev_menuUp"));
+        pressKey(KeyboardScanCode.w);
+        processInput();
+
+        assert(eventQueue.length == 2);
+
+        Event event;
+        assert(eventQueue.tryDequeue(event));
+        assert(event.name == sid("ev_moveForward"));
+        assert(eventQueue.tryDequeue(event));
+        assert(event.name == sid("ev_menuUp"));
+    });
+
+    test("mapping the same event to a key twice emits it once", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"));
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"));
+        pressKey(KeyboardScanCode.w);
+        processInput();
+
+        assert(eventQueue.length == 1);
+    });
+
+    test("different keys keep their own events", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"));
+        addKeyMapping(KeyboardScanCode.s, sid("ev_moveBackward"));
+
+        assert(hasKeyMapping(KeyboardScanCode.w, sid("ev_moveForward")));
+        assert(hasKeyMapping(KeyboardScanCode.s, sid("ev_moveBackward")));
+        assert(!hasKeyMapping(KeyboardScanCode.w, sid("ev_moveBackward")));
+        assert(!hasKeyMapping(KeyboardScanCode.s, sid("ev_moveForward")));
+    });
+
+    test("removing one event from a key keeps the others", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"));
+        addKeyMapping(KeyboardScanCode.w, sid("ev_menuUp"));
+
+        assert(removeKeyMapping(KeyboardScanCode.w, sid("ev_moveForward")));
+        assert(!hasKeyMapping(KeyboardScanCode.w, sid("ev_moveForward")));
+        assert(hasKeyMapping(KeyboardScanCode.w, sid("ev_menuUp")));
+
+        pressKey(KeyboardScanCode.w);
+        processInput();
+
+        Event event;
+        assert(eventQueue.tryDequeue(event));
+        assert(event.name == sid("ev_menuUp"));
+        assert(eventQueue.length == 0);
+    });
+
+    test("removing the last event of a key unmaps the key", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"));
+
+        assert(removeKeyMapping(KeyboardScanCode.w, sid("ev_moveForward")));
+        assert(keyMapping.length == 0);
+    });
+
+    test("removing an event a key does not have changes nothing", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"));
+
+        assert(!removeKeyMapping(KeyboardScanCode.w, sid("ev_menuUp")));
+        assert(!removeKeyMapping(KeyboardScanCode.s, sid("ev_moveForward")));
+        assert(hasKeyMapping(KeyboardScanCode.w, sid("ev_moveForward")));
+    });
+
+    test("removing all events of a key unmaps the key", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"));
+        addKeyMapping(KeyboardScanCode.w, sid("ev_menuUp"));
+
+        assert(removeKeyMappings(KeyboardScanCode.w));
+        assert(!removeKeyMappings(KeyboardScanCode.w));
+        assert(!hasKeyMapping(KeyboardScanCode.w, sid("ev_moveForward")));
+        assert(!hasKeyMapping(KeyboardScanCode.w, sid("ev_menuUp")));
+        assert(keyMapping.length == 0);
+    });
+
+    test("a key mapped again after being unmapped emits its event again", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"));
+        assert(removeKeyMappings(KeyboardScanCode.w));
+        addKeyMapping(KeyboardScanCode.w, sid("ev_menuUp"));
+
+        pressKey(KeyboardScanCode.w);
+        processInput();
+
+        assert(eventQueue.length == 1);
+
+        Event event;
+        assert(eventQueue.tryDequeue(event));
+        assert(event.name == sid("ev_menuUp"));
+    });
+
+    test("releasing a key emits its events with zero magnitude", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"));
+        addKeyMapping(KeyboardScanCode.w, sid("ev_menuUp"));
+        pressKey(KeyboardScanCode.w, InputEventAction.release);
+        processInput();
+
+        assert(eventQueue.length == 2);
+
+        Event event;
+        while (eventQueue.tryDequeue(event)) {
+            assert(event.magnitude == 0);
+        }
+    });
+
+    test("repeating a key emits its events with full magnitude", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"));
+        pressKey(KeyboardScanCode.w, InputEventAction.repeat);
+        processInput();
+
+        Event event;
+        assert(eventQueue.tryDequeue(event));
+        assert(event.magnitude == 1);
+    });
 
     test("scan code mask does not collide with Unicode code points", () {
         assert(scanCodeMask > 0x10FFFF);
