@@ -2092,6 +2092,37 @@ struct HashMap(K, V) {
     }
 
     /**
+     * Retrieve a pointer to the value associated with a key.
+     * The value can be read and modified in place through it, avoiding the
+     * copy that get() makes.
+     *
+     * The pointer stays valid until the entry is removed or the map is
+     * cleared; rehashing moves nodes between buckets but not in memory,
+     * so inserting other keys does not invalidate it.
+     *
+     * Params:
+     *   key = The key to look up.
+     * Returns: some(pointer to value) if the key exists, none!(V*) otherwise.
+     */
+    Option!(V*) getRef(K key) {
+        if (buckets is null) {
+            return none!(V*);
+        }
+
+        auto bucketIndex = computeBucketIndex(key);
+        auto node = buckets[bucketIndex];
+        while (node !is null) {
+            if (node.key == key) {
+                return some(&node.value);
+            }
+
+            node = node.next;
+        }
+
+        return none!(V*);
+    }
+
+    /**
      * Retrieve the value associated with a key via an out parameter.
      *
      * Params:
@@ -4258,6 +4289,55 @@ void runHashMapTests() {
         map.put(1, 42);
         auto result = map.get(2);
         assert(result.isEmpty);
+    });
+
+    test("getRef returns a pointer to the stored value", {
+        HashMap!(int, int) map;
+        map.put(1, 42);
+        auto result = map.getRef(1);
+        assert(result.isDefined);
+        assert(*result.value == 42);
+    });
+
+    test("getRef returns none for missing key", {
+        HashMap!(int, int) map;
+        map.put(1, 42);
+        assert(map.getRef(2).isEmpty);
+
+        HashMap!(int, int) emptyMap;
+        assert(emptyMap.getRef(1).isEmpty);
+    });
+
+    test("values modified through getRef are stored in the map", {
+        HashMap!(int, int) map;
+        map.put(1, 42);
+        *map.getRef(1).value = 84;
+        assert(map.get(1).value == 84);
+        assert(map.length == 1);
+    });
+
+    test("getRef pointers survive a rehash", {
+        HashMap!(int, int) map;
+        map.put(1, 42);
+        auto valuePtr = map.getRef(1).value;
+        for (int i = 2; i < 100; i++) {
+            map.put(i, i);
+        }
+
+        *valuePtr = 84;
+        assert(map.get(1).value == 84);
+    });
+
+    test("getRef gives access to a collection value without copying it", {
+        HashMap!(int, Array!int) map;
+        Array!int values;
+        values.add(1);
+        map.put(1, values);
+
+        map.getRef(1).value.add(2);
+        assert(map.get(1).value.length == 2);
+        assert(map.get(1).value[1] == 2);
+        assert(values.length == 1);
     });
 
     test("tryGet returns true and value for existing key", {
