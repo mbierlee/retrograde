@@ -14,7 +14,7 @@ module retrograde.wasm.input;
 version (WebAssembly)  :  //
 
 import retrograde.engine.input : InputEventAction, InputMethod, KeyboardKeyCode,
-    KeyboardKeyModifier, KeyboardKeyEvent, keyEvents;
+    KeyboardKeyModifier, KeyboardKeyEvent, KeyboardScanCode, keyEvents;
 
 /** 
  * Init the input system.
@@ -34,6 +34,7 @@ private extern (C) void setupKeyboardCallback();
  *
  * See $(D KeyboardKeyEvent) for a description of the parameters.
  */
-export extern (C) void onKey(dchar key, KeyboardKeyCode scancode, InputEventAction action, KeyboardKeyModifier modifiers) {
-    keyEvents.enqueue(KeyboardKeyEvent(key, scancode, action, modifiers));
+export extern (C) void onKey(KeyboardScanCode scanCode, KeyboardKeyCode keyCode,
+    InputEventAction action, KeyboardKeyModifier modifiers) {
+    keyEvents.enqueue(KeyboardKeyEvent(scanCode, keyCode, action, modifiers));
 }

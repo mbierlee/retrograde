@@ -155,8 +155,8 @@ export default class RetrogradeRuntime {
         const dispatchKeyEvent = (e, action) => {
           this.trackModifierKey(e.code, action);
           this.instance.exports.onKey(
-            this.mapKeyChar(e.key),
-            this.mapKeyCode(e.code),
+            this.mapScanCode(e.code),
+            this.mapKeyCode(e),
             action,
             this.mapKeyModifiers(e),
           );
@@ -715,23 +715,44 @@ export default class RetrogradeRuntime {
   }
 
   /**
-   * Maps a KeyboardEvent.code value to its KeyboardKeyCode value.
-   * Unmapped keys become KeyboardKeyCode.unknown.
+   * Maps a KeyboardEvent.code value to its KeyboardScanCode value.
+   * Unmapped keys become KeyboardScanCode.unknown.
    */
-  mapKeyCode(jsKeyCode) {
-    const keyCode = keyCodeMap[jsKeyCode];
-    return keyCode === undefined ? KeyboardKeyCode.unknown : keyCode;
+  mapScanCode(jsCode) {
+    const scanCode = scanCodeMap[jsCode];
+    return scanCode === undefined ? KeyboardScanCode.unknown : scanCode;
   }
 
   /**
-   * Maps a KeyboardEvent.key value to the Unicode code point of the character
-   * it produced. Keys that do not produce a character have a key value that is
-   * a name rather than a character, such as "Enter", and become 0.
+   * Maps a keyboard event to its KeyboardKeyCode value: the Unicode code point
+   * of the character the key produced, or the scan code of the key marked with
+   * scanCodeMask when it produced no character.
+   *
+   * Keys that produce no character have a key value that is a name rather than
+   * a character, such as "Enter". Which key such a name belongs to is what the
+   * event's code already says, so the scan code doubles as the key code for
+   * them, the way SDL2 derives a key code from a scan code.
    */
-  mapKeyChar(jsKey) {
+  mapKeyCode(e) {
+    const codePoint = this.singleCodePointOf(e.key);
+    if (codePoint !== undefined) {
+      return codePoint;
+    }
+
+    const scanCode = this.mapScanCode(e.code);
+    return scanCode === KeyboardScanCode.unknown
+      ? keyCodeUnknown
+      : scanCodeMask | scanCode;
+  }
+
+  /**
+   * Returns the code point of a key value that is a single character, or
+   * undefined when it holds a name or nothing at all.
+   */
+  singleCodePointOf(jsKey) {
     const codePoint = jsKey.codePointAt(0);
     if (codePoint === undefined) {
-      return 0;
+      return undefined;
     }
 
     // Code points outside the BMP are two UTF-16 code units long, so the key
@@ -739,7 +760,7 @@ export default class RetrogradeRuntime {
     // point.
     return String.fromCodePoint(codePoint).length === jsKey.length
       ? codePoint
-      : 0;
+      : undefined;
   }
 
   /**
@@ -814,13 +835,13 @@ export default class RetrogradeRuntime {
 }
 
 /**
- * Mirror of KeyboardKeyCode in source/retrograde/engine/input.d, in declaration
- * order. The D enum assigns no explicit values, so a name's index here is its
- * numeric value. Keep this list in sync with the enum; inserting a name in the
- * middle shifts every value after it.
+ * Mirror of KeyboardScanCode in source/retrograde/engine/input.d, in
+ * declaration order. The D enum assigns no explicit values, so a name's index
+ * here is its numeric value. Keep this list in sync with the enum; inserting a
+ * name in the middle shifts every value after it.
  */
 // prettier-ignore
-const keyCodeNames = [
+const scanCodeNames = [
   "unknown", "a", "acBack", "acBookmarks", "acForward", "acHome", "acRefresh",
   "acSearch", "acStop", "again", "alterase", "apostrophe", "app1", "app2",
   "application", "audioMute", "audioNext", "audioPlay", "audioPrev",
@@ -859,13 +880,28 @@ const keyCodeNames = [
   "volumedown", "volumeup", "w", "www", "x", "y", "z", "zero",
 ];
 
-const KeyboardKeyCode = Object.fromEntries(
-  keyCodeNames.map((name, value) => [name, value]),
+const KeyboardScanCode = Object.fromEntries(
+  scanCodeNames.map((name, value) => [name, value]),
 );
 
 /**
+ * Bit that marks a KeyboardKeyCode as carrying a scan code instead of a
+ * Unicode code point. Mirrors scanCodeMask in
+ * source/retrograde/engine/input.d.
+ */
+const scanCodeMask = 1 << 30;
+
+/**
+ * Mirror of KeyboardKeyCode.unknown in source/retrograde/engine/input.d. The
+ * other key codes are computed rather than mirrored: a key that produces a
+ * character has that character's code point as its key code, and every other
+ * key has its scan code marked with scanCodeMask.
+ */
+const keyCodeUnknown = 0;
+
+/**
  * Mirror of InputEventAction in source/retrograde/engine/input.d. As with
- * KeyboardKeyCode, the D enum assigns no explicit values, so these are the
+ * KeyboardScanCode, the D enum assigns no explicit values, so these are the
  * members' positions.
  */
 const InputEventAction = {
@@ -923,209 +959,209 @@ const modifierKeyCodes = {
 };
 
 /**
- * Maps KeyboardEvent.code values to KeyboardKeyCode values.
+ * Maps KeyboardEvent.code values to KeyboardScanCode values.
  *
  * Code values identify the physical key, independent of keyboard layout and
- * modifier state, which is what KeyboardKeyCode describes as well: it names
+ * modifier state, which is what KeyboardScanCode describes as well: it names
  * the key by its position on a US layout, tells left and right modifiers
  * apart and has separate entries for the keypad.
  */
-const keyCodeMap = {
+const scanCodeMap = {
   // Letters
-  KeyA: KeyboardKeyCode.a,
-  KeyB: KeyboardKeyCode.b,
-  KeyC: KeyboardKeyCode.c,
-  KeyD: KeyboardKeyCode.d,
-  KeyE: KeyboardKeyCode.e,
-  KeyF: KeyboardKeyCode.f,
-  KeyG: KeyboardKeyCode.g,
-  KeyH: KeyboardKeyCode.h,
-  KeyI: KeyboardKeyCode.i,
-  KeyJ: KeyboardKeyCode.j,
-  KeyK: KeyboardKeyCode.k,
-  KeyL: KeyboardKeyCode.l,
-  KeyM: KeyboardKeyCode.m,
-  KeyN: KeyboardKeyCode.n,
-  KeyO: KeyboardKeyCode.o,
-  KeyP: KeyboardKeyCode.p,
-  KeyQ: KeyboardKeyCode.q,
-  KeyR: KeyboardKeyCode.r,
-  KeyS: KeyboardKeyCode.s,
-  KeyT: KeyboardKeyCode.t,
-  KeyU: KeyboardKeyCode.u,
-  KeyV: KeyboardKeyCode.v,
-  KeyW: KeyboardKeyCode.w,
-  KeyX: KeyboardKeyCode.x,
-  KeyY: KeyboardKeyCode.y,
-  KeyZ: KeyboardKeyCode.z,
+  KeyA: KeyboardScanCode.a,
+  KeyB: KeyboardScanCode.b,
+  KeyC: KeyboardScanCode.c,
+  KeyD: KeyboardScanCode.d,
+  KeyE: KeyboardScanCode.e,
+  KeyF: KeyboardScanCode.f,
+  KeyG: KeyboardScanCode.g,
+  KeyH: KeyboardScanCode.h,
+  KeyI: KeyboardScanCode.i,
+  KeyJ: KeyboardScanCode.j,
+  KeyK: KeyboardScanCode.k,
+  KeyL: KeyboardScanCode.l,
+  KeyM: KeyboardScanCode.m,
+  KeyN: KeyboardScanCode.n,
+  KeyO: KeyboardScanCode.o,
+  KeyP: KeyboardScanCode.p,
+  KeyQ: KeyboardScanCode.q,
+  KeyR: KeyboardScanCode.r,
+  KeyS: KeyboardScanCode.s,
+  KeyT: KeyboardScanCode.t,
+  KeyU: KeyboardScanCode.u,
+  KeyV: KeyboardScanCode.v,
+  KeyW: KeyboardScanCode.w,
+  KeyX: KeyboardScanCode.x,
+  KeyY: KeyboardScanCode.y,
+  KeyZ: KeyboardScanCode.z,
 
   // Digit row
-  Digit0: KeyboardKeyCode.zero,
-  Digit1: KeyboardKeyCode.one,
-  Digit2: KeyboardKeyCode.two,
-  Digit3: KeyboardKeyCode.three,
-  Digit4: KeyboardKeyCode.four,
-  Digit5: KeyboardKeyCode.five,
-  Digit6: KeyboardKeyCode.six,
-  Digit7: KeyboardKeyCode.seven,
-  Digit8: KeyboardKeyCode.eight,
-  Digit9: KeyboardKeyCode.nine,
+  Digit0: KeyboardScanCode.zero,
+  Digit1: KeyboardScanCode.one,
+  Digit2: KeyboardScanCode.two,
+  Digit3: KeyboardScanCode.three,
+  Digit4: KeyboardScanCode.four,
+  Digit5: KeyboardScanCode.five,
+  Digit6: KeyboardScanCode.six,
+  Digit7: KeyboardScanCode.seven,
+  Digit8: KeyboardScanCode.eight,
+  Digit9: KeyboardScanCode.nine,
 
   // Punctuation
-  Backquote: KeyboardKeyCode.grave,
-  Minus: KeyboardKeyCode.minus,
-  Equal: KeyboardKeyCode.equals,
-  BracketLeft: KeyboardKeyCode.leftBracket,
-  BracketRight: KeyboardKeyCode.rightBracket,
-  Backslash: KeyboardKeyCode.backslash,
-  Semicolon: KeyboardKeyCode.semicolon,
-  Quote: KeyboardKeyCode.apostrophe,
-  Comma: KeyboardKeyCode.comma,
-  Period: KeyboardKeyCode.period,
-  Slash: KeyboardKeyCode.slash,
-  IntlBackslash: KeyboardKeyCode.nonusBackslash,
+  Backquote: KeyboardScanCode.grave,
+  Minus: KeyboardScanCode.minus,
+  Equal: KeyboardScanCode.equals,
+  BracketLeft: KeyboardScanCode.leftBracket,
+  BracketRight: KeyboardScanCode.rightBracket,
+  Backslash: KeyboardScanCode.backslash,
+  Semicolon: KeyboardScanCode.semicolon,
+  Quote: KeyboardScanCode.apostrophe,
+  Comma: KeyboardScanCode.comma,
+  Period: KeyboardScanCode.period,
+  Slash: KeyboardScanCode.slash,
+  IntlBackslash: KeyboardScanCode.nonusBackslash,
 
   // Whitespace and editing
-  Space: KeyboardKeyCode.space,
-  Enter: KeyboardKeyCode.enter,
-  Tab: KeyboardKeyCode.tab,
-  Backspace: KeyboardKeyCode.backspace,
-  Delete: KeyboardKeyCode.deleteKey,
-  Insert: KeyboardKeyCode.insert,
-  Escape: KeyboardKeyCode.escape,
+  Space: KeyboardScanCode.space,
+  Enter: KeyboardScanCode.enter,
+  Tab: KeyboardScanCode.tab,
+  Backspace: KeyboardScanCode.backspace,
+  Delete: KeyboardScanCode.deleteKey,
+  Insert: KeyboardScanCode.insert,
+  Escape: KeyboardScanCode.escape,
 
   // Navigation
-  ArrowUp: KeyboardKeyCode.up,
-  ArrowDown: KeyboardKeyCode.down,
-  ArrowLeft: KeyboardKeyCode.left,
-  ArrowRight: KeyboardKeyCode.right,
-  Home: KeyboardKeyCode.home,
-  End: KeyboardKeyCode.end,
-  PageUp: KeyboardKeyCode.pageUp,
-  PageDown: KeyboardKeyCode.pageDown,
+  ArrowUp: KeyboardScanCode.up,
+  ArrowDown: KeyboardScanCode.down,
+  ArrowLeft: KeyboardScanCode.left,
+  ArrowRight: KeyboardScanCode.right,
+  Home: KeyboardScanCode.home,
+  End: KeyboardScanCode.end,
+  PageUp: KeyboardScanCode.pageUp,
+  PageDown: KeyboardScanCode.pageDown,
 
   // Modifiers and locks
-  ShiftLeft: KeyboardKeyCode.leftShift,
-  ShiftRight: KeyboardKeyCode.rightShift,
-  ControlLeft: KeyboardKeyCode.leftCtrl,
-  ControlRight: KeyboardKeyCode.rightCtrl,
-  AltLeft: KeyboardKeyCode.leftAlt,
-  AltRight: KeyboardKeyCode.rightAlt,
-  MetaLeft: KeyboardKeyCode.leftGui,
-  MetaRight: KeyboardKeyCode.rightGui,
-  ContextMenu: KeyboardKeyCode.application,
-  CapsLock: KeyboardKeyCode.capslock,
-  NumLock: KeyboardKeyCode.numlockClear,
-  ScrollLock: KeyboardKeyCode.scrolllock,
+  ShiftLeft: KeyboardScanCode.leftShift,
+  ShiftRight: KeyboardScanCode.rightShift,
+  ControlLeft: KeyboardScanCode.leftCtrl,
+  ControlRight: KeyboardScanCode.rightCtrl,
+  AltLeft: KeyboardScanCode.leftAlt,
+  AltRight: KeyboardScanCode.rightAlt,
+  MetaLeft: KeyboardScanCode.leftGui,
+  MetaRight: KeyboardScanCode.rightGui,
+  ContextMenu: KeyboardScanCode.application,
+  CapsLock: KeyboardScanCode.capslock,
+  NumLock: KeyboardScanCode.numlockClear,
+  ScrollLock: KeyboardScanCode.scrolllock,
 
   // Function keys
-  F1: KeyboardKeyCode.f1,
-  F2: KeyboardKeyCode.f2,
-  F3: KeyboardKeyCode.f3,
-  F4: KeyboardKeyCode.f4,
-  F5: KeyboardKeyCode.f5,
-  F6: KeyboardKeyCode.f6,
-  F7: KeyboardKeyCode.f7,
-  F8: KeyboardKeyCode.f8,
-  F9: KeyboardKeyCode.f9,
-  F10: KeyboardKeyCode.f10,
-  F11: KeyboardKeyCode.f11,
-  F12: KeyboardKeyCode.f12,
-  F13: KeyboardKeyCode.f13,
-  F14: KeyboardKeyCode.f14,
-  F15: KeyboardKeyCode.f15,
-  F16: KeyboardKeyCode.f16,
-  F17: KeyboardKeyCode.f17,
-  F18: KeyboardKeyCode.f18,
-  F19: KeyboardKeyCode.f19,
-  F20: KeyboardKeyCode.f20,
-  F21: KeyboardKeyCode.f21,
-  F22: KeyboardKeyCode.f22,
-  F23: KeyboardKeyCode.f23,
-  F24: KeyboardKeyCode.f24,
-  F25: KeyboardKeyCode.f25,
+  F1: KeyboardScanCode.f1,
+  F2: KeyboardScanCode.f2,
+  F3: KeyboardScanCode.f3,
+  F4: KeyboardScanCode.f4,
+  F5: KeyboardScanCode.f5,
+  F6: KeyboardScanCode.f6,
+  F7: KeyboardScanCode.f7,
+  F8: KeyboardScanCode.f8,
+  F9: KeyboardScanCode.f9,
+  F10: KeyboardScanCode.f10,
+  F11: KeyboardScanCode.f11,
+  F12: KeyboardScanCode.f12,
+  F13: KeyboardScanCode.f13,
+  F14: KeyboardScanCode.f14,
+  F15: KeyboardScanCode.f15,
+  F16: KeyboardScanCode.f16,
+  F17: KeyboardScanCode.f17,
+  F18: KeyboardScanCode.f18,
+  F19: KeyboardScanCode.f19,
+  F20: KeyboardScanCode.f20,
+  F21: KeyboardScanCode.f21,
+  F22: KeyboardScanCode.f22,
+  F23: KeyboardScanCode.f23,
+  F24: KeyboardScanCode.f24,
+  F25: KeyboardScanCode.f25,
 
   // Keypad
-  Numpad0: KeyboardKeyCode.keypadZero,
-  Numpad1: KeyboardKeyCode.keypadOne,
-  Numpad2: KeyboardKeyCode.keypadTwo,
-  Numpad3: KeyboardKeyCode.keypadThree,
-  Numpad4: KeyboardKeyCode.keypadFour,
-  Numpad5: KeyboardKeyCode.keypadFive,
-  Numpad6: KeyboardKeyCode.keypadSix,
-  Numpad7: KeyboardKeyCode.keypadSeven,
-  Numpad8: KeyboardKeyCode.keypadEight,
-  Numpad9: KeyboardKeyCode.keypadNine,
-  NumpadAdd: KeyboardKeyCode.keypadPlus,
-  NumpadSubtract: KeyboardKeyCode.keypadMinus,
-  NumpadMultiply: KeyboardKeyCode.keypadMultiply,
-  NumpadStar: KeyboardKeyCode.keypadMultiply,
-  NumpadDivide: KeyboardKeyCode.keypadDivide,
-  NumpadDecimal: KeyboardKeyCode.keypadPeriod,
-  NumpadComma: KeyboardKeyCode.keypadComma,
-  NumpadEnter: KeyboardKeyCode.keypadEnter,
-  NumpadEqual: KeyboardKeyCode.keypadEquals,
-  NumpadHash: KeyboardKeyCode.kpHash,
-  NumpadBackspace: KeyboardKeyCode.kpBackspace,
-  NumpadClear: KeyboardKeyCode.kpClear,
-  NumpadClearEntry: KeyboardKeyCode.kpClearentry,
-  NumpadParenLeft: KeyboardKeyCode.kpLeftparen,
-  NumpadParenRight: KeyboardKeyCode.kpRightparen,
-  NumpadMemoryAdd: KeyboardKeyCode.kpMemadd,
-  NumpadMemorySubtract: KeyboardKeyCode.kpMemsubtract,
-  NumpadMemoryClear: KeyboardKeyCode.kpMemclear,
-  NumpadMemoryRecall: KeyboardKeyCode.kpMemrecall,
-  NumpadMemoryStore: KeyboardKeyCode.kpMemstore,
+  Numpad0: KeyboardScanCode.keypadZero,
+  Numpad1: KeyboardScanCode.keypadOne,
+  Numpad2: KeyboardScanCode.keypadTwo,
+  Numpad3: KeyboardScanCode.keypadThree,
+  Numpad4: KeyboardScanCode.keypadFour,
+  Numpad5: KeyboardScanCode.keypadFive,
+  Numpad6: KeyboardScanCode.keypadSix,
+  Numpad7: KeyboardScanCode.keypadSeven,
+  Numpad8: KeyboardScanCode.keypadEight,
+  Numpad9: KeyboardScanCode.keypadNine,
+  NumpadAdd: KeyboardScanCode.keypadPlus,
+  NumpadSubtract: KeyboardScanCode.keypadMinus,
+  NumpadMultiply: KeyboardScanCode.keypadMultiply,
+  NumpadStar: KeyboardScanCode.keypadMultiply,
+  NumpadDivide: KeyboardScanCode.keypadDivide,
+  NumpadDecimal: KeyboardScanCode.keypadPeriod,
+  NumpadComma: KeyboardScanCode.keypadComma,
+  NumpadEnter: KeyboardScanCode.keypadEnter,
+  NumpadEqual: KeyboardScanCode.keypadEquals,
+  NumpadHash: KeyboardScanCode.kpHash,
+  NumpadBackspace: KeyboardScanCode.kpBackspace,
+  NumpadClear: KeyboardScanCode.kpClear,
+  NumpadClearEntry: KeyboardScanCode.kpClearentry,
+  NumpadParenLeft: KeyboardScanCode.kpLeftparen,
+  NumpadParenRight: KeyboardScanCode.kpRightparen,
+  NumpadMemoryAdd: KeyboardScanCode.kpMemadd,
+  NumpadMemorySubtract: KeyboardScanCode.kpMemsubtract,
+  NumpadMemoryClear: KeyboardScanCode.kpMemclear,
+  NumpadMemoryRecall: KeyboardScanCode.kpMemrecall,
+  NumpadMemoryStore: KeyboardScanCode.kpMemstore,
 
   // System
-  PrintScreen: KeyboardKeyCode.printscreen,
-  Pause: KeyboardKeyCode.pause,
-  Power: KeyboardKeyCode.power,
-  Sleep: KeyboardKeyCode.sleep,
-  Eject: KeyboardKeyCode.eject,
-  Help: KeyboardKeyCode.help,
+  PrintScreen: KeyboardScanCode.printscreen,
+  Pause: KeyboardScanCode.pause,
+  Power: KeyboardScanCode.power,
+  Sleep: KeyboardScanCode.sleep,
+  Eject: KeyboardScanCode.eject,
+  Help: KeyboardScanCode.help,
 
   // Editing commands
-  Again: KeyboardKeyCode.again,
-  Undo: KeyboardKeyCode.undo,
-  Cut: KeyboardKeyCode.cut,
-  Copy: KeyboardKeyCode.copy,
-  Paste: KeyboardKeyCode.paste,
-  Find: KeyboardKeyCode.find,
-  Select: KeyboardKeyCode.select,
-  Open: KeyboardKeyCode.execute,
+  Again: KeyboardScanCode.again,
+  Undo: KeyboardScanCode.undo,
+  Cut: KeyboardScanCode.cut,
+  Copy: KeyboardScanCode.copy,
+  Paste: KeyboardScanCode.paste,
+  Find: KeyboardScanCode.find,
+  Select: KeyboardScanCode.select,
+  Open: KeyboardScanCode.execute,
 
   // Media
-  MediaPlayPause: KeyboardKeyCode.audioPlay,
-  MediaStop: KeyboardKeyCode.audioStop,
-  MediaTrackNext: KeyboardKeyCode.audioNext,
-  MediaTrackPrevious: KeyboardKeyCode.audioPrev,
-  MediaSelect: KeyboardKeyCode.mediaSelect,
-  AudioVolumeMute: KeyboardKeyCode.audioMute,
-  AudioVolumeUp: KeyboardKeyCode.volumeup,
-  AudioVolumeDown: KeyboardKeyCode.volumedown,
+  MediaPlayPause: KeyboardScanCode.audioPlay,
+  MediaStop: KeyboardScanCode.audioStop,
+  MediaTrackNext: KeyboardScanCode.audioNext,
+  MediaTrackPrevious: KeyboardScanCode.audioPrev,
+  MediaSelect: KeyboardScanCode.mediaSelect,
+  AudioVolumeMute: KeyboardScanCode.audioMute,
+  AudioVolumeUp: KeyboardScanCode.volumeup,
+  AudioVolumeDown: KeyboardScanCode.volumedown,
 
   // Launch and browser
-  LaunchApp1: KeyboardKeyCode.app1,
-  LaunchApp2: KeyboardKeyCode.app2,
-  LaunchMail: KeyboardKeyCode.mail,
-  BrowserBack: KeyboardKeyCode.acBack,
-  BrowserForward: KeyboardKeyCode.acForward,
-  BrowserHome: KeyboardKeyCode.acHome,
-  BrowserRefresh: KeyboardKeyCode.acRefresh,
-  BrowserSearch: KeyboardKeyCode.acSearch,
-  BrowserStop: KeyboardKeyCode.acStop,
-  BrowserFavorites: KeyboardKeyCode.acBookmarks,
+  LaunchApp1: KeyboardScanCode.app1,
+  LaunchApp2: KeyboardScanCode.app2,
+  LaunchMail: KeyboardScanCode.mail,
+  BrowserBack: KeyboardScanCode.acBack,
+  BrowserForward: KeyboardScanCode.acForward,
+  BrowserHome: KeyboardScanCode.acHome,
+  BrowserRefresh: KeyboardScanCode.acRefresh,
+  BrowserSearch: KeyboardScanCode.acSearch,
+  BrowserStop: KeyboardScanCode.acStop,
+  BrowserFavorites: KeyboardScanCode.acBookmarks,
 
   // Japanese and Korean input keys
-  IntlRo: KeyboardKeyCode.international1,
-  KanaMode: KeyboardKeyCode.international2,
-  IntlYen: KeyboardKeyCode.international3,
-  Convert: KeyboardKeyCode.international4,
-  NonConvert: KeyboardKeyCode.international5,
-  Lang1: KeyboardKeyCode.lang1,
-  Lang2: KeyboardKeyCode.lang2,
-  Lang3: KeyboardKeyCode.lang3,
-  Lang4: KeyboardKeyCode.lang4,
-  Lang5: KeyboardKeyCode.lang5,
+  IntlRo: KeyboardScanCode.international1,
+  KanaMode: KeyboardScanCode.international2,
+  IntlYen: KeyboardScanCode.international3,
+  Convert: KeyboardScanCode.international4,
+  NonConvert: KeyboardScanCode.international5,
+  Lang1: KeyboardScanCode.lang1,
+  Lang2: KeyboardScanCode.lang2,
+  Lang3: KeyboardScanCode.lang3,
+  Lang4: KeyboardScanCode.lang4,
+  Lang5: KeyboardScanCode.lang5,
 };
