@@ -12,44 +12,44 @@
 module retrograde.engine.input;
 
 import retrograde.std.collections : Array, Queue, HashMap;
+import retrograde.std.hash : hashOf;
 import retrograde.std.stringid : StringId;
 
-import retrograde.engine.event : eventQueue, Event;
+import retrograde.engine.event : eventQueue, Event, Magnitude;
 
 version (Native) {
     public import retrograde.native.input;
 } else version (WebAssembly) {
     public import retrograde.wasm.input;
 } else {
-    static assert(false, "No inputt implementations available for target platform.");
+    static assert(false, "No input implementations available for target platform.");
 }
 
 Queue!KeyboardKeyEvent keyEvents;
 
 /**
- * The events a physical key emits when it is pressed, held or released.
+ * The events a key binding emits when its key is pressed, held or released.
  *
- * A key can drive more than one event at a time, such as W driving both
- * ev_moveForward and ev_menuUp; every event mapped to the key is emitted.
+ * A binding can drive more than one event at a time, such as W driving both
+ * ev_moveForward and ev_menuUp; every event mapped to the binding is emitted.
  * Prefer $(D addKeyMapping) and $(D removeKeyMapping) over manipulating
  * this map directly.
  */
-// TODO: allow mapping on modifiers too
-HashMap!(KeyboardScanCode, Array!StringId) keyMapping;
+HashMap!(KeyBinding, Array!StringId) keyMapping;
 
 /**
- * Make the given key emit the given event, on top of any events it already
- * emits.
+ * Make the given key binding emit the given event, on top of any events it
+ * already emits.
  *
- * Mapping the same event to the same key again does nothing; a key never
- * emits the same event twice.
+ * Mapping the same event to the same binding again does nothing; a binding
+ * never emits the same event twice.
  *
  * Params:
- *  scanCode = The physical key to map.
- *  eventName = Name of the event the key should emit.
+ *  binding = The key and modifiers to map.
+ *  eventName = Name of the event the binding should emit.
  */
-void addKeyMapping(KeyboardScanCode scanCode, StringId eventName) {
-    auto eventNames = keyMapping.getRef(scanCode);
+void addKeyMapping(KeyBinding binding, StringId eventName) {
+    auto eventNames = keyMapping.getRef(binding);
     if (eventNames.isDefined) {
         auto mappedEvents = eventNames.value;
         if (!mappedEvents.exists(eventName)) {
@@ -61,20 +61,41 @@ void addKeyMapping(KeyboardScanCode scanCode, StringId eventName) {
 
     Array!StringId newEvents;
     newEvents.add(eventName);
-    keyMapping.put(scanCode, newEvents);
+    keyMapping.put(binding, newEvents);
 }
 
 /**
- * Stop the given key from emitting the given event, leaving the other events
- * mapped to it in place.
+ * Make the given key emit the given event, on top of any events it already
+ * emits.
  *
  * Params:
- *  scanCode = The physical key to unmap the event from.
- *  eventName = Name of the event the key should no longer emit.
- * Returns: Whether the key was mapped to the event.
+ *  scanCode = The physical key to map.
+ *  eventName = Name of the event the key should emit.
+ *  modifiers = The modifiers that have to be held along with the key.
+ *              Defaults to none, letting the key emit on its own.
+ *  ignoredModifiers = The modifiers that have no say in whether the key emits,
+ *              on top of the required ones. Defaults to $(D anyModifiers), so
+ *              that only the required modifiers are taken into account at all.
+ *              Pass $(D KeyboardKeyModifier.none) to have the key emit on
+ *              exactly the modifiers it requires and nothing else.
  */
-bool removeKeyMapping(KeyboardScanCode scanCode, StringId eventName) {
-    auto eventNames = keyMapping.getRef(scanCode);
+void addKeyMapping(KeyboardScanCode scanCode, StringId eventName,
+    KeyboardKeyModifier modifiers = KeyboardKeyModifier.none,
+    KeyboardKeyModifier ignoredModifiers = anyModifiers) {
+    addKeyMapping(KeyBinding(scanCode, modifiers, ignoredModifiers), eventName);
+}
+
+/**
+ * Stop the given key binding from emitting the given event, leaving the other
+ * events mapped to it in place.
+ *
+ * Params:
+ *  binding = The key and modifiers to unmap the event from.
+ *  eventName = Name of the event the binding should no longer emit.
+ * Returns: Whether the binding was mapped to the event.
+ */
+bool removeKeyMapping(KeyBinding binding, StringId eventName) {
+    auto eventNames = keyMapping.getRef(binding);
     if (!eventNames.isDefined) {
         return false;
     }
@@ -87,29 +108,77 @@ bool removeKeyMapping(KeyboardScanCode scanCode, StringId eventName) {
 
     mappedEvents.remove(index);
     if (mappedEvents.length == 0) {
-        keyMapping.remove(scanCode);
+        keyMapping.remove(binding);
     }
 
     return true;
 }
 
-/**
- * Stop the given key from emitting any event at all.
- *
- * Params:
- *  scanCode = The physical key to unmap.
- * Returns: Whether the key was mapped to any event.
- */
-bool removeKeyMappings(KeyboardScanCode scanCode) {
-    return keyMapping.remove(scanCode);
+/// ditto
+bool removeKeyMapping(KeyboardScanCode scanCode, StringId eventName,
+    KeyboardKeyModifier modifiers = KeyboardKeyModifier.none,
+    KeyboardKeyModifier ignoredModifiers = anyModifiers) {
+    return removeKeyMapping(KeyBinding(scanCode, modifiers, ignoredModifiers), eventName);
 }
 
 /**
- * Returns: Whether the given key emits the given event.
+ * Stop the given key binding from emitting any event at all.
+ *
+ * Only the binding with exactly these modifiers is unmapped; other bindings
+ * on the same key are left alone. Use $(D removeAllKeyMappings) to unmap a
+ * key regardless of the modifiers it is bound with.
+ *
+ * Params:
+ *  binding = The key and modifiers to unmap.
+ * Returns: Whether the binding was mapped to any event.
  */
-bool hasKeyMapping(KeyboardScanCode scanCode, StringId eventName) {
-    auto eventNames = keyMapping.getRef(scanCode);
+bool removeKeyMappings(KeyBinding binding) {
+    return keyMapping.remove(binding);
+}
+
+/// ditto
+bool removeKeyMappings(KeyboardScanCode scanCode,
+    KeyboardKeyModifier modifiers = KeyboardKeyModifier.none,
+    KeyboardKeyModifier ignoredModifiers = anyModifiers) {
+    return removeKeyMappings(KeyBinding(scanCode, modifiers, ignoredModifiers));
+}
+
+/**
+ * Stop the given key from emitting any event at all, with whichever
+ * modifiers it is bound with.
+ *
+ * Params:
+ *  scanCode = The physical key to unmap.
+ * Returns: Whether the key was bound at all.
+ */
+bool removeAllKeyMappings(KeyboardScanCode scanCode) {
+    Array!KeyBinding boundKeys;
+    foreach (binding, eventNames; keyMapping) {
+        if (binding.scanCode == scanCode) {
+            boundKeys.add(binding);
+        }
+    }
+
+    foreach (binding; boundKeys) {
+        keyMapping.remove(binding);
+    }
+
+    return boundKeys.length > 0;
+}
+
+/**
+ * Returns: Whether the given key binding emits the given event.
+ */
+bool hasKeyMapping(KeyBinding binding, StringId eventName) {
+    auto eventNames = keyMapping.getRef(binding);
     return eventNames.isDefined && eventNames.value.exists(eventName);
+}
+
+/// ditto
+bool hasKeyMapping(KeyboardScanCode scanCode, StringId eventName,
+    KeyboardKeyModifier modifiers = KeyboardKeyModifier.none,
+    KeyboardKeyModifier ignoredModifiers = anyModifiers) {
+    return hasKeyMapping(KeyBinding(scanCode, modifiers, ignoredModifiers), eventName);
 }
 
 /**
@@ -122,14 +191,123 @@ void clearKeyMappings() {
 void processInput() {
     KeyboardKeyEvent keyEvent;
     while (keyEvents.tryDequeue(keyEvent)) {
-        auto eventNames = keyMapping.getRef(keyEvent.scanCode);
-        if (!eventNames.isDefined) {
+        if (keyEvent.action == InputEventAction.release) {
+            emitReleaseEvents(keyEvent.scanCode);
+        } else {
+            emitPressEvents(keyEvent.scanCode, keyEvent.modifiers);
+        }
+    }
+}
+
+/**
+ * The modifiers a binding can require, grouped by the key they stand for. A
+ * group is satisfied by any of the sides the binding names in it.
+ */
+private immutable KeyboardKeyModifier[5] modifierGroups = [
+    KeyboardKeyModifier.shift,
+    KeyboardKeyModifier.ctrl,
+    KeyboardKeyModifier.alt,
+    KeyboardKeyModifier.gui,
+    KeyboardKeyModifier.mode
+];
+
+/**
+ * Returns: Whether the binding emits with the given modifiers held.
+ */
+private bool bindingMatches(KeyBinding binding, KeyboardKeyModifier heldModifiers) {
+    uint required = binding.modifiers & bindableModifiers;
+
+    // A required modifier is never ignored, however wide the ignore mask is.
+    uint ignored = binding.ignoredModifiers & ~required;
+    uint held = heldModifiers & bindableModifiers & ~ignored;
+
+    // Holding a modifier the binding did not ignore keeps it silent, so that a
+    // binding narrowed down to ctrl+S does not fire on ctrl+shift+S.
+    if (held & ~required) {
+        return false;
+    }
+
+    // Every modifier the binding asks for has to be held on one of the sides
+    // it named, so that shift takes either key but leftShift takes only its
+    // own.
+    foreach (group; modifierGroups) {
+        if ((required & group) != 0 && (held & required & group) == 0) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Returns: The modifier a physical key is itself, or none for a key that is
+ *          not a modifier.
+ */
+private KeyboardKeyModifier modifierFlagOf(KeyboardScanCode scanCode) {
+    switch (scanCode) {
+    case KeyboardScanCode.leftShift:
+        return KeyboardKeyModifier.leftShift;
+    case KeyboardScanCode.rightShift:
+        return KeyboardKeyModifier.rightShift;
+    case KeyboardScanCode.leftCtrl:
+        return KeyboardKeyModifier.leftCtrl;
+    case KeyboardScanCode.rightCtrl:
+        return KeyboardKeyModifier.rightCtrl;
+    case KeyboardScanCode.leftAlt:
+        return KeyboardKeyModifier.leftAlt;
+    case KeyboardScanCode.rightAlt:
+        // The right alt key doubles as AltGr on the layouts that have one, in
+        // which case it reports the mode modifier on top of its own.
+        return cast(KeyboardKeyModifier)(KeyboardKeyModifier.rightAlt | KeyboardKeyModifier.mode);
+    case KeyboardScanCode.leftGui:
+        return KeyboardKeyModifier.leftGui;
+    case KeyboardScanCode.rightGui:
+        return KeyboardKeyModifier.rightGui;
+    case KeyboardScanCode.mode:
+        return KeyboardKeyModifier.mode;
+    default:
+        return KeyboardKeyModifier.none;
+    }
+}
+
+/**
+ * Emits the events of every binding on the given key that the held modifiers
+ * satisfy, at full magnitude.
+ *
+ * A modifier key reports itself among the modifiers of its own event, which is
+ * left out here so that a binding on a modifier key does not need to require
+ * itself.
+ */
+private void emitPressEvents(KeyboardScanCode scanCode, KeyboardKeyModifier modifiers) {
+    auto heldModifiers = cast(KeyboardKeyModifier)(modifiers & ~modifierFlagOf(scanCode));
+    foreach (binding, eventNames; keyMapping) {
+        if (binding.scanCode != scanCode || !bindingMatches(binding, heldModifiers)) {
             continue;
         }
 
-        auto magnitude = keyEvent.action == InputEventAction.release ? 0 : 1;
-        foreach (eventName; *eventNames.value) {
-            eventQueue.enqueue(Event(eventName, magnitude));
+        foreach (i; 0 .. eventNames.length) {
+            eventQueue.enqueue(Event(eventNames[i], 1));
+        }
+    }
+}
+
+/**
+ * Emits the events of every binding on the given key at zero magnitude,
+ * whatever modifiers those bindings name.
+ *
+ * Modifiers are deliberately not taken into account here: letting go of shift
+ * before letting go of the key it modified would otherwise leave the events
+ * of a shift binding stuck at full magnitude. Releasing an event that was
+ * never pressed only sets it to the zero it already was.
+ */
+private void emitReleaseEvents(KeyboardScanCode scanCode) {
+    foreach (binding, eventNames; keyMapping) {
+        if (binding.scanCode != scanCode) {
+            continue;
+        }
+
+        foreach (i; 0 .. eventNames.length) {
+            eventQueue.enqueue(Event(eventNames[i], 0));
         }
     }
 }
@@ -644,6 +822,15 @@ enum InputEventAction : ubyte {
 
 /**
  * Modifiers that are typically key buttons pressed while pressing another key.
+ *
+ * Only the side-specific flags are ever reported on their own: an event names
+ * the physical modifier key that was held. The side-independent names are
+ * masks over both of their sides, as in SDL2, so testing one of them matches
+ * either key. Test them with `&` rather than `==`:
+ * `modifiers & KeyboardKeyModifier.ctrl` is true for both control keys.
+ *
+ * $(D numlock) and $(D capslock) report the state of a lock rather than a key
+ * being held. $(D mode) is the AltGr key, which is a held key like the rest.
  */
 enum KeyboardKeyModifier : uint {
     none = 0,
@@ -658,10 +845,102 @@ enum KeyboardKeyModifier : uint {
     numlock = 1 << 9,
     capslock = 1 << 10,
     mode = 1 << 11,
-    ctrl = 1 << 12,
-    shift = 1 << 13,
-    alt = 1 << 14,
-    gui = 1 << 15
+    shift = leftShift | rightShift,
+    ctrl = leftCtrl | rightCtrl,
+    alt = leftAlt | rightAlt,
+    gui = leftGui | rightGui
+}
+
+/**
+ * The modifiers a key binding is allowed to require.
+ *
+ * The lock modifiers are left out: they report a toggle state rather than a
+ * key being held, so taking them into account would make every binding stop
+ * working while caps lock happens to be on. They are still reported on the
+ * events themselves.
+ */
+enum KeyboardKeyModifier bindableModifiers = cast(KeyboardKeyModifier)(
+        KeyboardKeyModifier.shift | KeyboardKeyModifier.ctrl |
+        KeyboardKeyModifier.alt | KeyboardKeyModifier.gui |
+        KeyboardKeyModifier.mode);
+
+/**
+ * The ignore mask a binding carries by default: every modifier has its say
+ * taken away, so the key emits whatever the player happens to be holding.
+ */
+enum KeyboardKeyModifier anyModifiers = bindableModifiers;
+
+/**
+ * A physical key together with the modifiers that have to be held for it to
+ * emit its events.
+ *
+ * A binding ignores modifiers by default: W walks the player forward whether
+ * or not shift, ctrl or anything else is held. That is what lets a modifier
+ * carry a meaning of its own without breaking the keys pressed alongside it:
+ *
+ * ---
+ * // W walks whatever is held, and shift runs on its own.
+ * addKeyMapping(KeyboardScanCode.w, sid("ev_walkForward"));
+ * addKeyMapping(KeyboardScanCode.leftShift, sid("ev_run"));
+ * ---
+ *
+ * $(D modifiers) names the modifiers that then do have to be held. Naming a
+ * side-independent modifier such as $(D KeyboardKeyModifier.shift) takes
+ * either side, naming $(D KeyboardKeyModifier.leftShift) takes only that key.
+ * The modifiers not named still have no say, so shift+W emits below whether or
+ * not ctrl is held as well:
+ *
+ * ---
+ * addKeyMapping(KeyboardScanCode.w, sid("ev_sprintForward"),
+ *     KeyboardKeyModifier.shift);
+ * ---
+ *
+ * $(D ignoredModifiers) is what hands that say back. Narrowing it to
+ * $(D KeyboardKeyModifier.none) leaves no modifier ignored, so the binding
+ * emits on exactly the modifiers it names and nothing else, which is how a
+ * key that means something different under every modifier is bound:
+ *
+ * ---
+ * // Ctrl+S saves, and stays out of the way of ctrl+shift+S.
+ * addKeyMapping(KeyboardScanCode.s, sid("ev_save"),
+ *     KeyboardKeyModifier.ctrl, KeyboardKeyModifier.none);
+ *
+ * // S on its own, with nothing else held at all.
+ * addKeyMapping(KeyboardScanCode.s, sid("ev_strafeBackward"),
+ *     KeyboardKeyModifier.none, KeyboardKeyModifier.none);
+ * ---
+ *
+ * A required modifier is never ignored, so the two can be mixed freely: the
+ * ignore mask only ever covers the modifiers $(D modifiers) leaves out.
+ */
+struct KeyBinding {
+    /// The physical key to bind to.
+    KeyboardScanCode scanCode;
+
+    /// The modifiers that have to be held along with it, if any.
+    KeyboardKeyModifier modifiers = KeyboardKeyModifier.none;
+
+    /**
+     * The modifiers that have no say in whether the binding emits, on top of
+     * the ones it requires. Defaults to all of them, so that only the required
+     * modifiers are taken into account at all.
+     */
+    KeyboardKeyModifier ignoredModifiers = anyModifiers;
+
+    bool opEquals(ref const typeof(this) other) const {
+        return scanCode == other.scanCode && modifiers == other.modifiers &&
+            ignoredModifiers == other.ignoredModifiers;
+    }
+
+    bool opEquals(const typeof(this) other) const {
+        return opEquals(other);
+    }
+
+    ulong toHash() nothrow @trusted const {
+        ulong packed = (cast(ulong) modifiers << 32) | scanCode;
+        ulong ignored = ignoredModifiers;
+        return hashOf(packed) * 33 + hashOf(ignored);
+    }
 }
 
 /**
@@ -728,11 +1007,25 @@ void resetInput() {
     }
 }
 
-private void pressKey(KeyboardScanCode scanCode, InputEventAction action = InputEventAction.press) {
+private void pressKey(KeyboardScanCode scanCode, InputEventAction action = InputEventAction.press,
+    KeyboardKeyModifier modifiers = KeyboardKeyModifier.none) {
     KeyboardKeyEvent keyEvent;
     keyEvent.scanCode = scanCode;
     keyEvent.action = action;
+    keyEvent.modifiers = modifiers;
     keyEvents.enqueue(keyEvent);
+}
+
+private size_t emittedEventCount(StringId eventName, Magnitude magnitude) {
+    size_t count = 0;
+    Event event;
+    while (eventQueue.tryDequeue(event)) {
+        if (event.name == eventName && event.magnitude == magnitude) {
+            count++;
+        }
+    }
+
+    return count;
 }
 
 void runInputTests() {
@@ -882,6 +1175,356 @@ void runInputTests() {
         Event event;
         assert(eventQueue.tryDequeue(event));
         assert(event.magnitude == 1);
+    });
+
+    writeSection("-- Input modifier tests --");
+
+    test("side-independent modifiers cover both of their sides", () {
+        assert(KeyboardKeyModifier.shift ==
+                (KeyboardKeyModifier.leftShift | KeyboardKeyModifier.rightShift));
+        assert(KeyboardKeyModifier.ctrl ==
+                (KeyboardKeyModifier.leftCtrl | KeyboardKeyModifier.rightCtrl));
+        assert(KeyboardKeyModifier.alt ==
+                (KeyboardKeyModifier.leftAlt | KeyboardKeyModifier.rightAlt));
+        assert(KeyboardKeyModifier.gui ==
+                (KeyboardKeyModifier.leftGui | KeyboardKeyModifier.rightGui));
+    });
+
+    test("bindings do not require the lock modifiers", () {
+        assert((bindableModifiers & KeyboardKeyModifier.capslock) == 0);
+        assert((bindableModifiers & KeyboardKeyModifier.numlock) == 0);
+        assert((bindableModifiers & KeyboardKeyModifier.mode) != 0);
+    });
+
+    test("a key mapped without modifiers ignores every modifier", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"));
+
+        assert(KeyBinding(KeyboardScanCode.w).ignoredModifiers == anyModifiers);
+        assert(hasKeyMapping(KeyBinding(KeyboardScanCode.w), sid("ev_moveForward")));
+        assert(hasKeyMapping(KeyBinding(KeyboardScanCode.w, KeyboardKeyModifier.none),
+                sid("ev_moveForward")));
+    });
+
+    test("a modifier binding only emits while its modifier is held", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_sprintForward"), KeyboardKeyModifier.shift);
+
+        pressKey(KeyboardScanCode.w);
+        processInput();
+        assert(eventQueue.length == 0);
+
+        pressKey(KeyboardScanCode.w, InputEventAction.press, KeyboardKeyModifier.leftShift);
+        processInput();
+        assert(emittedEventCount(sid("ev_sprintForward"), 1) == 1);
+    });
+
+    test("a binding without modifiers emits while one is held", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"));
+
+        pressKey(KeyboardScanCode.w, InputEventAction.press, KeyboardKeyModifier.leftCtrl);
+        processInput();
+        assert(emittedEventCount(sid("ev_moveForward"), 1) == 1);
+    });
+
+    test("a side-independent binding is satisfied by either side", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_sprintForward"), KeyboardKeyModifier.shift);
+
+        pressKey(KeyboardScanCode.w, InputEventAction.press, KeyboardKeyModifier.leftShift);
+        pressKey(KeyboardScanCode.w, InputEventAction.press, KeyboardKeyModifier.rightShift);
+        pressKey(KeyboardScanCode.w, InputEventAction.press, KeyboardKeyModifier.shift);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_sprintForward"), 1) == 3);
+    });
+
+    test("a sided binding is only satisfied by its own side", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_sprintForward"), KeyboardKeyModifier.leftShift);
+
+        pressKey(KeyboardScanCode.w, InputEventAction.press, KeyboardKeyModifier.rightShift);
+        processInput();
+        assert(eventQueue.length == 0);
+
+        pressKey(KeyboardScanCode.w, InputEventAction.press, KeyboardKeyModifier.leftShift);
+        processInput();
+        assert(emittedEventCount(sid("ev_sprintForward"), 1) == 1);
+    });
+
+    test("holding the other side as well satisfies a sided binding", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_sprintForward"), KeyboardKeyModifier.leftShift);
+
+        pressKey(KeyboardScanCode.w, InputEventAction.press, KeyboardKeyModifier.shift);
+        processInput();
+        assert(emittedEventCount(sid("ev_sprintForward"), 1) == 1);
+    });
+
+    test("bindings on the same key with different modifiers stay apart", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"));
+        addKeyMapping(KeyboardScanCode.w, sid("ev_sprintForward"), KeyboardKeyModifier.shift);
+        addKeyMapping(KeyboardScanCode.w, sid("ev_menuUp"), KeyboardKeyModifier.ctrl);
+
+        assert(keyMapping.length == 3);
+
+        pressKey(KeyboardScanCode.w, InputEventAction.press, KeyboardKeyModifier.leftCtrl);
+        processInput();
+
+        // The shift binding is the only one left out: the unmodified one
+        // ignores ctrl rather than being blocked by it.
+        assert(eventQueue.length == 2);
+        assert(emittedEventCount(sid("ev_sprintForward"), 1) == 0);
+    });
+
+    test("a sided and a side-independent binding both emit on the same press", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_sprintForward"), KeyboardKeyModifier.shift);
+        addKeyMapping(KeyboardScanCode.w, sid("ev_leftHanded"), KeyboardKeyModifier.leftShift);
+
+        pressKey(KeyboardScanCode.w, InputEventAction.press, KeyboardKeyModifier.leftShift);
+        processInput();
+
+        assert(eventQueue.length == 2);
+        assert(emittedEventCount(sid("ev_sprintForward"), 1) == 1);
+    });
+
+    test("a binding requiring several modifiers needs all of them", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_menuUp"),
+            cast(KeyboardKeyModifier)(KeyboardKeyModifier.ctrl | KeyboardKeyModifier.alt));
+
+        pressKey(KeyboardScanCode.w, InputEventAction.press, KeyboardKeyModifier.leftCtrl);
+        processInput();
+        assert(eventQueue.length == 0);
+
+        pressKey(KeyboardScanCode.w, InputEventAction.press,
+            cast(KeyboardKeyModifier)(KeyboardKeyModifier.rightCtrl | KeyboardKeyModifier.leftAlt));
+        processInput();
+        assert(emittedEventCount(sid("ev_menuUp"), 1) == 1);
+    });
+
+    test("holding an extra modifier does not stop a binding from emitting", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_sprintForward"), KeyboardKeyModifier.shift);
+
+        pressKey(KeyboardScanCode.w, InputEventAction.press,
+            cast(KeyboardKeyModifier)(KeyboardKeyModifier.leftShift | KeyboardKeyModifier.leftAlt));
+        processInput();
+        assert(emittedEventCount(sid("ev_sprintForward"), 1) == 1);
+    });
+
+    test("the lock modifiers do not stop a binding from emitting", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"));
+        addKeyMapping(KeyboardScanCode.s, sid("ev_sprintBackward"), KeyboardKeyModifier.shift);
+
+        pressKey(KeyboardScanCode.w, InputEventAction.press,
+            cast(KeyboardKeyModifier)(KeyboardKeyModifier.capslock | KeyboardKeyModifier.numlock));
+        pressKey(KeyboardScanCode.s, InputEventAction.press,
+            cast(KeyboardKeyModifier)(KeyboardKeyModifier.rightShift | KeyboardKeyModifier.capslock));
+        processInput();
+
+        assert(emittedEventCount(sid("ev_moveForward"), 1) == 1);
+    });
+
+    test("releasing a key releases its bindings whatever modifiers are left", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_sprintForward"), KeyboardKeyModifier.shift);
+
+        pressKey(KeyboardScanCode.w, InputEventAction.press, KeyboardKeyModifier.leftShift);
+        processInput();
+        assert(emittedEventCount(sid("ev_sprintForward"), 1) == 1);
+
+        // Shift was let go of before the key it modified, so the release
+        // reports no modifiers at all.
+        pressKey(KeyboardScanCode.w, InputEventAction.release);
+        processInput();
+        assert(emittedEventCount(sid("ev_sprintForward"), 0) == 1);
+    });
+
+    test("releasing a key releases every binding on it", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"));
+        addKeyMapping(KeyboardScanCode.w, sid("ev_sprintForward"), KeyboardKeyModifier.shift);
+        addKeyMapping(KeyboardScanCode.s, sid("ev_moveBackward"));
+
+        pressKey(KeyboardScanCode.w, InputEventAction.release);
+        processInput();
+
+        assert(eventQueue.length == 2);
+        assert(emittedEventCount(sid("ev_moveBackward"), 0) == 0);
+    });
+
+    test("removing a binding leaves the other modifiers of the key alone", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"));
+        addKeyMapping(KeyboardScanCode.w, sid("ev_sprintForward"), KeyboardKeyModifier.shift);
+
+        assert(removeKeyMappings(KeyboardScanCode.w));
+        assert(!hasKeyMapping(KeyboardScanCode.w, sid("ev_moveForward")));
+        assert(hasKeyMapping(KeyboardScanCode.w, sid("ev_sprintForward"),
+                KeyboardKeyModifier.shift));
+    });
+
+    test("removing all mappings of a key removes every modifier of it", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"));
+        addKeyMapping(KeyboardScanCode.w, sid("ev_sprintForward"), KeyboardKeyModifier.shift);
+        addKeyMapping(KeyboardScanCode.s, sid("ev_moveBackward"));
+
+        assert(removeAllKeyMappings(KeyboardScanCode.w));
+        assert(!removeAllKeyMappings(KeyboardScanCode.w));
+        assert(keyMapping.length == 1);
+        assert(hasKeyMapping(KeyboardScanCode.s, sid("ev_moveBackward")));
+    });
+
+    writeSection("-- Input ignored modifier tests --");
+
+    test("walking and running coexist on a key and its modifier", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_walkForward"));
+        addKeyMapping(KeyboardScanCode.leftShift, sid("ev_run"));
+
+        pressKey(KeyboardScanCode.leftShift, InputEventAction.press,
+            KeyboardKeyModifier.leftShift);
+        pressKey(KeyboardScanCode.w, InputEventAction.press, KeyboardKeyModifier.leftShift);
+        processInput();
+
+        assert(eventQueue.length == 2);
+        assert(emittedEventCount(sid("ev_walkForward"), 1) == 1);
+    });
+
+    test("a binding on a modifier key does not have to require itself", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.leftShift, sid("ev_run"),
+            KeyboardKeyModifier.none, KeyboardKeyModifier.none);
+
+        pressKey(KeyboardScanCode.leftShift, InputEventAction.press,
+            KeyboardKeyModifier.leftShift);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_run"), 1) == 1);
+    });
+
+    test("a binding on the AltGr key does not have to require its mode", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.rightAlt, sid("ev_run"),
+            KeyboardKeyModifier.none, KeyboardKeyModifier.none);
+
+        pressKey(KeyboardScanCode.rightAlt, InputEventAction.press,
+            cast(KeyboardKeyModifier)(KeyboardKeyModifier.rightAlt | KeyboardKeyModifier.mode));
+        processInput();
+
+        assert(emittedEventCount(sid("ev_run"), 1) == 1);
+    });
+
+    test("a narrowed binding on a modifier key is blocked by other modifiers", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.leftShift, sid("ev_run"),
+            KeyboardKeyModifier.none, KeyboardKeyModifier.none);
+
+        pressKey(KeyboardScanCode.leftShift, InputEventAction.press,
+            cast(KeyboardKeyModifier)(KeyboardKeyModifier.leftShift | KeyboardKeyModifier.leftCtrl));
+        processInput();
+
+        assert(eventQueue.length == 0);
+    });
+
+    test("a binding narrowed to no modifiers stays silent while one is held", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.s, sid("ev_strafeBackward"),
+            KeyboardKeyModifier.none, KeyboardKeyModifier.none);
+
+        pressKey(KeyboardScanCode.s);
+        processInput();
+        assert(emittedEventCount(sid("ev_strafeBackward"), 1) == 1);
+
+        pressKey(KeyboardScanCode.s, InputEventAction.press, KeyboardKeyModifier.leftCtrl);
+        processInput();
+        assert(eventQueue.length == 0);
+    });
+
+    test("a binding narrowed to its modifiers takes no others", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.s, sid("ev_save"),
+            KeyboardKeyModifier.ctrl, KeyboardKeyModifier.none);
+
+        pressKey(KeyboardScanCode.s, InputEventAction.press, KeyboardKeyModifier.leftCtrl);
+        processInput();
+        assert(emittedEventCount(sid("ev_save"), 1) == 1);
+
+        pressKey(KeyboardScanCode.s, InputEventAction.press,
+            cast(KeyboardKeyModifier)(KeyboardKeyModifier.leftCtrl | KeyboardKeyModifier.leftShift));
+        processInput();
+        assert(eventQueue.length == 0);
+    });
+
+    test("a narrowed binding on both sides of a modifier takes only both", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.s, sid("ev_save"),
+            KeyboardKeyModifier.leftCtrl, KeyboardKeyModifier.none);
+
+        pressKey(KeyboardScanCode.s, InputEventAction.press, KeyboardKeyModifier.ctrl);
+        processInput();
+        assert(eventQueue.length == 0);
+    });
+
+    test("narrowing to one modifier leaves the others ignored", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.s, sid("ev_save"), KeyboardKeyModifier.ctrl,
+            KeyboardKeyModifier.alt);
+
+        pressKey(KeyboardScanCode.s, InputEventAction.press,
+            cast(KeyboardKeyModifier)(KeyboardKeyModifier.leftCtrl | KeyboardKeyModifier.rightAlt));
+        processInput();
+        assert(emittedEventCount(sid("ev_save"), 1) == 1);
+
+        pressKey(KeyboardScanCode.s, InputEventAction.press,
+            cast(KeyboardKeyModifier)(KeyboardKeyModifier.leftCtrl | KeyboardKeyModifier.leftShift));
+        processInput();
+        assert(eventQueue.length == 0);
+    });
+
+    test("a required modifier is never ignored", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_sprintForward"),
+            KeyboardKeyModifier.shift, anyModifiers);
+
+        pressKey(KeyboardScanCode.w);
+        processInput();
+        assert(eventQueue.length == 0);
+
+        pressKey(KeyboardScanCode.w, InputEventAction.press, KeyboardKeyModifier.leftShift);
+        processInput();
+        assert(emittedEventCount(sid("ev_sprintForward"), 1) == 1);
+    });
+
+    test("bindings differing only in what they ignore stay apart", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_walkForward"));
+        addKeyMapping(KeyboardScanCode.w, sid("ev_menuUp"), KeyboardKeyModifier.none,
+            KeyboardKeyModifier.none);
+
+        assert(keyMapping.length == 2);
+        assert(hasKeyMapping(KeyboardScanCode.w, sid("ev_walkForward")));
+        assert(!hasKeyMapping(KeyboardScanCode.w, sid("ev_walkForward"),
+                KeyboardKeyModifier.none, KeyboardKeyModifier.none));
+        assert(hasKeyMapping(KeyboardScanCode.w, sid("ev_menuUp"),
+                KeyboardKeyModifier.none, KeyboardKeyModifier.none));
+    });
+
+    test("releasing a key releases its narrowed bindings too", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_save"), KeyboardKeyModifier.ctrl,
+            KeyboardKeyModifier.none);
+
+        pressKey(KeyboardScanCode.w, InputEventAction.release);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_save"), 0) == 1);
     });
 
     test("scan code mask does not collide with Unicode code points", () {

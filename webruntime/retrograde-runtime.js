@@ -786,7 +786,9 @@ export default class RetrogradeRuntime {
    *
    * Keyboard events only report that a modifier is active, not which side of
    * the keyboard it is held on, so the left and right specific flags come from
-   * the modifier keys tracked by trackModifierKey instead.
+   * the modifier keys tracked by trackModifierKey instead. Only sided flags are
+   * set: the side-independent ones are masks over both sides, so setting one
+   * would claim that both keys are held.
    */
   mapKeyModifiers(e) {
     let modifiers = KeyboardKeyModifier.none;
@@ -802,20 +804,17 @@ export default class RetrogradeRuntime {
       }
     }
 
-    if (e.getModifierState("Shift")) {
-      modifiers |= KeyboardKeyModifier.shift;
-    }
-
-    if (e.getModifierState("Control")) {
-      modifiers |= KeyboardKeyModifier.ctrl;
-    }
-
-    if (e.getModifierState("Alt")) {
-      modifiers |= KeyboardKeyModifier.alt;
-    }
-
-    if (e.getModifierState("Meta")) {
-      modifiers |= KeyboardKeyModifier.gui;
+    // A modifier can be active without its own key event having been seen,
+    // such as when it was already held before the page got focus. Which side
+    // it is on is unknown then; report the left one, so that bindings on the
+    // side-independent modifier still match.
+    for (const fallback of unsidedModifierFallbacks) {
+      if (
+        e.getModifierState(fallback.state) &&
+        (modifiers & fallback.eitherSide) === 0
+      ) {
+        modifiers |= fallback.assumedSide;
+      }
     }
 
     if (e.getModifierState("AltGraph")) {
@@ -929,10 +928,12 @@ const KeyboardKeyModifier = {
   numlock: 1 << 9,
   capslock: 1 << 10,
   mode: 1 << 11,
-  ctrl: 1 << 12,
-  shift: 1 << 13,
-  alt: 1 << 14,
-  gui: 1 << 15,
+  // The side-independent modifiers are masks over both of their sides rather
+  // than flags of their own, so only the sided flags are ever reported.
+  shift: (1 << 1) | (1 << 2),
+  ctrl: (1 << 3) | (1 << 4),
+  alt: (1 << 5) | (1 << 6),
+  gui: (1 << 7) | (1 << 8),
 };
 
 /**
@@ -957,6 +958,37 @@ const modifierKeyCodes = {
   MetaLeft: { flag: KeyboardKeyModifier.leftGui, states: ["Meta"] },
   MetaRight: { flag: KeyboardKeyModifier.rightGui, states: ["Meta"] },
 };
+
+/**
+ * The side to assume for a modifier that KeyboardEvent.getModifierState
+ * reports as active while neither of its keys is known to be held.
+ *
+ * That happens when the key went down before the page started receiving
+ * events, leaving nothing to tell the sides apart. The left side is the guess,
+ * as it is the one keyboards with only a single such key carry.
+ */
+const unsidedModifierFallbacks = [
+  {
+    state: "Shift",
+    eitherSide: KeyboardKeyModifier.shift,
+    assumedSide: KeyboardKeyModifier.leftShift,
+  },
+  {
+    state: "Control",
+    eitherSide: KeyboardKeyModifier.ctrl,
+    assumedSide: KeyboardKeyModifier.leftCtrl,
+  },
+  {
+    state: "Alt",
+    eitherSide: KeyboardKeyModifier.alt,
+    assumedSide: KeyboardKeyModifier.leftAlt,
+  },
+  {
+    state: "Meta",
+    eitherSide: KeyboardKeyModifier.gui,
+    assumedSide: KeyboardKeyModifier.leftGui,
+  },
+];
 
 /**
  * Maps KeyboardEvent.code values to KeyboardScanCode values.
