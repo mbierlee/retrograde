@@ -26,6 +26,7 @@ version (Native) {
 }
 
 Queue!KeyboardKeyEvent keyEvents;
+Queue!MouseButtonEvent mouseButtonEvents;
 
 /**
  * The events a key binding emits when its key is pressed, held or released.
@@ -36,6 +37,17 @@ Queue!KeyboardKeyEvent keyEvents;
  * this map directly.
  */
 HashMap!(KeyBinding, Array!StringId) keyMapping;
+
+/**
+ * The events a mouse button binding emits when its button is pressed or
+ * released.
+ *
+ * Works the same way as $(D keyMapping): a binding can drive more than one
+ * event, and every event mapped to it is emitted. Prefer
+ * $(D addMouseButtonMapping) and $(D removeMouseButtonMapping) over
+ * manipulating this map directly.
+ */
+HashMap!(MouseButtonBinding, Array!StringId) mouseButtonMapping;
 
 /**
  * Make the given key binding emit the given event, on top of any events it
@@ -49,19 +61,7 @@ HashMap!(KeyBinding, Array!StringId) keyMapping;
  *  eventName = Name of the event the binding should emit.
  */
 void addKeyMapping(KeyBinding binding, StringId eventName) {
-    auto eventNames = keyMapping.getRef(binding);
-    if (eventNames.isDefined) {
-        auto mappedEvents = eventNames.value;
-        if (!mappedEvents.exists(eventName)) {
-            mappedEvents.add(eventName);
-        }
-
-        return;
-    }
-
-    Array!StringId newEvents;
-    newEvents.add(eventName);
-    keyMapping.put(binding, newEvents);
+    addMapping(keyMapping, binding, eventName);
 }
 
 /**
@@ -95,23 +95,7 @@ void addKeyMapping(KeyboardScanCode scanCode, StringId eventName,
  * Returns: Whether the binding was mapped to the event.
  */
 bool removeKeyMapping(KeyBinding binding, StringId eventName) {
-    auto eventNames = keyMapping.getRef(binding);
-    if (!eventNames.isDefined) {
-        return false;
-    }
-
-    auto mappedEvents = eventNames.value;
-    auto index = mappedEvents.find(eventName);
-    if (index == -1) {
-        return false;
-    }
-
-    mappedEvents.remove(index);
-    if (mappedEvents.length == 0) {
-        keyMapping.remove(binding);
-    }
-
-    return true;
+    return removeMapping(keyMapping, binding, eventName);
 }
 
 /// ditto
@@ -152,26 +136,14 @@ bool removeKeyMappings(KeyboardScanCode scanCode,
  * Returns: Whether the key was bound at all.
  */
 bool removeAllKeyMappings(KeyboardScanCode scanCode) {
-    Array!KeyBinding boundKeys;
-    foreach (binding, eventNames; keyMapping) {
-        if (binding.scanCode == scanCode) {
-            boundKeys.add(binding);
-        }
-    }
-
-    foreach (binding; boundKeys) {
-        keyMapping.remove(binding);
-    }
-
-    return boundKeys.length > 0;
+    return removeAllMappings(keyMapping, scanCode);
 }
 
 /**
  * Returns: Whether the given key binding emits the given event.
  */
 bool hasKeyMapping(KeyBinding binding, StringId eventName) {
-    auto eventNames = keyMapping.getRef(binding);
-    return eventNames.isDefined && eventNames.value.exists(eventName);
+    return hasMapping(keyMapping, binding, eventName);
 }
 
 /// ditto
@@ -188,15 +160,232 @@ void clearKeyMappings() {
     keyMapping.clear();
 }
 
+/**
+ * Make the given mouse button binding emit the given event, on top of any
+ * events it already emits.
+ *
+ * Mapping the same event to the same binding again does nothing; a binding
+ * never emits the same event twice.
+ *
+ * Params:
+ *  binding = The mouse button and modifiers to map.
+ *  eventName = Name of the event the binding should emit.
+ */
+void addMouseButtonMapping(MouseButtonBinding binding, StringId eventName) {
+    addMapping(mouseButtonMapping, binding, eventName);
+}
+
+/**
+ * Make the given mouse button emit the given event, on top of any events it
+ * already emits.
+ *
+ * Params:
+ *  button = The mouse button to map.
+ *  eventName = Name of the event the button should emit.
+ *  modifiers = The keyboard modifiers that have to be held along with the
+ *              button. Defaults to none, letting the button emit on its own.
+ *  ignoredModifiers = The modifiers that have no say in whether the button
+ *              emits, on top of the required ones. Defaults to
+ *              $(D anyModifiers), so that only the required modifiers are taken
+ *              into account at all. Pass $(D KeyboardKeyModifier.none) to have
+ *              the button emit on exactly the modifiers it requires and nothing
+ *              else.
+ */
+void addMouseButtonMapping(MouseButton button, StringId eventName,
+    KeyboardKeyModifier modifiers = KeyboardKeyModifier.none,
+    KeyboardKeyModifier ignoredModifiers = anyModifiers) {
+    addMouseButtonMapping(MouseButtonBinding(button, modifiers, ignoredModifiers), eventName);
+}
+
+/**
+ * Stop the given mouse button binding from emitting the given event, leaving
+ * the other events mapped to it in place.
+ *
+ * Params:
+ *  binding = The mouse button and modifiers to unmap the event from.
+ *  eventName = Name of the event the binding should no longer emit.
+ * Returns: Whether the binding was mapped to the event.
+ */
+bool removeMouseButtonMapping(MouseButtonBinding binding, StringId eventName) {
+    return removeMapping(mouseButtonMapping, binding, eventName);
+}
+
+/// ditto
+bool removeMouseButtonMapping(MouseButton button, StringId eventName,
+    KeyboardKeyModifier modifiers = KeyboardKeyModifier.none,
+    KeyboardKeyModifier ignoredModifiers = anyModifiers) {
+    return removeMouseButtonMapping(MouseButtonBinding(button, modifiers, ignoredModifiers),
+        eventName);
+}
+
+/**
+ * Stop the given mouse button binding from emitting any event at all.
+ *
+ * Only the binding with exactly these modifiers is unmapped; other bindings on
+ * the same button are left alone. Use $(D removeAllMouseButtonMappings) to
+ * unmap a button regardless of the modifiers it is bound with.
+ *
+ * Params:
+ *  binding = The mouse button and modifiers to unmap.
+ * Returns: Whether the binding was mapped to any event.
+ */
+bool removeMouseButtonMappings(MouseButtonBinding binding) {
+    return mouseButtonMapping.remove(binding);
+}
+
+/// ditto
+bool removeMouseButtonMappings(MouseButton button,
+    KeyboardKeyModifier modifiers = KeyboardKeyModifier.none,
+    KeyboardKeyModifier ignoredModifiers = anyModifiers) {
+    return removeMouseButtonMappings(MouseButtonBinding(button, modifiers, ignoredModifiers));
+}
+
+/**
+ * Stop the given mouse button from emitting any event at all, with whichever
+ * modifiers it is bound with.
+ *
+ * Params:
+ *  button = The mouse button to unmap.
+ * Returns: Whether the button was bound at all.
+ */
+bool removeAllMouseButtonMappings(MouseButton button) {
+    return removeAllMappings(mouseButtonMapping, button);
+}
+
+/**
+ * Returns: Whether the given mouse button binding emits the given event.
+ */
+bool hasMouseButtonMapping(MouseButtonBinding binding, StringId eventName) {
+    return hasMapping(mouseButtonMapping, binding, eventName);
+}
+
+/// ditto
+bool hasMouseButtonMapping(MouseButton button, StringId eventName,
+    KeyboardKeyModifier modifiers = KeyboardKeyModifier.none,
+    KeyboardKeyModifier ignoredModifiers = anyModifiers) {
+    return hasMouseButtonMapping(MouseButtonBinding(button, modifiers, ignoredModifiers),
+        eventName);
+}
+
+/**
+ * Unmap every mouse button, leaving no button emitting any event.
+ */
+void clearMouseButtonMappings() {
+    mouseButtonMapping.clear();
+}
+
 void processInput() {
     KeyboardKeyEvent keyEvent;
     while (keyEvents.tryDequeue(keyEvent)) {
         if (keyEvent.action == InputEventAction.release) {
-            emitReleaseEvents(keyEvent.scanCode);
+            emitReleaseEvents(keyMapping, keyEvent.scanCode);
         } else {
-            emitPressEvents(keyEvent.scanCode, keyEvent.modifiers);
+            emitKeyPressEvents(keyEvent.scanCode, keyEvent.modifiers);
         }
     }
+
+    MouseButtonEvent mouseButtonEvent;
+    while (mouseButtonEvents.tryDequeue(mouseButtonEvent)) {
+        if (mouseButtonEvent.action == InputEventAction.release) {
+            emitReleaseEvents(mouseButtonMapping, mouseButtonEvent.button);
+        } else {
+            emitPressEvents(mouseButtonMapping, mouseButtonEvent.button,
+                mouseButtonEvent.modifiers);
+        }
+    }
+}
+
+/**
+ * Adds the given event to the events the binding emits, on top of the ones it
+ * already emits. Shared by the keyboard and the mouse button mapping API.
+ */
+private void addMapping(BindingT)(ref HashMap!(BindingT, Array!StringId) mapping,
+    BindingT binding, StringId eventName) {
+    auto eventNames = mapping.getRef(binding);
+    if (eventNames.isDefined) {
+        auto mappedEvents = eventNames.value;
+        if (!mappedEvents.exists(eventName)) {
+            mappedEvents.add(eventName);
+        }
+
+        return;
+    }
+
+    Array!StringId newEvents;
+    newEvents.add(eventName);
+    mapping.put(binding, newEvents);
+}
+
+/**
+ * Takes the given event away from the binding, unmapping the binding entirely
+ * once it is left with no events at all.
+ *
+ * Returns: Whether the binding was mapped to the event.
+ */
+private bool removeMapping(BindingT)(ref HashMap!(BindingT, Array!StringId) mapping,
+    BindingT binding, StringId eventName) {
+    auto eventNames = mapping.getRef(binding);
+    if (!eventNames.isDefined) {
+        return false;
+    }
+
+    auto mappedEvents = eventNames.value;
+    auto index = mappedEvents.find(eventName);
+    if (index == -1) {
+        return false;
+    }
+
+    mappedEvents.remove(index);
+    if (mappedEvents.length == 0) {
+        mapping.remove(binding);
+    }
+
+    return true;
+}
+
+/**
+ * Unmaps every binding on the given key or button, whichever modifiers those
+ * bindings name.
+ *
+ * Returns: Whether the key or button was bound at all.
+ */
+private bool removeAllMappings(BindingT, InputT)(ref HashMap!(BindingT, Array!StringId) mapping,
+    InputT input) {
+    Array!BindingT boundInputs;
+    foreach (binding, eventNames; mapping) {
+        if (bindsTo(binding, input)) {
+            boundInputs.add(binding);
+        }
+    }
+
+    foreach (binding; boundInputs) {
+        mapping.remove(binding);
+    }
+
+    return boundInputs.length > 0;
+}
+
+/**
+ * Returns: Whether the binding emits the given event.
+ */
+private bool hasMapping(BindingT)(ref HashMap!(BindingT, Array!StringId) mapping,
+    BindingT binding, StringId eventName) {
+    auto eventNames = mapping.getRef(binding);
+    return eventNames.isDefined && eventNames.value.exists(eventName);
+}
+
+/**
+ * Returns: Whether the binding is on the given physical key.
+ */
+private bool bindsTo(KeyBinding binding, KeyboardScanCode scanCode) {
+    return binding.scanCode == scanCode;
+}
+
+/**
+ * Returns: Whether the binding is on the given mouse button.
+ */
+private bool bindsTo(MouseButtonBinding binding, MouseButton button) {
+    return binding.button == button;
 }
 
 /**
@@ -214,7 +403,7 @@ private immutable KeyboardKeyModifier[5] modifierGroups = [
 /**
  * Returns: Whether the binding emits with the given modifiers held.
  */
-private bool bindingMatches(KeyBinding binding, KeyboardKeyModifier heldModifiers) {
+private bool bindingMatches(BindingT)(BindingT binding, KeyboardKeyModifier heldModifiers) {
     uint required = binding.modifiers & bindableModifiers;
 
     // A required modifier is never ignored, however wide the ignore mask is.
@@ -271,17 +460,27 @@ private KeyboardKeyModifier modifierFlagOf(KeyboardScanCode scanCode) {
 }
 
 /**
- * Emits the events of every binding on the given key that the held modifiers
- * satisfy, at full magnitude.
+ * Emits the events of every keyboard binding on the given key that the held
+ * modifiers satisfy, at full magnitude.
  *
  * A modifier key reports itself among the modifiers of its own event, which is
  * left out here so that a binding on a modifier key does not need to require
- * itself.
+ * itself. Mouse buttons have no such thing to account for and go straight to
+ * $(D emitPressEvents).
  */
-private void emitPressEvents(KeyboardScanCode scanCode, KeyboardKeyModifier modifiers) {
+private void emitKeyPressEvents(KeyboardScanCode scanCode, KeyboardKeyModifier modifiers) {
     auto heldModifiers = cast(KeyboardKeyModifier)(modifiers & ~modifierFlagOf(scanCode));
-    foreach (binding, eventNames; keyMapping) {
-        if (binding.scanCode != scanCode || !bindingMatches(binding, heldModifiers)) {
+    emitPressEvents(keyMapping, scanCode, heldModifiers);
+}
+
+/**
+ * Emits the events of every binding on the given key or mouse button that the
+ * held modifiers satisfy, at full magnitude.
+ */
+private void emitPressEvents(BindingT, InputT)(ref HashMap!(BindingT, Array!StringId) mapping,
+    InputT input, KeyboardKeyModifier heldModifiers) {
+    foreach (binding, eventNames; mapping) {
+        if (!bindsTo(binding, input) || !bindingMatches(binding, heldModifiers)) {
             continue;
         }
 
@@ -292,17 +491,18 @@ private void emitPressEvents(KeyboardScanCode scanCode, KeyboardKeyModifier modi
 }
 
 /**
- * Emits the events of every binding on the given key at zero magnitude,
- * whatever modifiers those bindings name.
+ * Emits the events of every binding on the given key or mouse button at zero
+ * magnitude, whatever modifiers those bindings name.
  *
  * Modifiers are deliberately not taken into account here: letting go of shift
  * before letting go of the key it modified would otherwise leave the events
  * of a shift binding stuck at full magnitude. Releasing an event that was
  * never pressed only sets it to the zero it already was.
  */
-private void emitReleaseEvents(KeyboardScanCode scanCode) {
-    foreach (binding, eventNames; keyMapping) {
-        if (binding.scanCode != scanCode) {
+private void emitReleaseEvents(BindingT, InputT)(ref HashMap!(BindingT, Array!StringId) mapping,
+    InputT input) {
+    foreach (binding, eventNames; mapping) {
+        if (!bindsTo(binding, input)) {
             continue;
         }
 
@@ -861,8 +1061,8 @@ enum KeyboardKeyModifier : uint {
  */
 enum KeyboardKeyModifier bindableModifiers = cast(KeyboardKeyModifier)(
         KeyboardKeyModifier.shift | KeyboardKeyModifier.ctrl |
-        KeyboardKeyModifier.alt | KeyboardKeyModifier.gui |
-        KeyboardKeyModifier.mode);
+            KeyboardKeyModifier.alt | KeyboardKeyModifier.gui |
+            KeyboardKeyModifier.mode);
 
 /**
  * The ignore mask a binding carries by default: every modifier has its say
@@ -985,6 +1185,93 @@ struct KeyboardKeyEvent {
     KeyboardKeyModifier modifiers;
 }
 
+/**
+ * Available mouse buttons.
+ *
+ * These weird-ass gamer mice with a million buttons are not fully supported.
+ */
+enum MouseButton : uint {
+    unknown,
+    one,
+    two,
+    three,
+    four,
+    five,
+    six,
+    seven,
+    eight,
+    left = MouseButton.one,
+    right = MouseButton.two,
+    middle = MouseButton.three,
+}
+
+/**
+ * A mouse button together with the keyboard modifiers that have to be held for
+ * it to emit its events.
+ *
+ * Works exactly like $(D KeyBinding), only on a mouse button instead of a
+ * physical key: a binding ignores every modifier by default, $(D modifiers)
+ * names the ones that do have to be held, and $(D ignoredModifiers) hands the
+ * say back to the ones it names:
+ *
+ * ---
+ * // The left button fires whatever is held, and ctrl+left aims down the sight
+ * // without also firing.
+ * addMouseButtonMapping(MouseButton.left, sid("ev_fire"),
+ *     KeyboardKeyModifier.none, KeyboardKeyModifier.ctrl);
+ * addMouseButtonMapping(MouseButton.left, sid("ev_aim"),
+ *     KeyboardKeyModifier.ctrl, KeyboardKeyModifier.none);
+ * ---
+ */
+struct MouseButtonBinding {
+    /// The mouse button to bind to.
+    MouseButton button;
+
+    /// The keyboard modifiers that have to be held along with it, if any.
+    KeyboardKeyModifier modifiers = KeyboardKeyModifier.none;
+
+    /**
+     * The modifiers that have no say in whether the binding emits, on top of
+     * the ones it requires. Defaults to all of them, so that only the required
+     * modifiers are taken into account at all.
+     */
+    KeyboardKeyModifier ignoredModifiers = anyModifiers;
+
+    bool opEquals(ref const typeof(this) other) const {
+        return button == other.button && modifiers == other.modifiers &&
+            ignoredModifiers == other.ignoredModifiers;
+    }
+
+    bool opEquals(const typeof(this) other) const {
+        return opEquals(other);
+    }
+
+    ulong toHash() nothrow @trusted const {
+        ulong packed = (cast(ulong) modifiers << 32) | button;
+        ulong ignored = ignoredModifiers;
+        return hashOf(packed) * 33 + hashOf(ignored);
+    }
+}
+
+/**
+ * An event emitted when a mouse button is pressed or released.
+ */
+struct MouseButtonEvent {
+    /// The button the event happened to.
+    MouseButton button;
+
+    /**
+     * Whether the button was pressed or released. Mouse buttons do not repeat
+     * while they are held, so $(D InputEventAction.repeat) is never reported.
+     */
+    InputEventAction action;
+
+    /**
+     * Bit mask of the keyboard modifiers that were active during the event.
+     */
+    KeyboardKeyModifier modifiers;
+}
+
 version (UnitTesting)  :  ///
 
 import retrograde.std.test : test, writeSection;
@@ -998,12 +1285,16 @@ void resetInput() {
         import retrograde.std.memory : memset;
 
         memset(&keyEvents, 0, keyEvents.sizeof);
+        memset(&mouseButtonEvents, 0, mouseButtonEvents.sizeof);
         memset(&eventQueue, 0, eventQueue.sizeof);
         memset(&keyMapping, 0, keyMapping.sizeof);
+        memset(&mouseButtonMapping, 0, mouseButtonMapping.sizeof);
     } else {
         keyEvents.clear();
+        mouseButtonEvents.clear();
         eventQueue.clear();
         clearKeyMappings();
+        clearMouseButtonMappings();
     }
 }
 
@@ -1014,6 +1305,15 @@ private void pressKey(KeyboardScanCode scanCode, InputEventAction action = Input
     keyEvent.action = action;
     keyEvent.modifiers = modifiers;
     keyEvents.enqueue(keyEvent);
+}
+
+private void pressMouseButton(MouseButton button, InputEventAction action = InputEventAction.press,
+    KeyboardKeyModifier modifiers = KeyboardKeyModifier.none) {
+    MouseButtonEvent buttonEvent;
+    buttonEvent.button = button;
+    buttonEvent.action = action;
+    buttonEvent.modifiers = modifiers;
+    mouseButtonEvents.enqueue(buttonEvent);
 }
 
 private size_t emittedEventCount(StringId eventName, Magnitude magnitude) {
@@ -1181,13 +1481,17 @@ void runInputTests() {
 
     test("side-independent modifiers cover both of their sides", () {
         assert(KeyboardKeyModifier.shift ==
-                (KeyboardKeyModifier.leftShift | KeyboardKeyModifier.rightShift));
+            (
+            KeyboardKeyModifier.leftShift | KeyboardKeyModifier.rightShift));
         assert(KeyboardKeyModifier.ctrl ==
-                (KeyboardKeyModifier.leftCtrl | KeyboardKeyModifier.rightCtrl));
+            (
+            KeyboardKeyModifier.leftCtrl | KeyboardKeyModifier.rightCtrl));
         assert(KeyboardKeyModifier.alt ==
-                (KeyboardKeyModifier.leftAlt | KeyboardKeyModifier.rightAlt));
+            (
+            KeyboardKeyModifier.leftAlt | KeyboardKeyModifier.rightAlt));
         assert(KeyboardKeyModifier.gui ==
-                (KeyboardKeyModifier.leftGui | KeyboardKeyModifier.rightGui));
+            (
+            KeyboardKeyModifier.leftGui | KeyboardKeyModifier.rightGui));
     });
 
     test("bindings do not require the lock modifiers", () {
@@ -1203,7 +1507,7 @@ void runInputTests() {
         assert(KeyBinding(KeyboardScanCode.w).ignoredModifiers == anyModifiers);
         assert(hasKeyMapping(KeyBinding(KeyboardScanCode.w), sid("ev_moveForward")));
         assert(hasKeyMapping(KeyBinding(KeyboardScanCode.w, KeyboardKeyModifier.none),
-                sid("ev_moveForward")));
+            sid("ev_moveForward")));
     });
 
     test("a modifier binding only emits while its modifier is held", () {
@@ -1366,7 +1670,7 @@ void runInputTests() {
         assert(removeKeyMappings(KeyboardScanCode.w));
         assert(!hasKeyMapping(KeyboardScanCode.w, sid("ev_moveForward")));
         assert(hasKeyMapping(KeyboardScanCode.w, sid("ev_sprintForward"),
-                KeyboardKeyModifier.shift));
+            KeyboardKeyModifier.shift));
     });
 
     test("removing all mappings of a key removes every modifier of it", () {
@@ -1511,9 +1815,9 @@ void runInputTests() {
         assert(keyMapping.length == 2);
         assert(hasKeyMapping(KeyboardScanCode.w, sid("ev_walkForward")));
         assert(!hasKeyMapping(KeyboardScanCode.w, sid("ev_walkForward"),
-                KeyboardKeyModifier.none, KeyboardKeyModifier.none));
+            KeyboardKeyModifier.none, KeyboardKeyModifier.none));
         assert(hasKeyMapping(KeyboardScanCode.w, sid("ev_menuUp"),
-                KeyboardKeyModifier.none, KeyboardKeyModifier.none));
+            KeyboardKeyModifier.none, KeyboardKeyModifier.none));
     });
 
     test("releasing a key releases its narrowed bindings too", () {
@@ -1552,8 +1856,203 @@ void runInputTests() {
         static foreach (name; __traits(allMembers, KeyboardKeyCode)) {
             static if (name != "unknown") {
                 assert(__traits(getMember, KeyboardKeyCode, name) ==
-                        toKeyCode(__traits(getMember, KeyboardScanCode, name)));
+                    toKeyCode(__traits(getMember, KeyboardScanCode, name)));
             }
         }
+    });
+
+    writeSection("-- Mouse button input tests --");
+
+    test("the named mouse buttons are the numbered ones", () {
+        assert(MouseButton.left == MouseButton.one);
+        assert(MouseButton.right == MouseButton.two);
+        assert(MouseButton.middle == MouseButton.three);
+    });
+
+    test("a mapped mouse button emits its event", () {
+        resetInput();
+        addMouseButtonMapping(MouseButton.left, sid("ev_fire"));
+        pressMouseButton(MouseButton.left);
+        processInput();
+
+        Event event;
+        assert(eventQueue.tryDequeue(event));
+        assert(event.name == sid("ev_fire"));
+        assert(event.magnitude == 1);
+        assert(eventQueue.length == 0);
+    });
+
+    test("an unmapped mouse button emits nothing", () {
+        resetInput();
+        pressMouseButton(MouseButton.left);
+        processInput();
+        assert(eventQueue.length == 0);
+    });
+
+    test("a mouse button mapped to multiple events emits all of them", () {
+        resetInput();
+        addMouseButtonMapping(MouseButton.left, sid("ev_fire"));
+        addMouseButtonMapping(MouseButton.left, sid("ev_menuSelect"));
+        pressMouseButton(MouseButton.left);
+        processInput();
+
+        assert(eventQueue.length == 2);
+        assert(emittedEventCount(sid("ev_fire"), 1) == 1);
+    });
+
+    test("mapping the same event to a mouse button twice emits it once", () {
+        resetInput();
+        addMouseButtonMapping(MouseButton.left, sid("ev_fire"));
+        addMouseButtonMapping(MouseButton.left, sid("ev_fire"));
+        pressMouseButton(MouseButton.left);
+        processInput();
+
+        assert(eventQueue.length == 1);
+    });
+
+    test("different mouse buttons keep their own events", () {
+        resetInput();
+        addMouseButtonMapping(MouseButton.left, sid("ev_fire"));
+        addMouseButtonMapping(MouseButton.right, sid("ev_aim"));
+
+        pressMouseButton(MouseButton.right);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_aim"), 1) == 1);
+        assert(!hasMouseButtonMapping(MouseButton.left, sid("ev_aim")));
+    });
+
+    test("releasing a mouse button emits its events with zero magnitude", () {
+        resetInput();
+        addMouseButtonMapping(MouseButton.left, sid("ev_fire"));
+        addMouseButtonMapping(MouseButton.left, sid("ev_menuSelect"));
+        pressMouseButton(MouseButton.left, InputEventAction.release);
+        processInput();
+
+        assert(eventQueue.length == 2);
+
+        Event event;
+        while (eventQueue.tryDequeue(event)) {
+            assert(event.magnitude == 0);
+        }
+    });
+
+    test("removing one event from a mouse button keeps the others", () {
+        resetInput();
+        addMouseButtonMapping(MouseButton.left, sid("ev_fire"));
+        addMouseButtonMapping(MouseButton.left, sid("ev_menuSelect"));
+
+        assert(removeMouseButtonMapping(MouseButton.left, sid("ev_fire")));
+        assert(!removeMouseButtonMapping(MouseButton.left, sid("ev_fire")));
+        assert(!hasMouseButtonMapping(MouseButton.left, sid("ev_fire")));
+        assert(hasMouseButtonMapping(MouseButton.left, sid("ev_menuSelect")));
+    });
+
+    test("removing the last event of a mouse button unmaps the button", () {
+        resetInput();
+        addMouseButtonMapping(MouseButton.left, sid("ev_fire"));
+
+        assert(removeMouseButtonMapping(MouseButton.left, sid("ev_fire")));
+        assert(mouseButtonMapping.length == 0);
+    });
+
+    test("removing all events of a mouse button unmaps the button", () {
+        resetInput();
+        addMouseButtonMapping(MouseButton.left, sid("ev_fire"));
+        addMouseButtonMapping(MouseButton.left, sid("ev_menuSelect"));
+
+        assert(removeMouseButtonMappings(MouseButton.left));
+        assert(!removeMouseButtonMappings(MouseButton.left));
+        assert(mouseButtonMapping.length == 0);
+    });
+
+    test("removing all mappings of a mouse button removes every modifier of it", () {
+        resetInput();
+        addMouseButtonMapping(MouseButton.left, sid("ev_fire"));
+        addMouseButtonMapping(MouseButton.left, sid("ev_aim"), KeyboardKeyModifier.ctrl);
+        addMouseButtonMapping(MouseButton.right, sid("ev_menuBack"));
+
+        assert(removeAllMouseButtonMappings(MouseButton.left));
+        assert(!removeAllMouseButtonMappings(MouseButton.left));
+        assert(mouseButtonMapping.length == 1);
+        assert(hasMouseButtonMapping(MouseButton.right, sid("ev_menuBack")));
+    });
+
+    test("clearing the mouse button mappings leaves no button bound", () {
+        resetInput();
+        addMouseButtonMapping(MouseButton.left, sid("ev_fire"));
+        clearMouseButtonMappings();
+
+        assert(mouseButtonMapping.length == 0);
+        assert(!hasMouseButtonMapping(MouseButton.left, sid("ev_fire")));
+    });
+
+    test("a modifier binding on a mouse button only emits while its modifier is held", () {
+        resetInput();
+        addMouseButtonMapping(MouseButton.left, sid("ev_aim"), KeyboardKeyModifier.ctrl);
+
+        pressMouseButton(MouseButton.left);
+        processInput();
+        assert(eventQueue.length == 0);
+
+        pressMouseButton(MouseButton.left, InputEventAction.press, KeyboardKeyModifier.leftCtrl);
+        processInput();
+        assert(emittedEventCount(sid("ev_aim"), 1) == 1);
+    });
+
+    test("a mouse button binding narrowed to its modifiers takes no others", () {
+        resetInput();
+        addMouseButtonMapping(MouseButton.left, sid("ev_fire"), KeyboardKeyModifier.none,
+            KeyboardKeyModifier.ctrl);
+        addMouseButtonMapping(MouseButton.left, sid("ev_aim"), KeyboardKeyModifier.ctrl,
+            KeyboardKeyModifier.none);
+
+        assert(mouseButtonMapping.length == 2);
+
+        pressMouseButton(MouseButton.left, InputEventAction.press, KeyboardKeyModifier.leftCtrl);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_fire"), 1) == 1);
+        assert(emittedEventCount(sid("ev_aim"), 1) == 0);
+    });
+
+    test("releasing a mouse button releases its bindings whatever modifiers are left", () {
+        resetInput();
+        addMouseButtonMapping(MouseButton.left, sid("ev_aim"), KeyboardKeyModifier.ctrl);
+
+        pressMouseButton(MouseButton.left, InputEventAction.press, KeyboardKeyModifier.leftCtrl);
+        processInput();
+        assert(emittedEventCount(sid("ev_aim"), 1) == 1);
+
+        pressMouseButton(MouseButton.left, InputEventAction.release);
+        processInput();
+        assert(emittedEventCount(sid("ev_aim"), 0) == 1);
+    });
+
+    test("keys and mouse buttons keep their own bindings", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"));
+        addMouseButtonMapping(MouseButton.left, sid("ev_fire"));
+
+        pressKey(KeyboardScanCode.w);
+        pressMouseButton(MouseButton.left);
+        processInput();
+
+        assert(eventQueue.length == 2);
+        assert(emittedEventCount(sid("ev_moveForward"), 1) == 1);
+        assert(!hasKeyMapping(KeyboardScanCode.w, sid("ev_fire")));
+        assert(!hasMouseButtonMapping(MouseButton.left, sid("ev_moveForward")));
+    });
+
+    test("a mouse button mapped to the event of a key emits it too", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.space, sid("ev_jump"));
+        addMouseButtonMapping(MouseButton.middle, sid("ev_jump"));
+
+        pressKey(KeyboardScanCode.space);
+        pressMouseButton(MouseButton.middle);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_jump"), 1) == 2);
     });
 }

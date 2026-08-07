@@ -14,9 +14,10 @@ module retrograde.wasm.input;
 version (WebAssembly)  :  //
 
 import retrograde.engine.input : InputEventAction, InputMethod, KeyboardKeyCode,
-    KeyboardKeyModifier, KeyboardKeyEvent, KeyboardScanCode, keyEvents;
+    KeyboardKeyModifier, KeyboardKeyEvent, KeyboardScanCode, keyEvents,
+    MouseButton, MouseButtonEvent, mouseButtonEvents;
 
-/** 
+/**
  * Init the input system.
  *
  * Without calling this function, input events will never be polled and queued.
@@ -25,9 +26,14 @@ void initInput(InputMethod inputMethods) {
     if (inputMethods & InputMethod.keyboard) {
         setupKeyboardCallback();
     }
+
+    if (inputMethods & InputMethod.mouse) {
+        setupMouseCallback();
+    }
 }
 
 private extern (C) void setupKeyboardCallback();
+private extern (C) void setupMouseCallback();
 
 /**
  * Called by the web runtime when a key is pressed, held or released.
@@ -37,4 +43,14 @@ private extern (C) void setupKeyboardCallback();
 export extern (C) void onKey(KeyboardScanCode scanCode, KeyboardKeyCode keyCode,
     InputEventAction action, KeyboardKeyModifier modifiers) {
     keyEvents.enqueue(KeyboardKeyEvent(scanCode, keyCode, action, modifiers));
+}
+
+/**
+ * Called by the web runtime when a mouse button is pressed or released.
+ *
+ * See $(D MouseButtonEvent) for a description of the parameters.
+ */
+export extern (C) void onMouseButton(MouseButton button, InputEventAction action,
+    KeyboardKeyModifier modifiers) {
+    mouseButtonEvents.enqueue(MouseButtonEvent(button, action, modifiers));
 }
