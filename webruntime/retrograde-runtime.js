@@ -177,6 +177,32 @@ export default class RetrogradeRuntime {
         });
       },
 
+      setupMouseCallback: () => {
+        const dispatchMouseButtonEvent = (e, action) => {
+          this.instance.exports.onMouseButton(
+            this.mapMouseButton(e.button),
+            action,
+            this.mapKeyModifiers(e),
+          );
+          e.preventDefault();
+        };
+
+        this.eventCapturer.addEventListener("mousedown", (e) => {
+          dispatchMouseButtonEvent(e, InputEventAction.press);
+        });
+
+        this.eventCapturer.addEventListener("mouseup", (e) => {
+          dispatchMouseButtonEvent(e, InputEventAction.release);
+        });
+
+        // The right button is a game button here rather than the way to open
+        // the context menu, which would otherwise take over the page as soon
+        // as it is pressed.
+        this.eventCapturer.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+        });
+      },
+
       // GL API
 
       compileShaderProgram: (
@@ -724,6 +750,15 @@ export default class RetrogradeRuntime {
   }
 
   /**
+   * Maps a MouseEvent.button value to its MouseButton value.
+   * Unmapped buttons become MouseButton.unknown.
+   */
+  mapMouseButton(jsButton) {
+    const button = mouseButtonMap[jsButton];
+    return button === undefined ? MouseButton.unknown : button;
+  }
+
+  /**
    * Maps a keyboard event to its KeyboardKeyCode value: the Unicode code point
    * of the character the key produced, or the scan code of the key marked with
    * scanCodeMask when it produced no character.
@@ -781,12 +816,12 @@ export default class RetrogradeRuntime {
   }
 
   /**
-   * Collects the modifiers active during a keyboard event into a
+   * Collects the modifiers active during a keyboard or mouse event into a
    * KeyboardKeyModifier bit mask.
    *
-   * Keyboard events only report that a modifier is active, not which side of
-   * the keyboard it is held on, so the left and right specific flags come from
-   * the modifier keys tracked by trackModifierKey instead. Only sided flags are
+   * Events only report that a modifier is active, not which side of the
+   * keyboard it is held on, so the left and right specific flags come from the
+   * modifier keys tracked by trackModifierKey instead. Only sided flags are
    * set: the side-independent ones are masks over both sides, so setting one
    * would claim that both keys are held.
    */
@@ -934,6 +969,42 @@ const KeyboardKeyModifier = {
   ctrl: (1 << 3) | (1 << 4),
   alt: (1 << 5) | (1 << 6),
   gui: (1 << 7) | (1 << 8),
+};
+
+/**
+ * Mirror of MouseButton in source/retrograde/engine/input.d. The buttons are
+ * numbered from one there, leaving zero for the unknown button, so their values
+ * are copied rather than derived from their position.
+ */
+const MouseButton = {
+  unknown: 0,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  left: 1,
+  right: 2,
+  middle: 3,
+};
+
+/**
+ * Maps MouseEvent.button values to MouseButton values.
+ *
+ * Mouse events number the buttons left, middle, right, whereas MouseButton
+ * numbers them left, right, middle the way SDL2 does. The two buttons past
+ * those are the side buttons a browser navigates back and forward with; the
+ * buttons past those are not reported at all.
+ */
+const mouseButtonMap = {
+  0: MouseButton.left,
+  1: MouseButton.middle,
+  2: MouseButton.right,
+  3: MouseButton.four,
+  4: MouseButton.five,
 };
 
 /**
