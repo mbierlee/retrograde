@@ -186,6 +186,21 @@ export default class RetrogradeRuntime {
         });
       },
 
+      setupTextInputCallback: () => {
+        this.eventCapturer.addEventListener("keydown", (e) => {
+          const codePoint = this.textInputCodePointOf(e);
+          if (codePoint === undefined) {
+            return;
+          }
+
+          this.instance.exports.onTextInput(codePoint);
+
+          // Typing is what the key is doing here rather than whatever the
+          // browser has it do, such as scrolling the page on a space.
+          e.preventDefault();
+        });
+      },
+
       setupMouseCallback: () => {
         const dispatchMouseButtonEvent = (e, action) => {
           this.instance.exports.onMouseButton(
@@ -948,6 +963,45 @@ export default class RetrogradeRuntime {
   }
 
   /**
+   * Returns the code point of the character a key event typed, or undefined
+   * when it typed no text at all.
+   *
+   * The browser has already worked the character out of the layout, the
+   * modifiers and any dead key that came before it, so the key value is taken
+   * as it comes. What is left to do here is to tell the keys that produce text
+   * apart from the ones that do something else:
+   *
+   * - Keys that produce no character have a key value that is a name, such as
+   *   "Enter" or "ArrowLeft", which is not a single character and so drops out.
+   * - The control characters that a key value can still hold, such as the tab
+   *   key's "\t", edit text rather than being text.
+   * - A key pressed with ctrl or meta held is part of a shortcut and is a
+   *   command rather than text. AltGr is the exception: Windows reports it as
+   *   ctrl+alt, and a key behind it does produce a character.
+   *
+   * Text composed through an input method editor is not reported: the browser
+   * keeps that to the composition events of an editable element, which a canvas
+   * is not. Dead keys are unaffected, as the browser hands over the character
+   * they composed on the key that completes it.
+   */
+  textInputCodePointOf(e) {
+    if ((e.ctrlKey || e.metaKey) && !e.getModifierState("AltGraph")) {
+      return undefined;
+    }
+
+    if (e.isComposing || e.key === "Process") {
+      return undefined;
+    }
+
+    const codePoint = this.singleCodePointOf(e.key);
+    if (codePoint === undefined || isControlCodePoint(codePoint)) {
+      return undefined;
+    }
+
+    return codePoint;
+  }
+
+  /**
    * Returns the code point of a key value that is a single character, or
    * undefined when it holds a name or nothing at all.
    */
@@ -1217,6 +1271,17 @@ function scrollNotches(delta, deltaMode) {
     default:
       return delta / pixelsPerScrollNotch;
   }
+}
+
+/**
+ * Returns whether the given code point is a control character rather than one
+ * that can be typed as text.
+ *
+ * These are the C0 controls and the delete character; the C1 controls above
+ * them are left alone, as a key value never holds one.
+ */
+function isControlCodePoint(codePoint) {
+  return codePoint < 0x20 || codePoint === 0x7f;
 }
 
 /**

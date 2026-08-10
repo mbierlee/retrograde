@@ -28,6 +28,19 @@ import retrograde.engine.input : InputMethod, MouseMovementType;
 // toKeyCode(scanCode). Prefer it over glfwGetKeyName, which reports the
 // unmodified character of a key and so would not give the 'A' of shift+a.
 //
+// Text input is GLFW's character callback, glfwSetCharCallback: it hands over
+// the code point of the character that was typed, which is exactly what a
+// TextInputEvent carries, so it is enqueued into textInputEvents as it comes.
+// Only set it when InputMethod.textInput was asked for, so that a game that
+// does not take text does not have characters piling up on it. Mind that the
+// character callback is the same one KeyboardKeyCode needs above: pairing a
+// character up with its key event is a matter of the key callback, and is not
+// what these events are for.
+//
+// Do not use glfwSetCharModsCallback for this. It is deprecated, and the
+// modifiers it adds are not part of a TextInputEvent anyway: which keys went
+// into composing a character is the business of the key events.
+//
 // GLFW's cursor position is already the Y-down position from the top left
 // corner of the content area that MouseMovementEvent carries, so it is passed
 // on as it comes. It is in screen coordinates rather than in pixels though,

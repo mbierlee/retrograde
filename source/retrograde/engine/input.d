@@ -26,9 +26,20 @@ version (Native) {
 }
 
 Queue!KeyboardKeyEvent keyEvents;
+Queue!TextInputEvent textInputEvents;
 Queue!MouseButtonEvent mouseButtonEvents;
 Queue!MouseMovementEvent mouseMovementEvents;
 Queue!MouseScrollEvent mouseScrollEvents;
+
+/**
+ * The handlers that text typed by the user is handed to.
+ *
+ * Text input carries a character rather than a magnitude, so it is not bound to
+ * events the way keys and mouse buttons are: a text field wants the character
+ * that was typed, whichever key happened to produce it. Add a handler here to
+ * receive them; $(D processInput) calls every handler for each character typed.
+ */
+Array!TextInputHandlerFunction textInputHandlers;
 
 /**
  * The events a key binding emits when its key is pressed, held or released.
@@ -489,6 +500,13 @@ void processInput() {
         }
     }
 
+    TextInputEvent textInputEvent;
+    while (textInputEvents.tryDequeue(textInputEvent)) {
+        foreach (handler; textInputHandlers) {
+            handler(textInputEvent);
+        }
+    }
+
     MouseButtonEvent mouseButtonEvent;
     while (mouseButtonEvents.tryDequeue(mouseButtonEvent)) {
         if (mouseButtonEvent.action == InputEventAction.release) {
@@ -812,9 +830,19 @@ private void emitAxisScrollEvents(Axis axis, double offset) {
     }
 }
 
+/**
+ * The ways of giving input a platform can be asked to report.
+ *
+ * $(D keyboard) and $(D textInput) are both the keyboard, followed for a
+ * different purpose: the first reports the keys that were pressed, to be bound
+ * to game controls, the second the text those keys typed. They are asked for
+ * separately, so that a game that has nothing to type into is not made to carry
+ * the text the player's controls happen to spell out.
+ */
 enum InputMethod : ubyte {
     keyboard = 1 << 0,
-    mouse = 1 << 1
+    mouse = 1 << 1,
+    textInput = 1 << 2
 }
 
 /**
@@ -1486,6 +1514,45 @@ struct KeyboardKeyEvent {
 }
 
 /**
+ * A handler that text typed by the user is handed to.
+ *
+ * Add one to $(D textInputHandlers) to receive the characters the player types.
+ */
+alias TextInputHandlerFunction = void delegate(ref const TextInputEvent);
+
+/**
+ * An event emitted when the user types a character.
+ *
+ * This is text as the platform composed it rather than the keys that went into
+ * it: the keyboard layout, the modifiers held and whatever input method the
+ * user types their language with are all already taken into account, so a
+ * character arrives here the way it would in a text field. That makes it the
+ * one thing to build text entry on; a character that no single key produces,
+ * such as one typed with a dead key or composed through an IME, never shows up
+ * as a $(D KeyboardKeyEvent) at all.
+ *
+ * Only characters are reported, so the keys that edit text rather than produce
+ * it, such as backspace, enter and the arrow keys, are not among them. Those
+ * are keys like any other: take them from $(D KeyboardKeyEvent), whose
+ * $(D keyCode) names them.
+ *
+ * Holding a key down types its character over and over, the way it does in a
+ * text field: a repeat is reported as another character rather than as
+ * something to be told apart from the first one.
+ *
+ * This works like GLFW's character callback, and unlike its key callback, which
+ * $(D KeyboardKeyEvent) covers instead.
+ */
+struct TextInputEvent {
+    /**
+     * The Unicode code point of the character that was typed. It can be
+     * compared against a character literal directly:
+     * `textInputEvent.codePoint == 'a'`.
+     */
+    dchar codePoint;
+}
+
+/**
  * Available mouse buttons.
  *
  * These weird-ass gamer mice with a million buttons are not fully supported.
@@ -1816,6 +1883,10 @@ void resetInput() {
         import retrograde.std.memory : memset;
 
         memset(&keyEvents, 0, keyEvents.sizeof);
+        memset(&textInputEvents, 0, textInputEvents.sizeof);
+        memset(&textInputHandlers, 0, textInputHandlers.sizeof);
+        memset(&typedText, 0, typedText.sizeof);
+        memset(&otherTypedText, 0, otherTypedText.sizeof);
         memset(&mouseButtonEvents, 0, mouseButtonEvents.sizeof);
         memset(&mouseMovementEvents, 0, mouseMovementEvents.sizeof);
         memset(&mouseScrollEvents, 0, mouseScrollEvents.sizeof);
@@ -1826,6 +1897,10 @@ void resetInput() {
         memset(&mouseScrollMapping, 0, mouseScrollMapping.sizeof);
     } else {
         keyEvents.clear();
+        textInputEvents.clear();
+        textInputHandlers.clear();
+        typedText.clear();
+        otherTypedText.clear();
         mouseButtonEvents.clear();
         mouseMovementEvents.clear();
         mouseScrollEvents.clear();
@@ -1849,6 +1924,33 @@ private void pressKey(KeyboardScanCode scanCode, InputEventAction action = Input
     keyEvent.action = action;
     keyEvent.modifiers = modifiers;
     keyEvents.enqueue(keyEvent);
+}
+
+/**
+ * Collects the characters handed to a text input handler, so that the tests can
+ * check what came through.
+ *
+ * Kept at module scope on purpose: a handler over a global needs no context of
+ * its own, where a delegate over a local of a test lambda would be a closure,
+ * which betterC has no GC to put anywhere.
+ */
+private struct TypedText {
+    Array!dchar codePoints;
+
+    void handle(ref const TextInputEvent textInputEvent) {
+        codePoints.add(textInputEvent.codePoint);
+    }
+
+    void clear() {
+        codePoints.clear();
+    }
+}
+
+private TypedText typedText;
+private TypedText otherTypedText;
+
+private void typeText(dchar codePoint) {
+    textInputEvents.enqueue(TextInputEvent(codePoint));
 }
 
 private void pressMouseButton(MouseButton button, InputEventAction action = InputEventAction.press,
@@ -2420,6 +2522,104 @@ void runInputTests() {
                     toKeyCode(__traits(getMember, KeyboardScanCode, name)));
             }
         }
+    });
+
+    writeSection("-- Text input tests --");
+
+    test("typed text reaches its handler", () {
+        resetInput();
+        textInputHandlers.add(&typedText.handle);
+        typeText('a');
+        processInput();
+
+        assert(typedText.codePoints.length == 1);
+        assert(typedText.codePoints[0] == 'a');
+    });
+
+    test("typed text is handed over in the order it was typed", () {
+        resetInput();
+        textInputHandlers.add(&typedText.handle);
+        typeText('h');
+        typeText('i');
+        typeText('!');
+        processInput();
+
+        assert(typedText.codePoints.length == 3);
+        assert(typedText.codePoints[0] == 'h');
+        assert(typedText.codePoints[1] == 'i');
+        assert(typedText.codePoints[2] == '!');
+    });
+
+    test("text outside the ASCII range keeps its code point", () {
+        resetInput();
+        textInputHandlers.add(&typedText.handle);
+        typeText('é');
+        typeText('あ');
+        typeText('🎮');
+        processInput();
+
+        assert(typedText.codePoints.length == 3);
+        assert(typedText.codePoints[0] == 0xE9);
+        assert(typedText.codePoints[1] == 0x3042);
+        assert(typedText.codePoints[2] == 0x1F3AE);
+    });
+
+    test("every handler gets each character typed", () {
+        resetInput();
+        textInputHandlers.add(&typedText.handle);
+        textInputHandlers.add(&otherTypedText.handle);
+        typeText('a');
+        processInput();
+
+        assert(typedText.codePoints.length == 1);
+        assert(typedText.codePoints[0] == 'a');
+        assert(otherTypedText.codePoints.length == 1);
+        assert(otherTypedText.codePoints[0] == 'a');
+    });
+
+    test("text typed with no handler is dropped", () {
+        resetInput();
+        typeText('a');
+        processInput();
+
+        assert(textInputEvents.length == 0);
+        assert(eventQueue.length == 0);
+    });
+
+    test("text is only handed over once", () {
+        resetInput();
+        textInputHandlers.add(&typedText.handle);
+        typeText('a');
+        processInput();
+        processInput();
+
+        assert(typedText.codePoints.length == 1);
+    });
+
+    test("typed text emits no bound events", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.a, sid("ev_moveLeft"));
+        typeText('a');
+        processInput();
+
+        assert(eventQueue.length == 0);
+    });
+
+    test("a key that is bound is typed as text as well", () {
+        resetInput();
+        textInputHandlers.add(&typedText.handle);
+        addKeyMapping(KeyboardScanCode.a, sid("ev_moveLeft"));
+        pressKey(KeyboardScanCode.a);
+        typeText('a');
+        processInput();
+
+        assert(typedText.codePoints.length == 1);
+        assert(emittedEventCount(sid("ev_moveLeft"), 1) == 1);
+    });
+
+    test("text input is a method of its own", () {
+        assert((InputMethod.textInput & InputMethod.keyboard) == 0);
+        assert((InputMethod.textInput & InputMethod.mouse) == 0);
     });
 
     writeSection("-- Mouse button input tests --");
