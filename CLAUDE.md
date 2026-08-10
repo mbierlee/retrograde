@@ -100,5 +100,5 @@ Use D `version` conditions (not `#ifdef`). Key flags: `Native`, `WebAssembly`, `
 - **Error handling:** Use `Result(T)` / `OperationResult` for fallible operations, `ResultPtr(T)` for heap allocations that can fail. Never use exceptions.
 - **Optionals:** Use `Option(T)` with `some(val)` / `none!T`. Check `.isDefined()` before `.value()`.
 - **Operator overloading:** Types extensively use `opIndex`, `opSlice`, `opApply`, `opEquals`, `opBinary`, `opOpAssign`, `opDispatch`. Follow existing patterns when extending.
-- **Right-handed coordinate system**, Y-up, row-major matrices, negative-Z forward.
+- **Right-handed coordinate system**, Y-up, row-major matrices, negative-Z forward. That is the 3D world only: positions over the 2D window, such as the mouse, are Y-down from its top left corner on every platform.
 - **Asset formats:** See `docs/` for specifications of custom file formats (e.g., RGM model format).

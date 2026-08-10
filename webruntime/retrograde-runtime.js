@@ -21,6 +21,15 @@ export default class RetrogradeRuntime {
 
   heldModifierKeys = new Set();
 
+  // The mouse movement settings of source/retrograde/engine/input.d, which is
+  // what sets them: their defaults are the ones the engine documents.
+  mouseMovementEnabled = {
+    [MouseMovementType.absolute]: true,
+    [MouseMovementType.relative]: true,
+  };
+  mouseAxisSplit = false;
+  rawMouseMotion = false;
+
   constructor(wasmModulePath) {
     this.wasmModulePath = wasmModulePath;
     this.memory = null;
@@ -39,7 +48,7 @@ export default class RetrogradeRuntime {
         console.log(value);
       },
       writelnUlong: (value) => {
-        console.log(value);
+        console.log(asUnsignedLong(value));
       },
       writelnLong: (value) => {
         console.log(value);
@@ -78,7 +87,7 @@ export default class RetrogradeRuntime {
         console.error(value);
       },
       writeErrLnULong: (value) => {
-        console.error(value);
+        console.error(asUnsignedLong(value));
       },
       writeErrLnLong: (value) => {
         console.error(value);
@@ -111,7 +120,7 @@ export default class RetrogradeRuntime {
         this.writeString(val.toString(), strPtr, ptrLength);
       },
       unsignedIntegralToString: (strPtr, ptrLength, val) => {
-        this.writeString(val.toString(), strPtr, ptrLength);
+        this.writeString(asUnsignedLong(val).toString(), strPtr, ptrLength);
       },
       scalarToString: (strPtr, ptrLength, val) => {
         const numberString = parseFloat(val).toFixed(6).toString();
@@ -195,12 +204,40 @@ export default class RetrogradeRuntime {
           dispatchMouseButtonEvent(e, InputEventAction.release);
         });
 
+        this.eventCapturer.addEventListener("mousemove", (e) => {
+          this.dispatchMouseMovement(e);
+        });
+
         // The right button is a game button here rather than the way to open
         // the context menu, which would otherwise take over the page as soon
         // as it is pressed.
         this.eventCapturer.addEventListener("contextmenu", (e) => {
           e.preventDefault();
         });
+      },
+
+      setMouseMovementTypeEnabled: (movementType, enabled) => {
+        this.mouseMovementEnabled[movementType] = enabled !== 0;
+      },
+
+      isMouseMovementTypeEnabled: (movementType) => {
+        return this.mouseMovementEnabled[movementType] ? 1 : 0;
+      },
+
+      setMouseAxisSplitEnabled: (enabled) => {
+        this.mouseAxisSplit = enabled !== 0;
+      },
+
+      isMouseAxisSplitEnabled: () => {
+        return this.mouseAxisSplit ? 1 : 0;
+      },
+
+      setRawMouseMotionEnabled: (enabled) => {
+        this.rawMouseMotion = enabled !== 0;
+      },
+
+      isRawMouseMotionEnabled: () => {
+        return this.rawMouseMotion ? 1 : 0;
       },
 
       // GL API
@@ -759,6 +796,107 @@ export default class RetrogradeRuntime {
   }
 
   /**
+   * Reports a mouse movement to the engine, as the position of the mouse over
+   * the render area, as the distance it moved since the previous movement, or
+   * as both.
+   */
+  dispatchMouseMovement(e) {
+    if (this.mouseMovementEnabled[MouseMovementType.absolute]) {
+      this.dispatchMouseMovementEvent(
+        this.absoluteMousePosition(e),
+        MouseMovementType.absolute,
+      );
+    }
+
+    if (this.mouseMovementEnabled[MouseMovementType.relative]) {
+      this.dispatchMouseMovementEvent(
+        this.relativeMouseMovement(e),
+        MouseMovementType.relative,
+      );
+    }
+  }
+
+  /**
+   * Reports a single movement, as one event carrying both axes or as one event
+   * per axis when the axes are split.
+   *
+   * An axis is reported whether or not the mouse moved along it: leaving out
+   * the axis that stayed put would leave the events bound to it stuck at the
+   * magnitude of the last movement that did touch it.
+   */
+  dispatchMouseMovementEvent(position, movementType) {
+    const onMouseMovement = this.instance.exports.onMouseMovement;
+    if (this.mouseAxisSplit) {
+      onMouseMovement(position.x, 0, Axis.x, movementType);
+      onMouseMovement(0, position.y, Axis.y, movementType);
+    } else {
+      onMouseMovement(position.x, position.y, Axis.all, movementType);
+    }
+  }
+
+  /**
+   * Returns the position of the mouse over the render area, in pixels from its
+   * top left corner when raw mouse motion is on, and as a part of its size,
+   * from 0.0 to 1.0, when it is off.
+   */
+  absoluteMousePosition(e) {
+    const renderArea = this.renderAreaRect();
+    const x = e.clientX - renderArea.left;
+    const y = e.clientY - renderArea.top;
+    if (this.rawMouseMotion) {
+      return { x, y };
+    }
+
+    return {
+      x: clamp(this.partOf(x, renderArea.width), 0, 1),
+      y: clamp(this.partOf(y, renderArea.height), 0, 1),
+    };
+  }
+
+  /**
+   * Returns the distance the mouse moved since the previous movement, in pixels
+   * when raw mouse motion is on, and as a part of the size of the render area,
+   * from -1.0 to 1.0, when it is off.
+   */
+  relativeMouseMovement(e) {
+    if (this.rawMouseMotion) {
+      return { x: e.movementX, y: e.movementY };
+    }
+
+    const renderArea = this.renderAreaRect();
+    return {
+      x: clamp(this.partOf(e.movementX, renderArea.width), -1, 1),
+      y: clamp(this.partOf(e.movementY, renderArea.height), -1, 1),
+    };
+  }
+
+  /**
+   * Returns the area mouse positions are reported over: the canvas being
+   * rendered to, or the viewport while there is none.
+   */
+  renderAreaRect() {
+    const canvas = this.glContext ? this.glContext.canvas : undefined;
+    if (canvas) {
+      return canvas.getBoundingClientRect();
+    }
+
+    return {
+      left: 0,
+      top: 0,
+      width: window.innerWidth,
+      height: window.innerHeight,
+    };
+  }
+
+  /**
+   * Returns how much of the given size the given value is, or zero for an area
+   * that has no size to be a part of.
+   */
+  partOf(value, size) {
+    return size > 0 ? value / size : 0;
+  }
+
+  /**
    * Maps a keyboard event to its KeyboardKeyCode value: the Unicode code point
    * of the character the key produced, or the scan code of the key marked with
    * scanCodeMask when it produced no character.
@@ -990,6 +1128,45 @@ const MouseButton = {
   right: 2,
   middle: 3,
 };
+
+/**
+ * Mirror of MouseMovementType in source/retrograde/engine/input.d. The D enum
+ * assigns no explicit values, so these are the members' positions.
+ */
+const MouseMovementType = {
+  absolute: 0,
+  relative: 1,
+};
+
+/**
+ * Mirror of Axis in source/retrograde/engine/input.d, likewise valued by
+ * position. A mouse only ever moves along x and y; all is a movement that
+ * carries both of them at once.
+ */
+const Axis = {
+  all: 0,
+  x: 1,
+  y: 2,
+  z: 3,
+};
+
+/**
+ * Returns the given value brought within the given bounds.
+ */
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+/**
+ * Returns the unsigned value a 64 bit number out of D stands for.
+ *
+ * A wasm i64 arrives here as a signed BigInt, so a D ulong past long.max comes
+ * in as the negative number it shares its bits with and has to be read back out
+ * of them.
+ */
+function asUnsignedLong(value) {
+  return BigInt.asUintN(64, BigInt(value));
+}
 
 /**
  * Maps MouseEvent.button values to MouseButton values.

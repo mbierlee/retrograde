@@ -20,6 +20,8 @@ Retrograde uses the following coordinate system conventions:
 - **Matrix layout**: Matrices use row-major order for data storage.
 - **Clipping planes**: Near and far clipping distances are specified along the negative Z-axis.
 
+These conventions cover the 3D world. Positions over the 2D window, such as those of the mouse, are Y-down instead: their origin is the top left corner of the window and the positive Y-axis points downward, the way every platform reports them.
+
 ## Version Conditions
 
 The following table lists all [version conditions](https://dlang.org/spec/version.html#version) available and used by Retrograde.
