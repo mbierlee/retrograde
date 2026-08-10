@@ -22,7 +22,17 @@ String toString(T)(T val)
         if (is(T == int) || is(T == long) || is(T == size_t) || is(T == uint)
         || is(T == ulong) || is(T == float) || is(T == double)) {
 
-    enum maxDigits = (CHAR_BIT * T.sizeof - 1) / 3 + 9;
+    static if (is(T == float) || is(T == double)) {
+        // %f spells out every digit of the integer part: at its longest that is
+        // one digit more than the maximum decimal exponent of T, with the sign,
+        // the point, the six decimals and the terminator on top of it. sprintf
+        // writes past a buffer that cannot hold all of that.
+        enum maxDigits = T.max_10_exp + 10;
+    } else {
+        // A binary digit is worth less than a third of a decimal one, leaving
+        // room to spare for the sign and the terminator.
+        enum maxDigits = (CHAR_BIT * T.sizeof - 1) / 3 + 9;
+    }
 
     static if (is(T == int)) {
         enum format = "%d";

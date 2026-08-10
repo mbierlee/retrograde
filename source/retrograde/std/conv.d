@@ -234,6 +234,28 @@ void runConvTests() {
         assert((cast(double) 88.1).to!String == "88.100000".s);
     });
 
+    test("Convert numbers that fill up their buffer to String", {
+        // A four digit scalar takes eleven characters in fixed notation, which
+        // is more than the buffer of a float used to be sized at at all.
+        assert((cast(float) 1004).to!String == "1004.000000".s);
+        assert((cast(double) 1004).to!String == "1004.000000".s);
+        assert((cast(float)-1004).to!String == "-1004.000000".s);
+
+        // The extremes have to fit too, however the platform spells them out:
+        // in fixed notation the integer part of these runs into the hundreds of
+        // digits.
+        assert(float.max.to!String.length > 0);
+        assert((-float.max).to!String.length > 0);
+        assert(double.max.to!String.length > 0);
+        assert((-double.max).to!String.length > 0);
+
+        // The largest unsigned values fill their buffer as well, and are not to
+        // be taken for the negative numbers they share their bits with.
+        assert(long.min.to!String == "-9223372036854775808".s);
+        assert(ulong.max.to!String == "18446744073709551615".s);
+        assert(uint.max.to!String == "4294967295".s);
+    });
+
     test("Convert numbers to D string using universal conv", {
         assert(1.to!String == "1");
         assert(123_456.to!String == "123456");
