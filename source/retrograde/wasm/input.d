@@ -13,9 +13,10 @@ module retrograde.wasm.input;
 
 version (WebAssembly)  :  //
 
-import retrograde.engine.input : InputEventAction, InputMethod, KeyboardKeyCode,
+import retrograde.engine.input : Axis, InputEventAction, InputMethod, KeyboardKeyCode,
     KeyboardKeyModifier, KeyboardKeyEvent, KeyboardScanCode, keyEvents,
-    MouseButton, MouseButtonEvent, mouseButtonEvents;
+    MouseButton, MouseButtonEvent, mouseButtonEvents, MouseMovementEvent,
+    mouseMovementEvents, MouseMovementType;
 
 /**
  * Init the input system.
@@ -54,3 +55,88 @@ export extern (C) void onMouseButton(MouseButton button, InputEventAction action
     KeyboardKeyModifier modifiers) {
     mouseButtonEvents.enqueue(MouseButtonEvent(button, action, modifiers));
 }
+
+/**
+ * Called by the web runtime when the mouse is moved.
+ *
+ * Positions are those of the mouse over the render area, from its top left
+ * corner and Y-down as the engine has them. An absolute movement carries the
+ * position of the mouse over that area, a relative one the distance it moved
+ * since the previous movement. Both are in pixels when raw mouse motion is on,
+ * and as a part of the size of the render area when it is off.
+ *
+ * See $(D MouseMovementEvent) for a description of the parameters.
+ */
+export extern (C) void onMouseMovement(double xPosition, double yPosition, Axis axis,
+    MouseMovementType movementType) {
+    mouseMovementEvents.enqueue(MouseMovementEvent(xPosition, yPosition, axis, movementType));
+}
+
+/**
+ * Tells the web runtime whether to report the given type of mouse movement.
+ *
+ * Called by $(D setMouseMovementEnabled); prefer that over calling this
+ * directly, as it is what the engine itself goes by.
+ */
+void setPlatformMouseMovementEnabled(MouseMovementType movementType, bool enabled) {
+    setMouseMovementTypeEnabled(movementType, enabled);
+}
+
+/**
+ * Asks the web runtime whether it is reporting the given type of mouse
+ * movement.
+ *
+ * Called by $(D isMouseMovementEnabled); prefer that over calling this
+ * directly. The setting is kept by the runtime alone rather than on both sides,
+ * so that the two can never end up disagreeing over it.
+ */
+bool isPlatformMouseMovementEnabled(MouseMovementType movementType) {
+    return isMouseMovementTypeEnabled(movementType);
+}
+
+/**
+ * Tells the web runtime whether to report each axis of a movement on its own.
+ *
+ * Called by $(D splitMouseAxisEvent); prefer that over calling this directly.
+ */
+void setPlatformMouseAxisSplit(bool enabled) {
+    setMouseAxisSplitEnabled(enabled);
+}
+
+/**
+ * Asks the web runtime whether it is reporting each axis of a movement on its
+ * own.
+ *
+ * Called by $(D isMouseAxisEventSplit); prefer that over calling this directly.
+ * The setting is kept by the runtime alone rather than on both sides, so that
+ * the two can never end up disagreeing over it.
+ */
+bool isPlatformMouseAxisSplit() {
+    return isMouseAxisSplitEnabled();
+}
+
+/**
+ * Tells the web runtime whether to report mouse movement in pixels rather than
+ * as a part of the size of the render area.
+ *
+ * Called by $(D setRawMouseMotion); prefer that over calling this directly.
+ */
+void setPlatformRawMouseMotion(bool enabled) {
+    setRawMouseMotionEnabled(enabled);
+}
+
+/**
+ * Asks the web runtime whether it is reporting mouse movement in pixels.
+ *
+ * Called by $(D isRawMouseMotion); prefer that over calling this directly.
+ */
+bool isPlatformRawMouseMotion() {
+    return isRawMouseMotionEnabled();
+}
+
+private extern (C) void setMouseMovementTypeEnabled(MouseMovementType movementType, bool enabled);
+private extern (C) bool isMouseMovementTypeEnabled(MouseMovementType movementType);
+private extern (C) void setMouseAxisSplitEnabled(bool enabled);
+private extern (C) bool isMouseAxisSplitEnabled();
+private extern (C) void setRawMouseMotionEnabled(bool enabled);
+private extern (C) bool isRawMouseMotionEnabled();

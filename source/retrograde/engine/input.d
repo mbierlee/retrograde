@@ -27,6 +27,7 @@ version (Native) {
 
 Queue!KeyboardKeyEvent keyEvents;
 Queue!MouseButtonEvent mouseButtonEvents;
+Queue!MouseMovementEvent mouseMovementEvents;
 
 /**
  * The events a key binding emits when its key is pressed, held or released.
@@ -48,6 +49,17 @@ HashMap!(KeyBinding, Array!StringId) keyMapping;
  * manipulating this map directly.
  */
 HashMap!(MouseButtonBinding, Array!StringId) mouseButtonMapping;
+
+/**
+ * The events a mouse movement binding emits when the mouse is moved along the
+ * axis it binds to.
+ *
+ * Works the same way as $(D keyMapping): a binding can drive more than one
+ * event, and every event mapped to it is emitted. Prefer
+ * $(D addMouseMovementMapping) and $(D removeMouseMovementMapping) over
+ * manipulating this map directly.
+ */
+HashMap!(MouseMovementBinding, Array!StringId) mouseMovementMapping;
 
 /**
  * Make the given key binding emit the given event, on top of any events it
@@ -274,6 +286,106 @@ void clearMouseButtonMappings() {
     mouseButtonMapping.clear();
 }
 
+/**
+ * Make the given mouse movement binding emit the given event, on top of any
+ * events it already emits.
+ *
+ * Mapping the same event to the same binding again does nothing; a binding
+ * never emits the same event twice.
+ *
+ * Params:
+ *  binding = The axis and type of movement to map.
+ *  eventName = Name of the event the binding should emit.
+ */
+void addMouseMovementMapping(MouseMovementBinding binding, StringId eventName) {
+    addMapping(mouseMovementMapping, binding, eventName);
+}
+
+/**
+ * Make movement along the given axis emit the given event, on top of any
+ * events it already emits.
+ *
+ * Params:
+ *  axis = The axis to map. $(D Axis.all) follows every axis the mouse moves
+ *         along, emitting the event once per axis.
+ *  eventName = Name of the event the movement should emit.
+ *  movementType = Whether to follow the absolute position of the mouse or the
+ *         distance it moved.
+ */
+void addMouseMovementMapping(Axis axis, StringId eventName, MouseMovementType movementType) {
+    addMouseMovementMapping(MouseMovementBinding(axis, movementType), eventName);
+}
+
+/**
+ * Stop the given mouse movement binding from emitting the given event, leaving
+ * the other events mapped to it in place.
+ *
+ * Params:
+ *  binding = The axis and type of movement to unmap the event from.
+ *  eventName = Name of the event the binding should no longer emit.
+ * Returns: Whether the binding was mapped to the event.
+ */
+bool removeMouseMovementMapping(MouseMovementBinding binding, StringId eventName) {
+    return removeMapping(mouseMovementMapping, binding, eventName);
+}
+
+/// ditto
+bool removeMouseMovementMapping(Axis axis, StringId eventName, MouseMovementType movementType) {
+    return removeMouseMovementMapping(MouseMovementBinding(axis, movementType), eventName);
+}
+
+/**
+ * Stop the given mouse movement binding from emitting any event at all.
+ *
+ * Only the binding on exactly this type of movement is unmapped; the bindings
+ * on the same axis for the other type are left alone. Use
+ * $(D removeAllMouseMovementMappings) to unmap an axis regardless of the type
+ * of movement it is bound on.
+ *
+ * Params:
+ *  binding = The axis and type of movement to unmap.
+ * Returns: Whether the binding was mapped to any event.
+ */
+bool removeMouseMovementMappings(MouseMovementBinding binding) {
+    return mouseMovementMapping.remove(binding);
+}
+
+/// ditto
+bool removeMouseMovementMappings(Axis axis, MouseMovementType movementType) {
+    return removeMouseMovementMappings(MouseMovementBinding(axis, movementType));
+}
+
+/**
+ * Stop movement along the given axis from emitting any event at all, on
+ * whichever type of movement it is bound.
+ *
+ * Params:
+ *  axis = The axis to unmap.
+ * Returns: Whether the axis was bound at all.
+ */
+bool removeAllMouseMovementMappings(Axis axis) {
+    return removeAllMappings(mouseMovementMapping, axis);
+}
+
+/**
+ * Returns: Whether the given mouse movement binding emits the given event.
+ */
+bool hasMouseMovementMapping(MouseMovementBinding binding, StringId eventName) {
+    return hasMapping(mouseMovementMapping, binding, eventName);
+}
+
+/// ditto
+bool hasMouseMovementMapping(Axis axis, StringId eventName, MouseMovementType movementType) {
+    return hasMouseMovementMapping(MouseMovementBinding(axis, movementType), eventName);
+}
+
+/**
+ * Unmap every axis, leaving no mouse movement emitting any event.
+ */
+void clearMouseMovementMappings() {
+    mouseMovementMapping.clear();
+}
+
 void processInput() {
     KeyboardKeyEvent keyEvent;
     while (keyEvents.tryDequeue(keyEvent)) {
@@ -292,6 +404,11 @@ void processInput() {
             emitPressEvents(mouseButtonMapping, mouseButtonEvent.button,
                 mouseButtonEvent.modifiers);
         }
+    }
+
+    MouseMovementEvent mouseMovementEvent;
+    while (mouseMovementEvents.tryDequeue(mouseMovementEvent)) {
+        emitMouseMovementEvents(mouseMovementEvent);
     }
 }
 
@@ -386,6 +503,13 @@ private bool bindsTo(KeyBinding binding, KeyboardScanCode scanCode) {
  */
 private bool bindsTo(MouseButtonBinding binding, MouseButton button) {
     return binding.button == button;
+}
+
+/**
+ * Returns: Whether the binding is on the given axis.
+ */
+private bool bindsTo(MouseMovementBinding binding, Axis axis) {
+    return binding.axis == axis;
 }
 
 /**
@@ -508,6 +632,53 @@ private void emitReleaseEvents(BindingT, InputT)(ref HashMap!(BindingT, Array!St
 
         foreach (i; 0 .. eventNames.length) {
             eventQueue.enqueue(Event(eventNames[i], 0));
+        }
+    }
+}
+
+/**
+ * Emits the events of every binding the given mouse movement satisfies, each
+ * at the magnitude the mouse moved along the axis of the binding.
+ *
+ * A movement that carries every axis at once is taken apart here, so that a
+ * binding on a single axis emits whether or not the platform is reporting the
+ * axes separately. Which of the two the platform reports is a matter of how
+ * finely it can follow the mouse, not of which bindings emit.
+ *
+ * A type of movement that was turned off is not held back here: the platform is
+ * the one that stops reporting it, and a platform that keeps doing so anyway
+ * says as much through $(D isMouseMovementEnabled) rather than being talked
+ * over.
+ */
+private void emitMouseMovementEvents(MouseMovementEvent movementEvent) {
+    if (movementEvent.axis == Axis.all || movementEvent.axis == Axis.x) {
+        emitAxisMovementEvents(Axis.x, movementEvent.xPosition, movementEvent.movementType);
+    }
+
+    if (movementEvent.axis == Axis.all || movementEvent.axis == Axis.y) {
+        emitAxisMovementEvents(Axis.y, movementEvent.yPosition, movementEvent.movementType);
+    }
+
+    // A mouse has no third axis, so a movement along one carries no position to
+    // emit and is left alone here.
+}
+
+/**
+ * Emits the events of every binding that follows the given axis on the given
+ * type of movement, at the magnitude the mouse moved along it.
+ *
+ * A binding on $(D Axis.all) follows every axis, and so emits its events once
+ * for each axis that the movement carried.
+ */
+private void emitAxisMovementEvents(Axis axis, double position, MouseMovementType movementType) {
+    foreach (binding, eventNames; mouseMovementMapping) {
+        if (binding.movementType != movementType ||
+            (binding.axis != axis && binding.axis != Axis.all)) {
+            continue;
+        }
+
+        foreach (i; 0 .. eventNames.length) {
+            eventQueue.enqueue(Event(eventNames[i], cast(Magnitude) position));
         }
     }
 }
@@ -1272,6 +1443,183 @@ struct MouseButtonEvent {
     KeyboardKeyModifier modifiers;
 }
 
+/**
+ * An event emitted when the mouse is moved.
+ *
+ * Depending on the platform and its configuration, this position may be absolute or relative.
+ * It may be that of the mouse over the window or the whole desktop.
+ * Refer to the platform in use for specifics.
+ *
+ * Wherever the position is taken from, it is one over the 2D window rather than
+ * one in the 3D world, and so is Y-down: its origin is the top left corner of
+ * that area and the positive Y-axis points downward, the way every platform
+ * reports the mouse. The Y-up convention of the engine is one of the 3D world
+ * alone; a position over the window that is to be used in it has to be flipped.
+ *
+ * A movement is reported on a single axis or on all of them at once, which is
+ * what $(D axis) says. Only the positions of the axes the event carries are
+ * filled in; the rest are left at zero. See $(D splitMouseAxisEvent) for which
+ * of the two the platform reports.
+ */
+struct MouseMovementEvent {
+    double xPosition;
+    double yPosition;
+    Axis axis;
+    MouseMovementType movementType;
+}
+
+/**
+ * An axis of mouse movement together with the type of movement to follow along
+ * it.
+ *
+ * The mouse drives its events by how far it moved rather than by being pressed,
+ * so a binding emits its events at the magnitude of the movement instead of at
+ * the full magnitude a key or a button emits at. What that magnitude means is
+ * up to the type of movement bound: the position of the mouse for
+ * $(D MouseMovementType.absolute), the distance it moved since the last event
+ * for $(D MouseMovementType.relative).
+ *
+ * Both types are followed independently, so the same movement can drive a
+ * cursor and a camera at once:
+ *
+ * ---
+ * addMouseMovementMapping(Axis.x, sid("ev_cursorX"), MouseMovementType.absolute);
+ * addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative);
+ * ---
+ *
+ * $(D Axis.all) follows every axis rather than a combined one: its events are
+ * emitted once per axis the mouse moved along, each carrying that axis' own
+ * magnitude.
+ */
+struct MouseMovementBinding {
+    /// The axis to bind to, or $(D Axis.all) to bind to each of them.
+    Axis axis;
+
+    /// Whether to follow the position of the mouse or the distance it moved.
+    MouseMovementType movementType;
+
+    bool opEquals(ref const typeof(this) other) const {
+        return axis == other.axis && movementType == other.movementType;
+    }
+
+    bool opEquals(const typeof(this) other) const {
+        return opEquals(other);
+    }
+
+    ulong toHash() nothrow @trusted const {
+        ulong packed = (cast(ulong) movementType << 32) | axis;
+        return hashOf(packed);
+    }
+}
+
+/**
+ * Type of mouse movement.
+ *
+ * It depends on the platform whether one or the other is available.
+ */
+enum MouseMovementType : uint {
+    /// Absolute X/Y movement over the screen/desktop
+    absolute,
+
+    /// Relative movement to the previous mouse movement event (delta movement)
+    relative
+}
+
+/**
+ * Input axis definition for multi-axis control input, such as joysticks or mouse-movement.
+ */
+enum Axis : uint {
+    /// Every axis at once: all of them in an event, any of them in a binding.
+    all,
+
+    x,
+    y,
+    z
+}
+
+/**
+ * Whether the platform should report the given type of mouse movement at all.
+ *
+ * A type that is turned off is one the platform stops following, leaving
+ * nothing for the bindings on it to emit. Turning off the type that is not
+ * being used spares the platform that work: reporting both is what the mouse
+ * starts out doing.
+ *
+ * Whether the platform takes this on is up to the platform, as is whether both
+ * types are available there at all. Ask $(D isMouseMovementEnabled) for what it
+ * ended up doing.
+ *
+ * Params:
+ *  movementType = The type of movement to report or leave alone.
+ *  enabled = Whether to report it.
+ */
+void setMouseMovementEnabled(MouseMovementType movementType, bool enabled) {
+    setPlatformMouseMovementEnabled(movementType, enabled);
+}
+
+/**
+ * Returns: Whether the given type of mouse movement is reported.
+ *
+ * This is asked of the platform rather than kept here, so it is what the
+ * platform is really doing rather than what it was asked to do: a platform that
+ * cannot report a type of movement keeps saying so however often it is turned
+ * on, and one that cannot stop reporting one keeps saying that as well.
+ */
+bool isMouseMovementEnabled(MouseMovementType movementType) {
+    return isPlatformMouseMovementEnabled(movementType);
+}
+
+/**
+ * Whether the platform should report each mousemovement
+ * axis individually or combined.
+ *
+ * Which of the two the platform reports does not change which bindings emit: a
+ * combined movement is taken apart into the axes it carries. Reporting each
+ * axis on its own lets the platform follow the mouse more finely, at the cost
+ * of an event per axis.
+ *
+ * Whether the platform takes this on is up to the platform. Ask
+ * $(D isMouseAxisEventSplit) for what it ended up doing.
+ */
+void splitMouseAxisEvent(bool enabled) {
+    setPlatformMouseAxisSplit(enabled);
+}
+
+/**
+ * Returns: Whether the platform reports each axis of a movement on its own.
+ *
+ * This is asked of the platform rather than kept here, so it is what the
+ * platform is really doing rather than what it was asked to do: a platform that
+ * cannot report the axes separately keeps saying so however often it is turned
+ * on.
+ */
+bool isMouseAxisEventSplit() {
+    return isPlatformMouseAxisSplit();
+}
+
+/**
+ * When enabled, the x/y mouse movement values contain raw values
+ * as known by the platform instead of clamping to 0.0 - 1.0.
+ * For example: on desktops this would be the raw pixel values.
+ *
+ * Whether the platform takes this on is up to the platform. Ask
+ * $(D isRawMouseMotion) for what it ended up doing.
+ */
+void setRawMouseMotion(bool enabled) {
+    setPlatformRawMouseMotion(enabled);
+}
+
+/**
+ * Returns: Whether mouse movement is reported in the raw values of the
+ *          platform.
+ *
+ * As with $(D isMouseAxisEventSplit), this is what the platform is really
+ * doing rather than what it was asked to do.
+ */
+bool isRawMouseMotion() {
+    return isPlatformRawMouseMotion();
+}
+
 version (UnitTesting)  :  ///
 
 import retrograde.std.test : test, writeSection;
@@ -1286,16 +1634,25 @@ void resetInput() {
 
         memset(&keyEvents, 0, keyEvents.sizeof);
         memset(&mouseButtonEvents, 0, mouseButtonEvents.sizeof);
+        memset(&mouseMovementEvents, 0, mouseMovementEvents.sizeof);
         memset(&eventQueue, 0, eventQueue.sizeof);
         memset(&keyMapping, 0, keyMapping.sizeof);
         memset(&mouseButtonMapping, 0, mouseButtonMapping.sizeof);
+        memset(&mouseMovementMapping, 0, mouseMovementMapping.sizeof);
     } else {
         keyEvents.clear();
         mouseButtonEvents.clear();
+        mouseMovementEvents.clear();
         eventQueue.clear();
         clearKeyMappings();
         clearMouseButtonMappings();
+        clearMouseMovementMappings();
     }
+
+    setMouseMovementEnabled(MouseMovementType.absolute, true);
+    setMouseMovementEnabled(MouseMovementType.relative, true);
+    splitMouseAxisEvent(false);
+    setRawMouseMotion(false);
 }
 
 private void pressKey(KeyboardScanCode scanCode, InputEventAction action = InputEventAction.press,
@@ -1314,6 +1671,16 @@ private void pressMouseButton(MouseButton button, InputEventAction action = Inpu
     buttonEvent.action = action;
     buttonEvent.modifiers = modifiers;
     mouseButtonEvents.enqueue(buttonEvent);
+}
+
+private void moveMouse(double xPosition, double yPosition,
+    MouseMovementType movementType = MouseMovementType.absolute, Axis axis = Axis.all) {
+    MouseMovementEvent movementEvent;
+    movementEvent.xPosition = xPosition;
+    movementEvent.yPosition = yPosition;
+    movementEvent.axis = axis;
+    movementEvent.movementType = movementType;
+    mouseMovementEvents.enqueue(movementEvent);
 }
 
 private size_t emittedEventCount(StringId eventName, Magnitude magnitude) {
@@ -2054,5 +2421,233 @@ void runInputTests() {
         processInput();
 
         assert(emittedEventCount(sid("ev_jump"), 1) == 2);
+    });
+
+    writeSection("-- Mouse movement input tests --");
+
+    test("a mapped axis emits its event at the magnitude of the movement", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative);
+        moveMouse(0.5, 0.25, MouseMovementType.relative);
+        processInput();
+
+        Event event;
+        assert(eventQueue.tryDequeue(event));
+        assert(event.name == sid("ev_lookX"));
+        assert(event.magnitude == 0.5);
+        assert(eventQueue.length == 0);
+    });
+
+    test("an unmapped axis emits nothing", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative);
+        moveMouse(0.5, 0.25, MouseMovementType.relative, Axis.y);
+        processInput();
+
+        assert(eventQueue.length == 0);
+    });
+
+    test("a combined movement drives the bindings of both axes", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_cursorX"), MouseMovementType.absolute);
+        addMouseMovementMapping(Axis.y, sid("ev_cursorY"), MouseMovementType.absolute);
+        moveMouse(0.5, 0.25);
+        processInput();
+
+        assert(eventQueue.length == 2);
+        assert(emittedEventCount(sid("ev_cursorX"), 0.5) == 1);
+
+        moveMouse(0.5, 0.25);
+        processInput();
+        assert(emittedEventCount(sid("ev_cursorY"), 0.25) == 1);
+    });
+
+    test("a split movement only drives the axis it carries", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_cursorX"), MouseMovementType.absolute);
+        addMouseMovementMapping(Axis.y, sid("ev_cursorY"), MouseMovementType.absolute);
+        moveMouse(0.5, 0, MouseMovementType.absolute, Axis.x);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_cursorX"), 0.5) == 1);
+    });
+
+    test("a binding on all axes emits once per axis of the movement", () {
+        resetInput();
+        addMouseMovementMapping(Axis.all, sid("ev_look"), MouseMovementType.relative);
+        moveMouse(0.5, 0.25, MouseMovementType.relative);
+        processInput();
+
+        assert(eventQueue.length == 2);
+        assert(emittedEventCount(sid("ev_look"), 0.5) == 1);
+
+        moveMouse(0.5, 0.25, MouseMovementType.relative, Axis.y);
+        processInput();
+
+        assert(eventQueue.length == 1);
+        assert(emittedEventCount(sid("ev_look"), 0.25) == 1);
+    });
+
+    test("a movement along an axis the mouse does not carry emits nothing", () {
+        resetInput();
+        addMouseMovementMapping(Axis.all, sid("ev_look"), MouseMovementType.relative);
+        moveMouse(0.5, 0.25, MouseMovementType.relative, Axis.z);
+        processInput();
+
+        assert(eventQueue.length == 0);
+    });
+
+    test("absolute and relative bindings keep their own movements", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_cursorX"), MouseMovementType.absolute);
+        addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative);
+
+        assert(mouseMovementMapping.length == 2);
+
+        moveMouse(0.5, 0, MouseMovementType.relative, Axis.x);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_cursorX"), 0.5) == 0);
+
+        moveMouse(0.5, 0, MouseMovementType.relative, Axis.x);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_lookX"), 0.5) == 1);
+    });
+
+    test("an axis mapped to multiple events emits all of them", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative);
+        addMouseMovementMapping(Axis.x, sid("ev_aimX"), MouseMovementType.relative);
+        moveMouse(0.5, 0, MouseMovementType.relative, Axis.x);
+        processInput();
+
+        assert(eventQueue.length == 2);
+        assert(emittedEventCount(sid("ev_aimX"), 0.5) == 1);
+    });
+
+    test("mapping the same event to an axis twice emits it once", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative);
+        addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative);
+        moveMouse(0.5, 0, MouseMovementType.relative, Axis.x);
+        processInput();
+
+        assert(eventQueue.length == 1);
+    });
+
+    test("a movement of zero still emits, so its events do not stay put", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative);
+        moveMouse(0, 0, MouseMovementType.relative, Axis.x);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_lookX"), 0) == 1);
+    });
+
+    test("removing one event from an axis keeps the others", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative);
+        addMouseMovementMapping(Axis.x, sid("ev_aimX"), MouseMovementType.relative);
+
+        assert(removeMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative));
+        assert(!removeMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative));
+        assert(!hasMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative));
+        assert(hasMouseMovementMapping(Axis.x, sid("ev_aimX"), MouseMovementType.relative));
+    });
+
+    test("removing the last event of a binding unmaps the binding", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative);
+
+        assert(removeMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative));
+        assert(mouseMovementMapping.length == 0);
+    });
+
+    test("removing a binding leaves the other movement type of the axis alone", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_cursorX"), MouseMovementType.absolute);
+        addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative);
+
+        assert(removeMouseMovementMappings(Axis.x, MouseMovementType.absolute));
+        assert(!removeMouseMovementMappings(Axis.x, MouseMovementType.absolute));
+        assert(!hasMouseMovementMapping(Axis.x, sid("ev_cursorX"), MouseMovementType.absolute));
+        assert(hasMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative));
+    });
+
+    test("removing all mappings of an axis removes both of its movement types", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_cursorX"), MouseMovementType.absolute);
+        addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative);
+        addMouseMovementMapping(Axis.y, sid("ev_lookY"), MouseMovementType.relative);
+
+        assert(removeAllMouseMovementMappings(Axis.x));
+        assert(!removeAllMouseMovementMappings(Axis.x));
+        assert(mouseMovementMapping.length == 1);
+        assert(hasMouseMovementMapping(Axis.y, sid("ev_lookY"), MouseMovementType.relative));
+    });
+
+    test("clearing the mouse movement mappings leaves no axis bound", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative);
+        clearMouseMovementMappings();
+
+        assert(mouseMovementMapping.length == 0);
+        assert(!hasMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative));
+    });
+
+    writeSection("-- Mouse movement setting tests --");
+
+    test("the types of movement report what the platform does", () {
+        resetInput();
+
+        // Which types are reported is asked of the platform rather than kept by
+        // the engine, so a platform that does not take a setting on keeps
+        // reporting what it is really doing instead of what it was asked for.
+        version (WebAssembly) {
+            assert(isMouseMovementEnabled(MouseMovementType.absolute));
+            assert(isMouseMovementEnabled(MouseMovementType.relative));
+
+            setMouseMovementEnabled(MouseMovementType.absolute, false);
+            assert(!isMouseMovementEnabled(MouseMovementType.absolute));
+            assert(isMouseMovementEnabled(MouseMovementType.relative));
+
+            setMouseMovementEnabled(MouseMovementType.absolute, true);
+            assert(isMouseMovementEnabled(MouseMovementType.absolute));
+        }
+    });
+
+    test("a movement that arrives is emitted, whatever it was asked to report", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_cursorX"), MouseMovementType.absolute);
+        setMouseMovementEnabled(MouseMovementType.absolute, false);
+
+        // Holding the movement back is the platform's to do: one that keeps
+        // reporting a type that was turned off says so through
+        // isMouseMovementEnabled rather than having its events dropped here.
+        moveMouse(0.5, 0, MouseMovementType.absolute, Axis.x);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_cursorX"), 0.5) == 1);
+    });
+
+    test("the axis split and raw motion settings report what the platform does", () {
+        resetInput();
+        splitMouseAxisEvent(true);
+        setRawMouseMotion(true);
+
+        // Both are asked of the platform rather than kept by the engine, so a
+        // platform that does not take a setting on keeps reporting it as off
+        // instead of claiming what it was asked for.
+        version (WebAssembly) {
+            assert(isMouseAxisEventSplit());
+            assert(isRawMouseMotion());
+        }
+
+        splitMouseAxisEvent(false);
+        setRawMouseMotion(false);
+
+        assert(!isMouseAxisEventSplit());
+        assert(!isRawMouseMotion());
     });
 }
