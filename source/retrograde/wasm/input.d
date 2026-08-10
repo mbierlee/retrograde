@@ -16,7 +16,7 @@ version (WebAssembly)  :  //
 import retrograde.engine.input : Axis, InputEventAction, InputMethod, KeyboardKeyCode,
     KeyboardKeyModifier, KeyboardKeyEvent, KeyboardScanCode, keyEvents,
     MouseButton, MouseButtonEvent, mouseButtonEvents, MouseMovementEvent,
-    mouseMovementEvents, MouseMovementType;
+    mouseMovementEvents, MouseMovementType, MouseScrollEvent, mouseScrollEvents;
 
 /**
  * Init the input system.
@@ -70,6 +70,21 @@ export extern (C) void onMouseButton(MouseButton button, InputEventAction action
 export extern (C) void onMouseMovement(double xPosition, double yPosition, Axis axis,
     MouseMovementType movementType) {
     mouseMovementEvents.enqueue(MouseMovementEvent(xPosition, yPosition, axis, movementType));
+}
+
+/**
+ * Called by the web runtime when the mousewheel is scrolled.
+ *
+ * Offsets are the distance the wheel was scrolled since the previous scroll, in
+ * notches: the runtime works them out from the units the browser reported the
+ * scroll in, so that a detent of the wheel is a whole notch whichever browser it
+ * came from. It also turns the vertical offset around, as the browser is the odd
+ * one out in reporting a scroll down as the positive one.
+ *
+ * See $(D MouseScrollEvent) for a description of the parameters.
+ */
+export extern (C) void onMouseScroll(double xOffset, double yOffset) {
+    mouseScrollEvents.enqueue(MouseScrollEvent(xOffset, yOffset));
 }
 
 /**

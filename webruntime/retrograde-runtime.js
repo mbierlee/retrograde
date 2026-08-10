@@ -208,6 +208,18 @@ export default class RetrogradeRuntime {
           this.dispatchMouseMovement(e);
         });
 
+        // The wheel is a game control here rather than the way to scroll the
+        // page, which browsers assume it is: a wheel listener is passive unless
+        // it says otherwise, leaving preventDefault with nothing to hold back.
+        this.eventCapturer.addEventListener(
+          "wheel",
+          (e) => {
+            this.dispatchMouseScroll(e);
+            e.preventDefault();
+          },
+          { passive: false },
+        );
+
         // The right button is a game button here rather than the way to open
         // the context menu, which would otherwise take over the page as soon
         // as it is pressed.
@@ -871,6 +883,23 @@ export default class RetrogradeRuntime {
   }
 
   /**
+   * Reports a scroll of the mousewheel to the engine, in notches along both of
+   * its axes.
+   *
+   * The vertical offset is turned around on the way out: the browser reports a
+   * scroll down as the positive one, where the engine has the wheel Y-up as
+   * every other platform reports it. Doing it here leaves the browser as the
+   * only platform that has to, rather than every other one. The horizontal
+   * offset needs none of that, as scrolling right is positive everywhere.
+   */
+  dispatchMouseScroll(e) {
+    this.instance.exports.onMouseScroll(
+      scrollNotches(e.deltaX, e.deltaMode),
+      -scrollNotches(e.deltaY, e.deltaMode),
+    );
+  }
+
+  /**
    * Returns the area mouse positions are reported over: the canvas being
    * rendered to, or the viewport while there is none.
    */
@@ -1149,6 +1178,46 @@ const Axis = {
   y: 2,
   z: 3,
 };
+
+/**
+ * The units a WheelEvent reports its deltas in, as WheelEvent.DOM_DELTA_* has
+ * them. They are spelled out here rather than read off the global, so that the
+ * runtime keeps loading where there is no WheelEvent to read them from.
+ */
+const WheelDeltaMode = {
+  pixel: 0,
+  line: 1,
+  page: 2,
+};
+
+/**
+ * How much of each unit a browser scrolls per notch of the wheel: the ones
+ * Chromium-based browsers scroll in pixels, and the ones Firefox scrolls in
+ * lines. A page is a notch of its own.
+ */
+const pixelsPerScrollNotch = 100;
+const linesPerScrollNotch = 3;
+
+/**
+ * Returns the given wheel delta in notches, whichever units the browser reported
+ * it in.
+ *
+ * Browsers disagree on both the unit and the amount of it a notch of the wheel
+ * is worth, so the raw delta of a single notch differs between them. Bringing
+ * them to a common notch leaves a binding scrolling the same amount everywhere,
+ * and leaves the fractions of a notch that a trackpad or a free-spinning wheel
+ * reports intact.
+ */
+function scrollNotches(delta, deltaMode) {
+  switch (deltaMode) {
+    case WheelDeltaMode.line:
+      return delta / linesPerScrollNotch;
+    case WheelDeltaMode.page:
+      return delta;
+    default:
+      return delta / pixelsPerScrollNotch;
+  }
+}
 
 /**
  * Returns the given value brought within the given bounds.

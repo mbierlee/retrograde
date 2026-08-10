@@ -28,6 +28,7 @@ version (Native) {
 Queue!KeyboardKeyEvent keyEvents;
 Queue!MouseButtonEvent mouseButtonEvents;
 Queue!MouseMovementEvent mouseMovementEvents;
+Queue!MouseScrollEvent mouseScrollEvents;
 
 /**
  * The events a key binding emits when its key is pressed, held or released.
@@ -60,6 +61,17 @@ HashMap!(MouseButtonBinding, Array!StringId) mouseButtonMapping;
  * manipulating this map directly.
  */
 HashMap!(MouseMovementBinding, Array!StringId) mouseMovementMapping;
+
+/**
+ * The events a mouse scroll binding emits when the mousewheel is scrolled along
+ * the axis it binds to.
+ *
+ * Works the same way as $(D keyMapping): a binding can drive more than one
+ * event, and every event mapped to it is emitted. Prefer
+ * $(D addMouseScrollMapping) and $(D removeMouseScrollMapping) over
+ * manipulating this map directly.
+ */
+HashMap!(MouseScrollBinding, Array!StringId) mouseScrollMapping;
 
 /**
  * Make the given key binding emit the given event, on top of any events it
@@ -386,6 +398,87 @@ void clearMouseMovementMappings() {
     mouseMovementMapping.clear();
 }
 
+/**
+ * Make the given mouse scroll binding emit the given event, on top of any
+ * events it already emits.
+ *
+ * Mapping the same event to the same binding again does nothing; a binding
+ * never emits the same event twice.
+ *
+ * Params:
+ *  binding = The axis to map.
+ *  eventName = Name of the event the binding should emit.
+ */
+void addMouseScrollMapping(MouseScrollBinding binding, StringId eventName) {
+    addMapping(mouseScrollMapping, binding, eventName);
+}
+
+/**
+ * Make scrolling along the given axis emit the given event, on top of any
+ * events it already emits.
+ *
+ * Params:
+ *  axis = The axis to map. $(D Axis.all) follows both axes of the wheel,
+ *         emitting the event once per axis.
+ *  eventName = Name of the event the scroll should emit.
+ */
+void addMouseScrollMapping(Axis axis, StringId eventName) {
+    addMouseScrollMapping(MouseScrollBinding(axis), eventName);
+}
+
+/**
+ * Stop the given mouse scroll binding from emitting the given event, leaving
+ * the other events mapped to it in place.
+ *
+ * Params:
+ *  binding = The axis to unmap the event from.
+ *  eventName = Name of the event the binding should no longer emit.
+ * Returns: Whether the binding was mapped to the event.
+ */
+bool removeMouseScrollMapping(MouseScrollBinding binding, StringId eventName) {
+    return removeMapping(mouseScrollMapping, binding, eventName);
+}
+
+/// ditto
+bool removeMouseScrollMapping(Axis axis, StringId eventName) {
+    return removeMouseScrollMapping(MouseScrollBinding(axis), eventName);
+}
+
+/**
+ * Stop scrolling along the given axis from emitting any event at all.
+ *
+ * Params:
+ *  binding = The axis to unmap.
+ * Returns: Whether the binding was mapped to any event.
+ */
+bool removeMouseScrollMappings(MouseScrollBinding binding) {
+    return mouseScrollMapping.remove(binding);
+}
+
+/// ditto
+bool removeMouseScrollMappings(Axis axis) {
+    return removeMouseScrollMappings(MouseScrollBinding(axis));
+}
+
+/**
+ * Returns: Whether the given mouse scroll binding emits the given event.
+ */
+bool hasMouseScrollMapping(MouseScrollBinding binding, StringId eventName) {
+    return hasMapping(mouseScrollMapping, binding, eventName);
+}
+
+/// ditto
+bool hasMouseScrollMapping(Axis axis, StringId eventName) {
+    return hasMouseScrollMapping(MouseScrollBinding(axis), eventName);
+}
+
+/**
+ * Unmap every axis, leaving no mouse scroll emitting any event.
+ */
+void clearMouseScrollMappings() {
+    mouseScrollMapping.clear();
+}
+
 void processInput() {
     KeyboardKeyEvent keyEvent;
     while (keyEvents.tryDequeue(keyEvent)) {
@@ -409,6 +502,11 @@ void processInput() {
     MouseMovementEvent mouseMovementEvent;
     while (mouseMovementEvents.tryDequeue(mouseMovementEvent)) {
         emitMouseMovementEvents(mouseMovementEvent);
+    }
+
+    MouseScrollEvent mouseScrollEvent;
+    while (mouseScrollEvents.tryDequeue(mouseScrollEvent)) {
+        emitMouseScrollEvents(mouseScrollEvent);
     }
 }
 
@@ -679,6 +777,37 @@ private void emitAxisMovementEvents(Axis axis, double position, MouseMovementTyp
 
         foreach (i; 0 .. eventNames.length) {
             eventQueue.enqueue(Event(eventNames[i], cast(Magnitude) position));
+        }
+    }
+}
+
+/**
+ * Emits the events of every binding the given scroll satisfies, each at the
+ * distance the wheel was scrolled along the axis of the binding.
+ *
+ * A scroll always carries both axes, so both are taken apart here: a wheel that
+ * only turns one way reports the other axis at the zero it did not move.
+ */
+private void emitMouseScrollEvents(MouseScrollEvent scrollEvent) {
+    emitAxisScrollEvents(Axis.x, scrollEvent.xOffset);
+    emitAxisScrollEvents(Axis.y, scrollEvent.yOffset);
+}
+
+/**
+ * Emits the events of every binding that follows the given axis, at the distance
+ * the wheel was scrolled along it.
+ *
+ * A binding on $(D Axis.all) follows both axes, and so emits its events once for
+ * each of them.
+ */
+private void emitAxisScrollEvents(Axis axis, double offset) {
+    foreach (binding, eventNames; mouseScrollMapping) {
+        if (binding.axis != axis && binding.axis != Axis.all) {
+            continue;
+        }
+
+        foreach (i; 0 .. eventNames.length) {
+            eventQueue.enqueue(Event(eventNames[i], cast(Magnitude) offset));
         }
     }
 }
@@ -1620,6 +1749,60 @@ bool isRawMouseMotion() {
     return isPlatformRawMouseMotion();
 }
 
+/**
+ * An input event generated scrolling a one or two-dimensional mousewheel.
+ *
+ * The offsets are the distance the wheel was scrolled since the previous scroll
+ * event, in notches: one detent of a typical wheel is a whole one, and a
+ * trackpad or a free-spinning wheel reports the fractions in between.
+ *
+ * A scroll is the rotation of the wheel rather than a position over the window,
+ * and so is Y-up rather than Y-down as the mouse itself is: scrolling up, away
+ * from the user, gives a positive $(D yOffset) and scrolling down a negative
+ * one, the way every platform but the browser reports the wheel. Scrolling right
+ * gives a positive $(D xOffset), which every platform agrees on.
+ *
+ * Both axes are always carried, so a wheel that only turns one way reports the
+ * other at zero.
+ */
+struct MouseScrollEvent {
+    double xOffset;
+    double yOffset;
+}
+
+/**
+ * An axis of the mousewheel to follow.
+ *
+ * The wheel drives its events by how far it was scrolled rather than by being
+ * pressed, so a binding emits its events at the distance of the scroll instead
+ * of at the full magnitude a key or a button emits at. A scroll is an impulse
+ * rather than a state: its events are emitted once per scroll, and nothing is
+ * emitted while the wheel sits still.
+ *
+ * ---
+ * addMouseScrollMapping(Axis.y, sid("ev_zoom"));
+ * ---
+ *
+ * $(D Axis.all) follows both axes rather than a combined one: its events are
+ * emitted once per axis, each carrying that axis' own offset.
+ */
+struct MouseScrollBinding {
+    /// The axis to bind to, or $(D Axis.all) to bind to both of them.
+    Axis axis;
+
+    bool opEquals(ref const typeof(this) other) const {
+        return axis == other.axis;
+    }
+
+    bool opEquals(const typeof(this) other) const {
+        return opEquals(other);
+    }
+
+    ulong toHash() nothrow @trusted const {
+        return hashOf(cast(ulong) axis);
+    }
+}
+
 version (UnitTesting)  :  ///
 
 import retrograde.std.test : test, writeSection;
@@ -1635,18 +1818,22 @@ void resetInput() {
         memset(&keyEvents, 0, keyEvents.sizeof);
         memset(&mouseButtonEvents, 0, mouseButtonEvents.sizeof);
         memset(&mouseMovementEvents, 0, mouseMovementEvents.sizeof);
+        memset(&mouseScrollEvents, 0, mouseScrollEvents.sizeof);
         memset(&eventQueue, 0, eventQueue.sizeof);
         memset(&keyMapping, 0, keyMapping.sizeof);
         memset(&mouseButtonMapping, 0, mouseButtonMapping.sizeof);
         memset(&mouseMovementMapping, 0, mouseMovementMapping.sizeof);
+        memset(&mouseScrollMapping, 0, mouseScrollMapping.sizeof);
     } else {
         keyEvents.clear();
         mouseButtonEvents.clear();
         mouseMovementEvents.clear();
+        mouseScrollEvents.clear();
         eventQueue.clear();
         clearKeyMappings();
         clearMouseButtonMappings();
         clearMouseMovementMappings();
+        clearMouseScrollMappings();
     }
 
     setMouseMovementEnabled(MouseMovementType.absolute, true);
@@ -1681,6 +1868,13 @@ private void moveMouse(double xPosition, double yPosition,
     movementEvent.axis = axis;
     movementEvent.movementType = movementType;
     mouseMovementEvents.enqueue(movementEvent);
+}
+
+private void scrollMouse(double xOffset, double yOffset) {
+    MouseScrollEvent scrollEvent;
+    scrollEvent.xOffset = xOffset;
+    scrollEvent.yOffset = yOffset;
+    mouseScrollEvents.enqueue(scrollEvent);
 }
 
 private size_t emittedEventCount(StringId eventName, Magnitude magnitude) {
@@ -2594,6 +2788,171 @@ void runInputTests() {
 
         assert(mouseMovementMapping.length == 0);
         assert(!hasMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative));
+    });
+
+    writeSection("-- Mouse scroll input tests --");
+
+    test("a mapped axis emits its event at the distance of the scroll", () {
+        resetInput();
+        addMouseScrollMapping(Axis.y, sid("ev_zoom"));
+        scrollMouse(0, 1);
+        processInput();
+
+        Event event;
+        assert(eventQueue.tryDequeue(event));
+        assert(event.name == sid("ev_zoom"));
+        assert(event.magnitude == 1);
+        assert(eventQueue.length == 0);
+    });
+
+    test("an unmapped axis emits nothing", () {
+        resetInput();
+        addMouseScrollMapping(Axis.x, sid("ev_scrollX"));
+        clearMouseScrollMappings();
+        scrollMouse(1, 1);
+        processInput();
+
+        assert(eventQueue.length == 0);
+    });
+
+    test("a scroll drives the bindings of both axes", () {
+        resetInput();
+        addMouseScrollMapping(Axis.x, sid("ev_scrollX"));
+        addMouseScrollMapping(Axis.y, sid("ev_scrollY"));
+        scrollMouse(0.5, 0.25);
+        processInput();
+
+        assert(eventQueue.length == 2);
+        assert(emittedEventCount(sid("ev_scrollX"), 0.5) == 1);
+
+        scrollMouse(0.5, 0.25);
+        processInput();
+        assert(emittedEventCount(sid("ev_scrollY"), 0.25) == 1);
+    });
+
+    test("a binding on all axes emits once per axis of the scroll", () {
+        resetInput();
+        addMouseScrollMapping(Axis.all, sid("ev_scroll"));
+        scrollMouse(0.5, 0.25);
+        processInput();
+
+        assert(eventQueue.length == 2);
+        assert(emittedEventCount(sid("ev_scroll"), 0.5) == 1);
+
+        scrollMouse(0.5, 0.25);
+        processInput();
+        assert(emittedEventCount(sid("ev_scroll"), 0.25) == 1);
+    });
+
+    test("a binding on the third axis is left alone by a scroll", () {
+        resetInput();
+        addMouseScrollMapping(Axis.z, sid("ev_scrollZ"));
+        scrollMouse(0.5, 0.25);
+        processInput();
+
+        assert(eventQueue.length == 0);
+    });
+
+    test("scrolling up and down keep their own signs", () {
+        resetInput();
+        addMouseScrollMapping(Axis.y, sid("ev_zoom"));
+
+        // The wheel is Y-up: scrolling up, away from the user, is the positive
+        // one, and the sign of the offset is carried through as it comes.
+        scrollMouse(0, 1);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_zoom"), 1) == 1);
+
+        scrollMouse(0, -1);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_zoom"), -1) == 1);
+    });
+
+    test("an axis mapped to multiple events emits all of them", () {
+        resetInput();
+        addMouseScrollMapping(Axis.y, sid("ev_zoom"));
+        addMouseScrollMapping(Axis.y, sid("ev_menuScroll"));
+        scrollMouse(0, 1);
+        processInput();
+
+        assert(eventQueue.length == 2);
+        assert(emittedEventCount(sid("ev_menuScroll"), 1) == 1);
+    });
+
+    test("mapping the same event to an axis twice emits it once", () {
+        resetInput();
+        addMouseScrollMapping(Axis.y, sid("ev_zoom"));
+        addMouseScrollMapping(Axis.y, sid("ev_zoom"));
+        scrollMouse(0, 1);
+        processInput();
+
+        assert(eventQueue.length == 1);
+    });
+
+    test("an axis the wheel did not turn along still emits", () {
+        resetInput();
+        addMouseScrollMapping(Axis.x, sid("ev_scrollX"));
+        scrollMouse(0, 1);
+        processInput();
+
+        // A wheel that only turns one way carries the other axis at zero, which
+        // is emitted so that its events do not stay at the last scroll that did
+        // touch them.
+        assert(emittedEventCount(sid("ev_scrollX"), 0) == 1);
+    });
+
+    test("mouse scroll and mouse movement keep their own bindings", () {
+        resetInput();
+        addMouseScrollMapping(Axis.y, sid("ev_zoom"));
+        addMouseMovementMapping(Axis.y, sid("ev_lookY"), MouseMovementType.relative);
+        scrollMouse(0, 1);
+        processInput();
+
+        assert(eventQueue.length == 1);
+        assert(emittedEventCount(sid("ev_zoom"), 1) == 1);
+        assert(!hasMouseScrollMapping(Axis.y, sid("ev_lookY")));
+    });
+
+    test("removing one event from an axis keeps the others", () {
+        resetInput();
+        addMouseScrollMapping(Axis.y, sid("ev_zoom"));
+        addMouseScrollMapping(Axis.y, sid("ev_menuScroll"));
+
+        assert(removeMouseScrollMapping(Axis.y, sid("ev_zoom")));
+        assert(!removeMouseScrollMapping(Axis.y, sid("ev_zoom")));
+        assert(!hasMouseScrollMapping(Axis.y, sid("ev_zoom")));
+        assert(hasMouseScrollMapping(Axis.y, sid("ev_menuScroll")));
+    });
+
+    test("removing the last event of a binding unmaps the binding", () {
+        resetInput();
+        addMouseScrollMapping(Axis.y, sid("ev_zoom"));
+
+        assert(removeMouseScrollMapping(Axis.y, sid("ev_zoom")));
+        assert(mouseScrollMapping.length == 0);
+    });
+
+    test("removing all events of an axis leaves the other axes alone", () {
+        resetInput();
+        addMouseScrollMapping(Axis.y, sid("ev_zoom"));
+        addMouseScrollMapping(Axis.y, sid("ev_menuScroll"));
+        addMouseScrollMapping(Axis.x, sid("ev_scrollX"));
+
+        assert(removeMouseScrollMappings(Axis.y));
+        assert(!removeMouseScrollMappings(Axis.y));
+        assert(mouseScrollMapping.length == 1);
+        assert(hasMouseScrollMapping(Axis.x, sid("ev_scrollX")));
+    });
+
+    test("clearing the mouse scroll mappings leaves no axis bound", () {
+        resetInput();
+        addMouseScrollMapping(Axis.y, sid("ev_zoom"));
+        clearMouseScrollMappings();
+
+        assert(mouseScrollMapping.length == 0);
+        assert(!hasMouseScrollMapping(Axis.y, sid("ev_zoom")));
     });
 
     writeSection("-- Mouse movement setting tests --");

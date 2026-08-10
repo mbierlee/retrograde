@@ -34,6 +34,11 @@ import retrograde.engine.input : InputMethod, MouseMovementType;
 // which are not the same thing on a hidpi display: take the size to work out a
 // position that is a part of the content area from glfwGetWindowSize, not from
 // glfwGetFramebufferSize.
+//
+// GLFW's scroll offsets are already the Y-up notches MouseScrollEvent carries,
+// so they are passed on as they come. The browser is the one platform that
+// reports the wheel the other way up, and its runtime turns the offset around
+// itself rather than leaving that to every platform here.
 
 void initInput(InputMethod inputMethods) {
     assert(0, "Native input system is not yet implemented");
