@@ -16,7 +16,8 @@ version (WebAssembly)  :  //
 import retrograde.engine.input : Axis, InputEventAction, InputMethod, KeyboardKeyCode,
     KeyboardKeyModifier, KeyboardKeyEvent, KeyboardScanCode, keyEvents,
     MouseButton, MouseButtonEvent, mouseButtonEvents, MouseMovementEvent,
-    mouseMovementEvents, MouseMovementType, MouseScrollEvent, mouseScrollEvents;
+    mouseMovementEvents, MouseMovementType, MouseScrollEvent, mouseScrollEvents,
+    TextInputEvent, textInputEvents;
 
 /**
  * Init the input system.
@@ -28,12 +29,17 @@ void initInput(InputMethod inputMethods) {
         setupKeyboardCallback();
     }
 
+    if (inputMethods & InputMethod.textInput) {
+        setupTextInputCallback();
+    }
+
     if (inputMethods & InputMethod.mouse) {
         setupMouseCallback();
     }
 }
 
 private extern (C) void setupKeyboardCallback();
+private extern (C) void setupTextInputCallback();
 private extern (C) void setupMouseCallback();
 
 /**
@@ -44,6 +50,20 @@ private extern (C) void setupMouseCallback();
 export extern (C) void onKey(KeyboardScanCode scanCode, KeyboardKeyCode keyCode,
     InputEventAction action, KeyboardKeyModifier modifiers) {
     keyEvents.enqueue(KeyboardKeyEvent(scanCode, keyCode, action, modifiers));
+}
+
+/**
+ * Called by the web runtime when the user types a character.
+ *
+ * The runtime works the character out of the key events the browser reports,
+ * leaving out the keys that edit text rather than produce it and the ones
+ * pressed as part of a shortcut. Held keys type their character again with
+ * every repeat, as they do in a text field.
+ *
+ * See $(D TextInputEvent) for a description of the parameters.
+ */
+export extern (C) void onTextInput(dchar codePoint) {
+    textInputEvents.enqueue(TextInputEvent(codePoint));
 }
 
 /**
