@@ -23,6 +23,7 @@ module writer;
 import std.array : Appender, appender;
 import std.bitmanip : nativeToLittleEndian;
 import std.path : buildPath, setExtension;
+import std.typecons : Nullable;
 
 import retrograde.assets.rgm : rgmMagicNumber;
 import retrograde.assets.model : MaterialType, MaterialFlags, maxUvChannels, noMaterial,
@@ -54,11 +55,17 @@ private struct OutTexture {
  *   texturePathPrefix = Optional prefix prepended to every texture path.
  *   forceBackfaceCulling = When true, every material is written as single-sided,
  *                       ignoring the source model's double-sided flag.
+ *   magFilterOverride = When set, every texture is written with this magnification
+ *                       filter instead of the one from its glTF sampler.
+ *   minFilterOverride = When set, every texture is written with this minification
+ *                       filter instead of the one from its glTF sampler.
  * Throws: Exception if the model exceeds an RGM format limit (too many UV
  *   channels, or a texture path longer than a ushort can address).
  */
 ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix,
-    bool forceBackfaceCulling = false) {
+    bool forceBackfaceCulling = false,
+    Nullable!TextureMagFilter magFilterOverride = Nullable!TextureMagFilter.init,
+    Nullable!TextureMinFilter minFilterOverride = Nullable!TextureMinFilter.init) {
     // Map glTF material index -> RGM material index. Materials get a sequential
     // 1-based RGM index the first time a primitive references them (in primitive
     // order); materials no primitive references are never emitted. Primitives
@@ -97,9 +104,15 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
                 path = buildPath(texturePathPrefix, path);
             }
 
-            OutTexture texture = OutTexture(path, material.baseColorTexture.magFilter,
-                material.baseColorTexture.minFilter, material.baseColorTexture.wrapS,
-                material.baseColorTexture.wrapT);
+            // An override replaces the sampler's filter before de-duplication, so two
+            // textures that only differed by filter collapse into a single entry.
+            TextureMagFilter magFilter = magFilterOverride.isNull
+                ? material.baseColorTexture.magFilter : magFilterOverride.get;
+            TextureMinFilter minFilter = minFilterOverride.isNull
+                ? material.baseColorTexture.minFilter : minFilterOverride.get;
+
+            OutTexture texture = OutTexture(path, magFilter, minFilter,
+                material.baseColorTexture.wrapS, material.baseColorTexture.wrapT);
             uint* existing = texture in textureToIndex;
             if (existing !is null) {
                 materialTextureIndices[i] = *existing;

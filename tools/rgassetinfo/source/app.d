@@ -265,6 +265,11 @@ int showModelInfo(string inputFile, const(ubyte)[] data, ref bool printedAny) {
     writefln("Total UV chans:    %d", totalUvChannels);
     writefln("Max UV chans/mesh: %d", maxUvChannelsUsed);
 
+    string cullingSummary = backfaceCullingSummary(materials);
+    if (cullingSummary.length > 0) {
+        writefln("Backface culling:  %s", cullingSummary);
+    }
+
     if (meshes.length > 0) {
         writeln("Per-mesh:");
         foreach (i, ref mesh; meshes) {
@@ -320,8 +325,55 @@ string materialReferenceLabel(uint materialIndex) {
     return to!string(materialIndex);
 }
 
+/**
+ * Summarize backface culling over every material that carries the flag.
+ *
+ * Culling is the inverse of the per-material double-sided flag, so a model can
+ * have it on for some materials and off for others. The `invalid` sentinel
+ * carries no flags byte, so those materials are left out of the tally.
+ *
+ * Returns: the summary, or an empty string when no material carries the flag.
+ */
+string backfaceCullingSummary(Material[] materials) {
+    size_t flaggedCount = 0;
+    size_t culledCount = 0;
+    foreach (ref material; materials) {
+        if (material.type == MaterialType.invalid) {
+            continue;
+        }
+
+        flaggedCount++;
+        if (!material.doubleSided) {
+            culledCount++;
+        }
+    }
+
+    if (flaggedCount == 0) {
+        return "";
+    }
+
+    if (culledCount == flaggedCount) {
+        return "enabled (all materials)";
+    }
+
+    if (culledCount == 0) {
+        return "disabled (all materials double-sided)";
+    }
+
+    import std.format : format;
+
+    return format("mixed (%d of %d materials culled)", culledCount, flaggedCount);
+}
+
 string materialCommonFlagsDescription(ref Material material) {
-    return material.doubleSided ? ", double-sided" : "";
+    // The `invalid` sentinel stores no flags byte, so it has no culling state to report.
+    if (material.type == MaterialType.invalid) {
+        return "";
+    }
+
+    // Stated in both directions: an absent flag would otherwise be
+    // indistinguishable from the tool not reporting culling at all.
+    return material.doubleSided ? ", double-sided (no backface culling)" : ", backface culling";
 }
 
 string materialPayloadDescription(ref Material material) {

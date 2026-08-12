@@ -15,58 +15,72 @@
 
 import std.stdio;
 import std.getopt;
+import std.array : join;
+import std.conv : ConvException, to;
 import std.file : exists, isDir;
 import std.path : baseName, stripExtension, buildPath;
+import std.traits : EnumMembers;
+import std.typecons : Nullable;
+
+import retrograde.assets.model : TextureMagFilter, TextureMinFilter;
 
 import reader : readModel;
 import writer : encodeRgm;
 import model : ModelData;
 
-int main(string[] args) {
+/// The conversion settings gathered from the command line.
+struct Options {
     string inputFile;
     string outputFile;
     bool showStats;
     bool noRenameImages;
     string texturePath;
     bool forceBackfaceCulling;
+    Nullable!TextureMagFilter magFilter; /// Null unless --mag-filter was given.
+    Nullable!TextureMinFilter minFilter; /// Null unless --min-filter was given.
+}
 
-    int argsResult = parseArgs(args, inputFile, outputFile, showStats, noRenameImages, texturePath,
-        forceBackfaceCulling);
+int main(string[] args) {
+    Options options;
+
+    int argsResult = parseArgs(args, options);
     if (argsResult != -1) {
         return argsResult;
     }
 
-    if (!exists(inputFile)) {
-        stderr.writefln("Error: input file '%s' does not exist.", inputFile);
+    if (!exists(options.inputFile)) {
+        stderr.writefln("Error: input file '%s' does not exist.", options.inputFile);
         return 1;
     }
 
-    if (exists(outputFile) && isDir(outputFile)) {
-        outputFile = buildPath(outputFile, stripExtension(baseName(inputFile)) ~ ".rgm");
+    if (exists(options.outputFile) && isDir(options.outputFile)) {
+        options.outputFile = buildPath(options.outputFile,
+            stripExtension(baseName(options.inputFile)) ~ ".rgm");
     }
 
-    auto readResult = readModel(inputFile);
+    auto readResult = readModel(options.inputFile);
     if (!readResult.ok) {
-        stderr.writefln("Error: Failed to import '%s': %s", inputFile, readResult.error);
+        stderr.writefln("Error: Failed to import '%s': %s", options.inputFile, readResult.error);
         return 1;
     }
 
     if (readResult.model.primitives.length == 0) {
-        stderr.writefln("Warning: '%s' contains no meshes.", inputFile);
+        stderr.writefln("Warning: '%s' contains no meshes.", options.inputFile);
     }
 
     try {
-        ubyte[] bytes = encodeRgm(readResult.model, !noRenameImages, texturePath, forceBackfaceCulling);
-        auto output = File(outputFile, "wb");
+        ubyte[] bytes = encodeRgm(readResult.model, !options.noRenameImages, options.texturePath,
+            options.forceBackfaceCulling, options.magFilter, options.minFilter);
+        auto output = File(options.outputFile, "wb");
         output.rawWrite(bytes);
     } catch (Exception e) {
-        stderr.writefln("Error writing output file '%s': %s", outputFile, e.msg);
+        stderr.writefln("Error writing output file '%s': %s", options.outputFile, e.msg);
         return 1;
     }
 
-    writefln("Converted '%s' -> '%s'", inputFile, outputFile);
+    writefln("Converted '%s' -> '%s'", options.inputFile, options.outputFile);
 
-    if (showStats) {
+    if (options.showStats) {
         printStats(readResult.model);
     }
 
@@ -79,22 +93,32 @@ int main(string[] args) {
  *   0  if the program should exit successfully (e.g. --help was shown),
  *   1  if there was a usage error.
  */
-int parseArgs(ref string[] args, out string inputFile, out string outputFile, out bool showStats,
-    out bool noRenameImages, out string texturePath, out bool forceBackfaceCulling) {
+int parseArgs(ref string[] args, out Options options) {
+    string magFilter;
+    string minFilter;
+
     try {
         auto opts = getopt(args,
-            "input|i", "Input glTF (.gltf) file path", &inputFile,
-            "output|o", "Output RGM file path", &outputFile,
-            "stats", "Print mesh statistics after conversion", &showStats,
+            "input|i", "Input glTF (.gltf) file path", &options.inputFile,
+            "output|o", "Output RGM file path", &options.outputFile,
+            "stats", "Print mesh statistics after conversion", &options.showStats,
             "no-rename-images",
             "Keep original texture image names instead of rewriting their extension to .rgi",
-            &noRenameImages,
+            &options.noRenameImages,
             "texture-path",
             "Prefix all texture paths with the given path",
-            &texturePath,
+            &options.texturePath,
             "force-backface-culling",
             "Write all materials as single-sided, ignoring the source model's double-sided flag",
-            &forceBackfaceCulling,
+            &options.forceBackfaceCulling,
+            "mag-filter",
+            "Write all textures with this magnification filter, ignoring the source model's sampler. One of: " ~
+                enumValueList!TextureMagFilter,
+            &magFilter,
+            "min-filter",
+            "Write all textures with this minification filter, ignoring the source model's sampler. One of: " ~
+                enumValueList!TextureMinFilter,
+            &minFilter,
         );
 
         if (opts.helpWanted) {
@@ -108,9 +132,17 @@ int parseArgs(ref string[] args, out string inputFile, out string outputFile, ou
             return 0;
         }
 
-        if (inputFile.length == 0 || outputFile.length == 0) {
+        if (options.inputFile.length == 0 || options.outputFile.length == 0) {
             stderr.writeln("Error: Both --input and --output are required.");
             stderr.writeln("Use --help for usage information.");
+            return 1;
+        }
+
+        if (!parseEnumOption("mag-filter", magFilter, options.magFilter)) {
+            return 1;
+        }
+
+        if (!parseEnumOption("min-filter", minFilter, options.minFilter)) {
             return 1;
         }
     } catch (Exception e) {
@@ -119,6 +151,42 @@ int parseArgs(ref string[] args, out string inputFile, out string outputFile, ou
     }
 
     return -1;
+}
+
+/**
+ * Resolve an option whose value names a member of the enum `T`.
+ *
+ * An empty `value` means the option was not given and leaves `result` null.
+ *
+ * Returns: true when the option was absent or named a valid member, false on an
+ *   unknown name, in which case the accepted values have been reported.
+ */
+bool parseEnumOption(T)(string optionName, string value, out Nullable!T result) {
+    if (value.length == 0) {
+        return true;
+    }
+
+    try {
+        result = value.to!T;
+    } catch (ConvException) {
+        stderr.writefln("Error: unknown --%s value '%s'. Valid values: %s", optionName, value,
+            enumValueList!T);
+        return false;
+    }
+
+    return true;
+}
+
+/// A comma-separated list of every member name of the enum `T`, for help and error text.
+template enumValueList(T) {
+    enum enumValueList = {
+        string[] names;
+        static foreach (member; EnumMembers!T) {
+            names ~= member.to!string;
+        }
+
+        return names.join(", ");
+    }();
 }
 
 void printStats(in ModelData model) {
