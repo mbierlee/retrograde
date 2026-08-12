@@ -28,8 +28,10 @@ int main(string[] args) {
     bool showStats;
     bool noRenameImages;
     string texturePath;
+    bool forceBackfaceCulling;
 
-    int argsResult = parseArgs(args, inputFile, outputFile, showStats, noRenameImages, texturePath);
+    int argsResult = parseArgs(args, inputFile, outputFile, showStats, noRenameImages, texturePath,
+        forceBackfaceCulling);
     if (argsResult != -1) {
         return argsResult;
     }
@@ -54,7 +56,7 @@ int main(string[] args) {
     }
 
     try {
-        ubyte[] bytes = encodeRgm(readResult.model, !noRenameImages, texturePath);
+        ubyte[] bytes = encodeRgm(readResult.model, !noRenameImages, texturePath, forceBackfaceCulling);
         auto output = File(outputFile, "wb");
         output.rawWrite(bytes);
     } catch (Exception e) {
@@ -78,7 +80,7 @@ int main(string[] args) {
  *   1  if there was a usage error.
  */
 int parseArgs(ref string[] args, out string inputFile, out string outputFile, out bool showStats,
-    out bool noRenameImages, out string texturePath) {
+    out bool noRenameImages, out string texturePath, out bool forceBackfaceCulling) {
     try {
         auto opts = getopt(args,
             "input|i", "Input glTF (.gltf) file path", &inputFile,
@@ -90,6 +92,9 @@ int parseArgs(ref string[] args, out string inputFile, out string outputFile, ou
             "texture-path",
             "Prefix all texture paths with the given path",
             &texturePath,
+            "force-backface-culling",
+            "Write all materials as single-sided, ignoring the source model's double-sided flag",
+            &forceBackfaceCulling,
         );
 
         if (opts.helpWanted) {

@@ -52,10 +52,13 @@ private struct OutTexture {
  *   renameImages      = When true, referenced texture paths get their extension
  *                       rewritten to `.rgi`; otherwise the original path is kept.
  *   texturePathPrefix = Optional prefix prepended to every texture path.
+ *   forceBackfaceCulling = When true, every material is written as single-sided,
+ *                       ignoring the source model's double-sided flag.
  * Throws: Exception if the model exceeds an RGM format limit (too many UV
  *   channels, or a texture path longer than a ushort can address).
  */
-ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix) {
+ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix,
+    bool forceBackfaceCulling = false) {
     // Map glTF material index -> RGM material index. Materials get a sequential
     // 1-based RGM index the first time a primitive references them (in primitive
     // order); materials no primitive references are never emitted. Primitives
@@ -145,7 +148,8 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
             continue;
         }
 
-        ubyte flags = data.materials[i].doubleSided ? cast(ubyte) MaterialFlags.doubleSided : 0;
+        bool doubleSided = !forceBackfaceCulling && data.materials[i].doubleSided;
+        ubyte flags = doubleSided ? cast(ubyte) MaterialFlags.doubleSided : 0;
         writeUbyte(buf, flags); // Common flags (bit 0 = double-sided)
 
         if (type == MaterialType.unlit) {

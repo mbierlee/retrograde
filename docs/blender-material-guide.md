@@ -183,3 +183,7 @@ material double-sided (both front and back faces rendered, the default).
 > The other backface-culling checkboxes (Shadow, Light Probe Volume) do not
 > affect the export — only **Camera** maps to Retrograde's per-material
 > double-sided flag.
+
+To cull back faces everywhere without touching the source model, convert with
+`rgmodelconv --force-backface-culling`. Every material is then written as
+single-sided, whatever the glTF's `doubleSided` flag says.
