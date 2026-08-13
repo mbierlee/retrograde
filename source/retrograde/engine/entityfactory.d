@@ -16,7 +16,8 @@ import retrograde.std.math : Vector3, Quaternion;
 import retrograde.std.geometry : PositionComponentType, OrientationComponentType, ScaleComponentType;
 
 import retrograde.engine.entity : EntityId, addComponent;
-import retrograde.engine.animation.kinetic : RotationComponentType;
+import retrograde.engine.animation.kinetic : RotationComponentType, TranslationComponentType,
+    ScalingComponentType;
 
 void addPosition(EntityId entity, const double x, const double y, const double z) {
     entity.addPosition(Vector3(x, y, z));
@@ -44,4 +45,24 @@ void addScale(EntityId entity, const Vector3 scale) {
 
 void addRotation(EntityId entity, double radianAngle, const Vector3 axis) {
     entity.addComponent(RotationComponentType, makeUnique(Quaternion.createRotation(radianAngle, axis)));
+}
+
+void addTranslation(EntityId entity, const double x, const double y, const double z) {
+    entity.addTranslation(Vector3(x, y, z));
+}
+
+void addTranslation(EntityId entity, const Vector3 translation) {
+    entity.addComponent(TranslationComponentType, makeUnique(translation));
+}
+
+void addScaling(EntityId entity, const double scaling) {
+    entity.addScaling(Vector3(scaling));
+}
+
+void addScaling(EntityId entity, const double xScaling, const double yScaling, const double zScaling) {
+    entity.addScaling(Vector3(xScaling, yScaling, zScaling));
+}
+
+void addScaling(EntityId entity, const Vector3 scaling) {
+    entity.addComponent(ScalingComponentType, makeUnique(scaling));
 }
