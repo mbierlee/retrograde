@@ -241,10 +241,15 @@ struct VectorT(T, uint N) if (N > 0) {
     }
 
     /**
-     * Returns a copy of this and another vector added/substracted together.
+     * Returns a copy of this and another vector added/substracted/multiplied/divided together.
+     *
+     * All operations are applied per component. Multiplication therefore yields the
+     * Hadamard product of both vectors, not their dot or cross product. Use $(D dot)
+     * or $(D cross) for those. Division is likewise per component; a zero component in
+     * the divisor is not guarded against.
      */
     VectorT opBinary(string op)(const VectorT rhs) const
-    if (rhs._N == N && (op == "+" || op == "-")) {
+    if (rhs._N == N && (op == "+" || op == "-" || op == "*" || op == "/")) {
         VectorT vec;
         static foreach (i; 0 .. N) {
             mixin("vec[i] = cast(T) (components[i] " ~ op ~ " rhs[i]);");
@@ -1673,6 +1678,22 @@ void runVectorTests() {
         assert(4 == subbedVector.y);
     });
 
+    test("Multiply vectors with two components component-wise", {
+        auto const vector1 = Vector2U(2, 8);
+        auto const vector2 = Vector2U(3, 4);
+        auto const multipliedVector = vector1 * vector2;
+        assert(6 == multipliedVector.x);
+        assert(32 == multipliedVector.y);
+    });
+
+    test("Divide vectors with two components component-wise", {
+        auto const vector1 = Vector2U(6, 32);
+        auto const vector2 = Vector2U(3, 4);
+        auto const dividedVector = vector1 / vector2;
+        assert(2 == dividedVector.x);
+        assert(8 == dividedVector.y);
+    });
+
     test("Multiply vectors with two components by scalar", {
         auto const vector = Vector2U(2, 8);
         auto const multipliedVector = vector * 2;
@@ -1745,6 +1766,39 @@ void runVectorTests() {
         assert(1 == subbedVector.x);
         assert(4 == subbedVector.y);
         assert(2 == subbedVector.z);
+    });
+
+    test("Multiply vectors with three components component-wise", {
+        auto const vector1 = Vector3U(2, 8, 4);
+        auto const vector2 = Vector3U(3, 4, 5);
+        auto const multipliedVector = vector1 * vector2;
+        assert(6 == multipliedVector.x);
+        assert(32 == multipliedVector.y);
+        assert(20 == multipliedVector.z);
+    });
+
+    test("Component-wise multiplication is not the dot or cross product", {
+        auto const vector1 = Vector3D(1, 2, 3);
+        auto const vector2 = Vector3D(4, 5, 6);
+        auto const hadamardProduct = vector1 * vector2;
+        assert(Vector3D(4, 10, 18) == hadamardProduct);
+        assert(32 == vector1.dot(vector2));
+        assert(Vector3D(-3, 6, -3) == vector1.cross(vector2));
+    });
+
+    test("Divide vectors with three components component-wise", {
+        auto const vector1 = Vector3U(6, 32, 20);
+        auto const vector2 = Vector3U(3, 4, 5);
+        auto const dividedVector = vector1 / vector2;
+        assert(2 == dividedVector.x);
+        assert(8 == dividedVector.y);
+        assert(4 == dividedVector.z);
+    });
+
+    test("Component-wise division undoes component-wise multiplication", {
+        auto const vector = Vector3D(1, 2, 3);
+        auto const factor = Vector3D(4, 5, 6);
+        assert(vector == vector * factor / factor);
     });
 
     test("Multiply vectors with three components by scalar", {
