@@ -58,18 +58,34 @@ version (LDC) {
     //TODO: Consider using browser's atan. Benchmark to see if actually faster.
     T atan(T)(T x) {
         if (x > 1.0) {
-            return (PI / 2) - atan(1.0 / x);
+            return cast(T)((PI / 2) - atan(cast(T)(1.0 / x)));
         } else if (x < -1.0) {
-            return -(PI / 2) - atan(1.0 / x);
+            return cast(T)(-(PI / 2) - atan(cast(T)(1.0 / x)));
         }
 
+        // Brought down to an eighth of a turn with the tangent addition formula,
+        // so that the series below is only ever asked for angles up to 22.5
+        // degrees. It converges by the square of the angle, and is still tens of
+        // terms away from the precision of a float at the 45 degrees the fold
+        // above leaves behind.
+        enum T tanOfEighthTurn = 0.414213562373095;
+        if (x > tanOfEighthTurn) {
+            return cast(T)((PI / 4) + atan(cast(T)((x - 1.0) / (x + 1.0))));
+        } else if (x < -tanOfEighthTurn) {
+            return cast(T)(-(PI / 4) + atan(cast(T)((x + 1.0) / (1.0 - x))));
+        }
+
+        // The Maclaurin series of the arc tangent: x - x³/3 + x⁵/5 - x⁷/7 ...
         T result = 0.0;
         T powerOfX = x; // x^1
         T xSquared = x * x; // x^2
+        T sign = 1;
 
         // Calculate up to 10 terms
         for (int i = 1; i < 20; i += 2) {
-            result += powerOfX / i - (powerOfX *= xSquared) / (i + 2); // Add and subtract alternating terms
+            result += sign * (powerOfX / i);
+            powerOfX *= xSquared;
+            sign = -sign;
         }
 
         return result;
