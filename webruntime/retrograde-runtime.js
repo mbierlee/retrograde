@@ -22,10 +22,12 @@ export default class RetrogradeRuntime {
   heldModifierKeys = new Set();
 
   // The mouse movement settings of source/retrograde/engine/input.d, which is
-  // what sets them: their defaults are the ones the engine documents.
+  // what sets them: their defaults are the ones the engine documents. Neither
+  // type is followed until the game asks for it, so that a game that binds
+  // nothing to the mouse is not made to carry the movements it never reads.
   mouseMovementEnabled = {
-    [MouseMovementType.absolute]: true,
-    [MouseMovementType.relative]: true,
+    [MouseMovementType.absolute]: false,
+    [MouseMovementType.relative]: false,
   };
 
   mouseAxisSplit = false;

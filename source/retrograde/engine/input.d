@@ -1852,9 +1852,9 @@ enum Axis : uint {
  * Whether the platform should report the given type of mouse movement at all.
  *
  * A type that is turned off is one the platform stops following, leaving
- * nothing for the bindings on it to emit. Turning off the type that is not
- * being used spares the platform that work: reporting both is what the mouse
- * starts out doing.
+ * nothing for the bindings on it to emit. Neither type is reported to begin
+ * with: a game that follows the mouse turns on the type it follows it by, which
+ * spares the platform the work of following the other one.
  *
  * Whether the platform takes this on is up to the platform, as is whether both
  * types are available there at all. Ask $(D isMouseMovementEnabled) for what it
@@ -2126,8 +2126,8 @@ void resetInput() {
         clearMouseModeMappings();
     }
 
-    setMouseMovementEnabled(MouseMovementType.absolute, true);
-    setMouseMovementEnabled(MouseMovementType.relative, true);
+    setMouseMovementEnabled(MouseMovementType.absolute, false);
+    setMouseMovementEnabled(MouseMovementType.relative, false);
     splitMouseAxisEvent(false);
     setRawMouseMotion(false);
     setMouseMode(MouseMode.normal);
@@ -3395,15 +3395,16 @@ void runInputTests() {
         // the engine, so a platform that does not take a setting on keeps
         // reporting what it is really doing instead of what it was asked for.
         version (WebAssembly) {
-            assert(isMouseMovementEnabled(MouseMovementType.absolute));
-            assert(isMouseMovementEnabled(MouseMovementType.relative));
-
-            setMouseMovementEnabled(MouseMovementType.absolute, false);
+            // Neither type is followed until it is asked for.
             assert(!isMouseMovementEnabled(MouseMovementType.absolute));
-            assert(isMouseMovementEnabled(MouseMovementType.relative));
+            assert(!isMouseMovementEnabled(MouseMovementType.relative));
 
             setMouseMovementEnabled(MouseMovementType.absolute, true);
             assert(isMouseMovementEnabled(MouseMovementType.absolute));
+            assert(!isMouseMovementEnabled(MouseMovementType.relative));
+
+            setMouseMovementEnabled(MouseMovementType.absolute, false);
+            assert(!isMouseMovementEnabled(MouseMovementType.absolute));
         }
     });
 
