@@ -11,7 +11,8 @@
 
 module retrograde.engine.mechanic.lookaround;
 
-import retrograde.engine.entity : addEntityProcessor, EntityId, hasComponent, withComponentData;
+import retrograde.engine.entity : addEntityProcessor, EntityId, getComponentData,
+    withComponentData;
 import retrograde.engine.event : Event, eventHandlers;
 import retrograde.engine.input : addKeyMapping, addMouseMovementMapping, Axis, getMouseMode,
     KeyboardScanCode, MouseMode, MouseMovementType, setContinuousRelativeMouseMovement,
@@ -52,8 +53,9 @@ const StringId evLookVertical = "ev_look_vertical".sid;
  *
  * These are the keyboard's side of looking around: a key is held rather than
  * moved, so it carries no distance of its own and turns the entity at
- * $(D lookAroundDirectionSpeed) for as long as it is down. Opposite directions
- * that are both up cancel each other out, leaving the entity where it is.
+ * $(D LookAroundConfiguration.directionSpeed) for as long as it is down. Opposite
+ * directions that are both up cancel each other out, leaving the entity where it
+ * is.
  *
  * Bound to the arrow keys by $(D mapKeyboardArrowsToLookAround).
  */
@@ -71,42 +73,77 @@ const StringId evLookDown = "ev_look_down".sid;
 /**
  * The component that has an entity look around.
  *
- * It carries no data: the look-around events are the game's, not the entity's,
- * so every entity that has this component looks around together. Add it to the
- * camera, or to whatever else the player is looking through. An entity also
- * needs an $(D OrientationComponentType) to have anything to turn.
+ * Add it to the camera, or to whatever else the player is looking through. An
+ * entity also needs an $(D OrientationComponentType) to have anything to turn.
+ *
+ * The component data is a $(D LookAroundConfiguration) of the entity's own, which
+ * it may do without: an entity that carries the component without any data looks
+ * around by $(D lookAroundDefaults), along with every other entity that does.
+ *
+ * ---
+ * // Looking around the way the rest of the game does.
+ * entity.addComponent(LookAroundComponentType);
+ *
+ * // Looking around twice as fast as the rest of the game.
+ * auto configuration = lookAroundDefaults;
+ * configuration.sensitivity = configuration.sensitivity * 2;
+ * entity.addComponent(LookAroundComponentType, makeUnique(configuration));
+ * ---
  */
 enum LookAroundComponentType = sid("comp_look_around");
 
 /**
- * How far, in radians, a whole unit of $(D evLookHorizontal) or
- * $(D evLookVertical) turns the entity.
+ * How far an entity turns for what it is told to look around by.
  *
- * The default is a tenth of a degree per unit, which suits the raw pixel
- * distances that $(D mapMouseMovementToLookAround) asks the platform for. A game
- * that leaves raw mouse motion off is handed the distance as a fraction of the
- * window instead, and wants this several hundred times larger.
+ * The same numbers stand for the game as a whole and for a single entity: they
+ * are $(D lookAroundDefaults) when the game keeps them, and the data of an
+ * entity's $(D LookAroundComponentType) when an entity keeps its own.
+ *
+ * An entity's own configuration stands on its own rather than filling the gaps
+ * from the game's: a copy of $(D lookAroundDefaults) is the place to start from
+ * when only one of these is meant to be different.
  */
-scalar lookAroundSensitivity = degreesToRadians(0.1);
+struct LookAroundConfiguration {
+    /**
+     * How far, in radians, a whole unit of $(D evLookHorizontal) or
+     * $(D evLookVertical) turns the entity.
+     *
+     * The default is a tenth of a degree per unit, which suits the raw pixel
+     * distances that $(D mapMouseMovementToLookAround) asks the platform for. A
+     * game that leaves raw mouse motion off is handed the distance as a fraction
+     * of the window instead, and wants this several hundred times larger.
+     */
+    scalar sensitivity = degreesToRadians(0.1);
+
+    /**
+     * How far, in radians, the entity turns per update while a look direction
+     * such as $(D evLookLeft) is up.
+     *
+     * The engine updates at a fixed rate, so this is a speed: the default of two
+     * degrees per update comes down to 120 degrees per second at the default
+     * rate.
+     */
+    scalar directionSpeed = degreesToRadians(2);
+
+    /**
+     * How far up or down, in radians, the entity is allowed to look.
+     *
+     * Looking further would take it over the top and leave it upside down, so the
+     * pitch stops here while the turn to the left and right carries on. The
+     * default of 89 degrees leaves it just short of looking straight up or
+     * straight down. A limit of 90 degrees or more leaves the pitch unclamped.
+     */
+    scalar maxPitch = degreesToRadians(89);
+}
 
 /**
- * How far, in radians, an entity turns per update while a look direction such as
- * $(D evLookLeft) is up.
+ * How far the entities that keep no configuration of their own turn.
  *
- * The engine updates at a fixed rate, so this is a speed: the default of two
- * degrees per update comes down to 120 degrees per second at the default rate.
+ * Changing this changes how the whole game looks around, from the very next
+ * update on, and leaves the entities that carry a configuration of their own
+ * where they are.
  */
-scalar lookAroundDirectionSpeed = degreesToRadians(2);
-
-/**
- * How far up or down, in radians, an entity is allowed to look.
- *
- * Looking further would take the entity over the top and leave it upside down,
- * so the pitch stops here while the turn to the left and right carries on. The
- * default of 89 degrees leaves the entity just short of looking straight up or
- * straight down. A limit of 90 degrees or more leaves the pitch unclamped.
- */
-scalar maxLookAroundPitch = degreesToRadians(89);
+LookAroundConfiguration lookAroundDefaults;
 
 /**
  * The axes and directions as they were last reported, in the magnitudes of the
@@ -151,9 +188,9 @@ private Option!MouseMode requiredMouseMode;
  * with a processor that never hears anything.
  */
 enum LookAroundProcessor = delegate(EntityId entity) {
-    const scalar yaw = yawAngle();
-    const scalar pitch = pitchAngle();
-    if (yaw == 0 && pitch == 0) {
+    // Nothing to be told apart from one entity to the next while every axis and
+    // direction is at rest, which is most of the time.
+    if (lookAroundAtRest()) {
         return;
     }
 
@@ -161,7 +198,20 @@ enum LookAroundProcessor = delegate(EntityId entity) {
         return;
     }
 
-    if (!entity.hasComponent(LookAroundComponentType)) {
+    auto maybeConfiguration = entity.getComponentData!LookAroundConfiguration(
+        LookAroundComponentType);
+    if (maybeConfiguration.isEmpty) {
+        return;
+    }
+
+    // A component added without any data of its own leaves the entity looking
+    // around the way the rest of the game does.
+    const LookAroundConfiguration configuration = maybeConfiguration.value is null ?
+        lookAroundDefaults : *maybeConfiguration.value;
+
+    const scalar yaw = yawAngle(configuration);
+    const scalar pitch = pitchAngle(configuration);
+    if (yaw == 0 && pitch == 0) {
         return;
     }
 
@@ -181,7 +231,7 @@ enum LookAroundProcessor = delegate(EntityId entity) {
             // A pitch that would take the entity past the limit is cut down to
             // however much of it is left, so that it ends up looking as far up or
             // down as it is allowed rather than short of it.
-            const scalar allowed = allowedPitch(newOrientation, pitch);
+            const scalar allowed = allowedPitch(newOrientation, pitch, configuration.maxPitch);
             if (allowed != 0) {
                 // Looking up and down is the other way around from turning
                 // sideways: it happens around the entity's own right axis,
@@ -282,9 +332,9 @@ void mapMouseMovementToLookAround() {
  * Have the arrow keys look around, turning the entity for as long as they are
  * held.
  *
- * How fast they turn it is $(D lookAroundDirectionSpeed) rather than
- * $(D lookAroundSensitivity): a key carries no distance of its own, so the speed
- * is the mechanic's to decide.
+ * How fast they turn it is the entity's $(D LookAroundConfiguration.directionSpeed)
+ * rather than its $(D LookAroundConfiguration.sensitivity): a key carries no
+ * distance of its own, so the speed is the mechanic's to decide.
  */
 void mapKeyboardArrowsToLookAround() {
     addKeyMapping(KeyboardScanCode.left, evLookLeft);
@@ -327,33 +377,45 @@ private bool inRequiredMouseMode() {
 }
 
 /**
- * Returns: How far the entity turns to the left and right this update, in
- *          radians around the world's up axis.
+ * Returns: Whether every axis and direction is at rest, leaving nothing for any
+ *          entity to turn by.
+ *
+ * Asked before an entity's configuration is looked up at all: how far an entity
+ * turns is its own, but whether there is anything to turn by is the game's.
+ */
+private bool lookAroundAtRest() {
+    return horizontalMagnitude == 0 && verticalMagnitude == 0 &&
+        leftMagnitude == 0 && rightMagnitude == 0 &&
+        upMagnitude == 0 && downMagnitude == 0;
+}
+
+/**
+ * Returns: How far an entity configured this way turns to the left and right this
+ *          update, in radians around the world's up axis.
  *
  * Turning to the right is a rotation the negative way around that axis, which is
  * where the sign comes from: the events themselves are positive to the right.
  */
-private scalar yawAngle() {
-    return -(horizontalMagnitude * lookAroundSensitivity + (
-            rightMagnitude - leftMagnitude) * lookAroundDirectionSpeed);
+private scalar yawAngle(const ref LookAroundConfiguration configuration) {
+    return -(horizontalMagnitude * configuration.sensitivity +
+            (rightMagnitude - leftMagnitude) * configuration.directionSpeed);
 }
 
 /**
- * Returns: How far the entity looks up and down this update, in radians around
- *          its own right axis.
+ * Returns: How far an entity configured this way looks up and down this update,
+ *          in radians around its own right axis.
  *
  * Negative the way $(D yawAngle) is: the events are positive downwards, and
  * looking down is a rotation the negative way around the right axis.
  */
-private scalar pitchAngle() {
-    return -(verticalMagnitude * lookAroundSensitivity +
-            (
-                downMagnitude - upMagnitude) * lookAroundDirectionSpeed);
+private scalar pitchAngle(const ref LookAroundConfiguration configuration) {
+    return -(verticalMagnitude * configuration.sensitivity +
+            (downMagnitude - upMagnitude) * configuration.directionSpeed);
 }
 
 /**
  * Returns: How much of the given pitch the given orientation may take on without
- *          looking further up or down than $(D maxLookAroundPitch) allows.
+ *          looking further up or down than the given limit allows.
  *
  * The pitch is cut down to what is left of the limit rather than left out
  * altogether, so that a mouse flung upwards leaves the entity looking as far up
@@ -361,8 +423,9 @@ private scalar pitchAngle() {
  * orientation that is already beyond the limit is handed the pitch that brings it
  * back to it.
  */
-private scalar allowedPitch(const Quaternion orientation, const scalar pitch) {
-    if (maxLookAroundPitch >= PI / 2) {
+private scalar allowedPitch(const Quaternion orientation, const scalar pitch,
+    const scalar maxPitch) {
+    if (maxPitch >= PI / 2) {
         return pitch;
     }
 
@@ -382,12 +445,12 @@ private scalar allowedPitch(const Quaternion orientation, const scalar pitch) {
     auto const currentPitch = _atan2(-rotation[1, 2], rotation[1, 1]);
     auto const newPitch = currentPitch + pitch;
 
-    if (newPitch > maxLookAroundPitch) {
-        return maxLookAroundPitch - currentPitch;
+    if (newPitch > maxPitch) {
+        return maxPitch - currentPitch;
     }
 
-    if (newPitch < -maxLookAroundPitch) {
-        return -maxLookAroundPitch - currentPitch;
+    if (newPitch < -maxPitch) {
+        return -maxPitch - currentPitch;
     }
 
     return pitch;
@@ -412,9 +475,7 @@ private void resetLookAround() {
     upMagnitude = 0;
     downMagnitude = 0;
 
-    lookAroundSensitivity = degreesToRadians(0.1);
-    lookAroundDirectionSpeed = degreesToRadians(2);
-    maxLookAroundPitch = degreesToRadians(89);
+    lookAroundDefaults = LookAroundConfiguration.init;
 
     version (WasmMemTest) {
         // The WasmMemTest harness wipes the heap before each test, so the handlers
@@ -457,6 +518,14 @@ private void startLookAroundGame() {
 private EntityId createLookAroundEntity() {
     EntityId entity = createEntity("ent_look_around_test").value;
     entity.addComponent(LookAroundComponentType);
+    entity.addComponent(OrientationComponentType, makeUnique(Quaternion.init));
+    return entity;
+}
+
+/// An entity that looks around by a configuration of its own.
+private EntityId createLookAroundEntity(LookAroundConfiguration configuration) {
+    EntityId entity = createEntity("ent_configured_look_around_test").value;
+    entity.addComponent(LookAroundComponentType, makeUnique(configuration));
     entity.addComponent(OrientationComponentType, makeUnique(Quaternion.init));
     return entity;
 }
@@ -605,7 +674,7 @@ void runLookAroundTests() {
         }
 
         auto const down = forwardOf(entity);
-        assert(down.y.approxEqual(-pitchLimitHeight(), cast(scalar) 0.001));
+        assert(down.y.approxEqual(-sineOf(lookAroundDefaults.maxPitch), cast(scalar) 0.001));
 
         // Still facing the way it started rather than having gone over the top and
         // come back around.
@@ -617,7 +686,7 @@ void runLookAroundTests() {
         }
 
         auto const up = forwardOf(entity);
-        assert(up.y.approxEqual(pitchLimitHeight(), cast(scalar) 0.001));
+        assert(up.y.approxEqual(sineOf(lookAroundDefaults.maxPitch), cast(scalar) 0.001));
         assert(up.z < 0);
     });
 
@@ -635,6 +704,69 @@ void runLookAroundTests() {
         // the entity facing the way it came from.
         auto const forward = forwardOf(entity);
         assert(forward.z > 0);
+    });
+
+    test("an entity turns by the configuration it carries", {
+        setUpLookAround();
+        auto configuration = lookAroundDefaults;
+        configuration.sensitivity = lookAroundDefaults.sensitivity * 2;
+        auto entity = createLookAroundEntity(configuration);
+        auto otherEntity = createLookAroundEntity();
+
+        emitLookEvent(evLookHorizontal, 100);
+        updateEntities();
+
+        // Twice as sensitive, so twice as far around: ten degrees against twenty.
+        assert(forwardOf(entity).x.approxEqual(sineOf(degreesToRadians(20)),
+                cast(scalar) 0.001));
+        assert(forwardOf(otherEntity).x.approxEqual(sineOf(degreesToRadians(10)),
+                cast(scalar) 0.001));
+    });
+
+    test("an entity turns by the direction speed it carries", {
+        setUpLookAround();
+        auto configuration = lookAroundDefaults;
+        configuration.directionSpeed = degreesToRadians(10);
+        auto entity = createLookAroundEntity(configuration);
+        auto otherEntity = createLookAroundEntity();
+
+        emitLookEvent(evLookRight, 1);
+        updateEntities();
+
+        assert(forwardOf(entity).x.approxEqual(sineOf(degreesToRadians(10)),
+                cast(scalar) 0.001));
+        assert(forwardOf(otherEntity).x.approxEqual(sineOf(degreesToRadians(2)),
+                cast(scalar) 0.001));
+    });
+
+    test("an entity stops at the pitch limit it carries", {
+        setUpLookAround();
+        auto configuration = lookAroundDefaults;
+        configuration.maxPitch = degreesToRadians(30);
+        auto entity = createLookAroundEntity(configuration);
+        auto otherEntity = createLookAroundEntity();
+
+        emitLookEvent(evLookVertical, 200);
+        foreach (i; 0 .. 20) {
+            updateEntities();
+        }
+
+        assert(forwardOf(entity).y.approxEqual(-sineOf(degreesToRadians(30)),
+                cast(scalar) 0.001));
+        assert(forwardOf(otherEntity).y.approxEqual(-sineOf(lookAroundDefaults.maxPitch),
+                cast(scalar) 0.001));
+    });
+
+    test("the entities without a configuration follow the game's", {
+        setUpLookAround();
+        lookAroundDefaults.sensitivity = degreesToRadians(0.2);
+        auto entity = createLookAroundEntity();
+
+        emitLookEvent(evLookHorizontal, 100);
+        updateEntities();
+
+        assert(forwardOf(entity).x.approxEqual(sineOf(degreesToRadians(20)),
+                cast(scalar) 0.001));
     });
 
     test("an entity that does not look around is left alone", {
@@ -774,13 +906,16 @@ void runLookAroundTests() {
     });
 }
 
-/// Returns: How high the direction an entity looks in reaches at the pitch limit.
-private scalar pitchLimitHeight() {
+/**
+ * Returns: The sine of the given angle, which is how far along an axis a direction
+ *          turned by that angle reaches.
+ */
+private scalar sineOf(const scalar angle) {
     static if (is(scalar == float)) {
         alias _sin = sinf;
     } else {
         alias _sin = sin;
     }
 
-    return _sin(maxLookAroundPitch);
+    return _sin(angle);
 }
