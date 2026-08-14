@@ -30,6 +30,7 @@ Queue!TextInputEvent textInputEvents;
 Queue!MouseButtonEvent mouseButtonEvents;
 Queue!MouseMovementEvent mouseMovementEvents;
 Queue!MouseScrollEvent mouseScrollEvents;
+Queue!MouseModeEvent mouseModeEvents;
 
 /**
  * The handlers that text typed by the user is handed to.
@@ -83,6 +84,17 @@ HashMap!(MouseMovementBinding, Array!StringId) mouseMovementMapping;
  * manipulating this map directly.
  */
 HashMap!(MouseScrollBinding, Array!StringId) mouseScrollMapping;
+
+/**
+ * The events a mouse mode binding emits when the mouse takes on the mode it
+ * binds to, or leaves it again.
+ *
+ * Works the same way as $(D keyMapping): a binding can drive more than one
+ * event, and every event mapped to it is emitted. Prefer
+ * $(D addMouseModeMapping) and $(D removeMouseModeMapping) over manipulating
+ * this map directly.
+ */
+HashMap!(MouseModeBinding, Array!StringId) mouseModeMapping;
 
 /**
  * Make the given key binding emit the given event, on top of any events it
@@ -490,6 +502,86 @@ void clearMouseScrollMappings() {
     mouseScrollMapping.clear();
 }
 
+/**
+ * Make the given mouse mode binding emit the given event, on top of any events
+ * it already emits.
+ *
+ * Mapping the same event to the same binding again does nothing; a binding
+ * never emits the same event twice.
+ *
+ * Params:
+ *  binding = The mouse mode to map.
+ *  eventName = Name of the event the binding should emit.
+ */
+void addMouseModeMapping(MouseModeBinding binding, StringId eventName) {
+    addMapping(mouseModeMapping, binding, eventName);
+}
+
+/**
+ * Make the mouse taking on the given mode emit the given event, on top of any
+ * events it already emits.
+ *
+ * Params:
+ *  mouseMode = The mode to map.
+ *  eventName = Name of the event the mode should emit.
+ */
+void addMouseModeMapping(MouseMode mouseMode, StringId eventName) {
+    addMouseModeMapping(MouseModeBinding(mouseMode), eventName);
+}
+
+/**
+ * Stop the given mouse mode binding from emitting the given event, leaving the
+ * other events mapped to it in place.
+ *
+ * Params:
+ *  binding = The mouse mode to unmap the event from.
+ *  eventName = Name of the event the binding should no longer emit.
+ * Returns: Whether the binding was mapped to the event.
+ */
+bool removeMouseModeMapping(MouseModeBinding binding, StringId eventName) {
+    return removeMapping(mouseModeMapping, binding, eventName);
+}
+
+/// ditto
+bool removeMouseModeMapping(MouseMode mouseMode, StringId eventName) {
+    return removeMouseModeMapping(MouseModeBinding(mouseMode), eventName);
+}
+
+/**
+ * Stop the given mouse mode from emitting any event at all.
+ *
+ * Params:
+ *  binding = The mouse mode to unmap.
+ * Returns: Whether the binding was mapped to any event.
+ */
+bool removeMouseModeMappings(MouseModeBinding binding) {
+    return mouseModeMapping.remove(binding);
+}
+
+/// ditto
+bool removeMouseModeMappings(MouseMode mouseMode) {
+    return removeMouseModeMappings(MouseModeBinding(mouseMode));
+}
+
+/**
+ * Returns: Whether the given mouse mode binding emits the given event.
+ */
+bool hasMouseModeMapping(MouseModeBinding binding, StringId eventName) {
+    return hasMapping(mouseModeMapping, binding, eventName);
+}
+
+/// ditto
+bool hasMouseModeMapping(MouseMode mouseMode, StringId eventName) {
+    return hasMouseModeMapping(MouseModeBinding(mouseMode), eventName);
+}
+
+/**
+ * Unmap every mouse mode, leaving none of them emitting any event.
+ */
+void clearMouseModeMappings() {
+    mouseModeMapping.clear();
+}
+
 void processInput() {
     KeyboardKeyEvent keyEvent;
     while (keyEvents.tryDequeue(keyEvent)) {
@@ -525,6 +617,11 @@ void processInput() {
     MouseScrollEvent mouseScrollEvent;
     while (mouseScrollEvents.tryDequeue(mouseScrollEvent)) {
         emitMouseScrollEvents(mouseScrollEvent);
+    }
+
+    MouseModeEvent mouseModeEvent;
+    while (mouseModeEvents.tryDequeue(mouseModeEvent)) {
+        emitMouseModeEvents(mouseModeEvent);
     }
 }
 
@@ -826,6 +923,24 @@ private void emitAxisScrollEvents(Axis axis, double offset) {
 
         foreach (i; 0 .. eventNames.length) {
             eventQueue.enqueue(Event(eventNames[i], cast(Magnitude) offset));
+        }
+    }
+}
+
+/**
+ * Emits the events of every mouse mode binding: at full magnitude for the mode
+ * the mouse is now in, and at zero for the modes it is not in.
+ *
+ * A mode is a state the mouse is in rather than an impulse, the way a held key
+ * is: the events of the mode it took on stay at full magnitude until another
+ * mode takes over. The modes it is not in are emitted at zero rather than being
+ * left alone, so that the events of the mode it left do not stay up.
+ */
+private void emitMouseModeEvents(MouseModeEvent modeEvent) {
+    foreach (binding, eventNames; mouseModeMapping) {
+        Magnitude magnitude = binding.mouseMode == modeEvent.mouseMode ? 1 : 0;
+        foreach (i; 0 .. eventNames.length) {
+            eventQueue.enqueue(Event(eventNames[i], magnitude));
         }
     }
 }
@@ -1870,6 +1985,102 @@ struct MouseScrollBinding {
     }
 }
 
+/**
+ * The ways the mouse can be shown over the window and kept inside it.
+ */
+enum MouseMode : uint {
+    /// Shows the mouse on-screen.
+    normal,
+
+    /// Hides the mouse, but does not lock it to the window.
+    hidden,
+
+    /// Hides the mouse and locks it to the window.
+    disabled
+}
+
+/**
+ * A mode of the mouse to follow.
+ *
+ * The mouse is in exactly one mode at a time, so its bindings work the way a
+ * key's do: the events of the mode the mouse took on are emitted at full
+ * magnitude, and those of the modes it is not in at zero.
+ *
+ * ---
+ * addMouseModeMapping(MouseMode.disabled, sid("ev_mouseLocked"));
+ * ---
+ *
+ * A mode is not always taken on the moment it is asked for, which is what these
+ * bindings are for: see $(D setMouseMode).
+ */
+struct MouseModeBinding {
+    /// The mode to bind to.
+    MouseMode mouseMode;
+
+    bool opEquals(ref const typeof(this) other) const {
+        return mouseMode == other.mouseMode;
+    }
+
+    bool opEquals(const typeof(this) other) const {
+        return opEquals(other);
+    }
+
+    ulong toHash() nothrow @trusted const {
+        return hashOf(cast(ulong) mouseMode);
+    }
+}
+
+/**
+ * An event emitted when the mouse takes on another mode.
+ *
+ * The mode it carries is the one the mouse is now really in, which is not
+ * necessarily the one that was last asked for: a mode the platform has not
+ * granted is not reported until it does. Nothing is reported while the mouse
+ * stays in the mode it is already in.
+ */
+struct MouseModeEvent {
+    /// The mode the mouse is now in.
+    MouseMode mouseMode;
+}
+
+/**
+ * Ask the platform to put the mouse in the given mode.
+ *
+ * A mode is not always taken on the moment it is asked for: the browser only
+ * hands over the pointer lock that $(D MouseMode.disabled) needs after the user
+ * has clicked the render area, so the mouse stays the normal one until they do,
+ * and takes the lock as soon as they click. The user can hand the lock back at
+ * any time, with escape, after which the next click on the render area takes it
+ * again for as long as the mouse is meant to be disabled.
+ *
+ * Which mode the mouse ended up in is reported by $(D getMouseMode), and every
+ * change of it emits the events of the $(D MouseModeBinding) on the mode taken
+ * on, so a game does not have to keep asking:
+ *
+ * ---
+ * addMouseModeMapping(MouseMode.disabled, sid("ev_mouseLocked"));
+ * setMouseMode(MouseMode.disabled);
+ * ---
+ *
+ * Params:
+ *  mouseMode = The mode to put the mouse in.
+ */
+void setMouseMode(MouseMode mouseMode) {
+    setPlatformMouseMode(mouseMode);
+}
+
+/**
+ * Returns: The mode the mouse is really in, which is not necessarily the one it
+ *          was last asked to be in.
+ *
+ * As with $(D isMouseMovementEnabled), this is asked of the platform rather
+ * than kept here, so that a mode that was asked for but not granted is not
+ * claimed to have been taken on.
+ */
+MouseMode getMouseMode() {
+    return getPlatformMouseMode();
+}
+
 version (UnitTesting)  :  ///
 
 import retrograde.std.test : test, writeSection;
@@ -1890,11 +2101,13 @@ void resetInput() {
         memset(&mouseButtonEvents, 0, mouseButtonEvents.sizeof);
         memset(&mouseMovementEvents, 0, mouseMovementEvents.sizeof);
         memset(&mouseScrollEvents, 0, mouseScrollEvents.sizeof);
+        memset(&mouseModeEvents, 0, mouseModeEvents.sizeof);
         memset(&eventQueue, 0, eventQueue.sizeof);
         memset(&keyMapping, 0, keyMapping.sizeof);
         memset(&mouseButtonMapping, 0, mouseButtonMapping.sizeof);
         memset(&mouseMovementMapping, 0, mouseMovementMapping.sizeof);
         memset(&mouseScrollMapping, 0, mouseScrollMapping.sizeof);
+        memset(&mouseModeMapping, 0, mouseModeMapping.sizeof);
     } else {
         keyEvents.clear();
         textInputEvents.clear();
@@ -1904,17 +2117,25 @@ void resetInput() {
         mouseButtonEvents.clear();
         mouseMovementEvents.clear();
         mouseScrollEvents.clear();
+        mouseModeEvents.clear();
         eventQueue.clear();
         clearKeyMappings();
         clearMouseButtonMappings();
         clearMouseMovementMappings();
         clearMouseScrollMappings();
+        clearMouseModeMappings();
     }
 
     setMouseMovementEnabled(MouseMovementType.absolute, true);
     setMouseMovementEnabled(MouseMovementType.relative, true);
     splitMouseAxisEvent(false);
     setRawMouseMotion(false);
+    setMouseMode(MouseMode.normal);
+
+    // Going back to the normal mouse is a change of mode like any other and is
+    // reported as one, which belongs to the reset rather than to the test that
+    // comes after it.
+    mouseModeEvents.clear();
 }
 
 private void pressKey(KeyboardScanCode scanCode, InputEventAction action = InputEventAction.press,
@@ -1977,6 +2198,16 @@ private void scrollMouse(double xOffset, double yOffset) {
     scrollEvent.xOffset = xOffset;
     scrollEvent.yOffset = yOffset;
     mouseScrollEvents.enqueue(scrollEvent);
+}
+
+/**
+ * Reports that the mouse took on the given mode, as the platform does when it
+ * really did, rather than when it was asked to.
+ */
+private void changeMouseMode(MouseMode mouseMode) {
+    MouseModeEvent modeEvent;
+    modeEvent.mouseMode = mouseMode;
+    mouseModeEvents.enqueue(modeEvent);
 }
 
 private size_t emittedEventCount(StringId eventName, Magnitude magnitude) {
@@ -3208,5 +3439,158 @@ void runInputTests() {
 
         assert(!isMouseAxisEventSplit());
         assert(!isRawMouseMotion());
+    });
+
+    writeSection("-- Mouse mode tests --");
+
+    test("a mapped mouse mode emits its event when the mouse takes it on", () {
+        resetInput();
+        addMouseModeMapping(MouseMode.disabled, sid("ev_mouseLocked"));
+        changeMouseMode(MouseMode.disabled);
+        processInput();
+
+        Event event;
+        assert(eventQueue.tryDequeue(event));
+        assert(event.name == sid("ev_mouseLocked"));
+        assert(event.magnitude == 1);
+        assert(eventQueue.length == 0);
+    });
+
+    test("an unmapped mouse mode emits nothing", () {
+        resetInput();
+        addMouseModeMapping(MouseMode.disabled, sid("ev_mouseLocked"));
+        clearMouseModeMappings();
+        changeMouseMode(MouseMode.disabled);
+        processInput();
+
+        assert(eventQueue.length == 0);
+    });
+
+    test("a mouse mode that is left behind emits at zero", () {
+        resetInput();
+        addMouseModeMapping(MouseMode.disabled, sid("ev_mouseLocked"));
+        changeMouseMode(MouseMode.disabled);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_mouseLocked"), 1) == 1);
+
+        // Losing the mode is the release of the mouse mode binding: the mouse
+        // is no longer locked, so neither is the event it drove.
+        changeMouseMode(MouseMode.normal);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_mouseLocked"), 0) == 1);
+    });
+
+    test("the modes the mouse is not in emit at zero alongside the one it is in", () {
+        resetInput();
+        addMouseModeMapping(MouseMode.normal, sid("ev_mouseFree"));
+        addMouseModeMapping(MouseMode.hidden, sid("ev_mouseHidden"));
+        addMouseModeMapping(MouseMode.disabled, sid("ev_mouseLocked"));
+        changeMouseMode(MouseMode.disabled);
+        processInput();
+
+        assert(eventQueue.length == 3);
+        assert(emittedEventCount(sid("ev_mouseLocked"), 1) == 1);
+
+        changeMouseMode(MouseMode.disabled);
+        processInput();
+        assert(emittedEventCount(sid("ev_mouseFree"), 0) == 1);
+
+        changeMouseMode(MouseMode.disabled);
+        processInput();
+        assert(emittedEventCount(sid("ev_mouseHidden"), 0) == 1);
+    });
+
+    test("a mode mapped to multiple events emits all of them", () {
+        resetInput();
+        addMouseModeMapping(MouseMode.disabled, sid("ev_mouseLocked"));
+        addMouseModeMapping(MouseMode.disabled, sid("ev_lookEnabled"));
+        changeMouseMode(MouseMode.disabled);
+        processInput();
+
+        assert(eventQueue.length == 2);
+        assert(emittedEventCount(sid("ev_lookEnabled"), 1) == 1);
+    });
+
+    test("mapping the same event to a mode twice emits it once", () {
+        resetInput();
+        addMouseModeMapping(MouseMode.disabled, sid("ev_mouseLocked"));
+        addMouseModeMapping(MouseMode.disabled, sid("ev_mouseLocked"));
+        changeMouseMode(MouseMode.disabled);
+        processInput();
+
+        assert(eventQueue.length == 1);
+    });
+
+    test("removing one event from a mode keeps the others", () {
+        resetInput();
+        addMouseModeMapping(MouseMode.disabled, sid("ev_mouseLocked"));
+        addMouseModeMapping(MouseMode.disabled, sid("ev_lookEnabled"));
+
+        assert(removeMouseModeMapping(MouseMode.disabled, sid("ev_mouseLocked")));
+        assert(!removeMouseModeMapping(MouseMode.disabled, sid("ev_mouseLocked")));
+        assert(!hasMouseModeMapping(MouseMode.disabled, sid("ev_mouseLocked")));
+        assert(hasMouseModeMapping(MouseMode.disabled, sid("ev_lookEnabled")));
+    });
+
+    test("removing the last event of a mode unmaps the binding", () {
+        resetInput();
+        addMouseModeMapping(MouseMode.disabled, sid("ev_mouseLocked"));
+
+        assert(removeMouseModeMapping(MouseMode.disabled, sid("ev_mouseLocked")));
+        assert(mouseModeMapping.length == 0);
+    });
+
+    test("removing all events of a mode leaves the other modes alone", () {
+        resetInput();
+        addMouseModeMapping(MouseMode.disabled, sid("ev_mouseLocked"));
+        addMouseModeMapping(MouseMode.disabled, sid("ev_lookEnabled"));
+        addMouseModeMapping(MouseMode.normal, sid("ev_mouseFree"));
+
+        assert(removeMouseModeMappings(MouseMode.disabled));
+        assert(!removeMouseModeMappings(MouseMode.disabled));
+        assert(mouseModeMapping.length == 1);
+        assert(hasMouseModeMapping(MouseMode.normal, sid("ev_mouseFree")));
+    });
+
+    test("clearing the mouse mode mappings leaves no mode bound", () {
+        resetInput();
+        addMouseModeMapping(MouseMode.disabled, sid("ev_mouseLocked"));
+        clearMouseModeMappings();
+
+        assert(mouseModeMapping.length == 0);
+        assert(!hasMouseModeMapping(MouseMode.disabled, sid("ev_mouseLocked")));
+    });
+
+    test("a hidden mouse is hidden right away", () {
+        resetInput();
+        setMouseMode(MouseMode.hidden);
+
+        // Nothing has to be granted for the mouse to be hidden on any platform,
+        // so the mode is the one that was asked for the moment it is set.
+        assert(getMouseMode() == MouseMode.hidden);
+    });
+
+    test("a disabled mouse reports the mode it really ended up in", () {
+        resetInput();
+        addMouseModeMapping(MouseMode.disabled, sid("ev_mouseLocked"));
+        setMouseMode(MouseMode.disabled);
+        processInput();
+
+        version (Native) {
+            // Nothing stands between asking for the mouse and having it here,
+            // so it is disabled the moment it is asked for and says so.
+            assert(getMouseMode() == MouseMode.disabled);
+            assert(emittedEventCount(sid("ev_mouseLocked"), 1) == 1);
+        }
+
+        version (WebAssembly) {
+            // The browser only hands the pointer lock over once the user has
+            // clicked the render area, so the mouse is still the normal one
+            // until they do and the binding on the disabled mouse stays down.
+            assert(getMouseMode() == MouseMode.normal);
+            assert(emittedEventCount(sid("ev_mouseLocked"), 1) == 0);
+        }
     });
 }
