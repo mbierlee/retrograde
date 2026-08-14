@@ -97,6 +97,20 @@ HashMap!(MouseScrollBinding, Array!StringId) mouseScrollMapping;
 HashMap!(MouseModeBinding, Array!StringId) mouseModeMapping;
 
 /**
+ * Whether relative mouse movement is followed as an axis that is always current.
+ * Prefer $(D setContinuousRelativeMouseMovement) over setting this directly.
+ */
+private bool continuousRelativeMouseMovement = true;
+
+/**
+ * Whether the axis last emitted the zero of a mouse that is not moving along it,
+ * kept so that an axis at rest is left alone rather than emitting that zero over
+ * and over.
+ */
+private bool xRelativeMovementAtRest = true;
+private bool yRelativeMovementAtRest = true;
+
+/**
  * Make the given key binding emit the given event, on top of any events it
  * already emits.
  *
@@ -609,9 +623,25 @@ void processInput() {
         }
     }
 
+    // The relative movements of an update are added up here rather than emitted
+    // as they come, so that the events of an axis carry the whole distance the
+    // mouse moved over the update. See setContinuousRelativeMouseMovement.
+    double xRelativeMovement = 0;
+    double yRelativeMovement = 0;
+
     MouseMovementEvent mouseMovementEvent;
     while (mouseMovementEvents.tryDequeue(mouseMovementEvent)) {
-        emitMouseMovementEvents(mouseMovementEvent);
+        if (continuousRelativeMouseMovement &&
+            mouseMovementEvent.movementType == MouseMovementType.relative) {
+            addRelativeMovement(mouseMovementEvent, xRelativeMovement, yRelativeMovement);
+        } else {
+            emitMouseMovementEvents(mouseMovementEvent);
+        }
+    }
+
+    if (continuousRelativeMouseMovement) {
+        emitContinuousMovementEvents(Axis.x, xRelativeMovement, xRelativeMovementAtRest);
+        emitContinuousMovementEvents(Axis.y, yRelativeMovement, yRelativeMovementAtRest);
     }
 
     MouseScrollEvent mouseScrollEvent;
@@ -874,6 +904,44 @@ private void emitMouseMovementEvents(MouseMovementEvent movementEvent) {
 
     // A mouse has no third axis, so a movement along one carries no position to
     // emit and is left alone here.
+}
+
+/**
+ * Adds the given movement onto the distance the mouse has moved along each axis
+ * over this update.
+ *
+ * A movement that carries every axis at once is taken apart the way
+ * $(D emitMouseMovementEvents) takes it apart, so that the axes add up
+ * separately whether or not the platform is reporting them separately. The third
+ * axis a mouse does not have carries no distance and is left alone.
+ */
+private void addRelativeMovement(MouseMovementEvent movementEvent, ref double xMovement,
+    ref double yMovement) {
+    if (movementEvent.axis == Axis.all || movementEvent.axis == Axis.x) {
+        xMovement += movementEvent.xPosition;
+    }
+
+    if (movementEvent.axis == Axis.all || movementEvent.axis == Axis.y) {
+        yMovement += movementEvent.yPosition;
+    }
+}
+
+/**
+ * Emits the events of every relative binding on the given axis at the distance
+ * the mouse moved along it over this update, bringing them to rest at zero over
+ * an update it did not move along it at all.
+ *
+ * An axis that is already at rest is left alone: the zero it would emit is the
+ * magnitude its events are already at, and emitting it on every update would
+ * have a mouse lying still keep every handler in the game busy.
+ */
+private void emitContinuousMovementEvents(Axis axis, double movement, ref bool atRest) {
+    if (movement == 0 && atRest) {
+        return;
+    }
+
+    emitAxisMovementEvents(axis, movement, MouseMovementType.relative);
+    atRest = movement == 0;
 }
 
 /**
@@ -1832,7 +1900,13 @@ enum MouseMovementType : uint {
     /// Absolute X/Y movement over the screen/desktop
     absolute,
 
-    /// Relative movement to the previous mouse movement event (delta movement)
+    /**
+     * Relative movement to the previous mouse movement event (delta movement).
+     *
+     * Read as an axis that is always current rather than as the movements
+     * themselves, unless $(D setContinuousRelativeMouseMovement) turned that
+     * off.
+     */
     relative
 }
 
@@ -1852,8 +1926,8 @@ enum Axis : uint {
  * Whether the platform should report the given type of mouse movement at all.
  *
  * A type that is turned off is one the platform stops following, leaving
- * nothing for the bindings on it to emit. Neither type is reported to begin
- * with: a game that follows the mouse turns on the type it follows it by, which
+ * nothing for the bindings on it to emit. Neither type is reported by default:
+ * a game that follows the mouse turns on the type it follows it by, which
  * spares the platform the work of following the other one.
  *
  * Whether the platform takes this on is up to the platform, as is whether both
@@ -1878,6 +1952,61 @@ void setMouseMovementEnabled(MouseMovementType movementType, bool enabled) {
  */
 bool isMouseMovementEnabled(MouseMovementType movementType) {
     return isPlatformMouseMovementEnabled(movementType);
+}
+
+/**
+ * Whether relative mouse movement is followed as an axis that is always current,
+ * the way the stick of a gamepad is.
+ *
+ * The mouse reports the distance it moved and says nothing at all while it lies
+ * still, where a stick reports where it is held on every update and reports
+ * itself back at the middle the moment it is let go. Handing the two to the same
+ * binding as they come would have them mean different things: a camera turned by
+ * a stick turns for as long as the stick is held, and one turned by the mouse
+ * would keep turning forever, as nothing ever tells it the mouse stopped.
+ *
+ * Turning this on has the engine make up the difference, leaving relative
+ * movement to be read the way a stick is:
+ *
+ * $(UL
+ *  $(LI The movements that arrive within a single $(D processInput) are added
+ *       up, so that an update emits the whole distance the mouse moved over it
+ *       rather than one event per movement the platform happened to report.)
+ *  $(LI An update the mouse did not move along an axis emits a zero for that
+ *       axis, bringing the events bound to it to rest.)
+ * )
+ *
+ * The axes come to rest on their own: a mouse moved along X alone reports the
+ * movement on X and the rest on Y, the way a stick pushed sideways does. A zero
+ * is emitted once and not again for as long as the axis stays still, as the
+ * magnitude it left behind is already the zero the next one would carry.
+ *
+ * Turning this off leaves relative movement as the platform reports it: one
+ * event per movement, and nothing at all on an update without one. A game that
+ * reads the mouse as a stream of impulses rather than as an axis wants it off.
+ *
+ * Absolute movement is left alone either way. It is a position rather than a
+ * distance: adding two of them up means nothing, and a mouse that lies still is
+ * still at the position it last reported.
+ *
+ * Params:
+ *  enabled = Whether to follow relative movement as an axis. On by default.
+ */
+void setContinuousRelativeMouseMovement(bool enabled) {
+    continuousRelativeMouseMovement = enabled;
+
+    // Both axes start out at rest, so that turning this on does not open with a
+    // zero for a mouse that has not moved yet.
+    xRelativeMovementAtRest = true;
+    yRelativeMovementAtRest = true;
+}
+
+/**
+ * Returns: Whether relative mouse movement is followed as an axis that is always
+ *          current.
+ */
+bool isContinuousRelativeMouseMovement() {
+    return continuousRelativeMouseMovement;
 }
 
 /**
@@ -2128,6 +2257,7 @@ void resetInput() {
 
     setMouseMovementEnabled(MouseMovementType.absolute, false);
     setMouseMovementEnabled(MouseMovementType.relative, false);
+    setContinuousRelativeMouseMovement(true);
     splitMouseAxisEvent(false);
     setRawMouseMotion(false);
     setMouseMode(MouseMode.normal);
@@ -3109,7 +3239,9 @@ void runInputTests() {
         moveMouse(0.5, 0.25, MouseMovementType.relative, Axis.y);
         processInput();
 
-        assert(eventQueue.length == 1);
+        // On top of the Y it follows, the binding is brought to rest on the X
+        // the movement left alone: both axes are its own.
+        assert(eventQueue.length == 2);
         assert(emittedEventCount(sid("ev_look"), 0.25) == 1);
     });
 
@@ -3164,6 +3296,11 @@ void runInputTests() {
     test("a movement of zero still emits, so its events do not stay put", () {
         resetInput();
         addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative);
+        moveMouse(0.5, 0, MouseMovementType.relative, Axis.x);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_lookX"), 0.5) == 1);
+
         moveMouse(0, 0, MouseMovementType.relative, Axis.x);
         processInput();
 
@@ -3219,6 +3356,144 @@ void runInputTests() {
 
         assert(mouseMovementMapping.length == 0);
         assert(!hasMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative));
+    });
+
+    writeSection("-- Continuous relative mouse movement tests --");
+
+    test("relative movement is followed as an axis by default", () {
+        resetInput();
+
+        assert(isContinuousRelativeMouseMovement());
+    });
+
+    test("the movements of an update add up into one event per axis", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative);
+        moveMouse(0.25, 0, MouseMovementType.relative, Axis.x);
+        moveMouse(0.5, 0, MouseMovementType.relative, Axis.x);
+        moveMouse(0.25, 0, MouseMovementType.relative, Axis.x);
+        processInput();
+
+        assert(eventQueue.length == 1);
+        assert(emittedEventCount(sid("ev_lookX"), 1) == 1);
+    });
+
+    test("movements that undo each other add up to standing still", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative);
+        moveMouse(0.5, 0, MouseMovementType.relative, Axis.x);
+        processInput();
+        eventQueue.clear();
+
+        // A mouse that ends the update where it started it moved nowhere over
+        // it, however far it went in between.
+        moveMouse(0.5, 0, MouseMovementType.relative, Axis.x);
+        moveMouse(-0.5, 0, MouseMovementType.relative, Axis.x);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_lookX"), 0) == 1);
+    });
+
+    test("an update without movement brings the axis to rest", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative);
+        moveMouse(0.5, 0, MouseMovementType.relative, Axis.x);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_lookX"), 0.5) == 1);
+
+        // The mouse says nothing at all when it stops, so the update that hears
+        // nothing from it is the one that has to bring the camera to a halt.
+        processInput();
+
+        assert(emittedEventCount(sid("ev_lookX"), 0) == 1);
+    });
+
+    test("an axis that is already at rest keeps quiet", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative);
+        moveMouse(0.5, 0, MouseMovementType.relative, Axis.x);
+        processInput();
+        processInput();
+        eventQueue.clear();
+
+        processInput();
+        processInput();
+
+        assert(eventQueue.length == 0);
+    });
+
+    test("each axis comes to rest on its own", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative);
+        addMouseMovementMapping(Axis.y, sid("ev_lookY"), MouseMovementType.relative);
+        moveMouse(0.5, 0.5, MouseMovementType.relative);
+        processInput();
+        eventQueue.clear();
+
+        // Y keeps moving while X stops, so X is brought to rest on its own and
+        // then leaves the updates after it alone.
+        moveMouse(0, 0.25, MouseMovementType.relative);
+        processInput();
+
+        assert(eventQueue.length == 2);
+        assert(emittedEventCount(sid("ev_lookX"), 0) == 1);
+
+        moveMouse(0, 0.25, MouseMovementType.relative);
+        processInput();
+
+        assert(eventQueue.length == 1);
+        assert(emittedEventCount(sid("ev_lookY"), 0.25) == 1);
+    });
+
+    test("absolute movement is left as the position it is", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_cursorX"), MouseMovementType.absolute);
+        moveMouse(0.25, 0, MouseMovementType.absolute, Axis.x);
+        moveMouse(0.5, 0, MouseMovementType.absolute, Axis.x);
+        processInput();
+
+        // Two positions are two positions rather than one of 0.75, and the
+        // cursor stays where it is over an update the mouse did not move.
+        assert(eventQueue.length == 2);
+        assert(emittedEventCount(sid("ev_cursorX"), 0.5) == 1);
+
+        processInput();
+
+        assert(eventQueue.length == 0);
+    });
+
+    test("turning it off reports every movement on its own again", () {
+        resetInput();
+        setContinuousRelativeMouseMovement(false);
+        addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative);
+        moveMouse(0.25, 0, MouseMovementType.relative, Axis.x);
+        moveMouse(0.5, 0, MouseMovementType.relative, Axis.x);
+        processInput();
+
+        assert(!isContinuousRelativeMouseMovement());
+        assert(eventQueue.length == 2);
+        assert(emittedEventCount(sid("ev_lookX"), 0.5) == 1);
+
+        // Nothing makes up for the movements the mouse does not report, leaving
+        // the events of the axis at the magnitude they were last emitted at.
+        processInput();
+
+        assert(eventQueue.length == 0);
+    });
+
+    test("turning it back on opens with an axis at rest", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative);
+        moveMouse(0.5, 0, MouseMovementType.relative, Axis.x);
+        processInput();
+        eventQueue.clear();
+
+        setContinuousRelativeMouseMovement(false);
+        setContinuousRelativeMouseMovement(true);
+        processInput();
+
+        assert(eventQueue.length == 0);
     });
 
     writeSection("-- Mouse scroll input tests --");
