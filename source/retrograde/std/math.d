@@ -1614,6 +1614,49 @@ void runMathFunctionsTests() {
         assert(pow(10.0, 0.0) == 1.0);
     });
 
+    // The arc functions are the platform's on native and the engine's own on
+    // WebAssembly, so these are here to hold the two to the same answers.
+    test("atan", {
+        assert(approxEqual(atan(0.0), 0.0, 0.0001));
+        assert(approxEqual(atan(0.1), 0.099668, 0.0001));
+        assert(approxEqual(atan(0.5), 0.463647, 0.0001));
+        assert(approxEqual(atan(1.0), 0.785398, 0.0001));
+        assert(approxEqual(atan(2.0), 1.107148, 0.0001));
+        assert(approxEqual(atan(100.0), 1.560796, 0.0001));
+
+        assert(approxEqual(atan(-0.5), -0.463647, 0.0001));
+        assert(approxEqual(atan(-1.0), -0.785398, 0.0001));
+        assert(approxEqual(atan(-2.0), -1.107148, 0.0001));
+    });
+
+    test("atan2", {
+        assert(approxEqual(atan2(0.0, 1.0), 0.0, 0.0001));
+        assert(approxEqual(atan2(1.0, 1.0), 0.785398, 0.0001));
+        assert(approxEqual(atan2(1.0, 0.0), 1.570796, 0.0001));
+        assert(approxEqual(atan2(1.0, -1.0), 2.356194, 0.0001));
+        assert(approxEqual(atan2(-1.0, -1.0), -2.356194, 0.0001));
+        assert(approxEqual(atan2(-1.0, 1.0), -0.785398, 0.0001));
+
+        // The two the look-around leans on: the height a direction reaches over
+        // the height it holds up is the angle it is looking up by.
+        assert(approxEqual(atan2(0.5, 0.866025), 0.523598, 0.0001));
+        assert(approxEqual(atan2(-0.5, 0.866025), -0.523598, 0.0001));
+    });
+
+    test("asin", {
+        assert(approxEqual(asin(0.0), 0.0, 0.0001));
+        assert(approxEqual(asin(0.5), 0.523598, 0.0001));
+        assert(approxEqual(asin(1.0), 1.570796, 0.0001));
+        assert(approxEqual(asin(-0.5), -0.523598, 0.0001));
+    });
+
+    test("acos", {
+        assert(approxEqual(acos(1.0), 0.0, 0.0001));
+        assert(approxEqual(acos(0.5), 1.047197, 0.0001));
+        assert(approxEqual(acos(0.0), 1.570796, 0.0001));
+        assert(approxEqual(acos(-0.5), 2.094395, 0.0001));
+    });
+
     test("approxEqual", {
         assert(approxEqual(0.1, 0.1));
         assert(approxEqual(0.1, 0.10));
