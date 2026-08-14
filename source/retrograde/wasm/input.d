@@ -15,9 +15,9 @@ version (WebAssembly)  :  //
 
 import retrograde.engine.input : Axis, InputEventAction, InputMethod, KeyboardKeyCode,
     KeyboardKeyModifier, KeyboardKeyEvent, KeyboardScanCode, keyEvents,
-    MouseButton, MouseButtonEvent, mouseButtonEvents, MouseMovementEvent,
-    mouseMovementEvents, MouseMovementType, MouseScrollEvent, mouseScrollEvents,
-    TextInputEvent, textInputEvents;
+    MouseButton, MouseButtonEvent, mouseButtonEvents, MouseMode, MouseModeEvent,
+    mouseModeEvents, MouseMovementEvent, mouseMovementEvents, MouseMovementType,
+    MouseScrollEvent, mouseScrollEvents, TextInputEvent, textInputEvents;
 
 /**
  * Init the input system.
@@ -108,6 +108,21 @@ export extern (C) void onMouseScroll(double xOffset, double yOffset) {
 }
 
 /**
+ * Called by the web runtime when the mouse takes on another mode.
+ *
+ * The mode is the one the mouse is now really in, which is not the one that was
+ * asked for while the browser has not handed over the pointer lock that a
+ * disabled mouse needs. Taking and losing that lock is reported here as it
+ * happens, whether the user gave it by clicking the render area or took it back
+ * with escape.
+ *
+ * See $(D MouseModeEvent) for a description of the parameters.
+ */
+export extern (C) void onMouseMode(MouseMode mouseMode) {
+    mouseModeEvents.enqueue(MouseModeEvent(mouseMode));
+}
+
+/**
  * Tells the web runtime whether to report the given type of mouse movement.
  *
  * Called by $(D setMouseMovementEnabled); prefer that over calling this
@@ -169,9 +184,37 @@ bool isPlatformRawMouseMotion() {
     return isRawMouseMotionEnabled();
 }
 
+/**
+ * Asks the browser to put the mouse in the given mode.
+ *
+ * Called by $(D setMouseMode); prefer that over calling this directly.
+ *
+ * A hidden mouse is hidden right away, but a disabled one has to be granted the
+ * pointer lock by the user first: the runtime asks for it here and keeps asking
+ * on every click on the render area until it is given, so that a mouse that was
+ * asked to be disabled is disabled from the first click on. Whether it ended up
+ * being granted is reported through $(D onMouseMode) rather than here.
+ */
+void setPlatformMouseMode(MouseMode mouseMode) {
+    setMouseCursorMode(mouseMode);
+}
+
+/**
+ * Asks the web runtime which mode the mouse is really in.
+ *
+ * Called by $(D getMouseMode); prefer that over calling this directly. As with
+ * the settings above, the mode is kept by the runtime alone rather than on both
+ * sides, so that the two can never end up disagreeing over it.
+ */
+MouseMode getPlatformMouseMode() {
+    return getMouseCursorMode();
+}
+
 private extern (C) void setMouseMovementTypeEnabled(MouseMovementType movementType, bool enabled);
 private extern (C) bool isMouseMovementTypeEnabled(MouseMovementType movementType);
 private extern (C) void setMouseAxisSplitEnabled(bool enabled);
 private extern (C) bool isMouseAxisSplitEnabled();
 private extern (C) void setRawMouseMotionEnabled(bool enabled);
 private extern (C) bool isRawMouseMotionEnabled();
+private extern (C) void setMouseCursorMode(MouseMode mouseMode);
+private extern (C) MouseMode getMouseCursorMode();

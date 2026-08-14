@@ -13,7 +13,8 @@ module retrograde.native.input;
 
 version (Native)  :  //
 
-import retrograde.engine.input : InputMethod, MouseMovementType;
+import retrograde.engine.input : InputMethod, MouseMode, MouseModeEvent,
+    mouseModeEvents, MouseMovementType;
 
 // TODO: When this is implemented with GLFW, mind that GLFW's key callback
 // names its parameters the other way around from KeyboardKeyEvent: GLFW's key
@@ -124,4 +125,43 @@ void setPlatformRawMouseMotion(bool enabled) {
  */
 bool isPlatformRawMouseMotion() {
     return false;
+}
+
+/**
+ * The mode the mouse was last asked to be in, which is the one it is taken to
+ * be in while native input is not implemented.
+ *
+ * Kept here only so that the mode has somewhere to be reported back from while
+ * there is no window holding it. It goes once GLFW is in: the mode is then
+ * asked of the platform, the way the settings above are.
+ */
+private MouseMode currentMouseMode = MouseMode.normal;
+
+/**
+ * Puts the mouse in the given mode, and reports it as taken on right away.
+ *
+ * Called by $(D setMouseMode); prefer that over calling this directly.
+ *
+ * The browser has to be given the pointer lock by the user before a disabled
+ * mouse is really disabled, which is why the mode is reported through an event
+ * at all. Nothing of the sort stands in the way here: GLFW hides and locks the
+ * cursor as soon as it is asked to, so the event follows immediately.
+ */
+void setPlatformMouseMode(MouseMode mouseMode) {
+    // TODO: pass on to the platform once native input is implemented, as
+    // glfwSetInputMode with GLFW_CURSOR: GLFW_CURSOR_NORMAL, GLFW_CURSOR_HIDDEN
+    // and GLFW_CURSOR_DISABLED are the three modes here, in that order.
+    currentMouseMode = mouseMode;
+    mouseModeEvents.enqueue(MouseModeEvent(mouseMode));
+}
+
+/**
+ * Returns: The mode the mouse is in.
+ *
+ * Called by $(D getMouseMode); prefer that over calling this directly.
+ */
+MouseMode getPlatformMouseMode() {
+    // TODO: ask the platform once native input is implemented, as
+    // glfwGetInputMode with GLFW_CURSOR, and drop currentMouseMode with it.
+    return currentMouseMode;
 }

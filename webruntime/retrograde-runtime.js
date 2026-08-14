@@ -27,8 +27,17 @@ export default class RetrogradeRuntime {
     [MouseMovementType.absolute]: true,
     [MouseMovementType.relative]: true,
   };
+
   mouseAxisSplit = false;
   rawMouseMotion = false;
+
+  // The mouse mode that was asked for, which is not the one the mouse is in
+  // while the browser has not handed over the pointer lock a disabled mouse
+  // needs. reportedMouseMode is the mode the engine was last told about, kept
+  // so that a mode it already knows about is not reported over and over.
+  mouseMode = MouseMode.normal;
+  reportedMouseMode = MouseMode.normal;
+  pointerLockWired = false;
 
   constructor(wasmModulePath) {
     this.wasmModulePath = wasmModulePath;
@@ -265,6 +274,14 @@ export default class RetrogradeRuntime {
 
       isRawMouseMotionEnabled: () => {
         return this.rawMouseMotion ? 1 : 0;
+      },
+
+      setMouseCursorMode: (mouseMode) => {
+        this.applyMouseMode(mouseMode);
+      },
+
+      getMouseCursorMode: () => {
+        return this.effectiveMouseMode();
       },
 
       // GL API
@@ -915,11 +932,142 @@ export default class RetrogradeRuntime {
   }
 
   /**
+   * Puts the mouse in the given mode, as far as the browser lets it be put
+   * there right away, and reports the mode it ended up in.
+   *
+   * Hiding the mouse is a matter of the cursor of the render area and takes
+   * effect at once. Disabling it takes the pointer lock, which the browser only
+   * gives while the page has recently been interacted with: the request is made
+   * here in case it is granted, and made again on every click on the render
+   * area for as long as the mouse is meant to be disabled. Until it is granted
+   * the cursor stays the normal one, as the user has to be able to see it to
+   * click with it.
+   *
+   * The mode is remembered whether or not there is a render area to apply it
+   * to yet, so that a mouse asked to be disabled before the canvas was set up
+   * still takes the lock on the first click on it.
+   */
+  applyMouseMode(mouseMode) {
+    this.mouseMode = mouseMode;
+
+    const renderArea = this.renderAreaElement();
+    if (renderArea) {
+      this.wirePointerLock(renderArea);
+      renderArea.style.cursor = mouseMode === MouseMode.hidden ? "none" : "";
+
+      if (mouseMode === MouseMode.disabled) {
+        this.requestPointerLock(renderArea);
+      } else if (this.isPointerLocked()) {
+        // Losing the lock is reported by the browser rather than here: it is
+        // the pointerlockchange event that says the mouse is out of it.
+        document.exitPointerLock();
+      }
+    }
+
+    this.reportMouseMode();
+  }
+
+  /**
+   * Returns the mode the mouse is really in: the one it was asked to be in,
+   * except for a disabled mouse that has not been given the pointer lock, which
+   * is still the normal one.
+   */
+  effectiveMouseMode() {
+    if (this.isPointerLocked()) {
+      return MouseMode.disabled;
+    }
+
+    return this.mouseMode === MouseMode.hidden
+      ? MouseMode.hidden
+      : MouseMode.normal;
+  }
+
+  /**
+   * Reports the mode the mouse is now in to the engine, unless it is the mode
+   * the engine was already told about.
+   */
+  reportMouseMode() {
+    const mouseMode = this.effectiveMouseMode();
+    if (mouseMode === this.reportedMouseMode) {
+      return;
+    }
+
+    this.reportedMouseMode = mouseMode;
+    this.instance.exports.onMouseMode(mouseMode);
+  }
+
+  /**
+   * Returns whether the pointer is locked to the render area.
+   */
+  isPointerLocked() {
+    const renderArea = this.renderAreaElement();
+    return (
+      renderArea !== undefined && document.pointerLockElement === renderArea
+    );
+  }
+
+  /**
+   * Asks the browser for the pointer lock.
+   *
+   * A request made without the user having interacted with the page just before
+   * it is turned down, which is nothing to report: the click listener of
+   * wirePointerLock asks again as soon as the user clicks the render area.
+   */
+  requestPointerLock(renderArea) {
+    if (this.isPointerLocked()) {
+      return;
+    }
+
+    try {
+      const request = renderArea.requestPointerLock();
+      if (request && typeof request.catch === "function") {
+        request.catch(() => {});
+      }
+    } catch (ex) {
+      // Turned down for now.
+    }
+  }
+
+  /**
+   * Starts following the pointer lock, once.
+   *
+   * The lock is taken on a click on the render area, which is the browser's
+   * condition for handing it over, and is followed for as long as the page
+   * lives: the user can hand it back with escape at any time, after which the
+   * next click takes it again while the mouse is still meant to be disabled.
+   */
+  wirePointerLock(renderArea) {
+    if (this.pointerLockWired) {
+      return;
+    }
+
+    this.pointerLockWired = true;
+
+    renderArea.addEventListener("mousedown", () => {
+      if (this.mouseMode === MouseMode.disabled) {
+        this.requestPointerLock(renderArea);
+      }
+    });
+
+    document.addEventListener("pointerlockchange", () => {
+      this.reportMouseMode();
+    });
+  }
+
+  /**
+   * Returns the element mouse positions are reported over and the pointer is
+   * locked to: the canvas being rendered to, or nothing while there is none.
+   */
+  renderAreaElement() {
+    return this.glContext ? this.glContext.canvas : undefined;
+  }
+
+  /**
    * Returns the area mouse positions are reported over: the canvas being
    * rendered to, or the viewport while there is none.
    */
   renderAreaRect() {
-    const canvas = this.glContext ? this.glContext.canvas : undefined;
+    const canvas = this.renderAreaElement();
     if (canvas) {
       return canvas.getBoundingClientRect();
     }
@@ -1219,6 +1367,17 @@ const MouseButton = {
 const MouseMovementType = {
   absolute: 0,
   relative: 1,
+};
+
+/**
+ * Mirror of MouseMode in source/retrograde/engine/input.d, likewise valued by
+ * position. The disabled mouse is the one locked to the render area, which is
+ * the pointer lock here.
+ */
+const MouseMode = {
+  normal: 0,
+  hidden: 1,
+  disabled: 2,
 };
 
 /**
