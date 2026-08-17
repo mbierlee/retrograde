@@ -13,10 +13,10 @@ module retrograde.engine.mechanic.lookaround;
 
 import retrograde.engine.entity : addEntityProcessor, EntityId, getComponentData,
     withComponentData;
-import retrograde.engine.event : Event, eventHandlers;
-import retrograde.engine.input : addKeyMapping, addMouseMovementMapping, Axis, getMouseMode,
-    KeyboardScanCode, MouseMode, MouseMovementType, setContinuousRelativeMouseMovement,
-    setMouseMovementEnabled, setRawMouseMotion;
+import retrograde.engine.event : Event, eventHandlers, Magnitude;
+import retrograde.engine.input : addKeyMapping, addMouseMovementMapping, anyModifiers, Axis,
+    getMouseMode, KeyboardKeyModifier, KeyboardScanCode, MouseMode, MouseMovementType,
+    setContinuousRelativeMouseMovement, setMouseMovementEnabled, setRawMouseMotion;
 
 import retrograde.std.geometry : OrientationComponentType;
 import retrograde.std.math : atan2, atan2f, degreesToRadians, PI, Quaternion, scalar, Vector3;
@@ -34,8 +34,10 @@ import retrograde.std.stringid : sid, StringId;
  * read as an axis: see $(D setContinuousRelativeMouseMovement).
  *
  * Bound to the horizontal movement of the mouse by
- * $(D mapMouseMovementToLookAround). Turning by a key rather than by an axis is
- * what $(D evLookLeft) and $(D evLookRight) are for.
+ * $(D mapMouseMovementToLookAround). A key turns the entity along the same axis
+ * rather than through an event of its own: the one that turns it the other way
+ * is bound at a negative multiplier, which is what
+ * $(D mapKeyboardArrowsToLookAround) does with the left arrow.
  */
 const StringId evLookHorizontal = "ev_look_horizontal".sid;
 
@@ -46,29 +48,6 @@ const StringId evLookHorizontal = "ev_look_horizontal".sid;
  * mouse is Y-down over the window, so moving it towards the user looks down.
  */
 const StringId evLookVertical = "ev_look_vertical".sid;
-
-/**
- * The events that turn the entity in a single direction, for as long as they are
- * up.
- *
- * These are the keyboard's side of looking around: a key is held rather than
- * moved, so it carries no distance of its own and turns the entity at
- * $(D LookAroundConfiguration.directionSpeed) for as long as it is down. Opposite
- * directions that are both up cancel each other out, leaving the entity where it
- * is.
- *
- * Bound to the arrow keys by $(D mapKeyboardArrowsToLookAround).
- */
-const StringId evLookLeft = "ev_look_left".sid;
-
-/// ditto
-const StringId evLookRight = "ev_look_right".sid;
-
-/// ditto
-const StringId evLookUp = "ev_look_up".sid;
-
-/// ditto
-const StringId evLookDown = "ev_look_down".sid;
 
 /**
  * The component that has an entity look around.
@@ -116,16 +95,6 @@ struct LookAroundConfiguration {
     scalar sensitivity = degreesToRadians(0.1);
 
     /**
-     * How far, in radians, the entity turns per update while a look direction
-     * such as $(D evLookLeft) is up.
-     *
-     * The engine updates at a fixed rate, so this is a speed: the default of two
-     * degrees per update comes down to 120 degrees per second at the default
-     * rate.
-     */
-    scalar directionSpeed = degreesToRadians(2);
-
-    /**
      * How far up or down, in radians, the entity is allowed to look.
      *
      * Looking further would take it over the top and leave it upside down, so the
@@ -146,29 +115,17 @@ struct LookAroundConfiguration {
 LookAroundConfiguration lookAroundDefaults;
 
 /**
- * The axes and directions as they were last reported, in the magnitudes of the
- * events themselves.
+ * The axes as they were last reported, in the magnitudes of the events
+ * themselves.
  *
  * Kept as the readings rather than as the rotation they come down to, so that
- * the sensitivities can be changed while the game is running and take effect on
+ * the sensitivity can be changed while the game is running and take effect on
  * the very next update.
  */
 private scalar horizontalMagnitude = 0;
 
 /// ditto
 private scalar verticalMagnitude = 0;
-
-/// ditto
-private scalar leftMagnitude = 0;
-
-/// ditto
-private scalar rightMagnitude = 0;
-
-/// ditto
-private scalar upMagnitude = 0;
-
-/// ditto
-private scalar downMagnitude = 0;
 
 /// Whether the processor is already at work and its events listened to.
 private bool lookAroundProcessorInstalled = false;
@@ -332,20 +289,43 @@ void mapMouseMovementToLookAround() {
  * Have the arrow keys look around, turning the entity for as long as they are
  * held.
  *
- * How fast they turn it is the entity's $(D LookAroundConfiguration.directionSpeed)
- * rather than its $(D LookAroundConfiguration.sensitivity): a key carries no
- * distance of its own, so the speed is the mechanic's to decide.
+ * The keys drive the same two axes the mouse drives, each pair of them at the
+ * opposite ends of one: the right and down arrows stand for a movement the
+ * positive way along their axis, the left and up arrows for the same movement
+ * the negative way.
+ *
+ * A key carries no distance of its own, so $(D keyMagnitude) is the distance it
+ * stands for: it is the reading of the axis while the key is down, in the same
+ * units a mouse reports, and is turned into an angle by the entity's
+ * $(D LookAroundConfiguration.sensitivity) the way a mouse movement of that same
+ * distance would be. The keys turn an entity that is more sensitive further, the
+ * same as the mouse does.
+ *
+ * The two ends of an axis are one reading rather than two, so the arrow pressed
+ * last is the one that counts: holding both leaves the entity turning the way
+ * the second of them says, and letting that one go stops the turn rather than
+ * handing it back to the arrow still held.
+ *
+ * Params:
+ *  keyMagnitude = The distance a held arrow key stands for. The default of 20
+ *                 comes down to two degrees per update, or 120 degrees per
+ *                 second at the default update rate, for an entity of the
+ *                 default sensitivity.
  */
-void mapKeyboardArrowsToLookAround() {
-    addKeyMapping(KeyboardScanCode.left, evLookLeft);
-    addKeyMapping(KeyboardScanCode.right, evLookRight);
-    addKeyMapping(KeyboardScanCode.up, evLookUp);
-    addKeyMapping(KeyboardScanCode.down, evLookDown);
+void mapKeyboardArrowsToLookAround(Magnitude keyMagnitude = 20) {
+    addKeyMapping(KeyboardScanCode.left, evLookHorizontal, KeyboardKeyModifier.none,
+        anyModifiers, -keyMagnitude);
+    addKeyMapping(KeyboardScanCode.right, evLookHorizontal, KeyboardKeyModifier.none,
+        anyModifiers, keyMagnitude);
+    addKeyMapping(KeyboardScanCode.up, evLookVertical, KeyboardKeyModifier.none,
+        anyModifiers, -keyMagnitude);
+    addKeyMapping(KeyboardScanCode.down, evLookVertical, KeyboardKeyModifier.none,
+        anyModifiers, keyMagnitude);
 }
 
 /**
- * Takes the magnitude of each look-around event as the reading of the axis or
- * direction it belongs to.
+ * Takes the magnitude of each look-around event as the reading of the axis it
+ * belongs to.
  *
  * The magnitude is kept rather than added up: both the axis of a mouse read as
  * one and a key that is down report where they stand on every update they change
@@ -357,14 +337,6 @@ private enum lookAroundEventHandler = delegate(ref const Event event) {
         horizontalMagnitude = cast(scalar) event.magnitude;
     } else if (event.name == evLookVertical) {
         verticalMagnitude = cast(scalar) event.magnitude;
-    } else if (event.name == evLookLeft) {
-        leftMagnitude = cast(scalar) event.magnitude;
-    } else if (event.name == evLookRight) {
-        rightMagnitude = cast(scalar) event.magnitude;
-    } else if (event.name == evLookUp) {
-        upMagnitude = cast(scalar) event.magnitude;
-    } else if (event.name == evLookDown) {
-        downMagnitude = cast(scalar) event.magnitude;
     }
 };
 
@@ -377,16 +349,14 @@ private bool inRequiredMouseMode() {
 }
 
 /**
- * Returns: Whether every axis and direction is at rest, leaving nothing for any
- *          entity to turn by.
+ * Returns: Whether both axes are at rest, leaving nothing for any entity to turn
+ *          by.
  *
  * Asked before an entity's configuration is looked up at all: how far an entity
  * turns is its own, but whether there is anything to turn by is the game's.
  */
 private bool lookAroundAtRest() {
-    return horizontalMagnitude == 0 && verticalMagnitude == 0 &&
-        leftMagnitude == 0 && rightMagnitude == 0 &&
-        upMagnitude == 0 && downMagnitude == 0;
+    return horizontalMagnitude == 0 && verticalMagnitude == 0;
 }
 
 /**
@@ -397,8 +367,7 @@ private bool lookAroundAtRest() {
  * where the sign comes from: the events themselves are positive to the right.
  */
 private scalar yawAngle(const ref LookAroundConfiguration configuration) {
-    return -(horizontalMagnitude * configuration.sensitivity +
-            (rightMagnitude - leftMagnitude) * configuration.directionSpeed);
+    return -(horizontalMagnitude * configuration.sensitivity);
 }
 
 /**
@@ -409,8 +378,7 @@ private scalar yawAngle(const ref LookAroundConfiguration configuration) {
  * looking down is a rotation the negative way around the right axis.
  */
 private scalar pitchAngle(const ref LookAroundConfiguration configuration) {
-    return -(verticalMagnitude * configuration.sensitivity +
-            (downMagnitude - upMagnitude) * configuration.directionSpeed);
+    return -(verticalMagnitude * configuration.sensitivity);
 }
 
 /**
@@ -460,8 +428,9 @@ version (UnitTesting)  :  ///
 
 import retrograde.engine.entity : addComponent, addEntityProcessor, createEntity, getComponentData,
     resetEcs, updateEntities;
-import retrograde.engine.event : eventQueue, Magnitude, processEvents;
-import retrograde.engine.input : hasKeyMapping, hasMouseMovementMapping, resetInput, setMouseMode;
+import retrograde.engine.event : eventQueue, processEvents;
+import retrograde.engine.input : EventMapping, hasKeyMapping, hasMouseMovementMapping, KeyBinding,
+    keyMapping, resetInput, setMouseMode;
 
 import retrograde.std.math : approxEqual, sin, sinf, Vector4;
 import retrograde.std.memory : makeUnique;
@@ -470,10 +439,6 @@ import retrograde.std.test : test, writeSection;
 private void resetLookAround() {
     horizontalMagnitude = 0;
     verticalMagnitude = 0;
-    leftMagnitude = 0;
-    rightMagnitude = 0;
-    upMagnitude = 0;
-    downMagnitude = 0;
 
     lookAroundDefaults = LookAroundConfiguration.init;
 
@@ -545,6 +510,28 @@ private void emitLookEvent(StringId eventName, Magnitude magnitude) {
     processEvents();
 }
 
+/**
+ * Returns: The multiplier the given key emits the given event at.
+ *
+ * Asked of the mapping itself rather than of the events a press produces: the
+ * keys cannot be pressed from here, and what the arrows are bound at is the
+ * whole of what the mapping has to get right.
+ */
+private Magnitude keyMappingMultiplier(KeyboardScanCode scanCode, StringId eventName) {
+    auto maybeEventMappings = keyMapping.getRef(KeyBinding(scanCode));
+    assert(maybeEventMappings.isDefined, "The key is not bound at all");
+
+    auto eventMappings = maybeEventMappings.value;
+    foreach (i; 0 .. eventMappings.length) {
+        const EventMapping eventMapping = (*eventMappings)[i];
+        if (eventMapping.eventName == eventName) {
+            return eventMapping.multiplier;
+        }
+    }
+
+    assert(false, "The key does not emit the event");
+}
+
 /// Returns: The direction the given entity is looking in.
 private Vector3 forwardOf(EntityId entity) {
     auto maybeOrientation = entity.getComponentData!Quaternion(OrientationComponentType);
@@ -565,14 +552,54 @@ void runLookAroundTests() {
         assert(hasMouseMovementMapping(Axis.y, evLookVertical, MouseMovementType.relative));
     });
 
-    test("the arrow keys are mapped to the look-around directions", {
+    test("the arrow keys are mapped to the look-around axes", {
         setUpLookAround();
         mapKeyboardArrowsToLookAround();
 
-        assert(hasKeyMapping(KeyboardScanCode.left, evLookLeft));
-        assert(hasKeyMapping(KeyboardScanCode.right, evLookRight));
-        assert(hasKeyMapping(KeyboardScanCode.up, evLookUp));
-        assert(hasKeyMapping(KeyboardScanCode.down, evLookDown));
+        assert(hasKeyMapping(KeyboardScanCode.left, evLookHorizontal));
+        assert(hasKeyMapping(KeyboardScanCode.right, evLookHorizontal));
+        assert(hasKeyMapping(KeyboardScanCode.up, evLookVertical));
+        assert(hasKeyMapping(KeyboardScanCode.down, evLookVertical));
+    });
+
+    test("the arrows of an axis are mapped as the opposites of one another", {
+        setUpLookAround();
+        mapKeyboardArrowsToLookAround();
+
+        assert(keyMappingMultiplier(KeyboardScanCode.left, evLookHorizontal) ==
+                -keyMappingMultiplier(KeyboardScanCode.right, evLookHorizontal));
+        assert(keyMappingMultiplier(KeyboardScanCode.up, evLookVertical) ==
+                -keyMappingMultiplier(KeyboardScanCode.down, evLookVertical));
+
+        // The right and down arrows are the positive way along their axis, which
+        // is to the right and downwards.
+        assert(keyMappingMultiplier(KeyboardScanCode.right, evLookHorizontal) > 0);
+        assert(keyMappingMultiplier(KeyboardScanCode.down, evLookVertical) > 0);
+    });
+
+    test("the arrow keys are mapped at the magnitude they were asked for", {
+        setUpLookAround();
+        mapKeyboardArrowsToLookAround(5);
+
+        assert(keyMappingMultiplier(KeyboardScanCode.left, evLookHorizontal) == -5);
+        assert(keyMappingMultiplier(KeyboardScanCode.right, evLookHorizontal) == 5);
+        assert(keyMappingMultiplier(KeyboardScanCode.up, evLookVertical) == -5);
+        assert(keyMappingMultiplier(KeyboardScanCode.down, evLookVertical) == 5);
+    });
+
+    test("a held arrow key turns as far as it used to per update", {
+        setUpLookAround();
+        mapKeyboardArrowsToLookAround();
+        auto entity = createLookAroundEntity();
+
+        // The default magnitude of an arrow key is what an entity of the default
+        // sensitivity turns two degrees per update by.
+        emitLookEvent(evLookHorizontal,
+            keyMappingMultiplier(KeyboardScanCode.right, evLookHorizontal));
+        updateEntities();
+
+        assert(forwardOf(entity).x.approxEqual(sineOf(degreesToRadians(2)),
+                cast(scalar) 0.001));
     });
 
     test("moving the mouse to the right turns the entity to the right", {
@@ -618,11 +645,25 @@ void runLookAroundTests() {
         assert(forward.z.approxEqual(turned.z));
     });
 
-    test("a look direction keeps turning the entity while it is held", {
+    test("a negative magnitude turns the entity the other way", {
         setUpLookAround();
         auto entity = createLookAroundEntity();
 
-        emitLookEvent(evLookLeft, 1);
+        emitLookEvent(evLookHorizontal, -100);
+        updateEntities();
+
+        auto const forward = forwardOf(entity);
+        assert(forward.x < 0);
+        assert(forward.z < 0);
+    });
+
+    test("an axis that stays where it is keeps turning the entity", {
+        setUpLookAround();
+        auto entity = createLookAroundEntity();
+
+        // What a held key comes down to: the axis says where it stands once and
+        // stays there, and the entity carries on turning by it every update.
+        emitLookEvent(evLookHorizontal, -20);
         updateEntities();
         auto const afterOne = forwardOf(entity);
 
@@ -633,33 +674,18 @@ void runLookAroundTests() {
         assert(afterTwo.x < afterOne.x);
     });
 
-    test("letting go of a look direction stops the turn", {
+    test("the last magnitude an axis was given is the one it turns by", {
         setUpLookAround();
         auto entity = createLookAroundEntity();
 
-        emitLookEvent(evLookLeft, 1);
-        updateEntities();
-        auto const turned = forwardOf(entity);
-
-        emitLookEvent(evLookLeft, 0);
-        updateEntities();
-
-        auto const forward = forwardOf(entity);
-        assert(forward.x.approxEqual(turned.x));
-        assert(forward.z.approxEqual(turned.z));
-    });
-
-    test("opposite look directions cancel each other out", {
-        setUpLookAround();
-        auto entity = createLookAroundEntity();
-
-        emitLookEvent(evLookLeft, 1);
-        emitLookEvent(evLookRight, 1);
+        // The two ends of an axis are one reading rather than two, so the arrow
+        // pressed last is the one the entity turns by rather than the two of them
+        // cancelling out.
+        emitLookEvent(evLookHorizontal, -20);
+        emitLookEvent(evLookHorizontal, 20);
         updateEntities();
 
-        auto const forward = forwardOf(entity);
-        assert(forward.x.approxEqual(cast(scalar) 0));
-        assert(forward.z.approxEqual(cast(scalar)-1));
+        assert(forwardOf(entity).x > 0);
     });
 
     test("looking up and down stops at the pitch limit", {
@@ -720,22 +746,6 @@ void runLookAroundTests() {
         assert(forwardOf(entity).x.approxEqual(sineOf(degreesToRadians(20)),
                 cast(scalar) 0.001));
         assert(forwardOf(otherEntity).x.approxEqual(sineOf(degreesToRadians(10)),
-                cast(scalar) 0.001));
-    });
-
-    test("an entity turns by the direction speed it carries", {
-        setUpLookAround();
-        auto configuration = lookAroundDefaults;
-        configuration.directionSpeed = degreesToRadians(10);
-        auto entity = createLookAroundEntity(configuration);
-        auto otherEntity = createLookAroundEntity();
-
-        emitLookEvent(evLookRight, 1);
-        updateEntities();
-
-        assert(forwardOf(entity).x.approxEqual(sineOf(degreesToRadians(10)),
-                cast(scalar) 0.001));
-        assert(forwardOf(otherEntity).x.approxEqual(sineOf(degreesToRadians(2)),
                 cast(scalar) 0.001));
     });
 
