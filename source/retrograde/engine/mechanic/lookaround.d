@@ -14,9 +14,10 @@ module retrograde.engine.mechanic.lookaround;
 import retrograde.engine.entity : addEntityProcessor, EntityId, getComponentData,
     withComponentData;
 import retrograde.engine.event : Event, eventHandlers, Magnitude;
-import retrograde.engine.input : addKeyMapping, addMouseMovementMapping, anyModifiers, Axis,
-    getMouseMode, KeyboardKeyModifier, KeyboardScanCode, MouseMode, MouseMovementType,
-    setContinuousRelativeMouseMovement, setMouseMovementEnabled, setRawMouseMotion;
+import retrograde.engine.input : addKeyMapping, addMouseModeMapping, addMouseMovementMapping,
+    anyModifiers, Axis, getMouseMode, KeyboardKeyModifier, KeyboardScanCode, MouseMode,
+    MouseMovementType, removeMouseModeMapping, setContinuousRelativeMouseMovement,
+    setMouseMovementEnabled, setRawMouseMotion;
 
 import retrograde.std.geometry : OrientationComponentType;
 import retrograde.std.math : atan2, atan2f, degreesToRadians, PI, Quaternion, scalar, Vector3;
@@ -48,6 +49,36 @@ const StringId evLookHorizontal = "ev_look_horizontal".sid;
  * mouse is Y-down over the window, so moving it towards the user looks down.
  */
 const StringId evLookVertical = "ev_look_vertical".sid;
+
+/**
+ * The events that have the entities look around at all, and that stop them.
+ *
+ * Whatever else the look-around is told, it turns nothing while it is switched
+ * off, and the axes carry on being followed while it is: a look-around switched
+ * back on picks up wherever the player is pointing by then rather than working
+ * through everything they did while it was off.
+ *
+ * These are read as a state rather than as an impulse, the way a held key is: a
+ * magnitude of anything but zero is the switch being held one way, and a zero is
+ * it being let go. The two events are the two ways of saying the same thing, so
+ * that either sense may be bound to whatever a game already has: an
+ * $(D evLookingEnabled) of zero switches the look-around off just as an
+ * $(D evLookingDisabled) of one does. Whichever event was heard last is the one
+ * that counts.
+ *
+ * Nothing emits them of its own accord. Bind them to the mouse mode with
+ * $(D mapMouseModeToLookAround), or emit them from a processor of the game's own:
+ * a menu that opens, a cutscene that starts, a player who is dead.
+ *
+ * ---
+ * // Stop looking around while the inventory is open.
+ * eventQueue.enqueue(Event(evLookingDisabled, 1));
+ * ---
+ */
+const StringId evLookingEnabled = "ev_looking_enabled".sid;
+
+/// ditto
+const StringId evLookingDisabled = "ev_looking_disabled".sid;
 
 /**
  * The component that has an entity look around.
@@ -131,10 +162,19 @@ private scalar verticalMagnitude = 0;
 private bool lookAroundProcessorInstalled = false;
 
 /**
- * The mode the mouse has to be in for the look-around to turn anything, if it has
- * to be in one at all. Set through $(D initLookAroundProcessor).
+ * Whether the look-around turns anything at all, as $(D evLookingEnabled) and
+ * $(D evLookingDisabled) last had it.
+ *
+ * On until something says otherwise, so that a game that never switches it off
+ * has nothing to switch on.
  */
-private Option!MouseMode requiredMouseMode;
+private bool lookingEnabled = true;
+
+/**
+ * The mouse mode $(D mapMouseModeToLookAround) bound the enable event to, kept so
+ * that binding another mode can unbind this one first.
+ */
+private Option!MouseMode mappedMouseMode;
 
 /**
  * Turns every entity that looks around by however far the look-around events say
@@ -151,7 +191,7 @@ enum LookAroundProcessor = delegate(EntityId entity) {
         return;
     }
 
-    if (!inRequiredMouseMode()) {
+    if (!lookingEnabled) {
         return;
     }
 
@@ -219,18 +259,35 @@ enum LookAroundProcessor = delegate(EntityId entity) {
  * map the events by hand for a game that looks around by other controls.
  */
 void initLookAroundProcessor() {
-    requiredMouseMode = none!MouseMode;
+    unmapMouseModeFromLookAround();
+    lookingEnabled = true;
     installLookAroundProcessor();
 }
 
 /**
  * Put the look-around to work for one mode of the mouse only.
  *
+ * Shorthand for $(D initLookAroundProcessor) followed by
+ * $(D mapMouseModeToLookAround), for the game that wants both and wants them of
+ * the same mode.
+ *
+ * Params:
+ *  requiredMouseMode = The mode the mouse has to be in for the entities to turn.
+ */
+void initLookAroundProcessor(MouseMode requiredMouseMode) {
+    installLookAroundProcessor();
+    mapMouseModeToLookAround(requiredMouseMode);
+}
+
+/**
+ * Have the mouse taking on the given mode switch the look-around on, and leaving
+ * it switch the look-around off again.
+ *
  * A game that looks around by the mouse usually wants it locked to the window
  * while it does, and wants nothing to turn while the player has the pointer back:
  *
  * ---
- * initLookAroundProcessor(MouseMode.disabled);
+ * mapMouseModeToLookAround(MouseMode.disabled);
  * setMouseMode(MouseMode.disabled);
  * ---
  *
@@ -241,12 +298,38 @@ void initLookAroundProcessor() {
  * $(D getMouseMode) reports, so a browser that has not handed over the pointer
  * lock yet leaves the look-around alone until it does.
  *
+ * The mouse is one voice among several rather than the last word: the look-around
+ * is switched by $(D evLookingEnabled) and $(D evLookingDisabled), and whatever
+ * else emits those has as much say as the mouse mode does. A game that both binds
+ * the mouse mode and stops the player looking around in a menu is left with a
+ * look-around that comes back on the next time the mouse changes mode, which is
+ * why a menu that closes wants to switch it back on itself.
+ *
+ * The look-around takes the mode the mouse is in as this is called, rather than
+ * waiting for the next change of it, so that the order this is set up in does not
+ * matter. Only one mode is bound at a time: binding another unbinds the one
+ * before it, and $(D initLookAroundProcessor) without a mode unbinds it
+ * altogether.
+ *
  * Params:
- *  requiredMouseMode = The mode the mouse has to be in for the entities to turn.
+ *  mouseMode = The mode the mouse has to be in for the entities to turn.
  */
-void initLookAroundProcessor(MouseMode requiredMouseMode) {
-    .requiredMouseMode = some(requiredMouseMode);
-    installLookAroundProcessor();
+void mapMouseModeToLookAround(MouseMode mouseMode) {
+    unmapMouseModeFromLookAround();
+
+    addMouseModeMapping(mouseMode, evLookingEnabled);
+    mappedMouseMode = some(mouseMode);
+    lookingEnabled = getMouseMode() == mouseMode;
+}
+
+/// Unbinds the mouse mode the look-around was last bound to, if it was bound.
+private void unmapMouseModeFromLookAround() {
+    if (mappedMouseMode.isEmpty) {
+        return;
+    }
+
+    removeMouseModeMapping(mappedMouseMode.value, evLookingEnabled);
+    mappedMouseMode = none!MouseMode;
 }
 
 /// Adds the processor and its event handler, once and no more than once.
@@ -337,16 +420,12 @@ private enum lookAroundEventHandler = delegate(ref const Event event) {
         horizontalMagnitude = cast(scalar) event.magnitude;
     } else if (event.name == evLookVertical) {
         verticalMagnitude = cast(scalar) event.magnitude;
+    } else if (event.name == evLookingEnabled) {
+        lookingEnabled = event.magnitude != 0;
+    } else if (event.name == evLookingDisabled) {
+        lookingEnabled = event.magnitude == 0;
     }
 };
-
-/**
- * Returns: Whether the mouse is in the mode the look-around was set up for, or
- *          whether it was set up for whichever mode the mouse happens to be in.
- */
-private bool inRequiredMouseMode() {
-    return requiredMouseMode.isEmpty || getMouseMode() == requiredMouseMode.value;
-}
 
 /**
  * Returns: Whether both axes are at rest, leaving nothing for any entity to turn
@@ -429,8 +508,8 @@ version (UnitTesting)  :  ///
 import retrograde.engine.entity : addComponent, addEntityProcessor, createEntity, getComponentData,
     resetEcs, updateEntities;
 import retrograde.engine.event : eventQueue, processEvents;
-import retrograde.engine.input : EventMapping, hasKeyMapping, hasMouseMovementMapping, KeyBinding,
-    keyMapping, resetInput, setMouseMode;
+import retrograde.engine.input : EventMapping, hasKeyMapping, hasMouseModeMapping,
+    hasMouseMovementMapping, KeyBinding, keyMapping, processInput, resetInput, setMouseMode;
 
 import retrograde.std.math : approxEqual, sin, sinf, Vector4;
 import retrograde.std.memory : makeUnique;
@@ -455,7 +534,8 @@ private void resetLookAround() {
     }
 
     lookAroundProcessorInstalled = false;
-    requiredMouseMode = none!MouseMode;
+    lookingEnabled = true;
+    mappedMouseMode = none!MouseMode;
 }
 
 /**
@@ -478,6 +558,20 @@ private void startLookAroundGame() {
     resetEcs();
     resetInput();
     resetLookAround();
+
+    // The mouse is the platform's rather than the input layer's, so it is left in
+    // whichever mode the test before this one put it in until it is put back.
+    takeMouseMode(MouseMode.normal);
+}
+
+/**
+ * Has the mouse take the given mode and hands the events of the change to the
+ * handlers that are listening, the way an update of the game would.
+ */
+private void takeMouseMode(MouseMode mouseMode) {
+    setMouseMode(mouseMode);
+    processInput();
+    processEvents();
 }
 
 private EntityId createLookAroundEntity() {
@@ -823,7 +917,7 @@ void runLookAroundTests() {
     test("a look-around set up for a mouse mode turns in that mode", {
         setUpLookAround(MouseMode.hidden);
         auto entity = createLookAroundEntity();
-        setMouseMode(MouseMode.hidden);
+        takeMouseMode(MouseMode.hidden);
 
         emitLookEvent(evLookHorizontal, 100);
         updateEntities();
@@ -832,7 +926,7 @@ void runLookAroundTests() {
         assert(turned.x > 0);
 
         // And stops again the moment the mouse is back to the normal one.
-        setMouseMode(MouseMode.normal);
+        takeMouseMode(MouseMode.normal);
         updateEntities();
 
         auto const forward = forwardOf(entity);
@@ -843,7 +937,7 @@ void runLookAroundTests() {
     test("a look-around set up without a mouse mode turns in any of them", {
         setUpLookAround();
         auto entity = createLookAroundEntity();
-        setMouseMode(MouseMode.hidden);
+        takeMouseMode(MouseMode.hidden);
 
         emitLookEvent(evLookHorizontal, 100);
         updateEntities();
@@ -852,7 +946,7 @@ void runLookAroundTests() {
 
         // Carries on turning in the normal mode, rather than only in the one it
         // happened to start in.
-        setMouseMode(MouseMode.normal);
+        takeMouseMode(MouseMode.normal);
         updateEntities();
         assert(forwardOf(entity).x > whileHidden.x);
     });
@@ -860,7 +954,7 @@ void runLookAroundTests() {
     test("a look-around set up for the disabled mouse waits for the pointer lock", {
         setUpLookAround(MouseMode.disabled);
         auto entity = createLookAroundEntity();
-        setMouseMode(MouseMode.disabled);
+        takeMouseMode(MouseMode.disabled);
 
         emitLookEvent(evLookHorizontal, 100);
         updateEntities();
@@ -879,6 +973,94 @@ void runLookAroundTests() {
             assert(forward.x.approxEqual(cast(scalar) 0));
             assert(forward.z.approxEqual(cast(scalar)-1));
         }
+    });
+
+    test("a disabled look-around turns nothing until it is enabled again", {
+        setUpLookAround();
+        auto entity = createLookAroundEntity();
+
+        emitLookEvent(evLookingDisabled, 1);
+        emitLookEvent(evLookHorizontal, 100);
+        updateEntities();
+
+        auto const held = forwardOf(entity);
+        assert(held.x.approxEqual(cast(scalar) 0));
+        assert(held.z.approxEqual(cast(scalar)-1));
+
+        emitLookEvent(evLookingEnabled, 1);
+        updateEntities();
+
+        assert(forwardOf(entity).x > 0);
+    });
+
+    test("the two switching events are the two ways of saying the same thing", {
+        setUpLookAround();
+        auto entity = createLookAroundEntity();
+
+        // A zero is the switch being let go, whichever of the two it is on: an
+        // enable of zero switches the look-around off, and a disable of zero
+        // switches it back on.
+        emitLookEvent(evLookingEnabled, 0);
+        emitLookEvent(evLookHorizontal, 100);
+        updateEntities();
+        assert(forwardOf(entity).x.approxEqual(cast(scalar) 0));
+
+        emitLookEvent(evLookingDisabled, 0);
+        updateEntities();
+        assert(forwardOf(entity).x > 0);
+    });
+
+    test("a look-around switched back on picks up where the player is pointing", {
+        setUpLookAround();
+        auto entity = createLookAroundEntity();
+
+        // The axes are followed while the look-around is off, so that what the
+        // player did in the meantime is not worked through all at once when it
+        // comes back on: the last reading is where they are pointing by now.
+        emitLookEvent(evLookingDisabled, 1);
+        emitLookEvent(evLookHorizontal, 100);
+        foreach (i; 0 .. 10) {
+            updateEntities();
+        }
+
+        emitLookEvent(evLookHorizontal, 0);
+        emitLookEvent(evLookingEnabled, 1);
+        updateEntities();
+
+        assert(forwardOf(entity).x.approxEqual(cast(scalar) 0));
+    });
+
+    test("the mouse mode is mapped to the switching event", {
+        setUpLookAround();
+        mapMouseModeToLookAround(MouseMode.hidden);
+
+        assert(hasMouseModeMapping(MouseMode.hidden, evLookingEnabled));
+    });
+
+    test("mapping another mouse mode unbinds the one before it", {
+        setUpLookAround();
+        mapMouseModeToLookAround(MouseMode.hidden);
+        mapMouseModeToLookAround(MouseMode.disabled);
+
+        assert(!hasMouseModeMapping(MouseMode.hidden, evLookingEnabled));
+        assert(hasMouseModeMapping(MouseMode.disabled, evLookingEnabled));
+    });
+
+    test("the look-around takes the mode the mouse is already in", {
+        startLookAroundGame();
+        initLookAroundProcessor();
+        auto entity = createLookAroundEntity();
+        takeMouseMode(MouseMode.hidden);
+
+        // Bound after the mouse took the mode rather than before, which emits
+        // nothing of its own: the look-around goes by the mode it finds rather
+        // than by waiting for the next change of it.
+        mapMouseModeToLookAround(MouseMode.hidden);
+
+        emitLookEvent(evLookHorizontal, 100);
+        updateEntities();
+
+        assert(forwardOf(entity).x > 0);
     });
 
     test("setting up the look-around again changes the mouse mode it asks for", {
