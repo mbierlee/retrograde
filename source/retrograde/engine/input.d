@@ -43,14 +43,42 @@ Queue!MouseModeEvent mouseModeEvents;
 Array!TextInputHandlerFunction textInputHandlers;
 
 /**
+ * An event a binding emits, together with the factor the magnitude it is
+ * emitted at is scaled by.
+ *
+ * The multiplier is what turns one binding into the opposite of another, or
+ * into a stronger one: S drives the same event W drives at $(D -1), moving the
+ * player backward rather than forward, and a mouse bound at $(D 2) turns the
+ * camera twice as fast as one bound at $(D 1).
+ *
+ * ---
+ * addKeyMapping(KeyboardScanCode.w, sid("ev_move"));
+ * addKeyMapping(KeyboardScanCode.s, sid("ev_move"), KeyboardKeyModifier.none,
+ *     anyModifiers, -1);
+ * ---
+ *
+ * Scaling is all it does: it never decides whether a binding emits, only what
+ * the events it emits carry. A binding at a multiplier of zero emits its events
+ * at zero rather than staying silent, and a release stays the zero it is
+ * whatever the multiplier.
+ */
+struct EventMapping {
+    /// Name of the event to emit.
+    StringId eventName;
+
+    /// What the magnitude the event is emitted at is multiplied by.
+    Magnitude multiplier = 1;
+}
+
+/**
  * The events a key binding emits when its key is pressed, held or released.
  *
  * A binding can drive more than one event at a time, such as W driving both
- * ev_moveForward and ev_menuUp; every event mapped to the binding is emitted.
- * Prefer $(D addKeyMapping) and $(D removeKeyMapping) over manipulating
- * this map directly.
+ * ev_moveForward and ev_menuUp; every event mapped to the binding is emitted,
+ * each at its own multiplier. Prefer $(D addKeyMapping) and
+ * $(D removeKeyMapping) over manipulating this map directly.
  */
-HashMap!(KeyBinding, Array!StringId) keyMapping;
+HashMap!(KeyBinding, Array!EventMapping) keyMapping;
 
 /**
  * The events a mouse button binding emits when its button is pressed or
@@ -61,7 +89,7 @@ HashMap!(KeyBinding, Array!StringId) keyMapping;
  * $(D addMouseButtonMapping) and $(D removeMouseButtonMapping) over
  * manipulating this map directly.
  */
-HashMap!(MouseButtonBinding, Array!StringId) mouseButtonMapping;
+HashMap!(MouseButtonBinding, Array!EventMapping) mouseButtonMapping;
 
 /**
  * The events a mouse movement binding emits when the mouse is moved along the
@@ -72,7 +100,7 @@ HashMap!(MouseButtonBinding, Array!StringId) mouseButtonMapping;
  * $(D addMouseMovementMapping) and $(D removeMouseMovementMapping) over
  * manipulating this map directly.
  */
-HashMap!(MouseMovementBinding, Array!StringId) mouseMovementMapping;
+HashMap!(MouseMovementBinding, Array!EventMapping) mouseMovementMapping;
 
 /**
  * The events a mouse scroll binding emits when the mousewheel is scrolled along
@@ -83,7 +111,7 @@ HashMap!(MouseMovementBinding, Array!StringId) mouseMovementMapping;
  * $(D addMouseScrollMapping) and $(D removeMouseScrollMapping) over
  * manipulating this map directly.
  */
-HashMap!(MouseScrollBinding, Array!StringId) mouseScrollMapping;
+HashMap!(MouseScrollBinding, Array!EventMapping) mouseScrollMapping;
 
 /**
  * The events a mouse mode binding emits when the mouse takes on the mode it
@@ -94,7 +122,7 @@ HashMap!(MouseScrollBinding, Array!StringId) mouseScrollMapping;
  * $(D addMouseModeMapping) and $(D removeMouseModeMapping) over manipulating
  * this map directly.
  */
-HashMap!(MouseModeBinding, Array!StringId) mouseModeMapping;
+HashMap!(MouseModeBinding, Array!EventMapping) mouseModeMapping;
 
 /**
  * Whether relative mouse movement is followed as an axis that is always current.
@@ -114,15 +142,18 @@ private bool yRelativeMovementAtRest = true;
  * Make the given key binding emit the given event, on top of any events it
  * already emits.
  *
- * Mapping the same event to the same binding again does nothing; a binding
- * never emits the same event twice.
+ * Mapping the same event to the same binding again does not emit it twice; it
+ * changes the multiplier the binding emits it at.
  *
  * Params:
  *  binding = The key and modifiers to map.
  *  eventName = Name of the event the binding should emit.
+ *  multiplier = What the magnitude of that event is multiplied by. Defaults to
+ *              $(D 1), emitting the magnitude as it comes. See
+ *              $(D EventMapping).
  */
-void addKeyMapping(KeyBinding binding, StringId eventName) {
-    addMapping(keyMapping, binding, eventName);
+void addKeyMapping(KeyBinding binding, StringId eventName, Magnitude multiplier = 1) {
+    addMapping(keyMapping, binding, eventName, multiplier);
 }
 
 /**
@@ -139,11 +170,14 @@ void addKeyMapping(KeyBinding binding, StringId eventName) {
  *              that only the required modifiers are taken into account at all.
  *              Pass $(D KeyboardKeyModifier.none) to have the key emit on
  *              exactly the modifiers it requires and nothing else.
+ *  multiplier = What the magnitude of the event is multiplied by. Defaults to
+ *              $(D 1), emitting the magnitude as it comes. See
+ *              $(D EventMapping).
  */
 void addKeyMapping(KeyboardScanCode scanCode, StringId eventName,
     KeyboardKeyModifier modifiers = KeyboardKeyModifier.none,
-    KeyboardKeyModifier ignoredModifiers = anyModifiers) {
-    addKeyMapping(KeyBinding(scanCode, modifiers, ignoredModifiers), eventName);
+    KeyboardKeyModifier ignoredModifiers = anyModifiers, Magnitude multiplier = 1) {
+    addKeyMapping(KeyBinding(scanCode, modifiers, ignoredModifiers), eventName, multiplier);
 }
 
 /**
@@ -225,15 +259,19 @@ void clearKeyMappings() {
  * Make the given mouse button binding emit the given event, on top of any
  * events it already emits.
  *
- * Mapping the same event to the same binding again does nothing; a binding
- * never emits the same event twice.
+ * Mapping the same event to the same binding again does not emit it twice; it
+ * changes the multiplier the binding emits it at.
  *
  * Params:
  *  binding = The mouse button and modifiers to map.
  *  eventName = Name of the event the binding should emit.
+ *  multiplier = What the magnitude of that event is multiplied by. Defaults to
+ *              $(D 1), emitting the magnitude as it comes. See
+ *              $(D EventMapping).
  */
-void addMouseButtonMapping(MouseButtonBinding binding, StringId eventName) {
-    addMapping(mouseButtonMapping, binding, eventName);
+void addMouseButtonMapping(MouseButtonBinding binding, StringId eventName,
+    Magnitude multiplier = 1) {
+    addMapping(mouseButtonMapping, binding, eventName, multiplier);
 }
 
 /**
@@ -251,11 +289,15 @@ void addMouseButtonMapping(MouseButtonBinding binding, StringId eventName) {
  *              into account at all. Pass $(D KeyboardKeyModifier.none) to have
  *              the button emit on exactly the modifiers it requires and nothing
  *              else.
+ *  multiplier = What the magnitude of the event is multiplied by. Defaults to
+ *              $(D 1), emitting the magnitude as it comes. See
+ *              $(D EventMapping).
  */
 void addMouseButtonMapping(MouseButton button, StringId eventName,
     KeyboardKeyModifier modifiers = KeyboardKeyModifier.none,
-    KeyboardKeyModifier ignoredModifiers = anyModifiers) {
-    addMouseButtonMapping(MouseButtonBinding(button, modifiers, ignoredModifiers), eventName);
+    KeyboardKeyModifier ignoredModifiers = anyModifiers, Magnitude multiplier = 1) {
+    addMouseButtonMapping(MouseButtonBinding(button, modifiers, ignoredModifiers), eventName,
+        multiplier);
 }
 
 /**
@@ -339,15 +381,20 @@ void clearMouseButtonMappings() {
  * Make the given mouse movement binding emit the given event, on top of any
  * events it already emits.
  *
- * Mapping the same event to the same binding again does nothing; a binding
- * never emits the same event twice.
+ * Mapping the same event to the same binding again does not emit it twice; it
+ * changes the multiplier the binding emits it at.
  *
  * Params:
  *  binding = The axis and type of movement to map.
  *  eventName = Name of the event the binding should emit.
+ *  multiplier = What the magnitude of that event is multiplied by. Defaults to
+ *         $(D 1), emitting the distance the mouse moved as it comes. This is
+ *         where the sensitivity of the mouse and an inverted axis live: see
+ *         $(D EventMapping).
  */
-void addMouseMovementMapping(MouseMovementBinding binding, StringId eventName) {
-    addMapping(mouseMovementMapping, binding, eventName);
+void addMouseMovementMapping(MouseMovementBinding binding, StringId eventName,
+    Magnitude multiplier = 1) {
+    addMapping(mouseMovementMapping, binding, eventName, multiplier);
 }
 
 /**
@@ -360,9 +407,14 @@ void addMouseMovementMapping(MouseMovementBinding binding, StringId eventName) {
  *  eventName = Name of the event the movement should emit.
  *  movementType = Whether to follow the absolute position of the mouse or the
  *         distance it moved.
+ *  multiplier = What the magnitude of the event is multiplied by. Defaults to
+ *         $(D 1), emitting the distance the mouse moved as it comes. This is
+ *         where the sensitivity of the mouse and an inverted axis live: see
+ *         $(D EventMapping).
  */
-void addMouseMovementMapping(Axis axis, StringId eventName, MouseMovementType movementType) {
-    addMouseMovementMapping(MouseMovementBinding(axis, movementType), eventName);
+void addMouseMovementMapping(Axis axis, StringId eventName, MouseMovementType movementType,
+    Magnitude multiplier = 1) {
+    addMouseMovementMapping(MouseMovementBinding(axis, movementType), eventName, multiplier);
 }
 
 /**
@@ -439,15 +491,19 @@ void clearMouseMovementMappings() {
  * Make the given mouse scroll binding emit the given event, on top of any
  * events it already emits.
  *
- * Mapping the same event to the same binding again does nothing; a binding
- * never emits the same event twice.
+ * Mapping the same event to the same binding again does not emit it twice; it
+ * changes the multiplier the binding emits it at.
  *
  * Params:
  *  binding = The axis to map.
  *  eventName = Name of the event the binding should emit.
+ *  multiplier = What the magnitude of that event is multiplied by. Defaults to
+ *         $(D 1), emitting the distance the wheel was scrolled as it comes.
+ *         See $(D EventMapping).
  */
-void addMouseScrollMapping(MouseScrollBinding binding, StringId eventName) {
-    addMapping(mouseScrollMapping, binding, eventName);
+void addMouseScrollMapping(MouseScrollBinding binding, StringId eventName,
+    Magnitude multiplier = 1) {
+    addMapping(mouseScrollMapping, binding, eventName, multiplier);
 }
 
 /**
@@ -458,9 +514,12 @@ void addMouseScrollMapping(MouseScrollBinding binding, StringId eventName) {
  *  axis = The axis to map. $(D Axis.all) follows both axes of the wheel,
  *         emitting the event once per axis.
  *  eventName = Name of the event the scroll should emit.
+ *  multiplier = What the magnitude of the event is multiplied by. Defaults to
+ *         $(D 1), emitting the distance the wheel was scrolled as it comes.
+ *         See $(D EventMapping).
  */
-void addMouseScrollMapping(Axis axis, StringId eventName) {
-    addMouseScrollMapping(MouseScrollBinding(axis), eventName);
+void addMouseScrollMapping(Axis axis, StringId eventName, Magnitude multiplier = 1) {
+    addMouseScrollMapping(MouseScrollBinding(axis), eventName, multiplier);
 }
 
 /**
@@ -520,15 +579,18 @@ void clearMouseScrollMappings() {
  * Make the given mouse mode binding emit the given event, on top of any events
  * it already emits.
  *
- * Mapping the same event to the same binding again does nothing; a binding
- * never emits the same event twice.
+ * Mapping the same event to the same binding again does not emit it twice; it
+ * changes the multiplier the binding emits it at.
  *
  * Params:
  *  binding = The mouse mode to map.
  *  eventName = Name of the event the binding should emit.
+ *  multiplier = What the magnitude of that event is multiplied by. Defaults to
+ *         $(D 1), emitting the mode the mouse is in at full magnitude. See
+ *         $(D EventMapping).
  */
-void addMouseModeMapping(MouseModeBinding binding, StringId eventName) {
-    addMapping(mouseModeMapping, binding, eventName);
+void addMouseModeMapping(MouseModeBinding binding, StringId eventName, Magnitude multiplier = 1) {
+    addMapping(mouseModeMapping, binding, eventName, multiplier);
 }
 
 /**
@@ -538,9 +600,12 @@ void addMouseModeMapping(MouseModeBinding binding, StringId eventName) {
  * Params:
  *  mouseMode = The mode to map.
  *  eventName = Name of the event the mode should emit.
+ *  multiplier = What the magnitude of the event is multiplied by. Defaults to
+ *         $(D 1), emitting the mode the mouse is in at full magnitude. See
+ *         $(D EventMapping).
  */
-void addMouseModeMapping(MouseMode mouseMode, StringId eventName) {
-    addMouseModeMapping(MouseModeBinding(mouseMode), eventName);
+void addMouseModeMapping(MouseMode mouseMode, StringId eventName, Magnitude multiplier = 1) {
+    addMouseModeMapping(MouseModeBinding(mouseMode), eventName, multiplier);
 }
 
 /**
@@ -658,21 +723,28 @@ void processInput() {
 /**
  * Adds the given event to the events the binding emits, on top of the ones it
  * already emits. Shared by the keyboard and the mouse button mapping API.
+ *
+ * An event the binding already emits keeps its place and takes on the given
+ * multiplier, so that mapping it again is how the multiplier of a binding is
+ * changed rather than a way to have it emitted twice.
  */
-private void addMapping(BindingT)(ref HashMap!(BindingT, Array!StringId) mapping,
-    BindingT binding, StringId eventName) {
-    auto eventNames = mapping.getRef(binding);
-    if (eventNames.isDefined) {
-        auto mappedEvents = eventNames.value;
-        if (!mappedEvents.exists(eventName)) {
-            mappedEvents.add(eventName);
+private void addMapping(BindingT)(ref HashMap!(BindingT, Array!EventMapping) mapping,
+    BindingT binding, StringId eventName, Magnitude multiplier) {
+    auto eventMappings = mapping.getRef(binding);
+    if (eventMappings.isDefined) {
+        auto mappedEvents = eventMappings.value;
+        auto index = findEvent(*mappedEvents, eventName);
+        if (index == -1) {
+            mappedEvents.add(EventMapping(eventName, multiplier));
+        } else {
+            (*mappedEvents)[index] = EventMapping(eventName, multiplier);
         }
 
         return;
     }
 
-    Array!StringId newEvents;
-    newEvents.add(eventName);
+    Array!EventMapping newEvents;
+    newEvents.add(EventMapping(eventName, multiplier));
     mapping.put(binding, newEvents);
 }
 
@@ -682,15 +754,15 @@ private void addMapping(BindingT)(ref HashMap!(BindingT, Array!StringId) mapping
  *
  * Returns: Whether the binding was mapped to the event.
  */
-private bool removeMapping(BindingT)(ref HashMap!(BindingT, Array!StringId) mapping,
+private bool removeMapping(BindingT)(ref HashMap!(BindingT, Array!EventMapping) mapping,
     BindingT binding, StringId eventName) {
-    auto eventNames = mapping.getRef(binding);
-    if (!eventNames.isDefined) {
+    auto eventMappings = mapping.getRef(binding);
+    if (!eventMappings.isDefined) {
         return false;
     }
 
-    auto mappedEvents = eventNames.value;
-    auto index = mappedEvents.find(eventName);
+    auto mappedEvents = eventMappings.value;
+    auto index = findEvent(*mappedEvents, eventName);
     if (index == -1) {
         return false;
     }
@@ -704,15 +776,33 @@ private bool removeMapping(BindingT)(ref HashMap!(BindingT, Array!StringId) mapp
 }
 
 /**
+ * Looks the given event up among the events a binding emits, whatever
+ * multiplier it is emitted at: an event is emitted by a binding once, so its
+ * name is what tells the mappings of a binding apart.
+ *
+ * Returns: The index of the event among them, or -1 for an event the binding
+ *          does not emit.
+ */
+private size_t findEvent(ref Array!EventMapping eventMappings, StringId eventName) {
+    foreach (i; 0 .. eventMappings.length) {
+        if (eventMappings[i].eventName == eventName) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+/**
  * Unmaps every binding on the given key or button, whichever modifiers those
  * bindings name.
  *
  * Returns: Whether the key or button was bound at all.
  */
-private bool removeAllMappings(BindingT, InputT)(ref HashMap!(BindingT, Array!StringId) mapping,
+private bool removeAllMappings(BindingT, InputT)(ref HashMap!(BindingT, Array!EventMapping) mapping,
     InputT input) {
     Array!BindingT boundInputs;
-    foreach (binding, eventNames; mapping) {
+    foreach (binding, eventMappings; mapping) {
         if (bindsTo(binding, input)) {
             boundInputs.add(binding);
         }
@@ -728,10 +818,10 @@ private bool removeAllMappings(BindingT, InputT)(ref HashMap!(BindingT, Array!St
 /**
  * Returns: Whether the binding emits the given event.
  */
-private bool hasMapping(BindingT)(ref HashMap!(BindingT, Array!StringId) mapping,
+private bool hasMapping(BindingT)(ref HashMap!(BindingT, Array!EventMapping) mapping,
     BindingT binding, StringId eventName) {
-    auto eventNames = mapping.getRef(binding);
-    return eventNames.isDefined && eventNames.value.exists(eventName);
+    auto eventMappings = mapping.getRef(binding);
+    return eventMappings.isDefined && findEvent(*eventMappings.value, eventName) != -1;
 }
 
 /**
@@ -842,17 +932,19 @@ private void emitKeyPressEvents(KeyboardScanCode scanCode, KeyboardKeyModifier m
 
 /**
  * Emits the events of every binding on the given key or mouse button that the
- * held modifiers satisfy, at full magnitude.
+ * held modifiers satisfy, at full magnitude scaled by the multiplier each of
+ * them is mapped at.
  */
-private void emitPressEvents(BindingT, InputT)(ref HashMap!(BindingT, Array!StringId) mapping,
+private void emitPressEvents(BindingT, InputT)(ref HashMap!(BindingT, Array!EventMapping) mapping,
     InputT input, KeyboardKeyModifier heldModifiers) {
-    foreach (binding, eventNames; mapping) {
+    foreach (binding, eventMappings; mapping) {
         if (!bindsTo(binding, input) || !bindingMatches(binding, heldModifiers)) {
             continue;
         }
 
-        foreach (i; 0 .. eventNames.length) {
-            eventQueue.enqueue(Event(eventNames[i], 1));
+        foreach (i; 0 .. eventMappings.length) {
+            auto eventMapping = eventMappings[i];
+            eventQueue.enqueue(Event(eventMapping.eventName, eventMapping.multiplier));
         }
     }
 }
@@ -865,16 +957,20 @@ private void emitPressEvents(BindingT, InputT)(ref HashMap!(BindingT, Array!Stri
  * before letting go of the key it modified would otherwise leave the events
  * of a shift binding stuck at full magnitude. Releasing an event that was
  * never pressed only sets it to the zero it already was.
+ *
+ * The multipliers of the bindings have nothing to scale here: a release is the
+ * zero the events of a binding are brought back to, and a multiple of zero is
+ * that same zero whatever the multiplier.
  */
-private void emitReleaseEvents(BindingT, InputT)(ref HashMap!(BindingT, Array!StringId) mapping,
+private void emitReleaseEvents(BindingT, InputT)(ref HashMap!(BindingT, Array!EventMapping) mapping,
     InputT input) {
-    foreach (binding, eventNames; mapping) {
+    foreach (binding, eventMappings; mapping) {
         if (!bindsTo(binding, input)) {
             continue;
         }
 
-        foreach (i; 0 .. eventNames.length) {
-            eventQueue.enqueue(Event(eventNames[i], 0));
+        foreach (i; 0 .. eventMappings.length) {
+            eventQueue.enqueue(Event(eventMappings[i].eventName, 0));
         }
     }
 }
@@ -946,20 +1042,23 @@ private void emitContinuousMovementEvents(Axis axis, double movement, ref bool a
 
 /**
  * Emits the events of every binding that follows the given axis on the given
- * type of movement, at the magnitude the mouse moved along it.
+ * type of movement, at the magnitude the mouse moved along it scaled by the
+ * multiplier each of them is mapped at.
  *
  * A binding on $(D Axis.all) follows every axis, and so emits its events once
  * for each axis that the movement carried.
  */
 private void emitAxisMovementEvents(Axis axis, double position, MouseMovementType movementType) {
-    foreach (binding, eventNames; mouseMovementMapping) {
+    foreach (binding, eventMappings; mouseMovementMapping) {
         if (binding.movementType != movementType ||
             (binding.axis != axis && binding.axis != Axis.all)) {
             continue;
         }
 
-        foreach (i; 0 .. eventNames.length) {
-            eventQueue.enqueue(Event(eventNames[i], cast(Magnitude) position));
+        foreach (i; 0 .. eventMappings.length) {
+            auto eventMapping = eventMappings[i];
+            eventQueue.enqueue(Event(eventMapping.eventName,
+                cast(Magnitude) position * eventMapping.multiplier));
         }
     }
 }
@@ -978,26 +1077,30 @@ private void emitMouseScrollEvents(MouseScrollEvent scrollEvent) {
 
 /**
  * Emits the events of every binding that follows the given axis, at the distance
- * the wheel was scrolled along it.
+ * the wheel was scrolled along it scaled by the multiplier each of them is
+ * mapped at.
  *
  * A binding on $(D Axis.all) follows both axes, and so emits its events once for
  * each of them.
  */
 private void emitAxisScrollEvents(Axis axis, double offset) {
-    foreach (binding, eventNames; mouseScrollMapping) {
+    foreach (binding, eventMappings; mouseScrollMapping) {
         if (binding.axis != axis && binding.axis != Axis.all) {
             continue;
         }
 
-        foreach (i; 0 .. eventNames.length) {
-            eventQueue.enqueue(Event(eventNames[i], cast(Magnitude) offset));
+        foreach (i; 0 .. eventMappings.length) {
+            auto eventMapping = eventMappings[i];
+            eventQueue.enqueue(Event(eventMapping.eventName,
+                cast(Magnitude) offset * eventMapping.multiplier));
         }
     }
 }
 
 /**
  * Emits the events of every mouse mode binding: at full magnitude for the mode
- * the mouse is now in, and at zero for the modes it is not in.
+ * the mouse is now in, scaled by the multiplier each of them is mapped at, and
+ * at zero for the modes it is not in.
  *
  * A mode is a state the mouse is in rather than an impulse, the way a held key
  * is: the events of the mode it took on stay at full magnitude until another
@@ -1005,10 +1108,12 @@ private void emitAxisScrollEvents(Axis axis, double offset) {
  * left alone, so that the events of the mode it left do not stay up.
  */
 private void emitMouseModeEvents(MouseModeEvent modeEvent) {
-    foreach (binding, eventNames; mouseModeMapping) {
-        Magnitude magnitude = binding.mouseMode == modeEvent.mouseMode ? 1 : 0;
-        foreach (i; 0 .. eventNames.length) {
-            eventQueue.enqueue(Event(eventNames[i], magnitude));
+    foreach (binding, eventMappings; mouseModeMapping) {
+        bool isCurrentMode = binding.mouseMode == modeEvent.mouseMode;
+        foreach (i; 0 .. eventMappings.length) {
+            auto eventMapping = eventMappings[i];
+            Magnitude magnitude = isCurrentMode ? eventMapping.multiplier : 0;
+            eventQueue.enqueue(Event(eventMapping.eventName, magnitude));
         }
     }
 }
@@ -1866,6 +1971,15 @@ struct MouseMovementEvent {
  * addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative);
  * ---
  *
+ * How far that magnitude carries is the multiplier the event is mapped at,
+ * which is what a sensitivity setting and an inverted axis come down to:
+ *
+ * ---
+ * // Twice as fast sideways, and the other way around vertically.
+ * addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative, 2);
+ * addMouseMovementMapping(Axis.y, sid("ev_lookY"), MouseMovementType.relative, -1);
+ * ---
+ *
  * $(D Axis.all) follows every axis rather than a combined one: its events are
  * emitted once per axis the mouse moved along, each carrying that axis' own
  * magnitude.
@@ -2499,6 +2613,170 @@ void runInputTests() {
         Event event;
         assert(eventQueue.tryDequeue(event));
         assert(event.magnitude == 1);
+    });
+
+    writeSection("-- Magnitude multiplier tests --");
+
+    test("a binding emits at its multiplier by default", () {
+        assert(EventMapping(sid("ev_moveForward")).multiplier == 1);
+    });
+
+    test("a key mapped with a multiplier emits at that magnitude", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"), KeyboardKeyModifier.none,
+            anyModifiers, 2);
+        pressKey(KeyboardScanCode.w);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_moveForward"), 2) == 1);
+    });
+
+    test("a negative multiplier turns a key into the opposite of another", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_move"));
+        addKeyMapping(KeyboardScanCode.s, sid("ev_move"), KeyboardKeyModifier.none,
+            anyModifiers, -1);
+
+        pressKey(KeyboardScanCode.w);
+        pressKey(KeyboardScanCode.s);
+        processInput();
+
+        assert(eventQueue.length == 2);
+        assert(emittedEventCount(sid("ev_move"), 1) == 1);
+
+        pressKey(KeyboardScanCode.w);
+        pressKey(KeyboardScanCode.s);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_move"), -1) == 1);
+    });
+
+    test("the events of a binding keep their own multipliers", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"), KeyboardKeyModifier.none,
+            anyModifiers, 2);
+        addKeyMapping(KeyboardScanCode.w, sid("ev_menuUp"));
+        pressKey(KeyboardScanCode.w);
+        processInput();
+
+        assert(eventQueue.length == 2);
+        assert(emittedEventCount(sid("ev_moveForward"), 2) == 1);
+
+        pressKey(KeyboardScanCode.w);
+        processInput();
+        assert(emittedEventCount(sid("ev_menuUp"), 1) == 1);
+    });
+
+    test("mapping an event again changes the multiplier it emits at", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"), KeyboardKeyModifier.none,
+            anyModifiers, 2);
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"), KeyboardKeyModifier.none,
+            anyModifiers, -1);
+        pressKey(KeyboardScanCode.w);
+        processInput();
+
+        assert(eventQueue.length == 1);
+        assert(emittedEventCount(sid("ev_moveForward"), -1) == 1);
+    });
+
+    test("releasing a key brings its multiplied events to zero all the same", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"), KeyboardKeyModifier.none,
+            anyModifiers, -2);
+        pressKey(KeyboardScanCode.w, InputEventAction.release);
+        processInput();
+
+        // A release is the zero the events of a binding are brought back to, and
+        // a multiple of zero is that same zero whatever the multiplier.
+        assert(emittedEventCount(sid("ev_moveForward"), 0) == 1);
+    });
+
+    test("a binding at a multiplier of zero emits rather than staying silent", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"), KeyboardKeyModifier.none,
+            anyModifiers, 0);
+        pressKey(KeyboardScanCode.w);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_moveForward"), 0) == 1);
+    });
+
+    test("a mouse button mapped with a multiplier emits at that magnitude", () {
+        resetInput();
+        addMouseButtonMapping(MouseButton.left, sid("ev_fire"), KeyboardKeyModifier.none,
+            anyModifiers, -1);
+        pressMouseButton(MouseButton.left);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_fire"), -1) == 1);
+    });
+
+    test("a multiplier scales the distance the mouse moved", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative, 2);
+        moveMouse(0.25, 0, MouseMovementType.relative, Axis.x);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_lookX"), 0.5) == 1);
+    });
+
+    test("a negative multiplier inverts an axis", () {
+        resetInput();
+        addMouseMovementMapping(Axis.y, sid("ev_lookY"), MouseMovementType.relative, -1);
+        moveMouse(0, 0.5, MouseMovementType.relative, Axis.y);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_lookY"), -0.5) == 1);
+    });
+
+    test("an axis that comes to rest is left at zero by its multiplier", () {
+        resetInput();
+        addMouseMovementMapping(Axis.x, sid("ev_lookX"), MouseMovementType.relative, -2);
+        moveMouse(0.5, 0, MouseMovementType.relative, Axis.x);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_lookX"), -1) == 1);
+
+        processInput();
+
+        assert(emittedEventCount(sid("ev_lookX"), 0) == 1);
+    });
+
+    test("a multiplier scales the distance the wheel was scrolled", () {
+        resetInput();
+        addMouseScrollMapping(Axis.y, sid("ev_zoom"), -2);
+        scrollMouse(0, 1);
+        processInput();
+
+        assert(emittedEventCount(sid("ev_zoom"), -2) == 1);
+    });
+
+    test("a mouse mode mapped with a multiplier emits at that magnitude", () {
+        resetInput();
+        addMouseModeMapping(MouseMode.disabled, sid("ev_mouseLocked"), 2);
+        addMouseModeMapping(MouseMode.normal, sid("ev_mouseFree"), 2);
+        changeMouseMode(MouseMode.disabled);
+        processInput();
+
+        assert(eventQueue.length == 2);
+        assert(emittedEventCount(sid("ev_mouseLocked"), 2) == 1);
+
+        // The modes the mouse is not in are the zero they are brought to rather
+        // than a multiple of it.
+        changeMouseMode(MouseMode.disabled);
+        processInput();
+        assert(emittedEventCount(sid("ev_mouseFree"), 0) == 1);
+    });
+
+    test("a binding is removed whatever multiplier it emits at", () {
+        resetInput();
+        addKeyMapping(KeyboardScanCode.w, sid("ev_moveForward"), KeyboardKeyModifier.none,
+            anyModifiers, 2);
+
+        assert(hasKeyMapping(KeyboardScanCode.w, sid("ev_moveForward")));
+        assert(removeKeyMapping(KeyboardScanCode.w, sid("ev_moveForward")));
+        assert(keyMapping.length == 0);
     });
 
     writeSection("-- Input modifier tests --");
