@@ -2,13 +2,15 @@
  * rgmodelconv - RGM model format writer.
  *
  * Builds an RGM file in memory from the intermediate `ModelData`. Meshes are
- * written in primitive order; materials are classified (unlit, vertex-colors or
- * the invalid sentinel) and emitted in first-referenced order, and the textures
- * they reference are collected into a shared, de-duplicated texture list.
+ * written in primitive order; materials are classified (unlit, PBR
+ * metallic-roughness, vertex-colors or the invalid sentinel) and emitted in
+ * first-referenced order, and the textures they reference are collected into a
+ * shared, de-duplicated texture list.
  *
- * Lit (PBR) source materials are written as `unlit` ones: only their base color
- * (albedo) texture is carried over, as the RGM format cannot express the
- * metallic-roughness inputs yet.
+ * Textured materials keep their source shading model: `KHR_materials_unlit` ones
+ * become `unlit`, the rest become `pbrMetallicRoughness`. Either way only the base
+ * color (albedo) texture is carried over, as the RGM format cannot express the
+ * remaining metallic-roughness inputs yet.
  *
  * Authors:
  *  Mike Bierlee, m.bierlee@lostmoment.com
@@ -27,7 +29,7 @@ import std.typecons : Nullable;
 
 import retrograde.assets.rgm : rgmMagicNumber;
 import retrograde.assets.model : MaterialType, MaterialFlags, maxUvChannels, noMaterial,
-    TextureType, TextureMagFilter, TextureMinFilter, TextureWrap;
+    referencesTexture, TextureType, TextureMagFilter, TextureMinFilter, TextureWrap;
 
 import model : Primitive, MaterialInfo, ModelData;
 
@@ -81,7 +83,7 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
     }
     uint usedMaterialCount = nextRgmIndex - 1;
 
-    // Pre-pass: classify every used material and, for unlit materials, resolve the
+    // Pre-pass: classify every used material and, for textured materials, resolve the
     // base color texture path into a shared Textures list. Identical paths are
     // deduplicated, so several materials can reference the same texture by its 1-based
     // index. The classification is recorded here so the material write pass below does
@@ -97,7 +99,11 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
 
         MaterialInfo material = data.materials[i];
         if (material.baseColorTexture.path.length > 0) {
-            materialTypes[i] = MaterialType.unlit;
+            // The shading model decides the type: only a material that declares
+            // KHR_materials_unlit is written as `unlit`; a regular glTF material is a
+            // metallic-roughness one, even though both currently carry the same payload.
+            materialTypes[i] = material.unlit
+                ? MaterialType.unlit : MaterialType.pbrMetallicRoughness;
             string path = renameImages
                 ? setExtension(material.baseColorTexture.path, "rgi") : material.baseColorTexture.path;
             if (texturePathPrefix.length > 0) {
@@ -143,9 +149,10 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
     }
 
     // Emit one material entry per used material, in the order they were first
-    // referenced. A material maps to `unlit` when it references an external base
-    // color texture, or to `vertexColors` when it is textureless and drawn with
-    // per-vertex colors; anything else falls back to the `invalid` sentinel.
+    // referenced. A material that references an external base color texture maps to
+    // `unlit` or `pbrMetallicRoughness` depending on its shading model, a textureless
+    // one drawn with per-vertex colors maps to `vertexColors`; anything else falls back
+    // to the `invalid` sentinel.
     for (uint i = 0; i < materialCount; i++) {
         if (materialIndexMap[i] == 0) {
             continue;
@@ -165,7 +172,7 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
         ubyte flags = doubleSided ? cast(ubyte) MaterialFlags.doubleSided : 0;
         writeUbyte(buf, flags); // Common flags (bit 0 = double-sided)
 
-        if (type == MaterialType.unlit) {
+        if (type.referencesTexture) {
             writeUint(buf, materialTextureIndices[i]); // Referenced texture index
         }
     }

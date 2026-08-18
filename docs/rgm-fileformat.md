@@ -123,6 +123,7 @@ part of each `materialEntrySize`.
 | ----- | ------------- | ------------------------------------------------------------ |
 | 1     | Vertex Colors | Renders using only the per-vertex RGB colors. No payload.    |
 | 2     | Unlit         | Passthrough material — references a single texture by index. |
+| 3     | PBR Metallic-Roughness | Physically based material. Currently references only its albedo texture by index, like `Unlit`. |
 
 ### Common Flags
 
@@ -145,6 +146,12 @@ No type-specific payload bytes. The material entry ends after the common flags b
 | 0x00   | 4    | uint | Texture index (≥ 1, references a texture by its `index`) |
 
 The texture index references an entry in the textures section by its declared `index` field (see "Textures" below), not by array position. It must be `≥ 1` and must match a defined texture.
+
+### PBR Metallic-Roughness Payload (type = 3)
+
+Identical to the `Unlit` payload: a single 4-byte texture index for the albedo texture, subject to
+the same rules. The remaining PBR inputs (metallic-roughness, normal, occlusion, emissive) are not
+stored yet; they will extend this payload. No converter writes this type yet.
 
 ## Textures (variable size)
 

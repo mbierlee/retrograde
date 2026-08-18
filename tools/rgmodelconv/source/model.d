@@ -59,12 +59,12 @@ struct TextureRef {
  * (`KHR_materials_unlit`), the double-sided flag, and the material's texture
  * references.
  *
- * Lit (PBR) materials are converted as if they were unlit: only the base color
- * (albedo) texture is carried over, since the RGM format has no material type
- * that can express the metallic-roughness inputs yet.
+ * Lit (PBR) materials are converted as `pbrMetallicRoughness` ones, but only the
+ * base color (albedo) texture is carried over: the RGM format cannot express the
+ * remaining metallic-roughness inputs yet.
  */
 struct MaterialInfo {
-    bool unlit; /// True when the material declares the KHR_materials_unlit extension. Recorded for future use; it does not affect classification, as lit materials are converted as unlit too.
+    bool unlit; /// True when the material declares the KHR_materials_unlit extension. Decides between the `unlit` and `pbrMetallicRoughness` material types for a textured material.
     bool doubleSided; /// glTF `material.doubleSided` (defaults to false).
     bool hasAnyTexture; /// True when the material references at least one texture of any slot, including the slots that are not converted.
     TextureRef baseColorTexture; /// The externally referenced base color (albedo) texture (path + filters); `path` is "" when the material has none.

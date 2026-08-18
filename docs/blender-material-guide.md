@@ -17,21 +17,23 @@ Retrograde does not read a custom "material type" property. Instead,
 | ----------------------- | -------------------------------------------------------------- |
 | no material / `invalid` | No material is assigned to the mesh.                           |
 | `vertexColors`          | The mesh has a color attribute + the material has no textures. |
-| `unlit`                 | The material references a base color (albedo) image texture.   |
+| `unlit`                 | The material references a base color (albedo) image texture **and** declares `KHR_materials_unlit`. |
+| `pbrMetallicRoughness`  | The material references a base color (albedo) image texture and is a regular lit one. |
 
-**Lit materials are converted as unlit.** A regular `Principled BSDF` material
-exports as glTF PBR (metallic-roughness), and the converter currently keeps only
-its **Base Color** texture, dropping every other PBR input (metallic, roughness,
-normal, occlusion, emissive). So a `Principled BSDF` with an image texture in
-Base Color lands in the `.rgm` as an `unlit` material using that image — the
-model simply renders at full brightness, with no lighting applied.
+**Only the base color texture is converted, for either type.** A regular
+`Principled BSDF` material exports as glTF PBR (metallic-roughness) and becomes a
+`pbrMetallicRoughness` material in the `.rgm`, but the converter currently keeps
+only its **Base Color** texture and drops every other PBR input (metallic,
+roughness, normal, occlusion, emissive) — the RGM format has nowhere to put them
+yet. The two types therefore carry exactly the same data today; what differs is
+the shading model the engine picks for them.
 
-If you want the material to *be* unlit in Blender's own viewport and in other
-glTF viewers as well, wire your color source **directly into the `Surface`
-socket of the `Material Output` node**, bypassing the `Principled BSDF`. A
-surface fed by a raw color (rather than a lighting shader) is exported with the
-`KHR_materials_unlit` extension. The converter accepts either form and produces
-the same `.rgm` material.
+To make the material *be* unlit — in Blender's own viewport, in other glTF
+viewers, and in the `.rgm` — wire your color source **directly into the
+`Surface` socket of the `Material Output` node**, bypassing the
+`Principled BSDF`. A surface fed by a raw color (rather than a lighting shader)
+is exported with the `KHR_materials_unlit` extension, which is what the converter
+keys on.
 
 ---
 
@@ -108,15 +110,42 @@ Alternatively, keep the `Principled BSDF` and plug the Image Texture into its
 [Image Texture] --Color--> [Principled BSDF] Base Color --BSDF--> [Material Output] Surface
 ```
 
-This exports as a PBR material, and the converter takes the base color texture
-from it and writes the same `unlit` material. The rest of the Principled inputs
-(Metallic, Roughness, Normal, Emission, ...) are **not** converted — they are
-dropped, including any image textures plugged into them.
+This exports as a lit PBR material, so the converter writes a
+`pbrMetallicRoughness` material instead — carrying the same base color texture.
+The rest of the Principled inputs (Metallic, Roughness, Normal, Emission, ...)
+are **not** converted — they are dropped, including any image textures plugged
+into them. See `pbrMetallicRoughness` below.
 
 > At the moment `unlit` only works when exporting as a **`.gltf`** file, because
 > embedded images (as produced by `.glb`) are not supported yet.
 
 See `asset-examples/cube-unlit-textured.blend` for a working example.
+
+---
+
+## `pbrMetallicRoughness`
+
+Use this for a mesh that should be lit. Set the material up the way you normally
+would in Blender:
+
+1. Add a material to the object.
+2. Keep the `Principled BSDF` and plug an **Image Texture** into its
+   **Base Color** socket.
+3. Make sure the mesh is UV-unwrapped so the texture has coordinates to sample.
+
+```
+[Image Texture] --Color--> [Principled BSDF] Base Color --BSDF--> [Material Output] Surface
+```
+
+Anything not declaring `KHR_materials_unlit` and referencing a base color texture
+lands here, so this is what a normal Blender material converts to.
+
+> The remaining PBR inputs (metallic, roughness, normal, occlusion, emissive) are
+> dropped by the converter for now, and the engine's shader for this type still
+> samples only the albedo texture. Expect a material set up this way to render
+> like an `unlit` one until those inputs are stored and shaded.
+
+The same `.gltf`-only restriction on external images applies as for `unlit`.
 
 ### Texture filtering (min/mag filter)
 
