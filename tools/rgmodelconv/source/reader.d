@@ -216,7 +216,7 @@ private MaterialInfo parseMaterial(ref JSONValue gltf, JSONValue mat) {
 
     // Only the base color (albedo) texture is converted, whether the material is
     // unlit or a lit PBR one: the remaining PBR slots (metallic-roughness, normal,
-    // occlusion and emissive) have no RGM equivalent yet. They are still counted in
+    // occlusion and emissive) have no RGM payload yet. They are still counted in
     // `hasAnyTexture`, so a material carrying only, say, a normal map is not
     // mistaken for a textureless vertex-colored one.
     JSONValue* pbrP = "pbrMetallicRoughness" in mat.object;

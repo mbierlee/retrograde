@@ -27,3 +27,10 @@ MaterialShader unlitMaterialShader = MaterialShader(
     import("opengles3/material_unlit_vertex.glsl"),
     import("opengles3/material_unlit_fragment.glsl"),
 );
+
+MaterialShader pbrMetallicRoughnessMaterialShader = MaterialShader(
+    "PbrMetallicRoughness",
+    MaterialType.pbrMetallicRoughness,
+    import("opengles3/material_pbr_metallic_roughness_vertex.glsl"),
+    import("opengles3/material_pbr_metallic_roughness_fragment.glsl"),
+);

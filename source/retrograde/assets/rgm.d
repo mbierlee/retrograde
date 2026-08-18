@@ -12,7 +12,7 @@
 module retrograde.assets.rgm;
 
 import retrograde.assets.model : Model, Vertex, Face, Mesh, UvCoord, maxUvChannels,
-    Material, MaterialIndex, MaterialType, MaterialFlags, noMaterial,
+    Material, MaterialIndex, MaterialType, MaterialFlags, noMaterial, referencesTexture,
     Texture, TextureIndex, TextureType, TextureMagFilter, TextureMinFilter, TextureWrap;
 import retrograde.assets.readercommon : readUInt, readUShort, readFloat;
 import retrograde.std.endian : toPlatformEndian, Endian;
@@ -356,10 +356,10 @@ private OperationResult readMaterialData(const(ubyte)[] data, ref size_t offset,
     }
 
     // Type-specific payload.
-    if (material.type == MaterialType.unlit) {
+    if (material.type.referencesTexture) {
         // Read the referenced texture index.
         if (data.length - offset < 4) {
-            return failure("Cannot read unlit texture index: Unexpected end of data.");
+            return failure("Cannot read material texture index: Unexpected end of data.");
         }
 
         material.textureIndex = readUInt(data, offset);
@@ -557,7 +557,7 @@ private OperationResult validateMaterialTextureReferences(Model* model) {
     Texture[] textures = model.textures.arr();
 
     foreach (ref material; materials) {
-        if (material.type != MaterialType.unlit) {
+        if (!material.type.referencesTexture) {
             continue;
         }
 
@@ -570,7 +570,7 @@ private OperationResult validateMaterialTextureReferences(Model* model) {
         }
 
         if (!found) {
-            return failure("Unlit material references unknown texture index.");
+            return failure("Material references unknown texture index.");
         }
     }
 

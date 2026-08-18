@@ -312,6 +312,8 @@ string materialTypeName(MaterialType type) {
         return "Vertex Colors";
     case MaterialType.unlit:
         return "Unlit";
+    case MaterialType.pbrMetallicRoughness:
+        return "PBR Metallic-Roughness";
     }
 }
 
@@ -383,6 +385,7 @@ string materialPayloadDescription(ref Material material) {
     case MaterialType.vertexColors:
         return "";
     case MaterialType.unlit:
+    case MaterialType.pbrMetallicRoughness:
         import std.conv : to;
 
         return ", texture " ~ to!string(material.textureIndex);

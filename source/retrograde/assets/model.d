@@ -66,7 +66,8 @@ struct Mesh {
 enum MaterialType : ubyte {
     invalid = 0, /// Sentinel for an unrecognized or missing material type. Renderers treat this like `noMaterial`, falling back to the render pass shader.
     vertexColors = 1, /// Use only the per-vertex RGB colors. No payload.
-    unlit = 2 /// Passthrough material — references a single texture (by index) from the model's texture list.
+    unlit = 2, /// Passthrough material — references a single texture (by index) from the model's texture list.
+    pbrMetallicRoughness = 3 /// Physically based metallic-roughness material. Currently only references its albedo texture (by index), like `unlit`.
 }
 
 /**
@@ -92,9 +93,17 @@ struct Material {
     MaterialIndex index; /// 1-based unique index used by meshes to reference this material.
     MaterialType type;
     bool doubleSided; /// Common property (decoded from `MaterialFlags.doubleSided`): render both faces. Always false for `MaterialType.invalid`.
-    TextureIndex textureIndex; /// Populated when `type == MaterialType.unlit`: the index of the referenced `Texture`. 0 otherwise.
+    TextureIndex textureIndex; /// Populated when `type.referencesTexture`: the index of the referenced `Texture`. 0 otherwise.
 
     mixin CopyConstructors!Material;
+}
+
+/**
+ * Whether materials of this type carry a texture index payload referencing a single
+ * (albedo) texture from the model's texture list.
+ */
+bool referencesTexture(MaterialType type) {
+    return type == MaterialType.unlit || type == MaterialType.pbrMetallicRoughness;
 }
 
 /**

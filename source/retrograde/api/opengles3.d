@@ -20,7 +20,7 @@ import retrograde.engine.entity : EntityId, hasComponent, withComponentData, add
 import retrograde.engine.rendering : Color, RenderPass, Viewport, renderPasses, MaterialShader;
 
 import retrograde.assets.model : ModelComponentType, Model, MaterialType, MaterialIndex, noMaterial,
-    TextureIndex, Texture, TextureMagFilter, TextureMinFilter, TextureWrap;
+    referencesTexture, TextureIndex, Texture, TextureMagFilter, TextureMinFilter, TextureWrap;
 import retrograde.assets.image : Image, ChannelFormat;
 import retrograde.assets.assetlibrary : getModel, getTexture;
 
@@ -86,7 +86,7 @@ void initMaterialShader(ref MaterialShader materialShader) {
         shaderInfo.colorsAttribLocation = glGetAttribLocation(program, "color");
     }
 
-    if (materialShader.materialType == MaterialType.unlit) {
+    if (materialShader.materialType.referencesTexture) {
         shaderInfo.textureCoordsAttribLocation = glGetAttribLocation(program, "textureCoords");
         shaderInfo.albedoTextureUniformLocation = glGetUniformLocation(program, "albedoTexture");
     }
@@ -220,7 +220,7 @@ void loadEntityModel(EntityId entity) {
                         glBufferDataFloat(GL_ARRAY_BUFFER, colorData.arr, GL_STATIC_DRAW);
                     }
 
-                    if (meshInfo.materialType == MaterialType.unlit && mesh.uvChannelCount > 0) {
+                    if (meshInfo.materialType.referencesTexture && mesh.uvChannelCount > 0) {
                         // The first UV channel occupies the first `vertices.length` entries
                         // of the channel-major `uvCoords` array.
                         Array!GLfloat textureCoordsData;
@@ -255,7 +255,7 @@ void loadEntityModel(EntityId entity) {
                         glVertexAttribPointer(materialShaderInfo.colorsAttribLocation, 4, GL_FLOAT, false, 0, 0);
                     }
 
-                    if (meshInfo.materialType == MaterialType.unlit
+                    if (meshInfo.materialType.referencesTexture
                     && meshInfo.textureCoordsBufferObject != 0
                     && materialShaderInfo.textureCoordsAttribLocation >= 0) {
                         glBindBuffer(GL_ARRAY_BUFFER, meshInfo.textureCoordsBufferObject);
@@ -317,7 +317,7 @@ private void expandGrayscaleAlphaToRgba(const ref Image image, ref Array!ubyte r
 }
 
 /**
- * Creates and uploads a GL texture for the referenced texture of an unlit material.
+ * Creates and uploads a GL texture for the referenced texture of a material.
  * Returns the GL texture handle, or 0 when the texture could not be resolved or uploaded.
  */
 private GLuint createMaterialTexture(Model* model, TextureIndex textureIndex) {
@@ -334,7 +334,7 @@ private GLuint createMaterialTexture(Model* model, TextureIndex textureIndex) {
     }
 
     if (texture is null) {
-        writeErrLn("Unlit material in model ", model.name, " references unknown texture index ",
+        writeErrLn("Material in model ", model.name, " references unknown texture index ",
             textureIndex, "; skipping texture.");
         return 0;
     }
@@ -342,7 +342,7 @@ private GLuint createMaterialTexture(Model* model, TextureIndex textureIndex) {
     auto textureResult = getTexture(texture.path);
     if (textureResult.isFailure) {
         writeErrLn("Failed to resolve texture '", texture.path, "' (index ", textureIndex,
-            ") for unlit material in model ", model.name, "; skipping texture.");
+            ") for material in model ", model.name, "; skipping texture.");
         return 0;
     }
 
@@ -350,7 +350,7 @@ private GLuint createMaterialTexture(Model* model, TextureIndex textureIndex) {
     Image* image = imageRef.ptr;
 
     if (image.channelFormat != ChannelFormat.u8) {
-        writeErrLn("Unlit material texture '", texture.path,
+        writeErrLn("Material texture '", texture.path,
             "' is not 8-bit per channel; skipping texture.");
         return 0;
     }
@@ -376,7 +376,7 @@ private GLuint createMaterialTexture(Model* model, TextureIndex textureIndex) {
         format = GL_RGBA;
         pixels = image.pixelData.arr;
     } else {
-        writeErrLn("Unlit material texture '", texture.path, "' has an unsupported channel count ",
+        writeErrLn("Material texture '", texture.path, "' has an unsupported channel count ",
             cast(uint) image.channelCount, "; skipping texture.");
         return 0;
     }
@@ -570,7 +570,7 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
                 glUniformMatrix4fv(mvpMatrixUniformLocation, 1, true, modelViewProjectionMatrixData);
             }
 
-            if (useMaterial && meshInfo.materialType == MaterialType.unlit
+            if (useMaterial && meshInfo.materialType.referencesTexture
                 && meshInfo.textureObject != 0 && albedoTextureUniformLocation >= 0) {
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, meshInfo.textureObject);
