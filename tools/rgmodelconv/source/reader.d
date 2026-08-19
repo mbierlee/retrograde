@@ -162,6 +162,21 @@ private Primitive parsePrimitive(ref JSONValue gltf, const(ubyte)[][] buffers, J
         }
     }
 
+    // Normals (NORMAL). Passed through as authored; nothing is generated when the
+    // attribute is absent.
+    if (auto normalP = "NORMAL" in attrs.object) {
+        AccessorData normals = readFloatAccessor(gltf, buffers, cast(size_t) jsonInt(*normalP));
+        if (normals.componentCount != 3) {
+            throw new Exception("NORMAL accessor must be a VEC3.");
+        }
+
+        if (normals.count != result.vertexCount) {
+            throw new Exception("NORMAL accessor count does not match POSITION.");
+        }
+
+        result.normals = normals.values;
+    }
+
     // UV channels (TEXCOORD_0, TEXCOORD_1, ...), contiguous from 0. UVs are kept
     // exactly as glTF stores them (top-left origin), which is the convention the
     // engine expects; V is not flipped.
@@ -183,6 +198,26 @@ private Primitive parsePrimitive(ref JSONValue gltf, const(ubyte)[][] buffers, J
         }
 
         result.uvChannels ~= channelData;
+    }
+
+    // Tangents (TANGENT). Also passed through as authored. A tangent basis is
+    // orthogonal to the normal and describes the gradient of the first UV channel,
+    // so it is dropped when either is missing — the glTF spec likewise says
+    // tangents are ignored on a primitive without normals.
+    if (auto tangentP = "TANGENT" in attrs.object) {
+        if (result.normals.length > 0 && result.uvChannels.length > 0) {
+            AccessorData tangents = readFloatAccessor(gltf, buffers, cast(size_t) jsonInt(
+                    *tangentP));
+            if (tangents.componentCount != 4) {
+                throw new Exception("TANGENT accessor must be a VEC4.");
+            }
+
+            if (tangents.count != result.vertexCount) {
+                throw new Exception("TANGENT accessor count does not match POSITION.");
+            }
+
+            result.tangents = tangents.values;
+        }
     }
 
     // Faces. Indexed geometry is read as-is; non-indexed primitives get an

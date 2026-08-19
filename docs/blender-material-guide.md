@@ -23,10 +23,14 @@ Retrograde does not read a custom "material type" property. Instead,
 **Only the base color texture is converted, for either type.** A regular
 `Principled BSDF` material exports as glTF PBR (metallic-roughness) and becomes a
 `pbrMetallicRoughness` material in the `.rgm`, but the converter currently keeps
-only its **Base Color** texture and drops every other PBR input (metallic,
-roughness, normal, occlusion, emissive) — the RGM format has nowhere to put them
-yet. The two types therefore carry exactly the same data today; what differs is
-the shading model the engine picks for them.
+only its **Base Color** texture and drops every other PBR *texture* input
+(metallic-roughness, normal, occlusion, emissive) — the RGM format has nowhere to
+put them yet. The two types therefore carry exactly the same material data today;
+what differs is the shading model the engine picks for them.
+
+Per-vertex **geometry** is the exception: normals and tangents are carried over
+into the `.rgm` whenever the export supplies them, independently of the material
+type. See [Exporting normals and tangents](#exporting-normals-and-tangents).
 
 To make the material *be* unlit — in Blender's own viewport, in other glTF
 viewers, and in the `.rgm` — wire your color source **directly into the
@@ -196,6 +200,54 @@ Blender alone — that requires editing the glTF sampler by hand.
 
 See the [RGM format spec](rgm-fileformat.md) for the full list of wrap-mode
 values `rgmodelconv` can store.
+
+---
+
+## Exporting normals and tangents
+
+`rgmodelconv` **does not compute normals or tangents** — it only passes through
+what the glTF contains. Whether your model arrives with a usable surface basis is
+therefore decided entirely by the export settings, and getting it wrong fails
+silently: the `.rgm` is written without complaint, just missing the data.
+
+Both options live in the glTF exporter's **Data ▸ Mesh** panel.
+
+### Normals
+
+**Data ▸ Mesh ▸ Normals** is **on by default**. Leave it on.
+
+Blender bakes the result of *Shade Smooth* / *Shade Flat*, the Auto Smooth
+modifier, and any custom split normals into what it writes out. Smoothing is
+therefore decided in Blender, not at convert time — if the shading looks faceted
+where you wanted it round, fix it on the mesh and re-export.
+
+### Tangents
+
+> **Data ▸ Mesh ▸ Tangents is off by default.** You must tick it explicitly.
+> This is the single most common reason a model ends up without tangents.
+
+Two things must be true for the option to produce anything:
+
+- **The mesh needs a UV map.** A tangent is the direction the U axis runs across
+  the surface, so Blender cannot derive one without an unwrap. `rgmodelconv`
+  drops the tangents of any mesh that has no UV channel.
+- **Normals must be exported too.** Per the glTF specification, tangents are
+  ignored on a mesh without normals, and the converter drops them in that case as
+  well.
+
+Tangents are only needed for meshes that will be shaded with a **normal map** —
+they are what lets a tangent-space normal map be interpreted correctly, and they
+carry the handedness sign that keeps mirrored UV islands from lighting inside
+out. Exporting them otherwise does no harm beyond file size (16 bytes per vertex,
+per mesh).
+
+To confirm what actually made it into a converted file, run `rgassetinfo` on it;
+each mesh is listed as `no normals`, `normals`, or `normals + tangents`.
+
+> **The engine does not consume normals or tangents yet.** They are stored in the
+> `.rgm` so the lighting and normal-mapping work can pick them up; nothing shades
+> with them today. Exporting them now means models will not have to be re-exported
+> later.
 
 ---
 

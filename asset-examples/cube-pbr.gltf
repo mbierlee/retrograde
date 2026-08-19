@@ -39,9 +39,10 @@
 					"attributes":{
 						"POSITION":0,
 						"NORMAL":1,
-						"TEXCOORD_0":2
+						"TEXCOORD_0":2,
+						"TANGENT":3
 					},
-					"indices":3,
+					"indices":4,
 					"material":0
 				}
 			]
@@ -91,6 +92,12 @@
 		},
 		{
 			"bufferView":3,
+			"componentType":5126,
+			"count":24,
+			"type":"VEC4"
+		},
+		{
+			"bufferView":4,
 			"componentType":5123,
 			"count":36,
 			"type":"SCALAR"
@@ -117,8 +124,14 @@
 		},
 		{
 			"buffer":0,
-			"byteLength":72,
+			"byteLength":384,
 			"byteOffset":768,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":72,
+			"byteOffset":1152,
 			"target":34963
 		}
 	],
@@ -130,7 +143,7 @@
 	],
 	"buffers":[
 		{
-			"byteLength":840,
+			"byteLength":1224,
 			"uri":"cube-pbr.bin"
 		}
 	]

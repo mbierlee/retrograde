@@ -250,6 +250,8 @@ int showModelInfo(string inputFile, const(ubyte)[] data, ref bool printedAny) {
     size_t totalFaces = 0;
     size_t totalUvChannels = 0;
     size_t maxUvChannelsUsed = 0;
+    size_t meshesWithNormals = 0;
+    size_t meshesWithTangents = 0;
 
     foreach (ref mesh; meshes) {
         totalVertices += mesh.vertices.length;
@@ -258,12 +260,22 @@ int showModelInfo(string inputFile, const(ubyte)[] data, ref bool printedAny) {
         if (mesh.uvChannelCount > maxUvChannelsUsed) {
             maxUvChannelsUsed = mesh.uvChannelCount;
         }
+
+        if (mesh.normals.length > 0) {
+            meshesWithNormals++;
+        }
+
+        if (mesh.tangents.length > 0) {
+            meshesWithTangents++;
+        }
     }
 
     writefln("Total vertices:    %d", totalVertices);
     writefln("Total faces:       %d", totalFaces);
     writefln("Total UV chans:    %d", totalUvChannels);
     writefln("Max UV chans/mesh: %d", maxUvChannelsUsed);
+    writefln("Meshes w/normals:  %d", meshesWithNormals);
+    writefln("Meshes w/tangents: %d", meshesWithTangents);
 
     string cullingSummary = backfaceCullingSummary(materials);
     if (cullingSummary.length > 0) {
@@ -273,8 +285,9 @@ int showModelInfo(string inputFile, const(ubyte)[] data, ref bool printedAny) {
     if (meshes.length > 0) {
         writeln("Per-mesh:");
         foreach (i, ref mesh; meshes) {
-            writefln("  Mesh %d: %d vertices, %d faces, %d UV channels, material %s",
+            writefln("  Mesh %d: %d vertices, %d faces, %d UV channels, %s, material %s",
                 i, mesh.vertices.length, mesh.faces.length, mesh.uvChannelCount,
+                meshAttributeLabel(mesh),
                 materialReferenceLabel(mesh.materialIndex)
             );
         }
@@ -315,6 +328,17 @@ string materialTypeName(MaterialType type) {
     case MaterialType.pbrMetallicRoughness:
         return "PBR Metallic-Roughness";
     }
+}
+
+/**
+ * Names the optional per-vertex attribute blocks a mesh carries.
+ */
+string meshAttributeLabel(in Mesh mesh) {
+    if (mesh.normals.length == 0) {
+        return "no normals";
+    }
+
+    return mesh.tangents.length > 0 ? "with normals + tangents" : "with normals";
 }
 
 string materialReferenceLabel(uint materialIndex) {

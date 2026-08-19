@@ -28,8 +28,9 @@ import std.path : buildPath, setExtension;
 import std.typecons : Nullable;
 
 import retrograde.assets.rgm : rgmMagicNumber;
-import retrograde.assets.model : MaterialType, MaterialFlags, maxUvChannels, noMaterial,
-    referencesTexture, TextureType, TextureMagFilter, TextureMinFilter, TextureWrap;
+import retrograde.assets.model : MaterialType, MaterialFlags, maxUvChannels,
+    MeshAttributeFlags, noMaterial, referencesTexture, TextureType, TextureMagFilter,
+    TextureMinFilter, TextureWrap;
 
 import model : Primitive, MaterialInfo, ModelData;
 
@@ -222,10 +223,22 @@ private void writeMeshData(ref Appender!(ubyte[]) buf, in Primitive prim, const 
     uint materialIndex = (prim.materialIndex >= 0 && prim.materialIndex < materialIndexMap.length)
         ? materialIndexMap[prim.materialIndex] : noMaterial;
 
+    // The reader already dropped tangents that have no normals or no UV channel to
+    // go with them, so array presence is enough to derive the flags.
+    ubyte attributeFlags = MeshAttributeFlags.none;
+    if (prim.normals.length > 0) {
+        attributeFlags |= MeshAttributeFlags.normals;
+    }
+
+    if (prim.tangents.length > 0) {
+        attributeFlags |= MeshAttributeFlags.tangents;
+    }
+
     // Mesh header
     writeUint(buf, prim.vertexCount);
     writeUint(buf, triangleCount);
     writeUbyte(buf, cast(ubyte) uvChannelCount);
+    writeUbyte(buf, attributeFlags);
     writeUint(buf, materialIndex);
 
     // Vertex data (24 bytes per vertex: x, y, z, r, g, b)
@@ -259,6 +272,25 @@ private void writeMeshData(ref Appender!(ubyte[]) buf, in Primitive prim, const 
         for (uint i = 0; i < prim.vertexCount; i++) {
             writeFloat(buf, uv[i * 2 + 0]);
             writeFloat(buf, uv[i * 2 + 1]);
+        }
+    }
+
+    // Normal data (12 bytes per vertex: x, y, z)
+    if ((attributeFlags & MeshAttributeFlags.normals) != 0) {
+        for (uint i = 0; i < prim.vertexCount; i++) {
+            writeFloat(buf, prim.normals[i * 3 + 0]);
+            writeFloat(buf, prim.normals[i * 3 + 1]);
+            writeFloat(buf, prim.normals[i * 3 + 2]);
+        }
+    }
+
+    // Tangent data (16 bytes per vertex: x, y, z, handedness)
+    if ((attributeFlags & MeshAttributeFlags.tangents) != 0) {
+        for (uint i = 0; i < prim.vertexCount; i++) {
+            writeFloat(buf, prim.tangents[i * 4 + 0]);
+            writeFloat(buf, prim.tangents[i * 4 + 1]);
+            writeFloat(buf, prim.tangents[i * 4 + 2]);
+            writeFloat(buf, prim.tangents[i * 4 + 3]);
         }
     }
 }
