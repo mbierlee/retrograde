@@ -51,6 +51,12 @@ struct Mesh {
     /// Flat channel-major UV data: channel c, vertex i lives at index `c * vertices.length + i`.
     Array!UvCoord uvCoords;
 
+    /// One normal per vertex, in vertex order. Empty when the mesh has no normals.
+    Array!Normal normals;
+
+    /// One tangent per vertex, in vertex order. Empty when the mesh has no tangents.
+    Array!Tangent tangents;
+
     /// Number of active UV channels (0..maxUvChannels).
     ubyte uvChannelCount;
 
@@ -58,6 +64,22 @@ struct Mesh {
     MaterialIndex materialIndex = noMaterial;
 
     mixin CopyConstructors!Mesh;
+}
+
+/**
+ * Bit flags packed into a mesh's "attribute flags" byte.
+ *
+ * These mark which optional per-vertex attribute blocks follow the mesh's UV
+ * data in the RGM file. Bits not listed here are reserved; they are written as
+ * 0 and rejected on read.
+ *
+ * On a loaded `Mesh` the presence of an attribute is derived from the length of
+ * its array, so these flags are only used while reading and writing the file.
+ */
+enum MeshAttributeFlags : ubyte {
+    none = 0,
+    normals = 1 << 0, /// A normal block follows the UV data.
+    tangents = 1 << 1 /// A tangent block follows the normal data. Requires `normals` and at least one UV channel.
 }
 
 /**
@@ -209,4 +231,28 @@ struct Face {
 struct UvCoord {
     VertexComponent u;
     VertexComponent v;
+}
+
+/**
+ * A unit-length surface normal for one vertex, in model space.
+ */
+struct Normal {
+    VertexComponent x; /// X component
+    VertexComponent y; /// Y component
+    VertexComponent z; /// Z component
+}
+
+/**
+ * A tangent basis vector for one vertex, in model space.
+ *
+ * `x`, `y` and `z` form the unit-length U direction of the first UV channel. The
+ * bitangent is not stored; it is derived as `cross(normal, xyz) * w`.
+ */
+struct Tangent {
+    VertexComponent x; /// X component
+    VertexComponent y; /// Y component
+    VertexComponent z; /// Z component
+
+    /// Handedness sign, either +1 or -1. Mirrored UV islands flip the bitangent.
+    VertexComponent w;
 }

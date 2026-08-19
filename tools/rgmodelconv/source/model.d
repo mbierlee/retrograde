@@ -23,8 +23,10 @@ import retrograde.assets.model : TextureMagFilter, TextureMinFilter, TextureWrap
  * becomes one RGM mesh, in glTF iteration order (mesh 0's primitives first, then
  * mesh 1's, and so on).
  *
- * Geometry is read straight from the glTF accessors: `positions`, `colors` and
- * `uvChannels` are indexed by vertex, and `indices` is a flat triangle list. No
+ * Geometry is read straight from the glTF accessors: `positions`, `colors`,
+ * `uvChannels`, `normals` and `tangents` are indexed by vertex, and `indices` is
+ * a flat triangle list. Normals and tangents are passed through as authored; the
+ * converter does not generate either of them. No
  * vertex welding or re-indexing is performed — the data is kept exactly as the
  * glTF file supplies it.
  */
@@ -34,6 +36,8 @@ struct Primitive {
     bool hasColors;
     float[] colors; /// vertexCount * 3 (r, g, b); empty when hasColors is false.
     float[][] uvChannels; /// uvChannels[c] holds vertexCount * 2 (u, v) values.
+    float[] normals; /// vertexCount * 3 (x, y, z); empty when the primitive has no NORMAL.
+    float[] tangents; /// vertexCount * 4 (x, y, z, handedness); empty when the primitive has no usable TANGENT.
     uint[] indices; /// Triangle list; length is a multiple of 3.
     int materialIndex = -1; /// glTF material index, or -1 when the primitive has none.
 }

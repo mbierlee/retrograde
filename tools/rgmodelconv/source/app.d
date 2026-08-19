@@ -194,6 +194,8 @@ void printStats(in ModelData model) {
     uint totalFaces = 0;
     uint totalUvChannels = 0;
     uint maxUvChannelsUsed = 0;
+    uint meshesWithNormals = 0;
+    uint meshesWithTangents = 0;
     foreach (ref prim; model.primitives) {
         totalVertices += prim.vertexCount;
         totalFaces += cast(uint)(prim.indices.length / 3);
@@ -202,6 +204,14 @@ void printStats(in ModelData model) {
         if (uvChannels > maxUvChannelsUsed) {
             maxUvChannelsUsed = uvChannels;
         }
+
+        if (prim.normals.length > 0) {
+            meshesWithNormals++;
+        }
+
+        if (prim.tangents.length > 0) {
+            meshesWithTangents++;
+        }
     }
 
     writefln("  Meshes:            %d", model.primitives.length);
@@ -209,4 +219,6 @@ void printStats(in ModelData model) {
     writefln("  Total faces:       %d", totalFaces);
     writefln("  Total UV chans:    %d", totalUvChannels);
     writefln("  Max UV chans/mesh: %d", maxUvChannelsUsed);
+    writefln("  Meshes w/normals:  %d", meshesWithNormals);
+    writefln("  Meshes w/tangents: %d", meshesWithTangents);
 }

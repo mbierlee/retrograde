@@ -76,10 +76,12 @@ For a model (`.rgm`):
 | Total vertices | 24 |
 | Total faces | 12 |
 | UV channels | 1 |
+| Meshes with normals | 1 |
+| Meshes with tangents | 0 |
 
 ## Details
 
-- **Mesh 0** — 24 vertices, 12 faces, 1 UV channel, uses material 1
+- **Mesh 0** — 24 vertices, 12 faces, 1 UV channel, normals, uses material 1
 - **Material 0** — index 1, type *Unlit*, references texture 1
 - **Texture 0** — index 1, type *reference*, path `assets/test1024.rgi`
 

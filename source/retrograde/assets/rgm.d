@@ -11,9 +11,10 @@
 
 module retrograde.assets.rgm;
 
-import retrograde.assets.model : Model, Vertex, Face, Mesh, UvCoord, maxUvChannels,
-    Material, MaterialIndex, MaterialType, MaterialFlags, noMaterial, referencesTexture,
-    Texture, TextureIndex, TextureType, TextureMagFilter, TextureMinFilter, TextureWrap;
+import retrograde.assets.model : Model, Vertex, Face, Mesh, UvCoord, Normal, Tangent,
+    maxUvChannels, MeshAttributeFlags, Material, MaterialIndex, MaterialType, MaterialFlags,
+    noMaterial, referencesTexture, Texture, TextureIndex, TextureType, TextureMagFilter,
+    TextureMinFilter, TextureWrap;
 import retrograde.assets.readercommon : readUInt, readUShort, readFloat;
 import retrograde.std.endian : toPlatformEndian, Endian;
 import retrograde.std.memory : ResultPtr, failedPtr, makeRaw, successPtr;
@@ -155,6 +156,32 @@ private OperationResult readMeshData(const(ubyte)[] data, ref size_t offset, Mod
         return failure("Invalid UV channel count: exceeds maxUvChannels.");
     }
 
+    // Read attribute flags
+    if (data.length - offset < 1) {
+        return failure("Cannot read attribute flags: Unexpected end of data.");
+    }
+
+    ubyte attributeFlags = data[offset];
+    offset += 1;
+
+    enum ubyte knownAttributeFlags = MeshAttributeFlags.normals | MeshAttributeFlags.tangents;
+    if ((attributeFlags & ~knownAttributeFlags) != 0) {
+        return failure("Invalid attribute flags: reserved bits are set.");
+    }
+
+    bool hasNormals = (attributeFlags & MeshAttributeFlags.normals) != 0;
+    bool hasTangents = (attributeFlags & MeshAttributeFlags.tangents) != 0;
+
+    // A tangent is only meaningful alongside the normal it is orthogonal to, and
+    // it describes the gradient of the first UV channel, so both must be present.
+    if (hasTangents && !hasNormals) {
+        return failure("Invalid attribute flags: tangents require normals.");
+    }
+
+    if (hasTangents && uvChannelCount == 0) {
+        return failure("Invalid attribute flags: tangents require at least one UV channel.");
+    }
+
     // Read material index
     if (data.length - offset < 4) {
         return failure("Cannot read material index: Unexpected end of data.");
@@ -188,6 +215,22 @@ private OperationResult readMeshData(const(ubyte)[] data, ref size_t offset, Mod
         }
     }
 
+    // Read normal data
+    if (hasNormals) {
+        OperationResult normalResult = readNormalData(data, offset, mesh, vertexCount);
+        if (normalResult.isFailure()) {
+            return normalResult;
+        }
+    }
+
+    // Read tangent data
+    if (hasTangents) {
+        OperationResult tangentResult = readTangentData(data, offset, mesh, vertexCount);
+        if (tangentResult.isFailure()) {
+            return tangentResult;
+        }
+    }
+
     model.meshes ~= mesh;
     return success();
 }
@@ -215,6 +258,58 @@ private OperationResult readUvData(
     }
 
     mesh.uvChannelCount = uvChannelCount;
+    return success();
+}
+
+private OperationResult readNormalData(
+    const(ubyte)[] data,
+    ref size_t offset,
+    ref Mesh mesh,
+    uint vertexCount
+) {
+    size_t requiredBytes = cast(size_t) vertexCount * 12;
+    if (data.length - offset < requiredBytes) {
+        return failure("Cannot read normal data: Unexpected end of data.");
+    }
+
+    mesh.normals.capacity = vertexCount;
+    for (uint i = 0; i < vertexCount; i++) {
+        float x = readFloat(data, offset);
+        offset += 4;
+        float y = readFloat(data, offset);
+        offset += 4;
+        float z = readFloat(data, offset);
+        offset += 4;
+        mesh.normals ~= Normal(x, y, z);
+    }
+
+    return success();
+}
+
+private OperationResult readTangentData(
+    const(ubyte)[] data,
+    ref size_t offset,
+    ref Mesh mesh,
+    uint vertexCount
+) {
+    size_t requiredBytes = cast(size_t) vertexCount * 16;
+    if (data.length - offset < requiredBytes) {
+        return failure("Cannot read tangent data: Unexpected end of data.");
+    }
+
+    mesh.tangents.capacity = vertexCount;
+    for (uint i = 0; i < vertexCount; i++) {
+        float x = readFloat(data, offset);
+        offset += 4;
+        float y = readFloat(data, offset);
+        offset += 4;
+        float z = readFloat(data, offset);
+        offset += 4;
+        float w = readFloat(data, offset);
+        offset += 4;
+        mesh.tangents ~= Tangent(x, y, z, w);
+    }
+
     return success();
 }
 
@@ -585,7 +680,7 @@ void runRgmTests() {
     writeSection("-- RGM tests --");
 
     test("Load simple model containing a plane", {
-        ubyte[151] modelData = [
+        ubyte[152] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -597,6 +692,7 @@ void runRgmTests() {
             0x04, 0x00, 0x00, 0x00, // Vertex count (4)
             0x02, 0x00, 0x00, 0x00, // Face count (2)
             0x00, // UV channel count (0)
+            0x00, // Attribute flags (none)
             0x00, 0x00, 0x00, 0x00, // Material index (0 = no material)
 
             // Vertex 1
@@ -693,7 +789,7 @@ void runRgmTests() {
     });
 
     test("Reject model with trailing bytes beyond expected data", {
-        ubyte[152] modelData = [
+        ubyte[153] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -705,6 +801,7 @@ void runRgmTests() {
             0x04, 0x00, 0x00, 0x00, // Vertex count (4)
             0x02, 0x00, 0x00, 0x00, // Face count (2)
             0x00, // UV channel count (0)
+            0x00, // Attribute flags (none)
             0x00, 0x00, 0x00, 0x00, // Material index (0 = no material)
 
             // Vertex 1
@@ -738,7 +835,7 @@ void runRgmTests() {
     });
 
     test("Assign provided name to loaded model", {
-        ubyte[115] modelData = [
+        ubyte[116] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -750,6 +847,7 @@ void runRgmTests() {
             0x03, 0x00, 0x00, 0x00, // Vertex count (3)
             0x01, 0x00, 0x00, 0x00, // Face count (1)
             0x00, // UV channel count (0)
+            0x00, // Attribute flags (none)
             0x00, 0x00, 0x00, 0x00, // Material index (0 = no material)
 
             // Vertex 1
@@ -776,7 +874,7 @@ void runRgmTests() {
     });
 
     test("Load simple model with two UV channels", {
-        ubyte[163] modelData = [
+        ubyte[164] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -788,6 +886,7 @@ void runRgmTests() {
             0x03, 0x00, 0x00, 0x00, // Vertex count (3)
             0x01, 0x00, 0x00, 0x00, // Face count (1)
             0x02, // UV channel count (2)
+            0x00, // Attribute flags (none)
             0x00, 0x00, 0x00, 0x00, // Material index (0 = no material)
 
             // Vertex 1
@@ -856,7 +955,7 @@ void runRgmTests() {
     });
 
     test("Load model with one Unlit material referencing a texture", {
-        ubyte[147] modelData = [
+        ubyte[148] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -868,6 +967,7 @@ void runRgmTests() {
             0x03, 0x00, 0x00, 0x00, // Vertex count (3)
             0x01, 0x00, 0x00, 0x00, // Face count (1)
             0x00, // UV channel count (0)
+            0x00, // Attribute flags (none)
             0x01, 0x00, 0x00, 0x00, // Material index (1)
 
             // Vertex 1
@@ -924,7 +1024,7 @@ void runRgmTests() {
     });
 
     test("Load model with one Vertex Colors material", {
-        ubyte[121] modelData = [
+        ubyte[122] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -936,6 +1036,7 @@ void runRgmTests() {
             0x03, 0x00, 0x00, 0x00, // Vertex count (3)
             0x01, 0x00, 0x00, 0x00, // Face count (1)
             0x00, // UV channel count (0)
+            0x00, // Attribute flags (none)
             0x07, 0x00, 0x00, 0x00, // Material index (7)
 
             // Vertex 1
@@ -973,7 +1074,7 @@ void runRgmTests() {
     });
 
     test("Load model with multiple materials using non-sequential indices", {
-        ubyte[165] modelData = [
+        ubyte[167] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -985,6 +1086,7 @@ void runRgmTests() {
             0x03, 0x00, 0x00, 0x00, // Vertex count (3)
             0x01, 0x00, 0x00, 0x00, // Face count (1)
             0x00, // UV channel count (0)
+            0x00, // Attribute flags (none)
             0x05, 0x00, 0x00, 0x00, // Material index (5)
 
             // Vertex 1
@@ -1006,6 +1108,7 @@ void runRgmTests() {
             0x00, 0x00, 0x00, 0x00, // Vertex count (0)
             0x00, 0x00, 0x00, 0x00, // Face count (0)
             0x00, // UV channel count (0)
+            0x00, // Attribute flags (none)
             0x09, 0x00, 0x00, 0x00, // Material index (9)
 
             // Material 1: Unlit at index 5, referencing texture 2
@@ -1057,7 +1160,7 @@ void runRgmTests() {
     });
 
     test("Load model with a double-sided material", {
-        ubyte[37] modelData = [
+        ubyte[38] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -1069,6 +1172,7 @@ void runRgmTests() {
             0x00, 0x00, 0x00, 0x00, // Vertex count (0)
             0x00, 0x00, 0x00, 0x00, // Face count (0)
             0x00, // UV channel count (0)
+            0x00, // Attribute flags (none)
             0x01, 0x00, 0x00, 0x00, // Material index (1)
 
             // Material 1: Vertex Colors, double-sided (with a reserved bit also set)
@@ -1132,7 +1236,7 @@ void runRgmTests() {
     });
 
     test("Reject mesh referencing unknown material index", {
-        ubyte[61] modelData = [
+        ubyte[62] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -1144,6 +1248,7 @@ void runRgmTests() {
             0x01, 0x00, 0x00, 0x00, // Vertex count (1)
             0x00, 0x00, 0x00, 0x00, // Face count (0)
             0x00, // UV channel count (0)
+            0x00, // Attribute flags (none)
             0x63, 0x00, 0x00, 0x00, // Material index (99)
 
             // Vertex 1
@@ -1340,6 +1445,336 @@ void runRgmTests() {
             0x02, // Material type (Unlit)
             0x00, // Common flags (none)
             0x63, 0x00, 0x00, 0x00, // Texture index (99 - undefined)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
+    test("Load model with normals", {
+        ubyte[152] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
+
+            // Mesh 1
+            0x03, 0x00, 0x00, 0x00, // Vertex count (3)
+            0x01, 0x00, 0x00, 0x00, // Face count (1)
+            0x00, // UV channel count (0)
+            0x01, // Attribute flags (normals)
+            0x00, 0x00, 0x00, 0x00, // Material index (0 = no material)
+
+            // Vertex 1
+            0x00, 0x00, 0x00, 0x00, // X coordinate (0.0)
+            0x00, 0x00, 0x00, 0x00, // Y coordinate (0.0)
+            0x00, 0x00, 0x00, 0x00, // Z coordinate (0.0)
+            0x00, 0x00, 0x80, 0x3F, // R color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // G color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // B color (1.0)
+
+            // Vertex 2
+            0x00, 0x00, 0x80, 0x3F, // X coordinate (1.0)
+            0x00, 0x00, 0x00, 0x00, // Y coordinate (0.0)
+            0x00, 0x00, 0x00, 0x00, // Z coordinate (0.0)
+            0x00, 0x00, 0x80, 0x3F, // R color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // G color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // B color (1.0)
+
+            // Vertex 3
+            0x00, 0x00, 0x00, 0x00, // X coordinate (0.0)
+            0x00, 0x00, 0x80, 0x3F, // Y coordinate (1.0)
+            0x00, 0x00, 0x00, 0x00, // Z coordinate (0.0)
+            0x00, 0x00, 0x80, 0x3F, // R color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // G color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // B color (1.0)
+
+            // Face 1
+            0x00, 0x00, 0x00, 0x00, // Vertex index 1 (0)
+            0x01, 0x00, 0x00, 0x00, // Vertex index 2 (1)
+            0x02, 0x00, 0x00, 0x00, // Vertex index 3 (2)
+
+            // Normal 1 (0, 0, 1)
+            0x00, 0x00, 0x00, 0x00, // X (0.0)
+            0x00, 0x00, 0x00, 0x00, // Y (0.0)
+            0x00, 0x00, 0x80, 0x3F, // Z (1.0)
+
+            // Normal 2 (0, 1, 0)
+            0x00, 0x00, 0x00, 0x00, // X (0.0)
+            0x00, 0x00, 0x80, 0x3F, // Y (1.0)
+            0x00, 0x00, 0x00, 0x00, // Z (0.0)
+
+            // Normal 3 (-1, 0, 0)
+            0x00, 0x00, 0x80, 0xBF, // X (-1.0)
+            0x00, 0x00, 0x00, 0x00, // Y (0.0)
+            0x00, 0x00, 0x00, 0x00, // Z (0.0)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(result.isSuccessful());
+
+        auto model = result.unique();
+        assert(model.meshes[0].normals.length == 3);
+
+        assert(model.meshes[0].normals[0].x == 0.0);
+        assert(model.meshes[0].normals[0].y == 0.0);
+        assert(model.meshes[0].normals[0].z == 1.0);
+
+        assert(model.meshes[0].normals[1].x == 0.0);
+        assert(model.meshes[0].normals[1].y == 1.0);
+        assert(model.meshes[0].normals[1].z == 0.0);
+
+        assert(model.meshes[0].normals[2].x == -1.0);
+        assert(model.meshes[0].normals[2].y == 0.0);
+        assert(model.meshes[0].normals[2].z == 0.0);
+
+        assert(model.meshes[0].tangents.length == 0);
+    });
+
+    test("Load model with normals and tangents", {
+        ubyte[224] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
+
+            // Mesh 1
+            0x03, 0x00, 0x00, 0x00, // Vertex count (3)
+            0x01, 0x00, 0x00, 0x00, // Face count (1)
+            0x01, // UV channel count (1)
+            0x03, // Attribute flags (normals | tangents)
+            0x00, 0x00, 0x00, 0x00, // Material index (0 = no material)
+
+            // Vertex 1
+            0x00, 0x00, 0x00, 0x00, // X coordinate (0.0)
+            0x00, 0x00, 0x00, 0x00, // Y coordinate (0.0)
+            0x00, 0x00, 0x00, 0x00, // Z coordinate (0.0)
+            0x00, 0x00, 0x80, 0x3F, // R color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // G color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // B color (1.0)
+
+            // Vertex 2
+            0x00, 0x00, 0x80, 0x3F, // X coordinate (1.0)
+            0x00, 0x00, 0x00, 0x00, // Y coordinate (0.0)
+            0x00, 0x00, 0x00, 0x00, // Z coordinate (0.0)
+            0x00, 0x00, 0x80, 0x3F, // R color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // G color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // B color (1.0)
+
+            // Vertex 3
+            0x00, 0x00, 0x00, 0x00, // X coordinate (0.0)
+            0x00, 0x00, 0x80, 0x3F, // Y coordinate (1.0)
+            0x00, 0x00, 0x00, 0x00, // Z coordinate (0.0)
+            0x00, 0x00, 0x80, 0x3F, // R color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // G color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // B color (1.0)
+
+            // Face 1
+            0x00, 0x00, 0x00, 0x00, // Vertex index 1 (0)
+            0x01, 0x00, 0x00, 0x00, // Vertex index 2 (1)
+            0x02, 0x00, 0x00, 0x00, // Vertex index 3 (2)
+
+            // UV channel 0
+            0x00, 0x00, 0x00, 0x00, // U (0.0)
+            0x00, 0x00, 0x00, 0x00, // V (0.0)
+            0x00, 0x00, 0x80, 0x3F, // U (1.0)
+            0x00, 0x00, 0x00, 0x00, // V (0.0)
+            0x00, 0x00, 0x00, 0x00, // U (0.0)
+            0x00, 0x00, 0x80, 0x3F, // V (1.0)
+
+            // Normal 1 (0, 0, 1)
+            0x00, 0x00, 0x00, 0x00, // X (0.0)
+            0x00, 0x00, 0x00, 0x00, // Y (0.0)
+            0x00, 0x00, 0x80, 0x3F, // Z (1.0)
+
+            // Normal 2 (0, 0, 1)
+            0x00, 0x00, 0x00, 0x00, // X (0.0)
+            0x00, 0x00, 0x00, 0x00, // Y (0.0)
+            0x00, 0x00, 0x80, 0x3F, // Z (1.0)
+
+            // Normal 3 (0, 0, 1)
+            0x00, 0x00, 0x00, 0x00, // X (0.0)
+            0x00, 0x00, 0x00, 0x00, // Y (0.0)
+            0x00, 0x00, 0x80, 0x3F, // Z (1.0)
+
+            // Tangent 1 (1, 0, 0, +1)
+            0x00, 0x00, 0x80, 0x3F, // X (1.0)
+            0x00, 0x00, 0x00, 0x00, // Y (0.0)
+            0x00, 0x00, 0x00, 0x00, // Z (0.0)
+            0x00, 0x00, 0x80, 0x3F, // W handedness (1.0)
+
+            // Tangent 2 (1, 0, 0, -1), a mirrored UV island
+            0x00, 0x00, 0x80, 0x3F, // X (1.0)
+            0x00, 0x00, 0x00, 0x00, // Y (0.0)
+            0x00, 0x00, 0x00, 0x00, // Z (0.0)
+            0x00, 0x00, 0x80, 0xBF, // W handedness (-1.0)
+
+            // Tangent 3 (0, 1, 0, +1)
+            0x00, 0x00, 0x00, 0x00, // X (0.0)
+            0x00, 0x00, 0x80, 0x3F, // Y (1.0)
+            0x00, 0x00, 0x00, 0x00, // Z (0.0)
+            0x00, 0x00, 0x80, 0x3F, // W handedness (1.0)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(result.isSuccessful());
+
+        auto model = result.unique();
+        assert(model.meshes[0].uvChannelCount == 1);
+        assert(model.meshes[0].uvCoords.length == 3);
+        assert(model.meshes[0].normals.length == 3);
+        assert(model.meshes[0].tangents.length == 3);
+
+        assert(model.meshes[0].normals[2].z == 1.0);
+
+        assert(model.meshes[0].tangents[0].x == 1.0);
+        assert(model.meshes[0].tangents[0].y == 0.0);
+        assert(model.meshes[0].tangents[0].z == 0.0);
+        assert(model.meshes[0].tangents[0].w == 1.0);
+
+        assert(model.meshes[0].tangents[1].w == -1.0);
+
+        assert(model.meshes[0].tangents[2].x == 0.0);
+        assert(model.meshes[0].tangents[2].y == 1.0);
+        assert(model.meshes[0].tangents[2].w == 1.0);
+    });
+
+    test("Reject mesh with tangents but no normals", {
+        ubyte[32] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
+
+            // Mesh 1
+            0x00, 0x00, 0x00, 0x00, // Vertex count (0)
+            0x00, 0x00, 0x00, 0x00, // Face count (0)
+            0x01, // UV channel count (1)
+            0x02, // Attribute flags (tangents without normals)
+            0x00, 0x00, 0x00, 0x00, // Material index (0 = no material)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
+    test("Reject mesh with tangents but no UV channels", {
+        ubyte[32] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
+
+            // Mesh 1
+            0x00, 0x00, 0x00, 0x00, // Vertex count (0)
+            0x00, 0x00, 0x00, 0x00, // Face count (0)
+            0x00, // UV channel count (0)
+            0x03, // Attribute flags (normals | tangents)
+            0x00, 0x00, 0x00, 0x00, // Material index (0 = no material)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
+    test("Reject mesh with reserved attribute flag bits set", {
+        ubyte[32] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
+
+            // Mesh 1
+            0x00, 0x00, 0x00, 0x00, // Vertex count (0)
+            0x00, 0x00, 0x00, 0x00, // Face count (0)
+            0x00, // UV channel count (0)
+            0x04, // Attribute flags (reserved bit 2)
+            0x00, 0x00, 0x00, 0x00, // Material index (0 = no material)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
+    test("Reject mesh with a truncated normal block", {
+        ubyte[64] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
+
+            // Mesh 1
+            0x01, 0x00, 0x00, 0x00, // Vertex count (1)
+            0x00, 0x00, 0x00, 0x00, // Face count (0)
+            0x00, // UV channel count (0)
+            0x01, // Attribute flags (normals)
+            0x00, 0x00, 0x00, 0x00, // Material index (0 = no material)
+
+            // Vertex 1
+            0x00, 0x00, 0x00, 0x00, // X coordinate (0.0)
+            0x00, 0x00, 0x00, 0x00, // Y coordinate (0.0)
+            0x00, 0x00, 0x00, 0x00, // Z coordinate (0.0)
+            0x00, 0x00, 0x80, 0x3F, // R color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // G color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // B color (1.0)
+
+            // Normal 1, cut short: only X and Y are present
+            0x00, 0x00, 0x00, 0x00, // X (0.0)
+            0x00, 0x00, 0x00, 0x00, // Y (0.0)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
+    test("Reject mesh with a truncated tangent block", {
+        ubyte[84] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
+
+            // Mesh 1
+            0x01, 0x00, 0x00, 0x00, // Vertex count (1)
+            0x00, 0x00, 0x00, 0x00, // Face count (0)
+            0x01, // UV channel count (1)
+            0x03, // Attribute flags (normals | tangents)
+            0x00, 0x00, 0x00, 0x00, // Material index (0 = no material)
+
+            // Vertex 1
+            0x00, 0x00, 0x00, 0x00, // X coordinate (0.0)
+            0x00, 0x00, 0x00, 0x00, // Y coordinate (0.0)
+            0x00, 0x00, 0x00, 0x00, // Z coordinate (0.0)
+            0x00, 0x00, 0x80, 0x3F, // R color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // G color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // B color (1.0)
+
+            // UV channel 0
+            0x00, 0x00, 0x00, 0x00, // U (0.0)
+            0x00, 0x00, 0x00, 0x00, // V (0.0)
+
+            // Normal 1 (0, 0, 1)
+            0x00, 0x00, 0x00, 0x00, // X (0.0)
+            0x00, 0x00, 0x00, 0x00, // Y (0.0)
+            0x00, 0x00, 0x80, 0x3F, // Z (1.0)
+
+            // Tangent 1, cut short: only X and Y are present
+            0x00, 0x00, 0x80, 0x3F, // X (1.0)
+            0x00, 0x00, 0x00, 0x00, // Y (0.0)
         ];
 
         auto result = loadModel(modelData);
