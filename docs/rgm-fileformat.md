@@ -167,7 +167,8 @@ part of each `materialEntrySize`.
 | ----- | ------------- | ------------------------------------------------------------ |
 | 1     | Vertex Colors | Renders using only the per-vertex RGB colors. No payload.    |
 | 2     | Unlit         | Passthrough material — references a single texture by index. |
-| 3     | PBR Metallic-Roughness | Physically based material. Currently references only its albedo texture by index, like `Unlit`. |
+| 3     | Lambert       | Purely diffuse lit material. References only its albedo texture by index, like `Unlit`. |
+| 4     | PBR Metallic-Roughness | Physically based material. An upgrade of `Lambert`; currently references only its albedo texture by index too. |
 
 ### Common Flags
 
@@ -191,11 +192,22 @@ No type-specific payload bytes. The material entry ends after the common flags b
 
 The texture index references an entry in the textures section by its declared `index` field (see "Textures" below), not by array position. It must be `≥ 1` and must match a defined texture.
 
-### PBR Metallic-Roughness Payload (type = 3)
+### Lambert Payload (type = 3)
 
 Identical to the `Unlit` payload: a single 4-byte texture index for the albedo texture, subject to
-the same rules. The remaining PBR inputs (metallic-roughness, normal, occlusion, emissive) are not
-stored yet; they will extend this payload. No converter writes this type yet.
+the same rules. Unlike `Unlit`, the material is shaded by the scene's lights, so a mesh using it
+wants vertex normals.
+
+Unlike the other material types this one has no glTF counterpart to be recognised from, so
+`rgmodelconv` never infers it. It writes this type only when a source material names it
+explicitly through its `rg_mat` extra (see the [Blender authoring guide](blender-material-guide.md)).
+
+### PBR Metallic-Roughness Payload (type = 4)
+
+Identical to the `Lambert` payload, and shaded from the same inputs for now — it is the upgrade
+path from it, differing in the BRDF rather than in what the file stores. The remaining PBR inputs
+(metallic-roughness, normal, occlusion, emissive) are not stored yet; they will extend this
+payload.
 
 ## Textures (variable size)
 

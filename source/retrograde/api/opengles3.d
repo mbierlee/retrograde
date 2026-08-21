@@ -18,9 +18,11 @@ version (OpenGLES3)  :  //
 import retrograde.engine.entity : EntityId, hasComponent, withComponentData, addComponent,
     getComponentData;
 import retrograde.engine.rendering : Color, RenderPass, Viewport, renderPasses, MaterialShader;
+import retrograde.engine.rendering.lighting : ActiveLight, selectActiveLights;
+import retrograde.engine.rendering.materialshader : maxLights;
 
 import retrograde.assets.model : ModelComponentType, Model, MaterialType, MaterialIndex, noMaterial,
-    referencesTexture, TextureIndex, Texture, TextureMagFilter, TextureMinFilter, TextureWrap;
+    isLit, referencesTexture, TextureIndex, Texture, TextureMagFilter, TextureMinFilter, TextureWrap;
 import retrograde.assets.image : Image, ChannelFormat;
 import retrograde.assets.assetlibrary : getModel, getTexture;
 
@@ -89,6 +91,17 @@ void initMaterialShader(ref MaterialShader materialShader) {
     if (materialShader.materialType.referencesTexture) {
         shaderInfo.textureCoordsAttribLocation = glGetAttribLocation(program, "textureCoords");
         shaderInfo.albedoTextureUniformLocation = glGetUniformLocation(program, "albedoTexture");
+    }
+
+    if (materialShader.materialType.isLit) {
+        shaderInfo.normalAttribLocation = glGetAttribLocation(program, "normal");
+        shaderInfo.modelMatrixUniformLocation = glGetUniformLocation(program, "modelMatrix");
+
+        static if (maxLights > 0) {
+            shaderInfo.lightCountUniformLocation = glGetUniformLocation(program, "lightCount");
+            shaderInfo.lightPositionRadiusUniformLocation = glGetUniformLocation(program, "lightPositionRadius[0]");
+            shaderInfo.lightColorIntensityUniformLocation = glGetUniformLocation(program, "lightColorIntensity[0]");
+        }
     }
 
     materialShaderInfos.put(materialShader.materialType, shaderInfo);
@@ -220,6 +233,21 @@ void loadEntityModel(EntityId entity) {
                         glBufferDataFloat(GL_ARRAY_BUFFER, colorData.arr, GL_STATIC_DRAW);
                     }
 
+                    if (meshInfo.materialType.isLit && mesh.normals.length > 0) {
+                        Array!GLfloat normalData;
+                        normalData.capacity = mesh.vertices.length * 3;
+                        foreach (i; 0 .. mesh.vertices.length) {
+                            auto normal = mesh.normals[i];
+                            normalData.add(cast(GLfloat) normal.x);
+                            normalData.add(cast(GLfloat) normal.y);
+                            normalData.add(cast(GLfloat) normal.z);
+                        }
+
+                        meshInfo.normalBufferObject = glCreateBuffer();
+                        glBindBuffer(GL_ARRAY_BUFFER, meshInfo.normalBufferObject);
+                        glBufferDataFloat(GL_ARRAY_BUFFER, normalData.arr, GL_STATIC_DRAW);
+                    }
+
                     if (meshInfo.materialType.referencesTexture && mesh.uvChannelCount > 0) {
                         // The first UV channel occupies the first `vertices.length` entries
                         // of the channel-major `uvCoords` array.
@@ -261,6 +289,13 @@ void loadEntityModel(EntityId entity) {
                         glBindBuffer(GL_ARRAY_BUFFER, meshInfo.textureCoordsBufferObject);
                         glEnableVertexAttribArray(materialShaderInfo.textureCoordsAttribLocation);
                         glVertexAttribPointer(materialShaderInfo.textureCoordsAttribLocation, 2, GL_FLOAT, false, 0, 0);
+                    }
+
+                    if (meshInfo.normalBufferObject != 0
+                    && materialShaderInfo.normalAttribLocation >= 0) {
+                        glBindBuffer(GL_ARRAY_BUFFER, meshInfo.normalBufferObject);
+                        glEnableVertexAttribArray(materialShaderInfo.normalAttribLocation);
+                        glVertexAttribPointer(materialShaderInfo.normalAttribLocation, 3, GL_FLOAT, false, 0, 0);
                     }
 
                     if (meshInfo.elementBufferObject != 0) {
@@ -410,31 +445,31 @@ private GLuint createMaterialTexture(Model* model, TextureIndex textureIndex) {
 
 private GLenum resolveMagFilter(TextureMagFilter filter) {
     final switch (filter) {
-        case TextureMagFilter.nearest:
-            return GL_NEAREST;
-        case TextureMagFilter.linear:
-            return GL_LINEAR;
-        case TextureMagFilter.unspecified:
-            return GL_LINEAR;
+    case TextureMagFilter.nearest:
+        return GL_NEAREST;
+    case TextureMagFilter.linear:
+        return GL_LINEAR;
+    case TextureMagFilter.unspecified:
+        return GL_LINEAR;
     }
 }
 
 private GLenum resolveMinFilter(TextureMinFilter filter) {
     final switch (filter) {
-        case TextureMinFilter.nearest:
-            return GL_NEAREST;
-        case TextureMinFilter.linear:
-            return GL_LINEAR;
-        case TextureMinFilter.nearestMipmapNearest:
-            return GL_NEAREST_MIPMAP_NEAREST;
-        case TextureMinFilter.linearMipmapNearest:
-            return GL_LINEAR_MIPMAP_NEAREST;
-        case TextureMinFilter.nearestMipmapLinear:
-            return GL_NEAREST_MIPMAP_LINEAR;
-        case TextureMinFilter.linearMipmapLinear:
-            return GL_LINEAR_MIPMAP_LINEAR;
-        case TextureMinFilter.unspecified:
-            return GL_LINEAR_MIPMAP_LINEAR;
+    case TextureMinFilter.nearest:
+        return GL_NEAREST;
+    case TextureMinFilter.linear:
+        return GL_LINEAR;
+    case TextureMinFilter.nearestMipmapNearest:
+        return GL_NEAREST_MIPMAP_NEAREST;
+    case TextureMinFilter.linearMipmapNearest:
+        return GL_LINEAR_MIPMAP_NEAREST;
+    case TextureMinFilter.nearestMipmapLinear:
+        return GL_NEAREST_MIPMAP_LINEAR;
+    case TextureMinFilter.linearMipmapLinear:
+        return GL_LINEAR_MIPMAP_LINEAR;
+    case TextureMinFilter.unspecified:
+        return GL_LINEAR_MIPMAP_LINEAR;
     }
 }
 
@@ -447,14 +482,14 @@ private bool minFilterUsesMipmaps(GLenum minFilter) {
 
 private GLenum resolveWrap(TextureWrap wrap) {
     final switch (wrap) {
-        case TextureWrap.repeat:
-            return GL_REPEAT;
-        case TextureWrap.clampToEdge:
-            return GL_CLAMP_TO_EDGE;
-        case TextureWrap.mirroredRepeat:
-            return GL_MIRRORED_REPEAT;
-        case TextureWrap.unspecified:
-            return GL_REPEAT;
+    case TextureWrap.repeat:
+        return GL_REPEAT;
+    case TextureWrap.clampToEdge:
+        return GL_CLAMP_TO_EDGE;
+    case TextureWrap.mirroredRepeat:
+        return GL_MIRRORED_REPEAT;
+    case TextureWrap.unspecified:
+        return GL_REPEAT;
     }
 }
 
@@ -464,6 +499,7 @@ void unloadEntityModel(EntityId entity) {
             glDeleteBuffer(meshInfo.positionBufferObject);
             glDeleteBuffer(meshInfo.colorBufferObject);
             glDeleteBuffer(meshInfo.textureCoordsBufferObject);
+            glDeleteBuffer(meshInfo.normalBufferObject);
             glDeleteBuffer(meshInfo.elementBufferObject);
             if (meshInfo.textureObject != 0) {
                 glDeleteTexture(meshInfo.textureObject);
@@ -525,6 +561,27 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
         auto modelMatrix = position.toTranslationMatrix4() * orientation.toRotationMatrix() * scale.toScalingMatrix4();
         auto modelViewProjectionMatrix = viewProjectionMatrix * modelMatrix;
         auto modelViewProjectionMatrixData = modelViewProjectionMatrix.getDataArray!float;
+        auto modelMatrixData = modelMatrix.getDataArray!float;
+
+        static if (maxLights > 0) {
+            // Picked once for the whole entity: every mesh of a model is lit by the same lights.
+            GLsizei selectedLightCount = cast(GLsizei) selectActiveLights(position, selectedLights);
+
+            lightPositionRadiusData.truncate(0);
+            lightColorIntensityData.truncate(0);
+            foreach (i; 0 .. selectedLights.length) {
+                auto activeLight = selectedLights[i];
+                lightPositionRadiusData.add(cast(GLfloat) activeLight.position.x);
+                lightPositionRadiusData.add(cast(GLfloat) activeLight.position.y);
+                lightPositionRadiusData.add(cast(GLfloat) activeLight.position.z);
+                lightPositionRadiusData.add(cast(GLfloat) activeLight.light.attenuationRadius);
+
+                lightColorIntensityData.add(cast(GLfloat) activeLight.light.color.r);
+                lightColorIntensityData.add(cast(GLfloat) activeLight.light.color.g);
+                lightColorIntensityData.add(cast(GLfloat) activeLight.light.color.b);
+                lightColorIntensityData.add(cast(GLfloat) activeLight.light.intensity);
+            }
+        }
 
         auto passSid = renderPass.passName.sid;
         auto maybePassInfo = renderPassInfos.get(passSid);
@@ -533,20 +590,36 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
             GLuint shaderProgram;
             GLint mvpMatrixUniformLocation = -1;
             GLint albedoTextureUniformLocation = -1;
+            GLint modelMatrixUniformLocation = -1;
             GLuint vao = 0;
             auto useMaterial = false;
 
+            static if (maxLights > 0) {
+                GLint lightCountUniformLocation = -1;
+                GLint lightPositionRadiusUniformLocation = -1;
+                GLint lightColorIntensityUniformLocation = -1;
+            }
+
             if (meshInfo.materialIndex != noMaterial
-                && meshInfo.materialType != MaterialType.invalid
-                && meshInfo.materialVertexArrayObject != 0) {
+            && meshInfo.materialType != MaterialType.invalid
+            && meshInfo.materialVertexArrayObject != 0) {
                 auto maybeMaterialShaderInfo = materialShaderInfos.get(meshInfo.materialType);
                 if (maybeMaterialShaderInfo.isDefined) {
                     auto materialShaderInfo = maybeMaterialShaderInfo.value;
                     shaderProgram = materialShaderInfo.shaderProgram;
                     mvpMatrixUniformLocation = materialShaderInfo.mvpMatrixUniformLocation;
                     albedoTextureUniformLocation = materialShaderInfo.albedoTextureUniformLocation;
+                    modelMatrixUniformLocation = materialShaderInfo.modelMatrixUniformLocation;
                     vao = meshInfo.materialVertexArrayObject;
                     useMaterial = true;
+
+                    static if (maxLights > 0) {
+                        lightCountUniformLocation = materialShaderInfo.lightCountUniformLocation;
+                        lightPositionRadiusUniformLocation = materialShaderInfo
+                            .lightPositionRadiusUniformLocation;
+                        lightColorIntensityUniformLocation = materialShaderInfo
+                            .lightColorIntensityUniformLocation;
+                    }
                 }
             }
 
@@ -570,8 +643,30 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
                 glUniformMatrix4fv(mvpMatrixUniformLocation, 1, true, modelViewProjectionMatrixData);
             }
 
+            if (modelMatrixUniformLocation >= 0) {
+                glUniformMatrix4fv(modelMatrixUniformLocation, 1, true, modelMatrixData);
+            }
+
+            static if (maxLights > 0) {
+                if (lightCountUniformLocation >= 0) {
+                    glUniform1i(lightCountUniformLocation, selectedLightCount);
+
+                    if (selectedLightCount > 0) {
+                        if (lightPositionRadiusUniformLocation >= 0) {
+                            glUniform4fv(lightPositionRadiusUniformLocation, selectedLightCount,
+                                lightPositionRadiusData.arr);
+                        }
+
+                        if (lightColorIntensityUniformLocation >= 0) {
+                            glUniform4fv(lightColorIntensityUniformLocation, selectedLightCount,
+                                lightColorIntensityData.arr);
+                        }
+                    }
+                }
+            }
+
             if (useMaterial && meshInfo.materialType.referencesTexture
-                && meshInfo.textureObject != 0 && albedoTextureUniformLocation >= 0) {
+            && meshInfo.textureObject != 0 && albedoTextureUniformLocation >= 0) {
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, meshInfo.textureObject);
                 glUniform1i(albedoTextureUniformLocation, 0);
@@ -626,10 +721,19 @@ private uint viewportHeight = 1;
 private HashMap!(StringId, GlRenderPassInfo) renderPassInfos;
 private HashMap!(MaterialType, GlMaterialShaderInfo) materialShaderInfos;
 
+static if (maxLights > 0) {
+    // Scratch buffers reused by every draw, so packing a frame's lights allocates nothing
+    // after the first few draws.
+    private Array!ActiveLight selectedLights;
+    private Array!GLfloat lightPositionRadiusData;
+    private Array!GLfloat lightColorIntensityData;
+}
+
 private struct GlMeshInfo {
     GLuint positionBufferObject;
     GLuint colorBufferObject;
     GLuint textureCoordsBufferObject;
+    GLuint normalBufferObject;
     GLuint textureObject;
     HashMap!(StringId, GLuint) vertexArrayObjects;
     GLuint materialVertexArrayObject;
@@ -664,4 +768,15 @@ private struct GlMaterialShaderInfo {
     GLint colorsAttribLocation;
     GLint textureCoordsAttribLocation;
     GLint albedoTextureUniformLocation;
+
+    // A shader that does not declare these - or whose compiler stripped them because nothing
+    // reads them - has no location for them, so they start out at the "absent" location.
+    GLint normalAttribLocation = -1;
+    GLint modelMatrixUniformLocation = -1;
+
+    static if (maxLights > 0) {
+        GLint lightCountUniformLocation = -1;
+        GLint lightPositionRadiusUniformLocation = -1;
+        GLint lightColorIntensityUniformLocation = -1;
+    }
 }

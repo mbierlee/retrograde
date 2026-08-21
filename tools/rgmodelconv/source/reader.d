@@ -247,6 +247,19 @@ private MaterialInfo parseMaterial(ref JSONValue gltf, JSONValue mat) {
         info.unlit = ("KHR_materials_unlit" in extP.object) !is null;
     }
 
+    // `extras` is glTF's escape hatch for application-specific data, and is where a
+    // Blender custom property on the material ends up. Carried over as the raw string;
+    // the writer is what knows the RGM material type names it can spell.
+    if (auto extrasP = "extras" in mat.object) {
+        if (extrasP.type == JSONType.object) {
+            if (auto rgMatP = "rg_mat" in extrasP.object) {
+                if (rgMatP.type == JSONType.string) {
+                    info.materialTypeOverride = rgMatP.str;
+                }
+            }
+        }
+    }
+
     info.doubleSided = optBool(mat, "doubleSided", false);
 
     // Only the base color (albedo) texture is converted, whether the material is

@@ -18,6 +18,7 @@ import retrograde.std.geometry : PositionComponentType, OrientationComponentType
 import retrograde.engine.entity : EntityId, addComponent;
 import retrograde.engine.animation.kinetic : RotationComponentType, TranslationComponentType,
     ScalingComponentType;
+import retrograde.engine.rendering : Color, Light, LightComponentType, LightType;
 
 void addPosition(EntityId entity, const double x, const double y, const double z) {
     entity.addPosition(Vector3(x, y, z));
@@ -65,4 +66,26 @@ void addScaling(EntityId entity, const double xScaling, const double yScaling, c
 
 void addScaling(EntityId entity, const Vector3 scaling) {
     entity.addComponent(ScalingComponentType, makeUnique(scaling));
+}
+
+void addLight(EntityId entity, const Light light) {
+    entity.addComponent(LightComponentType, makeUnique(light));
+}
+
+/**
+ * Gives the entity a point light of the given color, which shines from wherever the entity
+ * is positioned.
+ *
+ * Params:
+ *  intensity = brightness modifier. Zero leaves the light dark.
+ *  attenuationRadius = distance in world units beyond which the light has no effect at all.
+ */
+void addPointLight(EntityId entity, const Color color, const float intensity, const float attenuationRadius) {
+    Light light;
+    light.lightType = LightType.point;
+    light.isEnabled = true;
+    light.color = color;
+    light.intensity = intensity;
+    light.attenuationRadius = attenuationRadius;
+    entity.addLight(light);
 }

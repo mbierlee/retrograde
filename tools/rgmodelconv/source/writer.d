@@ -12,6 +12,10 @@
  * color (albedo) texture is carried over, as the RGM format cannot express the
  * remaining metallic-roughness inputs yet.
  *
+ * A material can name the type it wants directly in its glTF `extras.rg_mat`, which
+ * overrides that classification. This is the only way to assign a type that no glTF
+ * material maps onto, such as `lambert`.
+ *
  * Authors:
  *  Mike Bierlee, m.bierlee@lostmoment.com
  * Copyright: 2014-2026 Mike Bierlee
@@ -25,6 +29,8 @@ module writer;
 import std.array : Appender, appender;
 import std.bitmanip : nativeToLittleEndian;
 import std.path : buildPath, setExtension;
+import std.stdio : stderr;
+import std.string : icmp;
 import std.typecons : Nullable;
 
 import retrograde.assets.rgm : rgmMagicNumber;
@@ -35,6 +41,59 @@ import retrograde.assets.model : MaterialType, MaterialFlags, maxUvChannels,
 import model : Primitive, MaterialInfo, ModelData;
 
 enum ushort rgmVersion = 1;
+
+/**
+ * Resolve a material's `extras.rg_mat` override against the type that was classified
+ * automatically.
+ *
+ * The override picks the RGM material type by name, which is how a type with no glTF
+ * counterpart - `lambert` - gets assigned at all. It cannot conjure up data the glTF
+ * material does not have, so an override asking for a type this material cannot supply
+ * the payload for is reported and ignored rather than written out as a malformed entry.
+ *
+ * Params:
+ *   material        = the source material, carrying the raw override string.
+ *   automaticType   = the type classified from the material's own data.
+ *   hasVertexColors = whether the primitives using this material carry vertex colors.
+ * Returns: the type to write.
+ */
+private MaterialType applyMaterialTypeOverride(ref MaterialInfo material,
+    MaterialType automaticType, bool hasVertexColors) {
+    if (material.materialTypeOverride.length == 0) {
+        return automaticType;
+    }
+
+    MaterialType requested;
+    bool recognized = false;
+    static foreach (member; __traits(allMembers, MaterialType)) {
+        if (icmp(material.materialTypeOverride, member) == 0) {
+            requested = __traits(getMember, MaterialType, member);
+            recognized = true;
+        }
+    }
+
+    if (!recognized) {
+        stderr.writefln("Warning: material has an unknown rg_mat value '%s'; " ~
+                "keeping the automatically classified %s. Valid values: %s",
+            material.materialTypeOverride, automaticType, [__traits(allMembers, MaterialType)]);
+        return automaticType;
+    }
+
+    if (requested.referencesTexture && material.baseColorTexture.path.length == 0) {
+        stderr.writefln("Warning: material asks for rg_mat '%s', which needs a base color " ~
+                "texture that this material does not have; keeping %s.",
+            material.materialTypeOverride, automaticType);
+        return automaticType;
+    }
+
+    if (requested == MaterialType.vertexColors && !hasVertexColors) {
+        stderr.writefln("Warning: material asks for rg_mat '%s', but no primitive using it " ~
+                "carries vertex colors; keeping %s.", material.materialTypeOverride, automaticType);
+        return automaticType;
+    }
+
+    return requested;
+}
 
 /// A resolved texture entry as it will be written: the final (renamed/prefixed)
 /// path and its sampling filters and wrap modes. Used as the de-duplication key
@@ -99,12 +158,25 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
         }
 
         MaterialInfo material = data.materials[i];
+        bool hasVertexColors = materialHasVertexColors(data.primitives, i);
+
+        MaterialType materialType;
         if (material.baseColorTexture.path.length > 0) {
             // The shading model decides the type: only a material that declares
             // KHR_materials_unlit is written as `unlit`; a regular glTF material is a
             // metallic-roughness one, even though both currently carry the same payload.
-            materialTypes[i] = material.unlit
+            materialType = material.unlit
                 ? MaterialType.unlit : MaterialType.pbrMetallicRoughness;
+        } else if (!material.hasAnyTexture && hasVertexColors) {
+            materialType = MaterialType.vertexColors;
+        } else {
+            materialType = MaterialType.invalid;
+        }
+
+        materialType = applyMaterialTypeOverride(material, materialType, hasVertexColors);
+        materialTypes[i] = materialType;
+
+        if (materialType.referencesTexture) {
             string path = renameImages
                 ? setExtension(material.baseColorTexture.path, "rgi") : material.baseColorTexture.path;
             if (texturePathPrefix.length > 0) {
@@ -129,10 +201,6 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
                 textures ~= texture;
                 materialTextureIndices[i] = textureIndex;
             }
-        } else if (!material.hasAnyTexture && materialHasVertexColors(data.primitives, i)) {
-            materialTypes[i] = MaterialType.vertexColors;
-        } else {
-            materialTypes[i] = MaterialType.invalid;
         }
     }
 

@@ -10,23 +10,26 @@ supported, so in Blender's glTF exporter pick the **glTF Separate (.gltf + .bin 
 textures)** format. Material classification is driven by glTF concepts such as
 the `pbrMetallicRoughness` base color texture and the `doubleSided` flag.
 
-Retrograde does not read a custom "material type" property. Instead,
-`rgmodelconv` infers the type from what the material references:
+By default `rgmodelconv` infers the type from what the material references. You can
+also name the type outright with an `rg_mat` custom property, which is the only way to
+reach a type that no glTF material maps onto — see
+[Overriding the inferred type](#overriding-the-inferred-type-with-rg_mat).
 
 | Retrograde type         | How it's recognized                                            |
 | ----------------------- | -------------------------------------------------------------- |
 | no material / `invalid` | No material is assigned to the mesh.                           |
 | `vertexColors`          | The mesh has a color attribute + the material has no textures. |
 | `unlit`                 | The material references a base color (albedo) image texture **and** declares `KHR_materials_unlit`. |
+| `lambert`               | Never inferred. Requires `rg_mat` on a material that references a base color texture. |
 | `pbrMetallicRoughness`  | The material references a base color (albedo) image texture and is a regular lit one. |
 
-**Only the base color texture is converted, for either type.** A regular
-`Principled BSDF` material exports as glTF PBR (metallic-roughness) and becomes a
+**Only the base color texture is converted, whichever textured type you land on.** A
+regular `Principled BSDF` material exports as glTF PBR (metallic-roughness) and becomes a
 `pbrMetallicRoughness` material in the `.rgm`, but the converter currently keeps
 only its **Base Color** texture and drops every other PBR *texture* input
 (metallic-roughness, normal, occlusion, emissive) — the RGM format has nowhere to
-put them yet. The two types therefore carry exactly the same material data today;
-what differs is the shading model the engine picks for them.
+put them yet. All three textured types therefore carry exactly the same material data
+today; what differs is the shading model the engine picks for them.
 
 Per-vertex **geometry** is the exception: normals and tangents are carried over
 into the `.rgm` whenever the export supplies them, independently of the material
@@ -38,6 +41,47 @@ viewers, and in the `.rgm` — wire your color source **directly into the
 `Principled BSDF`. A surface fed by a raw color (rather than a lighting shader)
 is exported with the `KHR_materials_unlit` extension, which is what the converter
 keys on.
+
+---
+
+## Overriding the inferred type with `rg_mat`
+
+A material can state which Retrograde type it wants instead of letting the converter
+work it out, by carrying a **custom property named `rg_mat`** whose string value is the
+type name.
+
+In Blender:
+
+1. Select the object and open the **Material Properties** tab.
+2. Scroll to the bottom to the **Custom Properties** panel and click **New**.
+3. Click the gear/edit icon on the new property, set **Type** to `String`, set the
+   **Property Name** to `rg_mat`, and set the value to the type you want — for example
+   `lambert`.
+4. **In the glTF exporter, tick `Include ▸ Data ▸ Custom Properties`.** Without it
+   Blender writes no `extras` at all and the override silently does nothing.
+
+The property lands in the glTF material's `extras`, which is where the converter looks:
+
+```json
+"materials": [
+  {
+    "name": "Material",
+    "extras": { "rg_mat": "lambert" },
+    "pbrMetallicRoughness": { "baseColorTexture": { "index": 0 } }
+  }
+]
+```
+
+Accepted values are the material type names, matched case-insensitively: `invalid`,
+`vertexColors`, `unlit`, `lambert`, `pbrMetallicRoughness`.
+
+**The override picks a type; it does not invent data.** A material still has to supply
+what its chosen type needs — a base color texture for `unlit`, `lambert` and
+`pbrMetallicRoughness`, a color attribute for `vertexColors`. Ask for a type the
+material cannot back, or misspell the name, and `rgmodelconv` prints a warning and
+keeps the type it inferred, rather than writing out a material the engine cannot read.
+
+See `asset-examples/cube-lambert.blend` for a working example.
 
 ---
 
@@ -127,6 +171,37 @@ See `asset-examples/cube-unlit-textured.blend` for a working example.
 
 ---
 
+## `lambert`
+
+Use this for a mesh that should be lit, but only diffusely — no specular highlights,
+no metallic or roughness response. It is the cheaper of the two lit materials, and
+what you want for surfaces that are meant to read as plain matte.
+
+There is **no glTF material that maps onto it**, so it is never inferred. Set the
+material up exactly as for `pbrMetallicRoughness` below, then name the type explicitly:
+
+1. Add a material to the object.
+2. Keep the `Principled BSDF` and plug an **Image Texture** into its
+   **Base Color** socket.
+3. Make sure the mesh is UV-unwrapped so the texture has coordinates to sample.
+4. Add the `rg_mat` custom property with the value `lambert`, as described in
+   [Overriding the inferred type](#overriding-the-inferred-type-with-rg_mat).
+
+```
+[Image Texture] --Color--> [Principled BSDF] Base Color --BSDF--> [Material Output] Surface
+```
+
+Without step 4 this is an ordinary lit Blender material and converts to
+`pbrMetallicRoughness`. Blender has no way to preview the difference — its viewport
+knows nothing of Retrograde's shading models — so the two look identical until the
+engine draws them.
+
+Like every other textured type, only the **Base Color** texture is carried over.
+
+See `asset-examples/cube-lambert.blend` for a working example.
+
+---
+
 ## `pbrMetallicRoughness`
 
 Use this for a mesh that should be lit. Set the material up the way you normally
@@ -145,9 +220,10 @@ Anything not declaring `KHR_materials_unlit` and referencing a base color textur
 lands here, so this is what a normal Blender material converts to.
 
 > The remaining PBR inputs (metallic, roughness, normal, occlusion, emissive) are
-> dropped by the converter for now, and the engine's shader for this type still
-> samples only the albedo texture. Expect a material set up this way to render
-> like an `unlit` one until those inputs are stored and shaded.
+> dropped by the converter for now. The engine's shader for this type lights the
+> albedo texture, but with a plain Lambert diffuse term standing in for the
+> metallic-roughness BRDF, so a material set up this way currently renders exactly
+> like a `lambert` one until those inputs are stored and shaded.
 
 The same `.gltf`-only restriction on external images applies as for `unlit`.
 

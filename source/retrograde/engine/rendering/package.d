@@ -17,9 +17,11 @@ import retrograde.engine.entity : addEntityFinalizedHook, addEntityRemovedHook, 
     hasComponent, withComponentData;
 import retrograde.engine.graphicsapi : clearShaderProgram, getViewport, initFrame, initRenderApi,
     initRenderPass, initMaterialShader, loadEntityModel, setClearColor, unloadEntityModel, useRenderPassShaderProgram;
+import retrograde.engine.rendering.lighting : collectActiveLights, registerLightEntity,
+    unregisterLightEntity;
 import retrograde.engine.rendering.renderpass : genericModelRenderPass;
 import retrograde.engine.rendering.materialshader : vertexColorsMaterialShader, unlitMaterialShader,
-    pbrMetallicRoughnessMaterialShader;
+    pbrMetallicRoughnessMaterialShader, lambertMaterialShader;
 
 import retrograde.std.collections : Array, HashMap;
 import retrograde.std.geometry : OrientationComponentType, PositionComponentType;
@@ -27,9 +29,14 @@ import retrograde.std.math : createOrthographicMatrix, createPerspectiveMatrix, 
     degreesToRadians, Matrix4, Quaternion, scalar, Vector3;
 import retrograde.std.stringid : sid, StringId;
 
+/// Given to entities that should be rendered by the renderer.
 enum RenderableComponentType = sid("comp_renderable");
 
+/// Given to entities that are acting as a camera for the renderer.
 enum CameraComponentType = sid("comp_camera");
+
+/// Given to entities that act as light
+enum LightComponentType = sid("comp_light");
 
 /** 
  * Constant used to indicate that a camera or render viewport should calculate the aspect ratio based on the platform's viewport.
@@ -61,6 +68,8 @@ enum ProjectionType {
  * Configuration of as 3D camera
  */
 struct CameraConfiguration {
+    //TODO: add enabled/disabled bool in case multiple entities have comp camera
+
     /// Y FOV in radians
     scalar horizontalFieldOfViewRadian = degreesToRadians(55);
 
@@ -131,6 +140,7 @@ void initRenderer() {
 
 void renderFrame() {
     initFrame();
+    collectActiveLights();
 
     Matrix4 viewMatrix;
     Matrix4 projectionMatrix;
@@ -245,6 +255,39 @@ struct Color {
     float a;
 }
 
+enum LightType {
+    point
+}
+
+/**
+ * A light source. Attach one to an entity together with a position component to have
+ * it light the scene.
+ *
+ * The defaults make a plain `Light()` a working white point light: the world is metric
+ * (one unit is one meter), and at the renderer's windowed inverse-square falloff an
+ * intensity and radius of 10 behave like a bare room lamp. It is saturated out to about
+ * 3 m, clearly falling off by 5 m, nearly dark at 8 m and exactly zero at its radius.
+ */
+struct Light {
+    LightType lightType;
+
+    /// Whether the light emits at all. A disabled light is skipped entirely.
+    bool isEnabled = true;
+
+    /// Color the light emits. Alpha is unused.
+    Color color = Color(1, 1, 1, 1);
+
+    /// Brightness/intensity modifier.
+    /// Unit depends on the type of light.
+    /// An intensity of 0 effectively disables the light.
+    float intensity = 10;
+
+    /// Radius in which the light operates.
+    /// When outside of the radius, it has no effect.
+    /// A radius of 0 effectively disables the light.
+    float attenuationRadius = 10;
+}
+
 private EntityId cameraEntity = 0;
 
 private void initRenderPasses() {
@@ -262,6 +305,7 @@ private void initMaterialShaders() {
         materialShaders.put(vertexColorsMaterialShader.materialType, vertexColorsMaterialShader);
         materialShaders.put(unlitMaterialShader.materialType, unlitMaterialShader);
         materialShaders.put(pbrMetallicRoughnessMaterialShader.materialType, pbrMetallicRoughnessMaterialShader);
+        materialShaders.put(lambertMaterialShader.materialType, lambertMaterialShader);
     }
 
     foreach (ref materialShader; materialShaders.values) {
@@ -276,6 +320,11 @@ private void initEntityManagerHooks() {
         } else if (entity.hasComponent(CameraComponentType)) {
             cameraEntity = entity;
         }
+
+        // Deliberately not chained onto the above: an entity is free to both render and emit light.
+        if (entity.hasComponent(LightComponentType)) {
+            registerLightEntity(entity);
+        }
     });
 
     addEntityRemovedHook((EntityId entity) {
@@ -283,6 +332,7 @@ private void initEntityManagerHooks() {
             cameraEntity = 0;
         }
 
+        unregisterLightEntity(entity);
         unloadEntityModel(entity);
     });
 }

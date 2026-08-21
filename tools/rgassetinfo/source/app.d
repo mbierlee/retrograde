@@ -327,6 +327,8 @@ string materialTypeName(MaterialType type) {
         return "Unlit";
     case MaterialType.pbrMetallicRoughness:
         return "PBR Metallic-Roughness";
+    case MaterialType.lambert:
+        return "Lambert";
     }
 }
 
@@ -410,6 +412,7 @@ string materialPayloadDescription(ref Material material) {
         return "";
     case MaterialType.unlit:
     case MaterialType.pbrMetallicRoughness:
+    case MaterialType.lambert:
         import std.conv : to;
 
         return ", texture " ~ to!string(material.textureIndex);
