@@ -27,16 +27,13 @@ const vec3 ambient = vec3(0.03);
 
 out vec4 outColor;
 
-//TODO: The diffuse term below is plain Lambert, standing in for the metallic-roughness BRDF
-//      this material is named after. Still to do:
-//      - Replace it with Cook-Torrance: GGX normal distribution, Smith geometry and Schlick
-//        Fresnel. That needs a view vector, so the camera's world position has to come in as
-//        its own uniform.
-//      - Take metallic and roughness from uniforms, once an RGM material carries more than an
-//        albedo texture.
-//      - Sample a tangent-space normal map instead of using the interpolated vertex normal
-//        directly. Tangents are already in the RGM format but are neither uploaded nor used.
-//      - Replace the constant ambient above with a real ambient light type, or with IBL.
+// Lambert diffuse: the albedo texture scaled by how squarely each light faces the surface.
+// Purely diffuse by design - there is no specular term, and none is coming. A material that
+// wants one belongs on pbrMetallicRoughness instead.
+//
+//TODO: Sample a tangent-space normal map instead of using the interpolated vertex normal
+//      directly. Tangents are already in the RGM format but are neither uploaded nor used.
+//TODO: Replace the constant ambient above with a real ambient light type, or with IBL.
 void main() {
   vec4 albedo = texture(albedoTexture, vertexTextureCoords);
   vec3 color = ambient * albedo.rgb;

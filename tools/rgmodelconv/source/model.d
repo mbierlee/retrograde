@@ -69,6 +69,7 @@ struct TextureRef {
  */
 struct MaterialInfo {
     bool unlit; /// True when the material declares the KHR_materials_unlit extension. Decides between the `unlit` and `pbrMetallicRoughness` material types for a textured material.
+    string materialTypeOverride; /// Raw value of the material's `extras.rg_mat`, naming the RGM material type to write instead of the automatically classified one. "" when the material has none.
     bool doubleSided; /// glTF `material.doubleSided` (defaults to false).
     bool hasAnyTexture; /// True when the material references at least one texture of any slot, including the slots that are not converted.
     TextureRef baseColorTexture; /// The externally referenced base color (albedo) texture (path + filters); `path` is "" when the material has none.

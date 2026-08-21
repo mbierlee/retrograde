@@ -10,7 +10,7 @@ endif
 
 .PHONY: all clean
 
-all: cube-nomat.rgm cube-vertexcolors.rgm cube-unlit-textured.rgm cube-pbr.rgm test1024.rgi
+all: cube-nomat.rgm cube-vertexcolors.rgm cube-unlit-textured.rgm cube-pbr.rgm cube-lambert.rgm test1024.rgi
 
 cube-nomat.rgm: cube-nomat.gltf
 	$(RGMODELCONV) -i cube-nomat.gltf -o cube-nomat.rgm
@@ -24,8 +24,11 @@ cube-unlit-textured.rgm: cube-unlit-textured.gltf
 cube-pbr.rgm: cube-pbr.gltf
 	$(RGMODELCONV) -i cube-pbr.gltf -o cube-pbr.rgm
 
+cube-lambert.rgm: cube-lambert.gltf
+	$(RGMODELCONV) -i cube-lambert.gltf -o cube-lambert.rgm
+
 test1024.rgi: test1024.png
 	$(RGIMAGECONV) -i test1024.png -o test1024.rgi
 
 clean:
-	$(RM) cube-nomat.rgm cube-vertexcolors.rgm cube-unlit-textured.rgm cube-pbr.rgm test1024.rgi
+	$(RM) cube-nomat.rgm cube-vertexcolors.rgm cube-unlit-textured.rgm cube-pbr.rgm cube-lambert.rgm test1024.rgi

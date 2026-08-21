@@ -33,6 +33,7 @@ void runTests() {
     import retrograde.engine.input : runInputTests;
     import retrograde.engine.mechanic.lookaround : runLookAroundTests;
     import retrograde.engine.mechanic.walk : runWalkTests;
+    import retrograde.engine.rendering.lighting : runLightingTests;
 
     runStdMemoryTests();
     runStringTests();
@@ -53,6 +54,7 @@ void runTests() {
     runInputTests();
     runLookAroundTests();
     runWalkTests();
+    runLightingTests();
 
     writeln();
     writeln("Tests run: ", testCount);

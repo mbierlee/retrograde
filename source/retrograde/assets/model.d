@@ -89,7 +89,8 @@ enum MaterialType : ubyte {
     invalid = 0, /// Sentinel for an unrecognized or missing material type. Renderers treat this like `noMaterial`, falling back to the render pass shader.
     vertexColors = 1, /// Use only the per-vertex RGB colors. No payload.
     unlit = 2, /// Passthrough material — references a single texture (by index) from the model's texture list.
-    pbrMetallicRoughness = 3 /// Physically based metallic-roughness material. Currently only references its albedo texture (by index), like `unlit`.
+    lambert = 3, /// Purely diffuse lit material. References a single albedo texture (by index), like `unlit`. Has no glTF counterpart to be inferred from, so a converter only assigns it when a material asks for it by name.
+    pbrMetallicRoughness = 4 /// Physically based metallic-roughness material. An upgrade of `lambert`: same albedo texture reference for now, but shaded with a full BRDF.
 }
 
 /**
@@ -125,7 +126,18 @@ struct Material {
  * (albedo) texture from the model's texture list.
  */
 bool referencesTexture(MaterialType type) {
-    return type == MaterialType.unlit || type == MaterialType.pbrMetallicRoughness;
+    return type == MaterialType.unlit || type == MaterialType.lambert
+        || type == MaterialType.pbrMetallicRoughness;
+}
+
+/**
+ * Whether materials of this type are shaded by the scene's lights.
+ *
+ * A renderer needs vertex normals and the frame's lights to draw these; the others are
+ * shaded from their own vertex data alone.
+ */
+bool isLit(MaterialType type) {
+    return type == MaterialType.lambert || type == MaterialType.pbrMetallicRoughness;
 }
 
 /**
