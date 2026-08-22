@@ -18,7 +18,8 @@ version (OpenGLES3)  :  //
 import retrograde.engine.entity : EntityId, hasComponent, withComponentData, addComponent,
     getComponentData;
 import retrograde.engine.rendering : Color, RenderPass, Viewport, renderPasses, MaterialShader;
-import retrograde.engine.rendering.lighting : ActiveLight, selectActiveLights;
+import retrograde.engine.rendering.lighting : ActiveLight, ambientGroundColor, ambientIntensity,
+    ambientSkyColor, selectActiveLights;
 import retrograde.engine.rendering.materialshader : maxLights;
 
 import retrograde.assets.model : ModelComponentType, Model, MaterialType, MaterialIndex, noMaterial,
@@ -96,6 +97,8 @@ void initMaterialShader(ref MaterialShader materialShader) {
     if (materialShader.materialType.isLit) {
         shaderInfo.normalAttribLocation = glGetAttribLocation(program, "normal");
         shaderInfo.modelMatrixUniformLocation = glGetUniformLocation(program, "modelMatrix");
+        shaderInfo.ambientSkyRadianceUniformLocation = glGetUniformLocation(program, "ambientSkyRadiance");
+        shaderInfo.ambientGroundRadianceUniformLocation = glGetUniformLocation(program, "ambientGroundRadiance");
 
         static if (maxLights > 0) {
             shaderInfo.lightCountUniformLocation = glGetUniformLocation(program, "lightCount");
@@ -563,6 +566,18 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
         auto modelViewProjectionMatrixData = modelViewProjectionMatrix.getDataArray!float;
         auto modelMatrixData = modelMatrix.getDataArray!float;
 
+        // Scaled by the intensity here rather than in the shader: it is one dial over both
+        // colors, so a fragment has no use for it on its own.
+        GLfloat[3] ambientSkyRadianceData;
+        ambientSkyRadianceData[0] = cast(GLfloat)(ambientSkyColor.r * ambientIntensity);
+        ambientSkyRadianceData[1] = cast(GLfloat)(ambientSkyColor.g * ambientIntensity);
+        ambientSkyRadianceData[2] = cast(GLfloat)(ambientSkyColor.b * ambientIntensity);
+
+        GLfloat[3] ambientGroundRadianceData;
+        ambientGroundRadianceData[0] = cast(GLfloat)(ambientGroundColor.r * ambientIntensity);
+        ambientGroundRadianceData[1] = cast(GLfloat)(ambientGroundColor.g * ambientIntensity);
+        ambientGroundRadianceData[2] = cast(GLfloat)(ambientGroundColor.b * ambientIntensity);
+
         static if (maxLights > 0) {
             // Picked once for the whole entity: every mesh of a model is lit by the same lights.
             GLsizei selectedLightCount = cast(GLsizei) selectActiveLights(position, selectedLights);
@@ -591,6 +606,8 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
             GLint mvpMatrixUniformLocation = -1;
             GLint albedoTextureUniformLocation = -1;
             GLint modelMatrixUniformLocation = -1;
+            GLint ambientSkyRadianceUniformLocation = -1;
+            GLint ambientGroundRadianceUniformLocation = -1;
             GLuint vao = 0;
             auto useMaterial = false;
 
@@ -610,6 +627,10 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
                     mvpMatrixUniformLocation = materialShaderInfo.mvpMatrixUniformLocation;
                     albedoTextureUniformLocation = materialShaderInfo.albedoTextureUniformLocation;
                     modelMatrixUniformLocation = materialShaderInfo.modelMatrixUniformLocation;
+                    ambientSkyRadianceUniformLocation = materialShaderInfo
+                        .ambientSkyRadianceUniformLocation;
+                    ambientGroundRadianceUniformLocation = materialShaderInfo
+                        .ambientGroundRadianceUniformLocation;
                     vao = meshInfo.materialVertexArrayObject;
                     useMaterial = true;
 
@@ -645,6 +666,14 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
 
             if (modelMatrixUniformLocation >= 0) {
                 glUniformMatrix4fv(modelMatrixUniformLocation, 1, true, modelMatrixData);
+            }
+
+            if (ambientSkyRadianceUniformLocation >= 0) {
+                glUniform3fv(ambientSkyRadianceUniformLocation, 1, ambientSkyRadianceData[]);
+            }
+
+            if (ambientGroundRadianceUniformLocation >= 0) {
+                glUniform3fv(ambientGroundRadianceUniformLocation, 1, ambientGroundRadianceData[]);
             }
 
             static if (maxLights > 0) {
@@ -773,6 +802,8 @@ private struct GlMaterialShaderInfo {
     // reads them - has no location for them, so they start out at the "absent" location.
     GLint normalAttribLocation = -1;
     GLint modelMatrixUniformLocation = -1;
+    GLint ambientSkyRadianceUniformLocation = -1;
+    GLint ambientGroundRadianceUniformLocation = -1;
 
     static if (maxLights > 0) {
         GLint lightCountUniformLocation = -1;

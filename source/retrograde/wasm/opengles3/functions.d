@@ -40,6 +40,7 @@ GLint glGetUniformLocation(GLuint program, string name);
 GLint glGetAttribLocation(GLuint program, string name);
 void glUniformMatrix4fv(GLint location, GLsizei count, GLbool transpose, GLfloat[] value);
 void glUniform4fv(GLint location, GLsizei count, GLfloat[] value);
+void glUniform3fv(GLint location, GLsizei count, GLfloat[] value);
 void glDepthFunc(GLenum func);
 void glStencilFunc(GLenum func, GLint refVal, GLuint mask);
 void glBlendFunc(GLenum sfactor, GLenum dfactor);
