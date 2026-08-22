@@ -2330,44 +2330,21 @@ import retrograde.std.test : test, writeSection;
 import retrograde.std.stringid : sid;
 
 void resetInput() {
-    version (WasmMemTest) {
-        // The WasmMemTest harness wipes the heap before each test, so these globals already
-        // hold dangling pointers. Reset them to their init state without freeing: clear()/free
-        // would log benign "invalid block" errors for the already-wiped memory.
-        import retrograde.std.memory : memset;
-
-        memset(&keyEvents, 0, keyEvents.sizeof);
-        memset(&textInputEvents, 0, textInputEvents.sizeof);
-        memset(&textInputHandlers, 0, textInputHandlers.sizeof);
-        memset(&typedText, 0, typedText.sizeof);
-        memset(&otherTypedText, 0, otherTypedText.sizeof);
-        memset(&mouseButtonEvents, 0, mouseButtonEvents.sizeof);
-        memset(&mouseMovementEvents, 0, mouseMovementEvents.sizeof);
-        memset(&mouseScrollEvents, 0, mouseScrollEvents.sizeof);
-        memset(&mouseModeEvents, 0, mouseModeEvents.sizeof);
-        memset(&eventQueue, 0, eventQueue.sizeof);
-        memset(&keyMapping, 0, keyMapping.sizeof);
-        memset(&mouseButtonMapping, 0, mouseButtonMapping.sizeof);
-        memset(&mouseMovementMapping, 0, mouseMovementMapping.sizeof);
-        memset(&mouseScrollMapping, 0, mouseScrollMapping.sizeof);
-        memset(&mouseModeMapping, 0, mouseModeMapping.sizeof);
-    } else {
-        keyEvents.clear();
-        textInputEvents.clear();
-        textInputHandlers.clear();
-        typedText.clear();
-        otherTypedText.clear();
-        mouseButtonEvents.clear();
-        mouseMovementEvents.clear();
-        mouseScrollEvents.clear();
-        mouseModeEvents.clear();
-        eventQueue.clear();
-        clearKeyMappings();
-        clearMouseButtonMappings();
-        clearMouseMovementMappings();
-        clearMouseScrollMappings();
-        clearMouseModeMappings();
-    }
+    keyEvents.clear();
+    textInputEvents.clear();
+    textInputHandlers.clear();
+    typedText.clear();
+    otherTypedText.clear();
+    mouseButtonEvents.clear();
+    mouseMovementEvents.clear();
+    mouseScrollEvents.clear();
+    mouseModeEvents.clear();
+    eventQueue.clear();
+    clearKeyMappings();
+    clearMouseButtonMappings();
+    clearMouseMovementMappings();
+    clearMouseScrollMappings();
+    clearMouseModeMappings();
 
     setMouseMovementEnabled(MouseMovementType.absolute, false);
     setMouseMovementEnabled(MouseMovementType.relative, false);
