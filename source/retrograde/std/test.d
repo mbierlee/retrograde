@@ -25,20 +25,13 @@ uint testCount;
  *   testFunc = The function to run.
  */
 void test(string name, void function() testFunc) {
-    version (WasmMemTest) {
-        import retrograde.wasm.memory : wipeHeap, initializeHeapMemory;
-
-        wipeHeap();
-        initializeHeapMemory();
-    }
-
     writeln(name);
     testFunc();
     writeln("  OK!");
     testCount += 1;
 }
 
-/** 
+/**
  * Print a section header.
  * Params:
  *   name = The name of the section.

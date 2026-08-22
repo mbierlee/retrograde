@@ -537,33 +537,15 @@ private ubyte[] bytes(const(ubyte)[] data) {
 }
 
 private void resetState() {
-    version (WasmMemTest) {
-        // The WasmMemTest harness wipes the heap before each test, so these module-level
-        // collections already hold dangling pointers. Reset them to their init state without
-        // freeing: clear() would walk the freed nodes (LinkedList.clear in particular faults
-        // on the corrupted chain) instead of harmlessly dropping them.
-        import retrograde.std.memory : memset;
-
-        memset(&modelHandles, 0, modelHandles.sizeof);
-        memset(&loadedModels, 0, loadedModels.sizeof);
-        memset(&textureHandles, 0, textureHandles.sizeof);
-        memset(&loadedTextures, 0, loadedTextures.sizeof);
-        memset(&fetchFinishedCallbacks, 0, fetchFinishedCallbacks.sizeof);
-        memset(&fetchingModels, 0, fetchingModels.sizeof);
-        memset(&pendingTextureCounts, 0, pendingTextureCounts.sizeof);
-        memset(&textureDependents, 0, textureDependents.sizeof);
-        memset(&fetchingTextures, 0, fetchingTextures.sizeof);
-    } else {
-        modelHandles.clear();
-        loadedModels.clear();
-        textureHandles.clear();
-        loadedTextures.clear();
-        fetchFinishedCallbacks.clear();
-        fetchingModels.clear();
-        pendingTextureCounts.clear();
-        textureDependents.clear();
-        fetchingTextures.clear();
-    }
+    modelHandles.clear();
+    loadedModels.clear();
+    textureHandles.clear();
+    loadedTextures.clear();
+    fetchFinishedCallbacks.clear();
+    fetchingModels.clear();
+    pendingTextureCounts.clear();
+    textureDependents.clear();
+    fetchingTextures.clear();
 
     testCallbackFired = false;
     testCallbackCount = 0;

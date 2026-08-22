@@ -1848,7 +1848,7 @@ OperationResult initializeHeapMemory(size_t _heapOffset = 0) {
 
     /*
      * The general multi-page map build, not a one-page shortcut: the test
-     * harness re-initializes over an already-grown heap before every test,
+     * allocator test suite re-initializes over an already-grown heap per test,
      * and WASM memory never shrinks — once anything grew the heap past one
      * map page's coverage, a one-page map would index past its own end.
      * This is the map-growth closed form without the +15 slop term: numPages
@@ -2091,7 +2091,7 @@ private uint pageIndexOfPtr(const void* ptr) {
     return cast(uint)((cast(const ubyte*) ptr - pagesBase) >> PageShift);
 }
 
-// Consumes every free run (leaks on purpose; the harness re-inits per test).
+// Consumes every free run (leaks on purpose; memTest re-inits per test).
 private void allocateAllFreeSpace() {
     while (firstFreeRun != NoPage) {
         auto length = pageMap[firstFreeRun].runLength;
@@ -2102,12 +2102,29 @@ private void allocateAllFreeSpace() {
 
 private __gshared ubyte staticProbeByte;
 
+/*
+ * Run one allocator test on a heap rebuilt from nothing. These tests leak whole
+ * free runs on purpose, clobber the page map and shift heapOffset, so each one
+ * needs the heap handed back to it intact. Only this suite gets the treatment:
+ * the shared harness leaves the heap alone, so every other suite frees its
+ * memory the same way it does on native.
+ */
+private void memTest(string name, void function() testFunc) {
+    resetHeap();
+    test(name, testFunc);
+}
+
+private void resetHeap() {
+    wipeHeap();
+    initializeHeapMemory();
+}
+
 void runWasmMemTests() {
     writeSection("-- Low-level WASM memory tests --");
 
-    test("Initial heap size is usable", {
+    memTest("Initial heap size is usable", {
         // This fill clobbers the page map; it stays harmless only because no
-        // allocator call happens after it (the harness re-inits next test).
+        // allocator call happens after it (memTest re-inits for the next one).
         foreach (i; 0 .. heapSize) {
             heapStart[i] = 42;
         }
@@ -2117,7 +2134,7 @@ void runWasmMemTests() {
         }
     });
 
-    test("initializeHeapMemory builds a map and one free run", {
+    memTest("initializeHeapMemory builds a map and one free run", {
         assert(pagesBase !is null);
         assert((cast(size_t) pagesBase & (PageSize - 1)) == 0);
         assert(numPages > 0);
@@ -2133,7 +2150,7 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("initializeHeapMemory with offset initializes the heap at the offset", {
+    memTest("initializeHeapMemory with offset initializes the heap at the offset", {
         initializeHeapMemory(10);
         assert(heapStart is &__heap_base + 10);
         assert((cast(size_t) pagesBase & (PageSize - 1)) == 0);
@@ -2144,11 +2161,11 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("malloc returns a null pointer when the given size is 0", {
+    memTest("malloc returns a null pointer when the given size is 0", {
         assert(malloc(0) is null);
     });
 
-    test("malloc refuses a size that would overflow page rounding", {
+    memTest("malloc refuses a size that would overflow page rounding", {
         assert(malloc(size_t.max) is null);
         assert(malloc(size_t.max - PageSize + 2) is null);
         // Largest size that passes the guard: fails as OOM (growHeap refuses
@@ -2157,7 +2174,7 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("malloc rounds small sizes up to their size class", {
+    memTest("malloc rounds small sizes up to their size class", {
         auto ptr = malloc(100);
         assert(ptr !is null);
         auto entry = &pageMap[pageIndexOfPtr(ptr)];
@@ -2166,7 +2183,7 @@ void runWasmMemTests() {
         assert(entry.usedSlots == 1);
     });
 
-    test("malloc returns pointers aligned to at least 8 bytes", {
+    memTest("malloc returns pointers aligned to at least 8 bytes", {
         size_t[15] sizes = [1, 2, 3, 7, 8, 9, 24, 25, 100, 128, 129, 255, 1000, 1793, 2048];
         foreach (size; sizes) {
             auto ptr = malloc(size);
@@ -2175,7 +2192,7 @@ void runWasmMemTests() {
         }
     });
 
-    test("small allocations are distinct and hold their data", {
+    memTest("small allocations are distinct and hold their data", {
         ubyte*[20] ptrs;
         foreach (i; 0 .. ptrs.length) {
             ptrs[i] = cast(ubyte*) malloc(24);
@@ -2192,7 +2209,7 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("freed slots are reused before fresh ones", {
+    memTest("freed slots are reused before fresh ones", {
         // Two live slots keep the page partial; freeing one puts it at the
         // freelist head and the next malloc of the class must return it.
         auto a = malloc(32);
@@ -2205,7 +2222,7 @@ void runWasmMemTests() {
         free(c);
     });
 
-    test("a full small page leaves the partial list and returns on free", {
+    memTest("a full small page leaves the partial list and returns on free", {
         // Class 2048 has exactly 2 slots per page.
         auto sizeClass = sizeToClass(2048);
         auto a = malloc(2048);
@@ -2223,18 +2240,18 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("free(null) is a silent no-op", {
+    memTest("free(null) is a silent no-op", {
         free(null);
     });
 
-    test("free rejects non-heap pointers", {
+    memTest("free rejects non-heap pointers", {
         free(&staticProbeByte);
         int stackLocal;
         free(&stackLocal);
         checkHeapInvariants();
     });
 
-    test("free rejects interior small pointers exactly", {
+    memTest("free rejects interior small pointers exactly", {
         auto ptr = cast(ubyte*) malloc(100);
         assert(ptr !is null);
         free(ptr + 1);
@@ -2244,7 +2261,7 @@ void runWasmMemTests() {
         free(ptr);
     });
 
-    test("free detects a double free of a small slot exactly", {
+    memTest("free detects a double free of a small slot exactly", {
         auto a = malloc(64);
         auto b = malloc(64);
         assert(a !is null && b !is null);
@@ -2258,7 +2275,7 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("free rejects pointers into free pages and metadata", {
+    memTest("free rejects pointers into free pages and metadata", {
         auto ptr = malloc(3 * PageSize);
         assert(ptr !is null);
         free(ptr);
@@ -2268,7 +2285,7 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("freeing the last slot converts the page back to a free run", {
+    memTest("freeing the last slot converts the page back to a free run", {
         auto runStart = firstFreeRun;
         auto runLength = pageMap[firstFreeRun].runLength;
         auto ptr = malloc(100);
@@ -2289,7 +2306,7 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("free preserves slot contents past the free-list link", {
+    memTest("free preserves slot contents past the free-list link", {
         auto ptr = cast(ubyte*) malloc(10);
         assert(ptr !is null);
         memset(ptr, 'X', 10);
@@ -2301,7 +2318,7 @@ void runWasmMemTests() {
         }
     });
 
-    test("malloc serves large allocations as whole page runs", {
+    memTest("malloc serves large allocations as whole page runs", {
         auto ptr = malloc(3 * PageSize - 100);
         assert(ptr !is null);
         assert((cast(size_t)(cast(ubyte*) ptr - pagesBase) & (PageSize - 1)) == 0);
@@ -2316,7 +2333,7 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("large runs hold data across their whole extent", {
+    memTest("large runs hold data across their whole extent", {
         auto size = 2 * PageSize + 100;
         auto ptr = cast(ubyte*) malloc(size);
         assert(ptr !is null);
@@ -2326,7 +2343,7 @@ void runWasmMemTests() {
         free(ptr);
     });
 
-    test("free rejects interior pointers of large runs", {
+    memTest("free rejects interior pointers of large runs", {
         auto ptr = cast(ubyte*) malloc(3 * PageSize);
         assert(ptr !is null);
         auto page = pageIndexOfPtr(ptr);
@@ -2339,7 +2356,7 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("adjacent free runs coalesce into one", {
+    memTest("adjacent free runs coalesce into one", {
         auto originalStart = firstFreeRun;
         auto originalLength = pageMap[firstFreeRun].runLength;
         auto a = malloc(PageSize);
@@ -2361,7 +2378,7 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("the bitmap cell pool page fills, unlinks and relinks", {
+    memTest("the bitmap cell pool page fills, unlinks and relinks", {
         // 64 small pages fill one 64-cell bitmap pool page. Class 2048 has
         // 2 slots per page, so 128 allocations claim exactly 64 pages.
         ubyte*[128] ptrs;
@@ -2389,13 +2406,13 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("calloc refuses multiplication overflow", {
+    memTest("calloc refuses multiplication overflow", {
         assert(calloc(size_t.max / 2, 3) is null);
         assert(calloc(0, 10) is null);
         assert(calloc(10, 0) is null);
     });
 
-    test("calloc clears recycled small slots", {
+    memTest("calloc clears recycled small slots", {
         auto ptr = cast(ubyte*) malloc(10 * uint.sizeof);
         assert(ptr !is null);
         memset(ptr, 0xFF, 10 * uint.sizeof);
@@ -2424,7 +2441,7 @@ void runWasmMemTests() {
         }
     });
 
-    test("calloc clears a recycled large run", {
+    memTest("calloc clears a recycled large run", {
         auto size = 3 * PageSize;
         auto ptr = cast(ubyte*) malloc(size);
         assert(ptr !is null);
@@ -2447,7 +2464,7 @@ void runWasmMemTests() {
         free(ptr);
     });
 
-    test("calloc skips the memset only on never-touched fresh pages", {
+    memTest("calloc skips the memset only on never-touched fresh pages", {
         // Re-init marked everything touched, so first occupy all existing
         // free space; the growth that follows delivers provably-zero pages.
         allocateAllFreeSpace();
@@ -2470,7 +2487,7 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("calloc small takes the bump zero-skip on a fresh page and never on the freelist", {
+    memTest("calloc small takes the bump zero-skip on a fresh page and never on the freelist", {
         allocateAllFreeSpace();
         version (MemoryDebug) {
             auto skipsBefore = callocMemsetSkips;
@@ -2509,7 +2526,7 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("realloc simply mallocs when the given pointer is null", {
+    memTest("realloc simply mallocs when the given pointer is null", {
         auto ptr = realloc(null, 10);
         assert(ptr !is null);
         auto entry = &pageMap[pageIndexOfPtr(ptr)];
@@ -2517,7 +2534,7 @@ void runWasmMemTests() {
         free(ptr);
     });
 
-    test("realloc frees and returns a null pointer when newSize is 0", {
+    memTest("realloc frees and returns a null pointer when newSize is 0", {
         auto ptr = malloc(10);
         assert(ptr !is null);
         auto newPtr = realloc(ptr, 0);
@@ -2525,7 +2542,7 @@ void runWasmMemTests() {
         assert(heapAllocationInfo(ptr).kind == HeapPointerKind.freed);
     });
 
-    test("realloc stays in place within the same size class", {
+    memTest("realloc stays in place within the same size class", {
         auto ptr = malloc(10); // class 16
         assert(ptr !is null);
         assert(realloc(ptr, 10) is ptr);
@@ -2535,7 +2552,7 @@ void runWasmMemTests() {
         free(ptr);
     });
 
-    test("realloc moves to a new slot when the class changes and preserves contents", {
+    memTest("realloc moves to a new slot when the class changes and preserves contents", {
         auto ptr = cast(ubyte*) malloc(16);
         assert(ptr !is null);
         memset(ptr, 0xEE, 16);
@@ -2557,7 +2574,7 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("realloc grows a small allocation into a large run and back", {
+    memTest("realloc grows a small allocation into a large run and back", {
         auto ptr = cast(ubyte*) malloc(100);
         assert(ptr !is null);
         memset(ptr, 0x5A, 100);
@@ -2579,7 +2596,7 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("realloc keeps a large run in place when the page count is unchanged", {
+    memTest("realloc keeps a large run in place when the page count is unchanged", {
         auto ptr = malloc(2 * PageSize);
         assert(ptr !is null);
         assert(realloc(ptr, 2 * PageSize - 100) is ptr);
@@ -2588,7 +2605,7 @@ void runWasmMemTests() {
         free(ptr);
     });
 
-    test("realloc shrinks a large run in place and frees the tail", {
+    memTest("realloc shrinks a large run in place and frees the tail", {
         auto ptr = malloc(4 * PageSize);
         assert(ptr !is null);
         auto page = pageIndexOfPtr(ptr);
@@ -2600,7 +2617,7 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("realloc grows a large run in place by partially absorbing the following run", {
+    memTest("realloc grows a large run in place by partially absorbing the following run", {
         auto ptr = cast(ubyte*) malloc(2 * PageSize);
         assert(ptr !is null);
         memset(ptr, 0x77, 2 * PageSize);
@@ -2628,7 +2645,7 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("realloc moves a large run when no adjacent free run fits", {
+    memTest("realloc moves a large run when no adjacent free run fits", {
         auto ptr = cast(ubyte*) malloc(PageSize);
         assert(ptr !is null);
         memset(ptr, 0x33, PageSize);
@@ -2648,7 +2665,7 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("realloc rejects interior and freed pointers", {
+    memTest("realloc rejects interior and freed pointers", {
         auto ptr = cast(ubyte*) malloc(100);
         assert(ptr !is null);
         assert(realloc(ptr + 1, 200) is null);
@@ -2664,7 +2681,7 @@ void runWasmMemTests() {
         free(large);
     });
 
-    test("free_sized frees when the size matches the allocation", {
+    memTest("free_sized frees when the size matches the allocation", {
         auto ptr = malloc(100);
         assert(ptr !is null);
         free_sized(ptr, 100);
@@ -2677,7 +2694,7 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("free_sized rejects a size that does not match", {
+    memTest("free_sized rejects a size that does not match", {
         auto ptr = malloc(100); // class 112
         assert(ptr !is null);
         free_sized(ptr, 300); // wrong in every build
@@ -2703,14 +2720,14 @@ void runWasmMemTests() {
         assert(heapAllocationInfo(large).kind == HeapPointerKind.freed);
     });
 
-    test("memset sets memory", {
+    memTest("memset sets memory", {
         string str = "Hello World!";
         auto ret = memset(cast(ubyte*) str.ptr, '-', 5);
         assert(ret is cast(ubyte*) str.ptr);
         assert(str == "----- World!");
     });
 
-    test("memset handles unaligned starts and word-sized bodies", {
+    memTest("memset handles unaligned starts and word-sized bodies", {
         auto ptr = cast(ubyte*) malloc(64);
         assert(ptr !is null);
         memset(ptr, 0, 64);
@@ -2725,7 +2742,7 @@ void runWasmMemTests() {
         free(ptr);
     });
 
-    test("memcmp compares two sequences of memory", {
+    memTest("memcmp compares two sequences of memory", {
         auto ptr1 = malloc(10);
         auto ptr2 = malloc(10);
         assert(ptr1 !is null);
@@ -2742,7 +2759,7 @@ void runWasmMemTests() {
         assert(memcmp(ptr1, ptr2, 10) < 0);
     });
 
-    test("memcpy copies src into dest", {
+    memTest("memcpy copies src into dest", {
         auto ptr1 = cast(ubyte*) malloc(2);
         auto ptr2 = cast(ubyte*) calloc(1, 2);
         ptr1[0] = 'H';
@@ -2754,7 +2771,7 @@ void runWasmMemTests() {
         assert(ptr2[1] == 'I');
     });
 
-    test("memmove copies src into dest", {
+    memTest("memmove copies src into dest", {
         auto ptr1 = cast(ubyte*) malloc(2);
         auto ptr2 = cast(ubyte*) calloc(1, 2);
         ptr1[0] = 'H';
@@ -2767,13 +2784,13 @@ void runWasmMemTests() {
         assert(ptr2[1] == 'I');
     });
 
-    test("memmove returns dest for zero count", {
+    memTest("memmove returns dest for zero count", {
         auto ptr = cast(ubyte*) malloc(4);
         auto ret = memmove(ptr, ptr, 0);
         assert(ret is ptr);
     });
 
-    test("memmove handles forward overlap correctly", {
+    memTest("memmove handles forward overlap correctly", {
         auto ptr = cast(ubyte*) malloc(10);
         ptr[0] = 'A';
         ptr[1] = 'B';
@@ -2790,7 +2807,7 @@ void runWasmMemTests() {
         assert(ptr[5] == 'D');
     });
 
-    test("memmove handles backward overlap correctly", {
+    memTest("memmove handles backward overlap correctly", {
         auto ptr = cast(ubyte*) malloc(10);
         ptr[2] = 'A';
         ptr[3] = 'B';
@@ -2804,7 +2821,7 @@ void runWasmMemTests() {
         assert(ptr[3] == 'D');
     });
 
-    test("memmove bounds-checks src against the allocation", {
+    memTest("memmove bounds-checks src against the allocation", {
         auto ptr1 = cast(ubyte*) malloc(2); // class 8
         auto ptr2 = cast(ubyte*) calloc(1, 100);
         ptr1[0] = 'H';
@@ -2822,7 +2839,7 @@ void runWasmMemTests() {
         }
     });
 
-    test("memmove bounds-checks dest against the allocation", {
+    memTest("memmove bounds-checks dest against the allocation", {
         auto ptr1 = cast(ubyte*) malloc(100);
         auto ptr2 = cast(ubyte*) malloc(2); // class 8
         memset(ptr1, 'X', 100);
@@ -2837,7 +2854,7 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("memmove through a freed pointer is rejected", {
+    memTest("memmove through a freed pointer is rejected", {
         auto a = cast(ubyte*) malloc(16);
         auto b = cast(ubyte*) malloc(16);
         auto keep = malloc(16); // keeps the page alive
@@ -2849,7 +2866,7 @@ void runWasmMemTests() {
         free(keep);
     });
 
-    test("memmove rejects writes into allocator metadata", {
+    memTest("memmove rejects writes into allocator metadata", {
         auto src = cast(ubyte*) malloc(16);
         assert(src !is null);
         auto mapPtr = pagesBase + cast(size_t) mapStartPage * PageSize;
@@ -2857,7 +2874,7 @@ void runWasmMemTests() {
         free(src);
     });
 
-    test("memmove works with non-heap pointers", {
+    memTest("memmove works with non-heap pointers", {
         // D string literals are in static memory, not on this allocator's heap
         string str = "Hello";
         auto dest = cast(ubyte*) malloc(5);
@@ -2870,7 +2887,7 @@ void runWasmMemTests() {
         assert(dest[4] == 'o');
     });
 
-    test("memmove resolves interior pointers to their allocation", {
+    memTest("memmove resolves interior pointers to their allocation", {
         auto ptr = cast(ubyte*) malloc(100); // class 112
         auto dest = cast(ubyte*) malloc(200);
         assert(ptr !is null && dest !is null);
@@ -2890,7 +2907,7 @@ void runWasmMemTests() {
         free(dest);
     });
 
-    test("heapAllocationInfo resolves interior pointers of small slots", {
+    memTest("heapAllocationInfo resolves interior pointers of small slots", {
         auto ptr = cast(ubyte*) malloc(100); // class 112
         assert(ptr !is null);
         auto info = heapAllocationInfo(ptr + 5);
@@ -2905,7 +2922,7 @@ void runWasmMemTests() {
         free(ptr);
     });
 
-    test("heapAllocationInfo resolves interior pointers of large runs in O(1)", {
+    memTest("heapAllocationInfo resolves interior pointers of large runs in O(1)", {
         auto size = 3 * PageSize - 96;
         auto ptr = cast(ubyte*) malloc(size);
         assert(ptr !is null);
@@ -2925,7 +2942,7 @@ void runWasmMemTests() {
     });
 
     version (MemoryDebug) {
-        test("a write past the requested size trips the slack canary on free", {
+        memTest("a write past the requested size trips the slack canary on free", {
             auto ptr = cast(ubyte*) malloc(100); // class 112: 12 bytes of slack
             assert(ptr !is null);
             auto violationsBefore = canaryViolations;
@@ -2936,7 +2953,7 @@ void runWasmMemTests() {
         });
     }
 
-    test("growing past the map capacity relocates the map and keeps the heap intact", {
+    memTest("growing past the map capacity relocates the map and keeps the heap intact", {
         auto probe = cast(ubyte*) malloc(48);
         assert(probe !is null);
         memset(probe, 0xBE, 48);
@@ -2964,7 +2981,7 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("calloc returns all-zero memory from every recycled region after a map relocation", {
+    memTest("calloc returns all-zero memory from every recycled region after a map relocation", {
         allocateAllFreeSpace();
 
         // Leave a dirty free run: with nothing else free, the map must
@@ -3000,7 +3017,7 @@ void runWasmMemTests() {
         checkHeapInvariants();
     });
 
-    test("calloc zeroes a region that held a released cell-pool page", {
+    memTest("calloc zeroes a region that held a released cell-pool page", {
         version (MemoryDebug) {
             auto skipsBefore = callocMemsetSkips;
         }
@@ -3030,7 +3047,7 @@ void runWasmMemTests() {
         free(ptr);
     });
 
-    test("re-initialization over a heap larger than one map page's coverage builds a multi-page map", {
+    memTest("re-initialization over a heap larger than one map page's coverage builds a multi-page map", {
         // Grow well past what a single map page can describe, then re-init.
         auto needed = cast(size_t)(entriesPerMapPage + 32) * PageSize;
         auto big = malloc(needed);
@@ -3051,4 +3068,8 @@ void runWasmMemTests() {
         free(ptr);
         checkHeapInvariants();
     });
+
+    // The last test leaves the heap however it pleases: leaked, clobbered, or
+    // based at a shifted offset. Hand the suites that follow a sane allocator.
+    resetHeap();
 }

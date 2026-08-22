@@ -473,17 +473,7 @@ private void resetWalk() {
 
     walkDefaults = WalkConfiguration.init;
 
-    version (WasmMemTest) {
-        // The WasmMemTest harness wipes the heap before each test, so the handlers
-        // already hold a dangling pointer. Reset them to their init state without
-        // freeing: clear() would log a benign "double free" for memory that is
-        // gone already.
-        import retrograde.std.memory : memset;
-
-        memset(&eventHandlers, 0, eventHandlers.sizeof);
-    } else {
-        eventHandlers.clear();
-    }
+    eventHandlers.clear();
 
     walkProcessorInstalled = false;
     walkingEnabled = true;
