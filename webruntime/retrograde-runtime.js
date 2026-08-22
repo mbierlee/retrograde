@@ -491,6 +491,12 @@ export default class RetrogradeRuntime {
         this.glContext.uniform4fv(locationObject, valueData);
       },
 
+      glUniform3fv: (location, count, valueLength, valuePtr) => {
+        const valueData = this.getFloat32Array(valuePtr, valueLength);
+        const locationObject = this.getUniformLocationObject(location);
+        this.glContext.uniform3fv(locationObject, valueData);
+      },
+
       glDepthFunc: (func) => {
         this.glContext.depthFunc(func);
       },

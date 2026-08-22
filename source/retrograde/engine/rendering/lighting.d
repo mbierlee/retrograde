@@ -17,12 +17,62 @@
 module retrograde.engine.rendering.lighting;
 
 import retrograde.engine.entity : EntityId, getComponentData;
-import retrograde.engine.rendering : Light, LightComponentType;
+import retrograde.engine.rendering : Color, Light, LightComponentType;
 import retrograde.engine.rendering.materialshader : maxLights;
 
 import retrograde.std.collections : Array;
 import retrograde.std.geometry : PositionComponentType;
 import retrograde.std.math : scalar, Vector3;
+
+/**
+ * The ambient color arriving from above, applied to surfaces facing the sky.
+ * Not all materials may support ambient illumination.
+ */
+Color ambientSkyColor = Color(1, 1, 1, 1);
+
+/**
+ * The ambient color bouncing back from below, applied to surfaces facing the ground.
+ *
+ * Physically this is the sky color times the ground's albedo, so it usually wants to be a
+ * dimmer version of $(D ambientSkyColor) tinted toward the ground's own color, rather than
+ * a color of its own: a warm floor pushes it warm, a neutral one leaves the hue alone. Set
+ * it to the same color to get a flat ambient that does not vary with the surface normal.
+ *
+ * $(D calculateAmbientGroundColor) works that product out for you given the ground's albedo.
+ */
+Color ambientGroundColor = Color(1, 1, 1, 1);
+
+/**
+ * The intensity of the ambient illumination, shared by both ambient colors.
+  0 disabled ambient illumination.
+ */
+scalar ambientIntensity = 0;
+
+/**
+ * Works out the $(D ambientGroundColor) that a ground of the given albedo bounces back
+ * under the given sky.
+ *
+ * The shaders take the two ambient colors as independent radiances and only pick between
+ * them by surface normal - nothing derives the bounce for you, so a ground albedo handed
+ * straight to $(D ambientGroundColor) would light downward faces as if the ground emitted
+ * its own color at full strength.
+ *
+ * `groundAlbedo` is a reflectance, not a light: the fraction of each channel the ground
+ * sends back, which for a textured floor is the mean of its albedo texture.
+ *
+ * Params:
+ *  skyColor = the light arriving from above, typically $(D ambientSkyColor).
+ *  groundAlbedo = what the ground reflects, per channel. Alpha is unused.
+ * Returns: the bounced color, with an alpha of 1.
+ */
+Color calculateAmbientGroundColor(const Color skyColor, const Color groundAlbedo) {
+    return Color(
+        skyColor.r * groundAlbedo.r,
+        skyColor.g * groundAlbedo.g,
+        skyColor.b * groundAlbedo.b,
+        1
+    );
+}
 
 /// The actively used light culling strategy
 LightCullingStrategy lightCullingStrategy = LightCullingStrategy.none;
@@ -219,6 +269,42 @@ private ActiveLight testLight(scalar x, scalar y, scalar z, scalar attenuationRa
 
 void runLightingTests() {
     writeSection("-- Lighting tests --");
+
+    test("Bounce the sky off a ground albedo per channel", {
+        Color bounced = calculateAmbientGroundColor(
+            Color(0.4, 0.5, 1, 1), Color(0.5, 0.25, 0.125, 1));
+
+        assert(bounced.r == 0.2f);
+        assert(bounced.g == 0.125f);
+        assert(bounced.b == 0.125f);
+        assert(bounced.a == 1);
+    });
+
+    test("A neutral ground albedo only dims the sky", {
+        Color sky = Color(0.4, 0.5, 1, 1);
+        Color bounced = calculateAmbientGroundColor(sky, Color(0.5, 0.5, 0.5, 1));
+
+        assert(bounced.r == sky.r * 0.5f);
+        assert(bounced.g == sky.g * 0.5f);
+        assert(bounced.b == sky.b * 0.5f);
+    });
+
+    test("A fully reflective ground bounces the sky back unchanged", {
+        Color sky = Color(0.4, 0.5, 1, 1);
+        Color bounced = calculateAmbientGroundColor(sky, Color(1, 1, 1, 1));
+
+        assert(bounced.r == sky.r);
+        assert(bounced.g == sky.g);
+        assert(bounced.b == sky.b);
+    });
+
+    test("A black ground bounces nothing back", {
+        Color bounced = calculateAmbientGroundColor(Color(0.4, 0.5, 1, 1), Color(0, 0, 0, 1));
+
+        assert(bounced.r == 0);
+        assert(bounced.g == 0);
+        assert(bounced.b == 0);
+    });
 
     test("Select no lights when there are no candidates", {
         Array!ActiveLight candidates;

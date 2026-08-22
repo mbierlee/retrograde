@@ -22,8 +22,14 @@ uniform vec4 lightColorIntensity[MAX_LIGHTS];
 #endif
 
 // Stands in for light arriving from everywhere, so faces turned away from every light are
-// not pure black.
-const vec3 ambient = vec3(0.03);
+// not pure black. Split into what arrives from above and what bounces back up from below, so
+// that ambient light still varies with the way a surface faces: a single flat value lights
+// every unlit face identically and erases their shape.
+//
+// Radiance rather than color: the ambient intensity is one dial over both, so it is already
+// folded in by the time these arrive.
+uniform vec3 ambientSkyRadiance;
+uniform vec3 ambientGroundRadiance;
 
 out vec4 outColor;
 
@@ -36,14 +42,20 @@ out vec4 outColor;
 //        albedo texture.
 //      - Sample a tangent-space normal map instead of using the interpolated vertex normal
 //        directly. Tangents are already in the RGM format but are neither uploaded nor used.
-//      - Replace the constant ambient above with a real ambient light type, or with IBL.
+//      - Replace the hemisphere below with full IBL: diffuse irradiance as order-2 spherical
+//        harmonics, plus prefiltered radiance and a BRDF lookup for the specular half. The
+//        sky/ground pair is the first two bands of that diffuse expansion, so the
+//        coefficients grow around it rather than replacing it.
 void main() {
   vec4 albedo = texture(albedoTexture, vertexTextureCoords);
+  vec3 surfaceNormal = normalize(vertexWorldNormal);
+
+  // Y-up: 1 where the surface looks straight up at the sky, 0 where it looks at the ground.
+  float skyFacing = surfaceNormal.y * 0.5 + 0.5;
+  vec3 ambient = mix(ambientGroundRadiance, ambientSkyRadiance, skyFacing);
   vec3 color = ambient * albedo.rgb;
 
 #if MAX_LIGHTS > 0
-  vec3 surfaceNormal = normalize(vertexWorldNormal);
-
   for (int i = 0; i < lightCount; i++) {
     vec3 toLight = lightPositionRadius[i].xyz - vertexWorldPosition;
     float radius = lightPositionRadius[i].w;
