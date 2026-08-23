@@ -20,14 +20,16 @@
 	],
 	"materials":[
 		{
-			"doubleSided":true,
 			"extras":{
 				"rg_mat":"lambert"
 			},
 			"name":"Material",
+			"normalTexture":{
+				"index":0
+			},
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
-					"index":0
+					"index":1
 				},
 				"metallicFactor":0,
 				"roughnessFactor":0.5
@@ -55,9 +57,18 @@
 		{
 			"sampler":0,
 			"source":0
+		},
+		{
+			"sampler":0,
+			"source":1
 		}
 	],
 	"images":[
+		{
+			"mimeType":"image/png",
+			"name":"test1024normal",
+			"uri":"test1024normal.png"
+		},
 		{
 			"mimeType":"image/png",
 			"name":"test1024",

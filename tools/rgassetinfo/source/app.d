@@ -411,11 +411,20 @@ string materialPayloadDescription(ref Material material) {
     case MaterialType.vertexColors:
         return "";
     case MaterialType.unlit:
+        import std.conv : to;
+
+        return ", texture " ~ to!string(material.textureIndex);
     case MaterialType.pbrMetallicRoughness:
     case MaterialType.lambert:
         import std.conv : to;
 
-        return ", texture " ~ to!string(material.textureIndex);
+        // The lit types carry a second, optional index; stated in both directions so an
+        // absent normal map is not mistaken for the tool not reporting one at all. Its
+        // scale is stored either way, but only means anything alongside a map.
+        string normal = material.normalTextureIndex == 0 ? ", no normal texture"
+            : ", normal texture " ~ to!string(material.normalTextureIndex)
+            ~ " (scale " ~ to!string(material.normalTextureScale) ~ ")";
+        return ", albedo texture " ~ to!string(material.textureIndex) ~ normal;
     }
 }
 

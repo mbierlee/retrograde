@@ -13,8 +13,8 @@ module retrograde.assets.rgm;
 
 import retrograde.assets.model : Model, Vertex, Face, Mesh, UvCoord, Normal, Tangent,
     maxUvChannels, MeshAttributeFlags, Material, MaterialIndex, MaterialType, MaterialFlags,
-    noMaterial, referencesTexture, Texture, TextureIndex, TextureType, TextureMagFilter,
-    TextureMinFilter, TextureWrap;
+    noMaterial, referencesTexture, referencesNormalTexture, Texture, TextureIndex, TextureType,
+    TextureMagFilter, TextureMinFilter, TextureWrap;
 import retrograde.assets.readercommon : readUInt, readUShort, readFloat;
 import retrograde.std.endian : toPlatformEndian, Endian;
 import retrograde.std.memory : ResultPtr, failedPtr, makeRaw, successPtr;
@@ -461,6 +461,26 @@ private OperationResult readMaterialData(const(ubyte)[] data, ref size_t offset,
         offset += 4;
     }
 
+    if (material.type.referencesNormalTexture) {
+        // Read the referenced normal map index. Always present for these types; 0 means
+        // the material has no normal map.
+        if (data.length - offset < 4) {
+            return failure("Cannot read material normal texture index: Unexpected end of data.");
+        }
+
+        material.normalTextureIndex = readUInt(data, offset);
+        offset += 4;
+
+        // The strength dial for the map above. Stored even by a material without a normal
+        // map, which keeps the payload a fixed size; it is simply unused there.
+        if (data.length - offset < 4) {
+            return failure("Cannot read material normal texture scale: Unexpected end of data.");
+        }
+
+        material.normalTextureScale = readFloat(data, offset);
+        offset += 4;
+    }
+
     model.materials ~= material;
     return success();
 }
@@ -652,24 +672,29 @@ private OperationResult validateMaterialTextureReferences(Model* model) {
     Texture[] textures = model.textures.arr();
 
     foreach (ref material; materials) {
-        if (!material.type.referencesTexture) {
-            continue;
-        }
-
-        bool found = false;
-        foreach (ref texture; textures) {
-            if (texture.index == material.textureIndex) {
-                found = true;
-                break;
-            }
-        }
-
-        if (!found) {
+        if (material.type.referencesTexture && !hasTexture(textures, material.textureIndex)) {
             return failure("Material references unknown texture index.");
+        }
+
+        // A normal texture index of 0 means the material has no normal map, so only a
+        // non-zero one has to resolve.
+        if (material.type.referencesNormalTexture && material.normalTextureIndex != 0
+            && !hasTexture(textures, material.normalTextureIndex)) {
+            return failure("Material references unknown normal texture index.");
         }
     }
 
     return success();
+}
+
+private bool hasTexture(Texture[] textures, TextureIndex index) {
+    foreach (ref texture; textures) {
+        if (texture.index == index) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 version (UnitTesting)  :  ///
@@ -1445,6 +1470,171 @@ void runRgmTests() {
             0x02, // Material type (Unlit)
             0x00, // Common flags (none)
             0x63, 0x00, 0x00, 0x00, // Texture index (99 - undefined)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
+    test("Load model with a PBR material referencing an albedo and a normal texture", {
+        ubyte[78] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+            0x02, 0x00, 0x00, 0x00, // Amount of textures (2)
+
+            // Material 1
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+            0x04, // Material type (PBR Metallic-Roughness)
+            0x00, // Common flags (none)
+            0x01, 0x00, 0x00, 0x00, // Albedo texture index (1)
+            0x02, 0x00, 0x00, 0x00, // Normal texture index (2)
+            0x00, 0x00, 0x00, 0x3F, // Normal texture scale (0.5)
+
+            // Texture 1
+            0x01, 0x00, 0x00, 0x00, // Texture index (1)
+            0x00, // Texture type (reference)
+            0x00, // magFilter (unspecified)
+            0x00, // minFilter (unspecified)
+            0x00, // wrapS (unspecified)
+            0x00, // wrapT (unspecified)
+            0x0A, 0x00, // Path length (10)
+            'a', 'l', 'b', 'e', 'd', 'o', '.', 'r', 'g', 'i', // Path
+
+            // Texture 2
+            0x02, 0x00, 0x00, 0x00, // Texture index (2)
+            0x00, // Texture type (reference)
+            0x00, // magFilter (unspecified)
+            0x00, // minFilter (unspecified)
+            0x00, // wrapS (unspecified)
+            0x00, // wrapT (unspecified)
+            0x0A, 0x00, // Path length (10)
+            'n', 'o', 'r', 'm', 'a', 'l', '.', 'r', 'g', 'i', // Path
+        ];
+
+        auto result = loadModel(modelData);
+        assert(result.isSuccessful());
+
+        auto model = result.unique();
+        assert(model.materials.length == 1);
+        assert(model.materials[0].type == MaterialType.pbrMetallicRoughness);
+        assert(model.materials[0].textureIndex == 1);
+        assert(model.materials[0].normalTextureIndex == 2);
+        assert(model.materials[0].normalTextureScale == 0.5);
+
+        assert(model.textures.length == 2);
+        assert(model.textures[0].path == "albedo.rgi");
+        assert(model.textures[1].path == "normal.rgi");
+    });
+
+    test("Load model with a Lambert material without a normal texture", {
+        ubyte[57] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+            0x01, 0x00, 0x00, 0x00, // Amount of textures (1)
+
+            // Material 1
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+            0x03, // Material type (Lambert)
+            0x00, // Common flags (none)
+            0x01, 0x00, 0x00, 0x00, // Albedo texture index (1)
+            0x00, 0x00, 0x00, 0x00, // Normal texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Normal texture scale (1.0 - unused without a map)
+
+            // Texture 1
+            0x01, 0x00, 0x00, 0x00, // Texture index (1)
+            0x00, // Texture type (reference)
+            0x00, // magFilter (unspecified)
+            0x00, // minFilter (unspecified)
+            0x00, // wrapS (unspecified)
+            0x00, // wrapT (unspecified)
+            0x0A, 0x00, // Path length (10)
+            'a', 'l', 'b', 'e', 'd', 'o', '.', 'r', 'g', 'i', // Path
+        ];
+
+        auto result = loadModel(modelData);
+        assert(result.isSuccessful());
+
+        auto model = result.unique();
+        assert(model.materials.length == 1);
+        assert(model.materials[0].type == MaterialType.lambert);
+        assert(model.materials[0].textureIndex == 1);
+        assert(model.materials[0].normalTextureIndex == 0);
+        assert(model.materials[0].normalTextureScale == 1.0);
+    });
+
+    test("Reject material referencing unknown normal texture index", {
+        ubyte[57] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+            0x01, 0x00, 0x00, 0x00, // Amount of textures (1)
+
+            // Material 1: albedo resolves, but the normal map does not
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+            0x04, // Material type (PBR Metallic-Roughness)
+            0x00, // Common flags (none)
+            0x01, 0x00, 0x00, 0x00, // Albedo texture index (1)
+            0x63, 0x00, 0x00, 0x00, // Normal texture index (99 - undefined)
+            0x00, 0x00, 0x80, 0x3F, // Normal texture scale (1.0)
+
+            // Texture 1
+            0x01, 0x00, 0x00, 0x00, // Texture index (1)
+            0x00, // Texture type (reference)
+            0x00, // magFilter (unspecified)
+            0x00, // minFilter (unspecified)
+            0x00, // wrapS (unspecified)
+            0x00, // wrapT (unspecified)
+            0x0A, 0x00, // Path length (10)
+            'a', 'l', 'b', 'e', 'd', 'o', '.', 'r', 'g', 'i', // Path
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
+    test("Reject lit material truncated after its albedo texture index", {
+        ubyte[28] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
+
+            // Material 1: the mandatory normal texture index is missing
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+            0x04, // Material type (PBR Metallic-Roughness)
+            0x00, // Common flags (none)
+            0x01, 0x00, 0x00, 0x00, // Albedo texture index (1)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
+    test("Reject lit material truncated after its normal texture index", {
+        ubyte[32] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
+
+            // Material 1: the mandatory normal texture scale is missing
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+            0x04, // Material type (PBR Metallic-Roughness)
+            0x00, // Common flags (none)
+            0x01, 0x00, 0x00, 0x00, // Albedo texture index (1)
+            0x00, 0x00, 0x00, 0x00, // Normal texture index (0 - none)
         ];
 
         auto result = loadModel(modelData);

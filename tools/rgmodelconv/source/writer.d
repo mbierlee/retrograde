@@ -8,9 +8,10 @@
  * shared, de-duplicated texture list.
  *
  * Textured materials keep their source shading model: `KHR_materials_unlit` ones
- * become `unlit`, the rest become `pbrMetallicRoughness`. Either way only the base
- * color (albedo) texture is carried over, as the RGM format cannot express the
- * remaining metallic-roughness inputs yet.
+ * become `unlit`, the rest become `pbrMetallicRoughness`. Both carry the base color
+ * (albedo) texture; the lit types additionally carry the normal map and its strength
+ * when the source supplies one. The remaining metallic-roughness inputs are dropped, as
+ * the RGM format cannot express them yet.
  *
  * A material can name the type it wants directly in its glTF `extras.rg_mat`, which
  * overrides that classification. This is the only way to assign a type that no glTF
@@ -35,10 +36,10 @@ import std.typecons : Nullable;
 
 import retrograde.assets.rgm : rgmMagicNumber;
 import retrograde.assets.model : MaterialType, MaterialFlags, maxUvChannels,
-    MeshAttributeFlags, noMaterial, referencesTexture, TextureType, TextureMagFilter,
-    TextureMinFilter, TextureWrap;
+    MeshAttributeFlags, noMaterial, referencesTexture, referencesNormalTexture, TextureType,
+    TextureMagFilter, TextureMinFilter, TextureWrap;
 
-import model : Primitive, MaterialInfo, ModelData;
+import model : Primitive, MaterialInfo, ModelData, TextureRef;
 
 enum ushort rgmVersion = 1;
 
@@ -108,6 +109,41 @@ private struct OutTexture {
 }
 
 /**
+ * Resolve one texture slot of a material into a 1-based RGM texture index, appending
+ * to the shared texture list when the resolved entry is new.
+ *
+ * Renaming, prefixing and the filter overrides are all applied before de-duplication,
+ * so two slots that end up at the same path and sampler — a base color and a normal
+ * map pointing at the same image, or two materials sharing one — collapse onto a
+ * single texture entry.
+ */
+private uint resolveTextureIndex(in TextureRef textureRef, bool renameImages,
+    string texturePathPrefix, Nullable!TextureMagFilter magFilterOverride,
+    Nullable!TextureMinFilter minFilterOverride, ref OutTexture[] textures,
+    ref uint[OutTexture] textureToIndex) {
+    string path = renameImages ? setExtension(textureRef.path, "rgi") : textureRef.path;
+    if (texturePathPrefix.length > 0) {
+        path = buildPath(texturePathPrefix, path);
+    }
+
+    TextureMagFilter magFilter = magFilterOverride.isNull
+        ? textureRef.magFilter : magFilterOverride.get;
+    TextureMinFilter minFilter = minFilterOverride.isNull
+        ? textureRef.minFilter : minFilterOverride.get;
+
+    OutTexture texture = OutTexture(path, magFilter, minFilter, textureRef.wrapS, textureRef.wrapT);
+    uint* existing = texture in textureToIndex;
+    if (existing !is null) {
+        return *existing;
+    }
+
+    uint textureIndex = cast(uint)(textures.length + 1);
+    textureToIndex[texture] = textureIndex;
+    textures ~= texture;
+    return textureIndex;
+}
+
+/**
  * Encode a model into RGM bytes.
  *
  * Params:
@@ -143,13 +179,14 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
     }
     uint usedMaterialCount = nextRgmIndex - 1;
 
-    // Pre-pass: classify every used material and, for textured materials, resolve the
-    // base color texture path into a shared Textures list. Identical paths are
-    // deduplicated, so several materials can reference the same texture by its 1-based
-    // index. The classification is recorded here so the material write pass below does
-    // not have to re-run it.
+    // Pre-pass: classify every used material and, for textured materials, resolve their
+    // texture paths into a shared Textures list. Identical paths are deduplicated, so
+    // several materials can reference the same texture by its 1-based index. The
+    // classification is recorded here so the material write pass below does not have to
+    // re-run it.
     MaterialType[] materialTypes = new MaterialType[materialCount];
     uint[] materialTextureIndices = new uint[materialCount];
+    uint[] materialNormalTextureIndices = new uint[materialCount];
     OutTexture[] textures; // Texture at position p has the 1-based index (p + 1).
     uint[OutTexture] textureToIndex;
     for (uint i = 0; i < materialCount; i++) {
@@ -164,7 +201,9 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
         if (material.baseColorTexture.path.length > 0) {
             // The shading model decides the type: only a material that declares
             // KHR_materials_unlit is written as `unlit`; a regular glTF material is a
-            // metallic-roughness one, even though both currently carry the same payload.
+            // metallic-roughness one. Only the latter carries a normal map, so a base
+            // color texture is what makes a material textured either way — a material
+            // with just a normal map stays the `invalid` sentinel below.
             materialType = material.unlit
                 ? MaterialType.unlit : MaterialType.pbrMetallicRoughness;
         } else if (!material.hasAnyTexture && hasVertexColors) {
@@ -177,30 +216,17 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
         materialTypes[i] = materialType;
 
         if (materialType.referencesTexture) {
-            string path = renameImages
-                ? setExtension(material.baseColorTexture.path, "rgi") : material.baseColorTexture.path;
-            if (texturePathPrefix.length > 0) {
-                path = buildPath(texturePathPrefix, path);
-            }
+            materialTextureIndices[i] = resolveTextureIndex(material.baseColorTexture,
+                renameImages, texturePathPrefix, magFilterOverride, minFilterOverride,
+                textures, textureToIndex);
+        }
 
-            // An override replaces the sampler's filter before de-duplication, so two
-            // textures that only differed by filter collapse into a single entry.
-            TextureMagFilter magFilter = magFilterOverride.isNull
-                ? material.baseColorTexture.magFilter : magFilterOverride.get;
-            TextureMinFilter minFilter = minFilterOverride.isNull
-                ? material.baseColorTexture.minFilter : minFilterOverride.get;
-
-            OutTexture texture = OutTexture(path, magFilter, minFilter,
-                material.baseColorTexture.wrapS, material.baseColorTexture.wrapT);
-            uint* existing = texture in textureToIndex;
-            if (existing !is null) {
-                materialTextureIndices[i] = *existing;
-            } else {
-                uint textureIndex = cast(uint)(textures.length + 1);
-                textureToIndex[texture] = textureIndex;
-                textures ~= texture;
-                materialTextureIndices[i] = textureIndex;
-            }
+        // The normal map is optional where the albedo is not: a material without one
+        // keeps the 0 sentinel, and no texture entry is emitted for it.
+        if (materialType.referencesNormalTexture && material.normalTexture.path.length > 0) {
+            materialNormalTextureIndices[i] = resolveTextureIndex(material.normalTexture,
+                renameImages, texturePathPrefix, magFilterOverride, minFilterOverride,
+                textures, textureToIndex);
         }
     }
 
@@ -221,7 +247,8 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
     // referenced. A material that references an external base color texture maps to
     // `unlit` or `pbrMetallicRoughness` depending on its shading model, a textureless
     // one drawn with per-vertex colors maps to `vertexColors`; anything else falls back
-    // to the `invalid` sentinel.
+    // to the `invalid` sentinel. The lit types carry a second texture index for their
+    // normal map, written as 0 when they have none.
     for (uint i = 0; i < materialCount; i++) {
         if (materialIndexMap[i] == 0) {
             continue;
@@ -242,7 +269,15 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
         writeUbyte(buf, flags); // Common flags (bit 0 = double-sided)
 
         if (type.referencesTexture) {
-            writeUint(buf, materialTextureIndices[i]); // Referenced texture index
+            writeUint(buf, materialTextureIndices[i]); // Referenced albedo texture index
+        }
+
+        if (type.referencesNormalTexture) {
+            writeUint(buf, materialNormalTextureIndices[i]); // Referenced normal map index (0 = none)
+
+            // Written even without a map, where it goes unused: it keeps the payload a
+            // fixed size, and a material that has no map has nothing to scale anyway.
+            writeFloat(buf, data.materials[i].normalTextureScale); // Normal map strength
         }
     }
 

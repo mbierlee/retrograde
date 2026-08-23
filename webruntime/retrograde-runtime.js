@@ -572,6 +572,11 @@ export default class RetrogradeRuntime {
         this.glContext.uniform1i(locationObject, value);
       },
 
+      glUniform1f: (location, value) => {
+        const locationObject = this.getUniformLocationObject(location);
+        this.glContext.uniform1f(locationObject, value);
+      },
+
       // Asset Loading
 
       startAssetFetch: (urlPtr, urlLen, handle) => {

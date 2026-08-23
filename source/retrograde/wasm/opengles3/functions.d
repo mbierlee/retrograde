@@ -54,3 +54,4 @@ void glTexParameteri(GLenum target, GLenum pname, GLint param);
 void glGenerateMipmap(GLenum target);
 void glPixelStorei(GLenum pname, GLint param);
 void glUniform1i(GLint location, GLint value);
+void glUniform1f(GLint location, GLfloat value);
