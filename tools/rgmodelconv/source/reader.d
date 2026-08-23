@@ -262,17 +262,22 @@ private MaterialInfo parseMaterial(ref JSONValue gltf, JSONValue mat) {
 
     info.doubleSided = optBool(mat, "doubleSided", false);
 
-    // Only the base color (albedo) texture is converted, whether the material is
-    // unlit or a lit PBR one: the remaining PBR slots (metallic-roughness, normal,
-    // occlusion and emissive) have no RGM payload yet. They are still counted in
-    // `hasAnyTexture`, so a material carrying only, say, a normal map is not
-    // mistaken for a textureless vertex-colored one.
+    // The base color (albedo) and normal textures are converted; the remaining PBR
+    // slots (metallic-roughness, occlusion and emissive) have no RGM payload yet. They
+    // are still counted in `hasAnyTexture`, so a material carrying only, say, an
+    // occlusion map is not mistaken for a textureless vertex-colored one.
     JSONValue* pbrP = "pbrMetallicRoughness" in mat.object;
     JSONValue* baseColorP = pbrP is null ? null : "baseColorTexture" in pbrP.object;
 
+    // Unlike the base color, `normalTexture` sits at the material's top level rather
+    // than under `pbrMetallicRoughness`. It is a `normalTextureInfo`: a `textureInfo`
+    // with an extra `scale`, which glTF defines as 1 when absent - the value most
+    // exporters leave it at, and the only one Blender omits.
+    JSONValue* normalP = "normalTexture" in mat.object;
+
     info.hasAnyTexture = baseColorP !is null
+        || normalP !is null
         || hasKey(mat, "emissiveTexture")
-        || hasKey(mat, "normalTexture")
         || hasKey(mat, "occlusionTexture")
         || (pbrP !is null && hasKey(*pbrP, "metallicRoughnessTexture"));
 
@@ -280,6 +285,14 @@ private MaterialInfo parseMaterial(ref JSONValue gltf, JSONValue mat) {
         TextureRef texture = resolveTextureRef(gltf, *baseColorP);
         if (texture.path.length > 0 && !startsWith(texture.path, "data:")) {
             info.baseColorTexture = texture;
+        }
+    }
+
+    if (normalP !is null) {
+        TextureRef texture = resolveTextureRef(gltf, *normalP);
+        if (texture.path.length > 0 && !startsWith(texture.path, "data:")) {
+            info.normalTexture = texture;
+            info.normalTextureScale = optFloat(*normalP, "scale", 1.0f);
         }
     }
 
@@ -561,6 +574,22 @@ private long jsonInt(JSONValue value) {
     }
 }
 
+/// Read a JSON number as a `float`, accepting integer, unsigned, or float storage.
+/// A whole number such as a scale of `1` is stored by JSON as an integer, so the
+/// integer cases are not merely defensive.
+private float jsonFloat(JSONValue value) {
+    switch (value.type) {
+    case JSONType.integer:
+        return cast(float) value.integer;
+    case JSONType.uinteger:
+        return cast(float) value.uinteger;
+    case JSONType.float_:
+        return cast(float) value.floating;
+    default:
+        throw new Exception("Expected a JSON number.");
+    }
+}
+
 /// Returns true when the JSON object has a field under `key`.
 private bool hasKey(JSONValue obj, string key) {
     return (key in obj.object) !is null;
@@ -570,6 +599,12 @@ private bool hasKey(JSONValue obj, string key) {
 private long optInt(JSONValue obj, string key, long defaultValue) {
     auto p = key in obj.object;
     return p is null ? defaultValue : jsonInt(*p);
+}
+
+/// Fetch an optional floating point field from a JSON object, falling back to `defaultValue`.
+private float optFloat(JSONValue obj, string key, float defaultValue) {
+    auto p = key in obj.object;
+    return p is null ? defaultValue : jsonFloat(*p);
 }
 
 /// Fetch an optional boolean field from a JSON object, falling back to `defaultValue`.

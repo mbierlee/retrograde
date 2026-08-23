@@ -23,7 +23,8 @@ import retrograde.engine.rendering.lighting : ActiveLight, ambientGroundColor, a
 import retrograde.engine.rendering.materialshader : maxLights;
 
 import retrograde.assets.model : ModelComponentType, Model, MaterialType, MaterialIndex, noMaterial,
-    isLit, referencesTexture, TextureIndex, Texture, TextureMagFilter, TextureMinFilter, TextureWrap;
+    isLit, referencesTexture, referencesNormalTexture, TextureIndex, Texture, TextureMagFilter,
+    TextureMinFilter, TextureWrap;
 import retrograde.assets.image : Image, ChannelFormat;
 import retrograde.assets.assetlibrary : getModel, getTexture;
 
@@ -92,6 +93,14 @@ void initMaterialShader(ref MaterialShader materialShader) {
     if (materialShader.materialType.referencesTexture) {
         shaderInfo.textureCoordsAttribLocation = glGetAttribLocation(program, "textureCoords");
         shaderInfo.albedoTextureUniformLocation = glGetUniformLocation(program, "albedoTexture");
+    }
+
+    if (materialShader.materialType.referencesNormalTexture) {
+        shaderInfo.tangentAttribLocation = glGetAttribLocation(program, "tangent");
+        shaderInfo.normalTextureUniformLocation = glGetUniformLocation(program, "normalTexture");
+        shaderInfo.hasNormalMapUniformLocation = glGetUniformLocation(program, "hasNormalMap");
+        shaderInfo.normalTextureScaleUniformLocation = glGetUniformLocation(program,
+            "normalTextureScale");
     }
 
     if (materialShader.materialType.isLit) {
@@ -205,12 +214,15 @@ void loadEntityModel(EntityId entity) {
 
             meshInfo.materialIndex = mesh.materialIndex;
             TextureIndex materialTextureIndex = 0;
+            TextureIndex materialNormalTextureIndex = 0;
             if (mesh.materialIndex != noMaterial) {
                 foreach (ref material; model.materials) {
                     if (material.index == mesh.materialIndex) {
                         meshInfo.materialType = material.type;
                         meshInfo.doubleSided = material.doubleSided;
                         materialTextureIndex = material.textureIndex;
+                        materialNormalTextureIndex = material.normalTextureIndex;
+                        meshInfo.normalTextureScale = cast(GLfloat) material.normalTextureScale;
                         break;
                     }
                 }
@@ -269,6 +281,37 @@ void loadEntityModel(EntityId entity) {
                         meshInfo.textureObject = createMaterialTexture(model, materialTextureIndex);
                     }
 
+                    // A normal map is only usable with a tangent frame to resolve it against.
+                    // RGM guarantees tangents come with normals and a UV channel, so a mesh
+                    // that carries them can be mapped; one that does not keeps shading from its
+                    // vertex normal rather than from a broken frame.
+                    if (meshInfo.materialType.referencesNormalTexture
+                    && materialNormalTextureIndex != 0
+                    && mesh.uvChannelCount > 0) {
+                        if (mesh.tangents.length == 0) {
+                            writeErrLn("Material of model ", model.name,
+                                " references a normal map but its mesh carries no tangents; ",
+                                "skipping normal map.");
+                        } else {
+                            Array!GLfloat tangentData;
+                            tangentData.capacity = mesh.vertices.length * 4;
+                            foreach (i; 0 .. mesh.vertices.length) {
+                                auto tangent = mesh.tangents[i];
+                                tangentData.add(cast(GLfloat) tangent.x);
+                                tangentData.add(cast(GLfloat) tangent.y);
+                                tangentData.add(cast(GLfloat) tangent.z);
+                                tangentData.add(cast(GLfloat) tangent.w);
+                            }
+
+                            meshInfo.tangentBufferObject = glCreateBuffer();
+                            glBindBuffer(GL_ARRAY_BUFFER, meshInfo.tangentBufferObject);
+                            glBufferDataFloat(GL_ARRAY_BUFFER, tangentData.arr, GL_STATIC_DRAW);
+
+                            meshInfo.normalTextureObject = createMaterialTexture(model,
+                                materialNormalTextureIndex);
+                        }
+                    }
+
                     auto materialVao = glCreateVertexArray();
                     glBindVertexArray(materialVao);
 
@@ -299,6 +342,13 @@ void loadEntityModel(EntityId entity) {
                         glBindBuffer(GL_ARRAY_BUFFER, meshInfo.normalBufferObject);
                         glEnableVertexAttribArray(materialShaderInfo.normalAttribLocation);
                         glVertexAttribPointer(materialShaderInfo.normalAttribLocation, 3, GL_FLOAT, false, 0, 0);
+                    }
+
+                    if (meshInfo.tangentBufferObject != 0
+                    && materialShaderInfo.tangentAttribLocation >= 0) {
+                        glBindBuffer(GL_ARRAY_BUFFER, meshInfo.tangentBufferObject);
+                        glEnableVertexAttribArray(materialShaderInfo.tangentAttribLocation);
+                        glVertexAttribPointer(materialShaderInfo.tangentAttribLocation, 4, GL_FLOAT, false, 0, 0);
                     }
 
                     if (meshInfo.elementBufferObject != 0) {
@@ -503,9 +553,14 @@ void unloadEntityModel(EntityId entity) {
             glDeleteBuffer(meshInfo.colorBufferObject);
             glDeleteBuffer(meshInfo.textureCoordsBufferObject);
             glDeleteBuffer(meshInfo.normalBufferObject);
+            glDeleteBuffer(meshInfo.tangentBufferObject);
             glDeleteBuffer(meshInfo.elementBufferObject);
             if (meshInfo.textureObject != 0) {
                 glDeleteTexture(meshInfo.textureObject);
+            }
+
+            if (meshInfo.normalTextureObject != 0) {
+                glDeleteTexture(meshInfo.normalTextureObject);
             }
 
             foreach (ref GLuint vao; meshInfo.vertexArrayObjects) {
@@ -605,6 +660,9 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
             GLuint shaderProgram;
             GLint mvpMatrixUniformLocation = -1;
             GLint albedoTextureUniformLocation = -1;
+            GLint normalTextureUniformLocation = -1;
+            GLint hasNormalMapUniformLocation = -1;
+            GLint normalTextureScaleUniformLocation = -1;
             GLint modelMatrixUniformLocation = -1;
             GLint ambientSkyRadianceUniformLocation = -1;
             GLint ambientGroundRadianceUniformLocation = -1;
@@ -626,6 +684,10 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
                     shaderProgram = materialShaderInfo.shaderProgram;
                     mvpMatrixUniformLocation = materialShaderInfo.mvpMatrixUniformLocation;
                     albedoTextureUniformLocation = materialShaderInfo.albedoTextureUniformLocation;
+                    normalTextureUniformLocation = materialShaderInfo.normalTextureUniformLocation;
+                    hasNormalMapUniformLocation = materialShaderInfo.hasNormalMapUniformLocation;
+                    normalTextureScaleUniformLocation = materialShaderInfo
+                        .normalTextureScaleUniformLocation;
                     modelMatrixUniformLocation = materialShaderInfo.modelMatrixUniformLocation;
                     ambientSkyRadianceUniformLocation = materialShaderInfo
                         .ambientSkyRadianceUniformLocation;
@@ -701,6 +763,32 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
                 glUniform1i(albedoTextureUniformLocation, 0);
             }
 
+            if (useMaterial && meshInfo.materialType.referencesNormalTexture) {
+                // Told on every draw, not only when there is a map: uniforms live on the
+                // program, so a mesh without one would otherwise inherit the flag - and the
+                // stale texture - from whichever mesh was drawn through this shader before it.
+                bool hasNormalMap = meshInfo.normalTextureObject != 0
+                    && meshInfo.tangentBufferObject != 0;
+
+                if (hasNormalMap && normalTextureUniformLocation >= 0) {
+                    glActiveTexture(GL_TEXTURE1);
+                    glBindTexture(GL_TEXTURE_2D, meshInfo.normalTextureObject);
+                    glUniform1i(normalTextureUniformLocation, 1);
+
+                    // Back to the unit the albedo texture is bound through, so nothing that
+                    // draws after this inherits unit 1 as the active one.
+                    glActiveTexture(GL_TEXTURE0);
+
+                    if (normalTextureScaleUniformLocation >= 0) {
+                        glUniform1f(normalTextureScaleUniformLocation, meshInfo.normalTextureScale);
+                    }
+                }
+
+                if (hasNormalMapUniformLocation >= 0) {
+                    glUniform1i(hasNormalMapUniformLocation, hasNormalMap ? 1 : 0);
+                }
+            }
+
             if (meshInfo.doubleSided) {
                 glDisable(GL_CULL_FACE);
             }
@@ -763,7 +851,10 @@ private struct GlMeshInfo {
     GLuint colorBufferObject;
     GLuint textureCoordsBufferObject;
     GLuint normalBufferObject;
+    GLuint tangentBufferObject;
     GLuint textureObject;
+    GLuint normalTextureObject;
+    GLfloat normalTextureScale = 1.0;
     HashMap!(StringId, GLuint) vertexArrayObjects;
     GLuint materialVertexArrayObject;
     GLuint elementBufferObject;
@@ -801,6 +892,10 @@ private struct GlMaterialShaderInfo {
     // A shader that does not declare these - or whose compiler stripped them because nothing
     // reads them - has no location for them, so they start out at the "absent" location.
     GLint normalAttribLocation = -1;
+    GLint tangentAttribLocation = -1;
+    GLint normalTextureUniformLocation = -1;
+    GLint hasNormalMapUniformLocation = -1;
+    GLint normalTextureScaleUniformLocation = -1;
     GLint modelMatrixUniformLocation = -1;
     GLint ambientSkyRadianceUniformLocation = -1;
     GLint ambientGroundRadianceUniformLocation = -1;

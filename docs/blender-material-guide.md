@@ -23,13 +23,18 @@ reach a type that no glTF material maps onto — see
 | `lambert`               | Never inferred. Requires `rg_mat` on a material that references a base color texture. |
 | `pbrMetallicRoughness`  | The material references a base color (albedo) image texture and is a regular lit one. |
 
-**Only the base color texture is converted, whichever textured type you land on.** A
-regular `Principled BSDF` material exports as glTF PBR (metallic-roughness) and becomes a
-`pbrMetallicRoughness` material in the `.rgm`, but the converter currently keeps
-only its **Base Color** texture and drops every other PBR *texture* input
-(metallic-roughness, normal, occlusion, emissive) — the RGM format has nowhere to
-put them yet. All three textured types therefore carry exactly the same material data
-today; what differs is the shading model the engine picks for them.
+**The base color and normal textures are converted; the other PBR texture inputs are
+not.** A regular `Principled BSDF` material exports as glTF PBR (metallic-roughness) and
+becomes a `pbrMetallicRoughness` material in the `.rgm`, keeping its **Base Color** and
+**Normal** textures (with the normal map's strength) and dropping the rest
+(metallic-roughness, occlusion, emissive) —
+the RGM format has nowhere to put those yet. The lit types (`lambert`,
+`pbrMetallicRoughness`) carry the normal map; `unlit` keeps only its base color texture,
+since an unlit material is never shaded.
+
+A **base color texture is still what makes a material textured**: a material carrying
+only a normal map and no base color is not recognized as a textured type and falls back
+to the `invalid` sentinel.
 
 Per-vertex **geometry** is the exception: normals and tangents are carried over
 into the `.rgm` whenever the export supplies them, independently of the material
@@ -159,10 +164,10 @@ Alternatively, keep the `Principled BSDF` and plug the Image Texture into its
 ```
 
 This exports as a lit PBR material, so the converter writes a
-`pbrMetallicRoughness` material instead — carrying the same base color texture.
-The rest of the Principled inputs (Metallic, Roughness, Normal, Emission, ...)
-are **not** converted — they are dropped, including any image textures plugged
-into them. See `pbrMetallicRoughness` below.
+`pbrMetallicRoughness` material instead — carrying the same base color texture,
+plus a **Normal** map if you plug one in. The rest of the Principled inputs
+(Metallic, Roughness, Emission, ...) are **not** converted — they are dropped,
+including any image textures plugged into them. See `pbrMetallicRoughness` below.
 
 > At the moment `unlit` only works when exporting as a **`.gltf`** file, because
 > embedded images (as produced by `.glb`) are not supported yet.
@@ -196,7 +201,9 @@ Without step 4 this is an ordinary lit Blender material and converts to
 knows nothing of Retrograde's shading models — so the two look identical until the
 engine draws them.
 
-Like every other textured type, only the **Base Color** texture is carried over.
+Like the other lit type, the **Base Color** and **Normal** textures are carried over
+and the remaining Principled inputs are dropped. See
+[Adding a normal map](#adding-a-normal-map) under `pbrMetallicRoughness`.
 
 See `asset-examples/cube-lambert.blend` for a working example.
 
@@ -219,13 +226,41 @@ would in Blender:
 Anything not declaring `KHR_materials_unlit` and referencing a base color texture
 lands here, so this is what a normal Blender material converts to.
 
-> The remaining PBR inputs (metallic, roughness, normal, occlusion, emissive) are
-> dropped by the converter for now. The engine's shader for this type lights the
-> albedo texture, but with a plain Lambert diffuse term standing in for the
+> The remaining PBR inputs (metallic, roughness, occlusion, emissive) are dropped
+> by the converter for now. The engine's shader for this type lights the albedo
+> texture, but with a plain Lambert diffuse term standing in for the
 > metallic-roughness BRDF, so a material set up this way currently renders exactly
 > like a `lambert` one until those inputs are stored and shaded.
 
 The same `.gltf`-only restriction on external images applies as for `unlit`.
+
+### Adding a normal map
+
+Both lit types (`pbrMetallicRoughness` and `lambert`) can carry a tangent-space
+normal map alongside their base color texture:
+
+1. Add a second **Texture ▸ Image Texture** node and load your normal map. Set its
+   **Color Space** to **Non-Color** so the exporter does not treat it as sRGB.
+2. Add a **Vector ▸ Normal Map** node and connect the image's **`Color`** output to
+   its **`Color`** input.
+3. Connect the Normal Map node's **`Normal`** output to the `Principled BSDF`'s
+   **Normal** socket.
+4. Export the mesh **with tangents** — the normal map is resolved against the mesh's
+   tangent attribute. See [Exporting normals and tangents](#exporting-normals-and-tangents).
+
+```
+[Image Texture (Non-Color)] --Color--> [Normal Map] --Normal--> [Principled BSDF] Normal
+```
+
+The Normal Map node's **Strength** is exported as the glTF `normalTexture.scale` and
+carried into the `.rgm`, so you can dial the intensity on the node rather than baking
+it into the map. `1.0` (Blender's default) is the map at full strength, `0.0` is a flat
+surface, and above `1.0` deepens the relief. Blender omits the value from the export
+when it is exactly 1.0, which glTF and the converter both read as full strength.
+
+A normal map on its own is not enough to make a material textured: without a base
+color texture the material still converts to the `invalid` sentinel. An `unlit`
+material never carries one, since it is not shaded at all.
 
 ### Texture filtering (min/mag filter)
 
@@ -320,10 +355,11 @@ per mesh).
 To confirm what actually made it into a converted file, run `rgassetinfo` on it;
 each mesh is listed as `no normals`, `normals`, or `normals + tangents`.
 
-> **The engine does not consume normals or tangents yet.** They are stored in the
-> `.rgm` so the lighting and normal-mapping work can pick them up; nothing shades
-> with them today. Exporting them now means models will not have to be re-exported
-> later.
+> **Both are consumed by the lit material types.** Normals are what the `lambert` and
+> `pbrMetallicRoughness` shaders light a surface with, and tangents are what they
+> resolve a normal map against. A mesh without normals is lit as if it faced nowhere;
+> a mesh without tangents ignores its material's normal map and shades from the
+> vertex normal instead.
 
 ---
 

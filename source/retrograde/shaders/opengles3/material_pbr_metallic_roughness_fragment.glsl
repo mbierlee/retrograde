@@ -7,8 +7,19 @@ precision highp float;
 in vec2 vertexTextureCoords;
 in vec3 vertexWorldPosition;
 in vec3 vertexWorldNormal;
+in vec4 vertexWorldTangent;
 
 uniform sampler2D albedoTexture;
+
+// The normal map is optional per mesh: a material may carry none, and one that does is
+// still unusable on a mesh without tangents. The renderer decides, and says so here, so
+// that a mesh falling back to its vertex normal costs a uniform branch rather than a
+// second shader program.
+uniform sampler2D normalTexture;
+uniform bool hasNormalMap;
+
+// How strongly the map perturbs the surface normal. 1 is the map at full strength.
+uniform float normalTextureScale;
 
 #if MAX_LIGHTS > 0
 // How many entries of the light arrays below are filled for this draw.
@@ -33,22 +44,47 @@ uniform vec3 ambientGroundRadiance;
 
 out vec4 outColor;
 
+// Rebuilds the shading normal from the tangent-space normal map, or returns the interpolated
+// vertex normal unchanged when this mesh has no usable map.
+//
+// Interpolating across a triangle leaves the tangent neither unit-length nor square to the
+// normal, so it is re-orthogonalized (Gram-Schmidt) before the bitangent is derived from it.
+// The bitangent is not stored: its direction follows from the normal and tangent, and only
+// its handedness has to be carried, which keeps mirrored UV islands shading correctly.
+vec3 shadingNormal(vec3 interpolatedNormal) {
+  if (!hasNormalMap) {
+    return interpolatedNormal;
+  }
+
+  vec3 interpolatedTangent = vertexWorldTangent.xyz;
+  vec3 tangent = normalize(interpolatedTangent - interpolatedNormal * dot(interpolatedNormal, interpolatedTangent));
+  vec3 bitangent = cross(interpolatedNormal, tangent) * vertexWorldTangent.w;
+
+  // Maps are stored with the [-1, 1] components biased into the [0, 1] the texture can hold.
+  vec3 tangentSpaceNormal = texture(normalTexture, vertexTextureCoords).xyz * 2.0 - 1.0;
+
+  // Scaling only what lies along the surface - the tangent and bitangent components - tilts
+  // the normal back toward the geometric one without changing which way it leans. Below 1
+  // that flattens the relief, above 1 it deepens it, and 0 leaves the surface flat.
+  tangentSpaceNormal *= vec3(normalTextureScale, normalTextureScale, 1.0);
+
+  return normalize(mat3(tangent, bitangent, interpolatedNormal) * tangentSpaceNormal);
+}
+
 //TODO: The diffuse term below is plain Lambert, standing in for the metallic-roughness BRDF
 //      this material is named after. Still to do:
 //      - Replace it with Cook-Torrance: GGX normal distribution, Smith geometry and Schlick
 //        Fresnel. That needs a view vector, so the camera's world position has to come in as
 //        its own uniform.
 //      - Take metallic and roughness from uniforms, once an RGM material carries more than an
-//        albedo texture.
-//      - Sample a tangent-space normal map instead of using the interpolated vertex normal
-//        directly. Tangents are already in the RGM format but are neither uploaded nor used.
+//        albedo and a normal texture.
 //      - Replace the hemisphere below with full IBL: diffuse irradiance as order-2 spherical
 //        harmonics, plus prefiltered radiance and a BRDF lookup for the specular half. The
 //        sky/ground pair is the first two bands of that diffuse expansion, so the
 //        coefficients grow around it rather than replacing it.
 void main() {
   vec4 albedo = texture(albedoTexture, vertexTextureCoords);
-  vec3 surfaceNormal = normalize(vertexWorldNormal);
+  vec3 surfaceNormal = shadingNormal(normalize(vertexWorldNormal));
 
   // Y-up: 1 where the surface looks straight up at the sky, 0 where it looks at the ground.
   float skyFacing = surfaceNormal.y * 0.5 + 0.5;

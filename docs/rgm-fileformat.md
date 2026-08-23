@@ -159,7 +159,15 @@ Materials are referenced by meshes via their declared `index` field. Material in
 
 The common flags byte is present for every material type **except** the reserved `invalid` (0)
 sentinel, whose entry ends after the type byte. The size formula above accounts for this byte as
-part of each `materialEntrySize`.
+part of each `materialEntrySize`, which is fixed per type:
+
+| Type                       | `materialEntrySize` |
+| -------------------------- | ------------------- |
+| 0 Invalid                  | 5                   |
+| 1 Vertex Colors            | 6                   |
+| 2 Unlit                    | 10                  |
+| 3 Lambert                  | 18                  |
+| 4 PBR Metallic-Roughness   | 18                  |
 
 ### Material Types
 
@@ -167,8 +175,8 @@ part of each `materialEntrySize`.
 | ----- | ------------- | ------------------------------------------------------------ |
 | 1     | Vertex Colors | Renders using only the per-vertex RGB colors. No payload.    |
 | 2     | Unlit         | Passthrough material — references a single texture by index. |
-| 3     | Lambert       | Purely diffuse lit material. References only its albedo texture by index, like `Unlit`. |
-| 4     | PBR Metallic-Roughness | Physically based material. An upgrade of `Lambert`; currently references only its albedo texture by index too. |
+| 3     | Lambert       | Purely diffuse lit material. References its albedo texture and an optional normal map by index, plus the normal map's strength. |
+| 4     | PBR Metallic-Roughness | Physically based material. An upgrade of `Lambert`; currently references the same albedo texture, optional normal map and strength. |
 
 ### Common Flags
 
@@ -192,11 +200,43 @@ No type-specific payload bytes. The material entry ends after the common flags b
 
 The texture index references an entry in the textures section by its declared `index` field (see "Textures" below), not by array position. It must be `≥ 1` and must match a defined texture.
 
+`Unlit` deliberately stores only this one index: an unlit material is never shaded, so a normal map
+would have nothing to perturb.
+
 ### Lambert Payload (type = 3)
 
-Identical to the `Unlit` payload: a single 4-byte texture index for the albedo texture, subject to
-the same rules. Unlike `Unlit`, the material is shaded by the scene's lights, so a mesh using it
-wants vertex normals.
+| Offset | Size | Type  | Description                                                              |
+| ------ | ---- | ----- | ------------------------------------------------------------------------ |
+| 0x00   | 4    | uint  | Albedo texture index (≥ 1, references a texture by its `index`)          |
+| 0x04   | 4    | uint  | Normal map texture index (references a texture by its `index`, 0 = none) |
+| 0x08   | 4    | float | Normal map scale (strength of the normal map)                            |
+
+The albedo index follows the same rules as the `Unlit` payload: it must be `≥ 1` and must match a
+defined texture. The normal map index is optional — a value of `0` means the material has no normal
+map, and any other value must match a defined texture. Both indices are always present in the file;
+the "optional" one is expressed by the `0` sentinel, not by omitting the field.
+
+The normal map is a tangent-space map, sampled with UV channel 0 and resolved against the mesh's
+tangent attribute (see "Tangent Data" above). A mesh using a material with a normal map therefore
+wants both normals and tangents.
+
+The normal map scale says how strongly the map perturbs the surface normal. It scales the tangent
+and bitangent components of the sampled normal and leaves the component along the surface normal
+alone, so the perturbed normal tilts back toward the geometric one without changing which way it
+leans:
+
+```
+scaledNormal = normalize((sampled × 2 - 1) × (scale, scale, 1))
+```
+
+`1.0` is the map at full strength, `0.0` leaves the surface flat, and values above `1.0` deepen the
+relief. It matches the `scale` of glTF's `normalTextureInfo`. Like the index, the field is always
+present: a material with no normal map still stores a scale (conventionally `1.0`), which readers
+ignore. Readers do not range-check it — as with vertex positions and normals, the value is used as
+stored.
+
+Unlike `Unlit`, the material is shaded by the scene's lights, so a mesh using it wants vertex
+normals.
 
 Unlike the other material types this one has no glTF counterpart to be recognised from, so
 `rgmodelconv` never infers it. It writes this type only when a source material names it
@@ -204,10 +244,10 @@ explicitly through its `rg_mat` extra (see the [Blender authoring guide](blender
 
 ### PBR Metallic-Roughness Payload (type = 4)
 
-Identical to the `Lambert` payload, and shaded from the same inputs for now — it is the upgrade
-path from it, differing in the BRDF rather than in what the file stores. The remaining PBR inputs
-(metallic-roughness, normal, occlusion, emissive) are not stored yet; they will extend this
-payload.
+Identical to the `Lambert` payload — the same albedo index followed by the same optional normal map
+index, subject to the same rules — and shaded from the same inputs for now: it is the upgrade path
+from it, differing in the BRDF rather than in what the file stores. The remaining PBR inputs
+(metallic-roughness, occlusion, emissive) are not stored yet; they will extend this payload.
 
 ## Textures (variable size)
 

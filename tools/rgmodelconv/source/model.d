@@ -63,8 +63,8 @@ struct TextureRef {
  * (`KHR_materials_unlit`), the double-sided flag, and the material's texture
  * references.
  *
- * Lit (PBR) materials are converted as `pbrMetallicRoughness` ones, but only the
- * base color (albedo) texture is carried over: the RGM format cannot express the
+ * Lit (PBR) materials are converted as `pbrMetallicRoughness` ones, carrying their
+ * base color (albedo) and normal textures: the RGM format cannot express the
  * remaining metallic-roughness inputs yet.
  */
 struct MaterialInfo {
@@ -73,6 +73,8 @@ struct MaterialInfo {
     bool doubleSided; /// glTF `material.doubleSided` (defaults to false).
     bool hasAnyTexture; /// True when the material references at least one texture of any slot, including the slots that are not converted.
     TextureRef baseColorTexture; /// The externally referenced base color (albedo) texture (path + filters); `path` is "" when the material has none.
+    TextureRef normalTexture; /// The externally referenced tangent-space normal map (path + filters); `path` is "" when the material has none. Only written for material types that reference one.
+    float normalTextureScale = 1.0f; /// glTF `normalTexture.scale`: how strongly the normal map perturbs the surface normal. Defaults to 1 (full strength), which is also what glTF means by an absent `scale`.
 }
 
 /**

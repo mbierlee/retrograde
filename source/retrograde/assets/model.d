@@ -89,8 +89,8 @@ enum MaterialType : ubyte {
     invalid = 0, /// Sentinel for an unrecognized or missing material type. Renderers treat this like `noMaterial`, falling back to the render pass shader.
     vertexColors = 1, /// Use only the per-vertex RGB colors. No payload.
     unlit = 2, /// Passthrough material — references a single texture (by index) from the model's texture list.
-    lambert = 3, /// Purely diffuse lit material. References a single albedo texture (by index), like `unlit`. Has no glTF counterpart to be inferred from, so a converter only assigns it when a material asks for it by name.
-    pbrMetallicRoughness = 4 /// Physically based metallic-roughness material. An upgrade of `lambert`: same albedo texture reference for now, but shaded with a full BRDF.
+    lambert = 3, /// Purely diffuse lit material. References an albedo texture and an optional normal map (both by index). Has no glTF counterpart to be inferred from, so a converter only assigns it when a material asks for it by name.
+    pbrMetallicRoughness = 4 /// Physically based metallic-roughness material. An upgrade of `lambert`: same albedo and normal map references for now, but shaded with a full BRDF.
 }
 
 /**
@@ -116,7 +116,9 @@ struct Material {
     MaterialIndex index; /// 1-based unique index used by meshes to reference this material.
     MaterialType type;
     bool doubleSided; /// Common property (decoded from `MaterialFlags.doubleSided`): render both faces. Always false for `MaterialType.invalid`.
-    TextureIndex textureIndex; /// Populated when `type.referencesTexture`: the index of the referenced `Texture`. 0 otherwise.
+    TextureIndex textureIndex; /// Populated when `type.referencesTexture`: the index of the referenced albedo `Texture`. 0 otherwise.
+    TextureIndex normalTextureIndex; /// Populated when `type.referencesNormalTexture`: the index of the referenced tangent-space normal map `Texture`. 0 when the material has none.
+    float normalTextureScale = 1.0; /// Populated when `type.referencesNormalTexture`: how strongly the normal map perturbs the surface normal. Scales the tangent and bitangent components of the sampled normal, leaving the component along the surface normal alone: 1 is full strength, 0 is flat, above 1 exaggerates.
 
     mixin CopyConstructors!Material;
 }
@@ -128,6 +130,19 @@ struct Material {
 bool referencesTexture(MaterialType type) {
     return type == MaterialType.unlit || type == MaterialType.lambert
         || type == MaterialType.pbrMetallicRoughness;
+}
+
+/**
+ * Whether materials of this type carry a second texture index payload referencing a
+ * tangent-space normal map from the model's texture list.
+ *
+ * Unlike the albedo reference this one is optional: an index of 0 means the material
+ * has no normal map. Deliberately kept apart from `isLit`, whose member list happens
+ * to match: this predicate describes what the material's payload contains, `isLit`
+ * describes how it is shaded.
+ */
+bool referencesNormalTexture(MaterialType type) {
+    return type == MaterialType.lambert || type == MaterialType.pbrMetallicRoughness;
 }
 
 /**
