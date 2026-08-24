@@ -473,6 +473,18 @@ export default class RetrogradeRuntime {
         return this.glContext.getAttribLocation(programObject, name);
       },
 
+      glUniformMatrix3fv: (
+        location,
+        count,
+        transpose,
+        valueLength,
+        valuePtr,
+      ) => {
+        const valueData = this.getFloat32Array(valuePtr, valueLength);
+        const locationObject = this.getUniformLocationObject(location);
+        this.glContext.uniformMatrix3fv(locationObject, transpose, valueData);
+      },
+
       glUniformMatrix4fv: (
         location,
         count,

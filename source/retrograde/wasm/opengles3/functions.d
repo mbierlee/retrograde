@@ -38,6 +38,7 @@ void glDisable(GLenum cap);
 void glCullFace(GLenum mode);
 GLint glGetUniformLocation(GLuint program, string name);
 GLint glGetAttribLocation(GLuint program, string name);
+void glUniformMatrix3fv(GLint location, GLsizei count, GLbool transpose, GLfloat[] value);
 void glUniformMatrix4fv(GLint location, GLsizei count, GLbool transpose, GLfloat[] value);
 void glUniform4fv(GLint location, GLsizei count, GLfloat[] value);
 void glUniform3fv(GLint location, GLsizei count, GLfloat[] value);
