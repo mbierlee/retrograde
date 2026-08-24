@@ -31,7 +31,8 @@ import retrograde.assets.assetlibrary : getModel, getTexture;
 import retrograde.std.memory : makeRaw, unique;
 import retrograde.std.collections : Array, HashMap;
 import retrograde.std.stringid : StringId, sid;
-import retrograde.std.math : Matrix4, Vector3, Quaternion, toTranslationMatrix4, toScalingMatrix4;
+import retrograde.std.math : Matrix4, Vector3, Quaternion, toNormalMatrix, toTranslationMatrix4,
+    toScalingMatrix4;
 import retrograde.std.geometry : PositionComponentType, OrientationComponentType, ScaleComponentType;
 import retrograde.std.assets : AssetHandle;
 import retrograde.std.dlang : CopyConstructors;
@@ -106,6 +107,7 @@ void initMaterialShader(ref MaterialShader materialShader) {
     if (materialShader.materialType.isLit) {
         shaderInfo.normalAttribLocation = glGetAttribLocation(program, "normal");
         shaderInfo.modelMatrixUniformLocation = glGetUniformLocation(program, "modelMatrix");
+        shaderInfo.normalMatrixUniformLocation = glGetUniformLocation(program, "normalMatrix");
         shaderInfo.ambientSkyRadianceUniformLocation = glGetUniformLocation(program, "ambientSkyRadiance");
         shaderInfo.ambientGroundRadianceUniformLocation = glGetUniformLocation(program, "ambientGroundRadiance");
 
@@ -620,6 +622,7 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
         auto modelViewProjectionMatrix = viewProjectionMatrix * modelMatrix;
         auto modelViewProjectionMatrixData = modelViewProjectionMatrix.getDataArray!float;
         auto modelMatrixData = modelMatrix.getDataArray!float;
+        auto normalMatrixData = modelMatrix.toNormalMatrix().getDataArray!float;
 
         // Scaled by the intensity here rather than in the shader: it is one dial over both
         // colors, so a fragment has no use for it on its own.
@@ -664,6 +667,7 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
             GLint hasNormalMapUniformLocation = -1;
             GLint normalTextureScaleUniformLocation = -1;
             GLint modelMatrixUniformLocation = -1;
+            GLint normalMatrixUniformLocation = -1;
             GLint ambientSkyRadianceUniformLocation = -1;
             GLint ambientGroundRadianceUniformLocation = -1;
             GLuint vao = 0;
@@ -689,6 +693,7 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
                     normalTextureScaleUniformLocation = materialShaderInfo
                         .normalTextureScaleUniformLocation;
                     modelMatrixUniformLocation = materialShaderInfo.modelMatrixUniformLocation;
+                    normalMatrixUniformLocation = materialShaderInfo.normalMatrixUniformLocation;
                     ambientSkyRadianceUniformLocation = materialShaderInfo
                         .ambientSkyRadianceUniformLocation;
                     ambientGroundRadianceUniformLocation = materialShaderInfo
@@ -728,6 +733,10 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
 
             if (modelMatrixUniformLocation >= 0) {
                 glUniformMatrix4fv(modelMatrixUniformLocation, 1, true, modelMatrixData);
+            }
+
+            if (normalMatrixUniformLocation >= 0) {
+                glUniformMatrix3fv(normalMatrixUniformLocation, 1, true, normalMatrixData);
             }
 
             if (ambientSkyRadianceUniformLocation >= 0) {
@@ -897,6 +906,7 @@ private struct GlMaterialShaderInfo {
     GLint hasNormalMapUniformLocation = -1;
     GLint normalTextureScaleUniformLocation = -1;
     GLint modelMatrixUniformLocation = -1;
+    GLint normalMatrixUniformLocation = -1;
     GLint ambientSkyRadianceUniformLocation = -1;
     GLint ambientGroundRadianceUniformLocation = -1;
 

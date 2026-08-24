@@ -956,7 +956,7 @@ struct QuaternionT(T) {
             // Pitch and yaw become coupled; set pitch = 0
             auto pitch = cast(T) 0;
             auto yaw = 2 * _atan2(q.x, q.w);
-            auto roll = cast(T) (PI / 2);
+            auto roll = cast(T)(PI / 2);
             return VectorT!(T, 3)(pitch, yaw, roll);
         }
 
@@ -965,7 +965,7 @@ struct QuaternionT(T) {
             // Pitch and yaw become coupled; set pitch = 0
             auto pitch = cast(T) 0;
             auto yaw = -2 * _atan2(q.x, q.w);
-            auto roll = cast(T) (-PI / 2);
+            auto roll = cast(T)(-PI / 2);
             return VectorT!(T, 3)(pitch, yaw, roll);
         }
 
@@ -1181,6 +1181,60 @@ version (DoublePrecision) {
     alias toScalingMatrix4 = toScalingMatrix4D;
 } else {
     alias toScalingMatrix4 = toScalingMatrix4F;
+}
+
+/**
+ * Creates a normal matrix out of a model matrix: the inverse transpose of its upper-left 3x3
+ * part, which keeps normals perpendicular to the surface under non-uniform scale and shear.
+ *
+ * Normals it transforms are not unit length; normalizing is left to the consumer. When the
+ * model matrix cannot be inverted its rotation and scale part is returned unchanged.
+ */
+MatT3 toNormalMatrixT(MatT4, MatT3)(const MatT4 modelMatrix) {
+    alias T = MatT3._T;
+
+    const T a = modelMatrix[0, 0], b = modelMatrix[0, 1], c = modelMatrix[0, 2];
+    const T d = modelMatrix[1, 0], e = modelMatrix[1, 1], f = modelMatrix[1, 2];
+    const T g = modelMatrix[2, 0], h = modelMatrix[2, 1], i = modelMatrix[2, 2];
+
+    // The inverse of a matrix is its adjugate - the transposed matrix of cofactors - over its
+    // determinant. Transposing that again to get the inverse transpose cancels out against the
+    // adjugate's own transposition, leaving the plain matrix of cofactors over the determinant.
+    // dfmt off
+    auto const cofactors = MatT3(
+        e * i - f * h, f * g - d * i, d * h - e * g,
+        c * h - b * i, a * i - c * g, b * g - a * h,
+        b * f - c * e, c * d - a * f, a * e - b * d
+    );
+    // dfmt on
+
+    const T determinant = a * cofactors[0, 0] + b * cofactors[0, 1] + c * cofactors[0, 2];
+    if (determinant == 0) {
+        // dfmt off
+        return MatT3(
+            a, b, c,
+            d, e, f,
+            g, h, i
+        );
+        // dfmt on
+    }
+
+    const T inverseDeterminant = cast(T) 1 / determinant;
+    MatT3 normalMatrix;
+    foreach (index; 0 .. 9) {
+        normalMatrix[index] = cofactors[index] * inverseDeterminant;
+    }
+
+    return normalMatrix;
+}
+
+alias toNormalMatrixF = toNormalMatrixT!(Matrix4F, Matrix3F);
+alias toNormalMatrixD = toNormalMatrixT!(Matrix4D, Matrix3D);
+
+version (DoublePrecision) {
+    alias toNormalMatrix = toNormalMatrixD;
+} else {
+    alias toNormalMatrix = toNormalMatrixF;
 }
 
 /**
@@ -2555,6 +2609,7 @@ void runQuaternionTests() {
 
         auto const quaternionF = QuaternionF.createRotation(0, Vector3F(0, 1, 0));
         import retrograde.std.stdio : writeln;
+
         writeln(quaternionF.axis.x);
         writeln(quaternionF.axis.y);
         writeln(quaternionF.axis.z);
@@ -2715,6 +2770,73 @@ void runMatrixUtilTests() {
         // dfmt on
         auto const actualMatrixF = vectorF.toScalingMatrix4F();
         assert(expectedMatrixF == actualMatrixF);
+    });
+
+    test("Create normal matrix from a rotation matrix", {
+        // A rotation is its own inverse transpose, so it comes back out unchanged.
+        auto const modelMatrixD = createRotationMatrix4D(PI / 4, 0, 1, 0);
+        auto const expectedMatrixD = Matrix3D(
+            modelMatrixD[0, 0], modelMatrixD[0, 1], modelMatrixD[0, 2],
+            modelMatrixD[1, 0], modelMatrixD[1, 1], modelMatrixD[1, 2],
+            modelMatrixD[2, 0], modelMatrixD[2, 1], modelMatrixD[2, 2]
+        );
+        auto const actualMatrixD = modelMatrixD.toNormalMatrixD();
+        assert(expectedMatrixD.data.approxEquals(actualMatrixD.data));
+
+        auto const modelMatrixF = createRotationMatrix4F(PI / 4, 0, 1, 0);
+        auto const expectedMatrixF = Matrix3F(
+            modelMatrixF[0, 0], modelMatrixF[0, 1], modelMatrixF[0, 2],
+            modelMatrixF[1, 0], modelMatrixF[1, 1], modelMatrixF[1, 2],
+            modelMatrixF[2, 0], modelMatrixF[2, 1], modelMatrixF[2, 2]
+        );
+        auto const actualMatrixF = modelMatrixF.toNormalMatrixF();
+        assert(expectedMatrixF.data.approxEquals(actualMatrixF.data));
+    });
+
+    test("Create normal matrix from a uniform scaling matrix", {
+        // dfmt off
+        auto const expectedMatrixD = Matrix3D(
+            0.5, 0  , 0,
+            0  , 0.5, 0,
+            0  , 0  , 0.5
+        );
+        // dfmt on
+        auto const actualMatrixD = Vector3D(2, 2, 2).toScalingMatrix4D().toNormalMatrixD();
+        assert(expectedMatrixD.data.approxEquals(actualMatrixD.data));
+    });
+
+    test("Normal matrix keeps normals perpendicular under non-uniform scale", {
+        // A surface whose tangent and normal stand perpendicular before the model matrix is
+        // applied. They only stay that way when the normal is transformed by the normal matrix.
+        auto const tangent = Vector3D(1, 1, 0);
+        auto const normal = Vector3D(1, -1, 0);
+        assert(tangent.dot(normal) == 0);
+
+        auto const modelMatrix = Vector3D(2, 1, 1).toScalingMatrix4D();
+        auto const transformedTangent4 = modelMatrix * Vector4D(tangent.x, tangent.y, tangent.z, 0);
+        auto const transformedTangent = Vector3D(transformedTangent4.x, transformedTangent4.y,
+            transformedTangent4.z);
+
+        auto const modelTransformedNormal4 = modelMatrix * Vector4D(normal.x, normal.y, normal.z, 0);
+        auto const modelTransformedNormal = Vector3D(modelTransformedNormal4.x,
+            modelTransformedNormal4.y, modelTransformedNormal4.z);
+        assert(!approxEqual(transformedTangent.dot(modelTransformedNormal), 0.0));
+
+        auto const normalMatrix = modelMatrix.toNormalMatrixD();
+        auto const transformedNormal = normalMatrix * normal;
+        assert(approxEqual(transformedTangent.dot(transformedNormal), 0.0));
+    });
+
+    test("Create normal matrix from a model matrix that cannot be inverted", {
+        // dfmt off
+        auto const expectedMatrixD = Matrix3D(
+            1, 0, 0,
+            0, 1, 0,
+            0, 0, 0
+        );
+        // dfmt on
+        auto const actualMatrixD = Vector3D(1, 1, 0).toScalingMatrix4D().toNormalMatrixD();
+        assert(expectedMatrixD == actualMatrixD);
     });
 
     test("Create 4D rotation matrix", {
