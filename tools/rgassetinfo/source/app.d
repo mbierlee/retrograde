@@ -404,6 +404,28 @@ string materialCommonFlagsDescription(ref Material material) {
     return material.doubleSided ? ", double-sided (no backface culling)" : ", backface culling";
 }
 
+/**
+ * Renders a material's albedo reference: the texture it samples, or the absence of one.
+ *
+ * Stated in both directions, like the normal map below it, so a material colored by its
+ * factor alone is not mistaken for a broken reference or for the tool staying quiet. The
+ * base color factor is reported either way, since it multiplies the texture where there
+ * is one.
+ */
+string albedoDescription(ref Material material) {
+    import std.conv : to;
+    import std.format : format;
+
+    string albedo = material.textureIndex == 0 ? ", no albedo texture"
+        : ", albedo texture " ~ to!string(material.textureIndex);
+
+    // Rounded: exporters write these as full float expansions of an 8-bit color picker
+    // value, and a dozen digits per component drowns the rest of the line.
+    return albedo ~ format(", base color (%.3f, %.3f, %.3f, %.3f)",
+        material.baseColorFactor.r, material.baseColorFactor.g,
+        material.baseColorFactor.b, material.baseColorFactor.a);
+}
+
 string materialPayloadDescription(ref Material material) {
     final switch (material.type) {
     case MaterialType.invalid:
@@ -411,9 +433,7 @@ string materialPayloadDescription(ref Material material) {
     case MaterialType.vertexColors:
         return "";
     case MaterialType.unlit:
-        import std.conv : to;
-
-        return ", texture " ~ to!string(material.textureIndex);
+        return albedoDescription(material);
     case MaterialType.pbrMetallicRoughness:
     case MaterialType.lambert:
         import std.conv : to;
@@ -424,7 +444,7 @@ string materialPayloadDescription(ref Material material) {
         string normal = material.normalTextureIndex == 0 ? ", no normal texture"
             : ", normal texture " ~ to!string(material.normalTextureIndex)
             ~ " (scale " ~ to!string(material.normalTextureScale) ~ ")";
-        return ", albedo texture " ~ to!string(material.textureIndex) ~ normal;
+        return albedoDescription(material) ~ normal;
     }
 }
 

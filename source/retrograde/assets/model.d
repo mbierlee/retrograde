@@ -88,8 +88,8 @@ enum MeshAttributeFlags : ubyte {
 enum MaterialType : ubyte {
     invalid = 0, /// Sentinel for an unrecognized or missing material type. Renderers treat this like `noMaterial`, falling back to the render pass shader.
     vertexColors = 1, /// Use only the per-vertex RGB colors. No payload.
-    unlit = 2, /// Passthrough material — references a single texture (by index) from the model's texture list.
-    lambert = 3, /// Purely diffuse lit material. References an albedo texture and an optional normal map (both by index). Has no glTF counterpart to be inferred from, so a converter only assigns it when a material asks for it by name.
+    unlit = 2, /// Passthrough material — an optional texture (by index) from the model's texture list, tinted by a base color factor.
+    lambert = 3, /// Purely diffuse lit material. References an optional albedo texture and base color factor, plus an optional normal map (both textures by index). Has no glTF counterpart to be inferred from, so a converter only assigns it when a material asks for it by name.
     pbrMetallicRoughness = 4 /// Physically based metallic-roughness material. An upgrade of `lambert`: same albedo and normal map references for now, but shaded with a full BRDF.
 }
 
@@ -107,6 +107,19 @@ enum MaterialFlags : ubyte {
 }
 
 /**
+ * An RGBA multiplier over a material's albedo.
+ *
+ * Named components rather than a `float[4]`: `CopyConstructors` skips static array members,
+ * so one would be silently reset to its default every time a `Material` is copied.
+ */
+struct BaseColorFactor {
+    float r = 1.0;
+    float g = 1.0;
+    float b = 1.0;
+    float a = 1.0;
+}
+
+/**
  * Represents a material referenced by one or more meshes.
  *
  * Materials are stored in a flat list on `Model` and looked up by their
@@ -116,7 +129,8 @@ struct Material {
     MaterialIndex index; /// 1-based unique index used by meshes to reference this material.
     MaterialType type;
     bool doubleSided; /// Common property (decoded from `MaterialFlags.doubleSided`): render both faces. Always false for `MaterialType.invalid`.
-    TextureIndex textureIndex; /// Populated when `type.referencesTexture`: the index of the referenced albedo `Texture`. 0 otherwise.
+    TextureIndex textureIndex; /// Populated when `type.referencesTexture`: the index of the referenced albedo `Texture`. 0 when the material has none, and is colored by `baseColorFactor` alone.
+    BaseColorFactor baseColorFactor; /// Populated when `type.referencesTexture`: an RGBA multiplier over the sampled albedo texture. With no texture referenced it is the albedo outright, which is what lets a flat-colored material exist without an image asset. Stored and used as-is: no range check, no color-space conversion.
     TextureIndex normalTextureIndex; /// Populated when `type.referencesNormalTexture`: the index of the referenced tangent-space normal map `Texture`. 0 when the material has none.
     float normalTextureScale = 1.0; /// Populated when `type.referencesNormalTexture`: how strongly the normal map perturbs the surface normal. Scales the tangent and bitangent components of the sampled normal, leaving the component along the surface normal alone: 1 is full strength, 0 is flat, above 1 exaggerates.
 
@@ -124,8 +138,13 @@ struct Material {
 }
 
 /**
- * Whether materials of this type carry a texture index payload referencing a single
- * (albedo) texture from the model's texture list.
+ * Whether materials of this type carry an albedo payload: a texture index referencing a
+ * single texture from the model's texture list, plus the base color factor multiplied
+ * over it.
+ *
+ * The texture reference is optional — an index of 0 means the material has no texture and
+ * takes its color from the factor alone. The payload is still present either way, so this
+ * predicate says what a material of this type stores, not whether it ended up with a texture.
  */
 bool referencesTexture(MaterialType type) {
     return type == MaterialType.unlit || type == MaterialType.lambert

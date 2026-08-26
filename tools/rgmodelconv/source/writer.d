@@ -80,13 +80,6 @@ private MaterialType applyMaterialTypeOverride(ref MaterialInfo material,
         return automaticType;
     }
 
-    if (requested.referencesTexture && material.baseColorTexture.path.length == 0) {
-        stderr.writefln("Warning: material asks for rg_mat '%s', which needs a base color " ~
-                "texture that this material does not have; keeping %s.",
-            material.materialTypeOverride, automaticType);
-        return automaticType;
-    }
-
     if (requested == MaterialType.vertexColors && !hasVertexColors) {
         stderr.writefln("Warning: material asks for rg_mat '%s', but no primitive using it " ~
                 "carries vertex colors; keeping %s.", material.materialTypeOverride, automaticType);
@@ -198,24 +191,28 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
         bool hasVertexColors = materialHasVertexColors(data.primitives, i);
 
         MaterialType materialType;
-        if (material.baseColorTexture.path.length > 0) {
-            // The shading model decides the type: only a material that declares
-            // KHR_materials_unlit is written as `unlit`; a regular glTF material is a
-            // metallic-roughness one. Only the latter carries a normal map, so a base
-            // color texture is what makes a material textured either way — a material
-            // with just a normal map stays the `invalid` sentinel below.
-            materialType = material.unlit
-                ? MaterialType.unlit : MaterialType.pbrMetallicRoughness;
-        } else if (!material.hasAnyTexture && hasVertexColors) {
+        if (!material.hasAnyTexture && hasVertexColors) {
+            // Checked ahead of the base color so a mesh painted with vertex colors keeps
+            // being drawn from them rather than being flattened to a single factor.
             materialType = MaterialType.vertexColors;
         } else {
-            materialType = MaterialType.invalid;
+            // The shading model decides the type: only a material that declares
+            // KHR_materials_unlit is written as `unlit`; a regular glTF material is a
+            // metallic-roughness one. Neither needs a base color texture, since the base
+            // color factor colors the material on its own when there is none — so this is
+            // also where a plain-colored material lands. `invalid` is left for a material
+            // that carries nothing convertible at all.
+            materialType = material.unlit
+                ? MaterialType.unlit : MaterialType.pbrMetallicRoughness;
         }
 
         materialType = applyMaterialTypeOverride(material, materialType, hasVertexColors);
         materialTypes[i] = materialType;
 
-        if (materialType.referencesTexture) {
+        // The albedo reference is optional in the same way the normal map is: a material
+        // without one keeps the 0 sentinel and is colored by its base color factor alone,
+        // and no texture entry is emitted for it.
+        if (materialType.referencesTexture && material.baseColorTexture.path.length > 0) {
             materialTextureIndices[i] = resolveTextureIndex(material.baseColorTexture,
                 renameImages, texturePathPrefix, magFilterOverride, minFilterOverride,
                 textures, textureToIndex);
@@ -244,11 +241,12 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
     }
 
     // Emit one material entry per used material, in the order they were first
-    // referenced. A material that references an external base color texture maps to
-    // `unlit` or `pbrMetallicRoughness` depending on its shading model, a textureless
-    // one drawn with per-vertex colors maps to `vertexColors`; anything else falls back
-    // to the `invalid` sentinel. The lit types carry a second texture index for their
-    // normal map, written as 0 when they have none.
+    // referenced. A textureless material drawn with per-vertex colors maps to
+    // `vertexColors`; everything else maps to `unlit` or `pbrMetallicRoughness` depending
+    // on its shading model, carrying an albedo texture index that is 0 when it has none.
+    // The lit types carry a further texture index for their normal map, likewise 0 when
+    // they have none. Only an explicit `rg_mat` override still produces the `invalid`
+    // sentinel.
     for (uint i = 0; i < materialCount; i++) {
         if (materialIndexMap[i] == 0) {
             continue;
@@ -269,7 +267,12 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
         writeUbyte(buf, flags); // Common flags (bit 0 = double-sided)
 
         if (type.referencesTexture) {
-            writeUint(buf, materialTextureIndices[i]); // Referenced albedo texture index
+            writeUint(buf, materialTextureIndices[i]); // Referenced albedo texture index (0 = none)
+
+            // Multiplies the albedo texture, and is the material's color outright without one.
+            foreach (component; data.materials[i].baseColorFactor) {
+                writeFloat(buf, component); // Base color factor (R, G, B, A)
+            }
         }
 
         if (type.referencesNormalTexture) {

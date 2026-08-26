@@ -165,18 +165,18 @@ part of each `materialEntrySize`, which is fixed per type:
 | -------------------------- | ------------------- |
 | 0 Invalid                  | 5                   |
 | 1 Vertex Colors            | 6                   |
-| 2 Unlit                    | 10                  |
-| 3 Lambert                  | 18                  |
-| 4 PBR Metallic-Roughness   | 18                  |
+| 2 Unlit                    | 26                  |
+| 3 Lambert                  | 34                  |
+| 4 PBR Metallic-Roughness   | 34                  |
 
 ### Material Types
 
 | Value | Name          | Description                                                  |
 | ----- | ------------- | ------------------------------------------------------------ |
 | 1     | Vertex Colors | Renders using only the per-vertex RGB colors. No payload.    |
-| 2     | Unlit         | Passthrough material — references a single texture by index. |
-| 3     | Lambert       | Purely diffuse lit material. References its albedo texture and an optional normal map by index, plus the normal map's strength. |
-| 4     | PBR Metallic-Roughness | Physically based material. An upgrade of `Lambert`; currently references the same albedo texture, optional normal map and strength. |
+| 2     | Unlit         | Passthrough material — an optional texture referenced by index, tinted by a base color factor. |
+| 3     | Lambert       | Purely diffuse lit material. References its optional albedo texture and base color factor, plus an optional normal map by index and that map's strength. |
+| 4     | PBR Metallic-Roughness | Physically based material. An upgrade of `Lambert`; currently references the same albedo texture, base color factor, optional normal map and strength. |
 
 ### Common Flags
 
@@ -188,33 +188,53 @@ follows the type byte and precedes any type-specific payload.
 | 0    | 0x01 | Double-sided | Render both faces (disable back-face culling).          |
 | 1–7  | —    | Reserved     | Reserved for future common properties. Written as 0 and ignored on read. |
 
+### Base Color Factor
+
+Four consecutive `float`s — red, green, blue, alpha — carried by every material type that
+references a texture (`Unlit`, `Lambert` and `PBR Metallic-Roughness`). It multiplies the sampled
+albedo texture component-wise:
+
+```
+albedo = textureSample × baseColorFactor
+```
+
+A material with no albedo texture (index `0`) is colored by the factor alone, which is what makes
+a flat-colored material representable without an image asset. The field is always present, so a
+material that only wants its texture stores the identity `(1, 1, 1, 1)`.
+
+It matches the `baseColorFactor` of glTF's `pbrMetallicRoughness`. Values are stored and used
+exactly as written: readers do not range-check them and apply no color-space conversion, so what a
+factor means is whatever color space the rest of the pipeline works in.
+
 ### Vertex Colors Payload (type = 1)
 
 No type-specific payload bytes. The material entry ends after the common flags byte.
 
 ### Unlit Payload (type = 2)
 
-| Offset | Size | Type | Description                                              |
-| ------ | ---- | ---- | ------------------------------------------------------- |
-| 0x00   | 4    | uint | Texture index (≥ 1, references a texture by its `index`) |
+| Offset | Size | Type    | Description                                                   |
+| ------ | ---- | ------- | ------------------------------------------------------------- |
+| 0x00   | 4    | uint    | Texture index (references a texture by its `index`, 0 = none) |
+| 0x04   | 16   | float×4 | Base color factor (RGBA, see "Base Color Factor" below)       |
 
-The texture index references an entry in the textures section by its declared `index` field (see "Textures" below), not by array position. It must be `≥ 1` and must match a defined texture.
+The texture index references an entry in the textures section by its declared `index` field (see "Textures" below), not by array position. A value of `0` means the material has no texture and is colored by its base color factor alone; any other value must match a defined texture.
 
-`Unlit` deliberately stores only this one index: an unlit material is never shaded, so a normal map
+`Unlit` deliberately stores no normal map: an unlit material is never shaded, so a normal map
 would have nothing to perturb.
 
 ### Lambert Payload (type = 3)
 
-| Offset | Size | Type  | Description                                                              |
-| ------ | ---- | ----- | ------------------------------------------------------------------------ |
-| 0x00   | 4    | uint  | Albedo texture index (≥ 1, references a texture by its `index`)          |
-| 0x04   | 4    | uint  | Normal map texture index (references a texture by its `index`, 0 = none) |
-| 0x08   | 4    | float | Normal map scale (strength of the normal map)                            |
+| Offset | Size | Type    | Description                                                              |
+| ------ | ---- | ------- | ------------------------------------------------------------------------ |
+| 0x00   | 4    | uint    | Albedo texture index (references a texture by its `index`, 0 = none)     |
+| 0x04   | 16   | float×4 | Base color factor (RGBA, see "Base Color Factor" below)                  |
+| 0x14   | 4    | uint    | Normal map texture index (references a texture by its `index`, 0 = none) |
+| 0x18   | 4    | float   | Normal map scale (strength of the normal map)                            |
 
-The albedo index follows the same rules as the `Unlit` payload: it must be `≥ 1` and must match a
-defined texture. The normal map index is optional — a value of `0` means the material has no normal
-map, and any other value must match a defined texture. Both indices are always present in the file;
-the "optional" one is expressed by the `0` sentinel, not by omitting the field.
+The albedo index and base color factor follow the same rules as the `Unlit` payload. The normal map
+index is optional in the same way — a value of `0` means the material has no normal map, and any
+other value must match a defined texture. All three fields are always present in the file; the
+"optional" ones are expressed by the `0` sentinel, not by omitting the field.
 
 The normal map is a tangent-space map, sampled with UV channel 0 and resolved against the mesh's
 tangent attribute (see "Tangent Data" above). A mesh using a material with a normal map therefore
@@ -244,8 +264,9 @@ explicitly through its `rg_mat` extra (see the [Blender authoring guide](blender
 
 ### PBR Metallic-Roughness Payload (type = 4)
 
-Identical to the `Lambert` payload — the same albedo index followed by the same optional normal map
-index, subject to the same rules — and shaded from the same inputs for now: it is the upgrade path
+Identical to the `Lambert` payload — the same albedo index and base color factor followed by the
+same optional normal map index, subject to the same rules — and shaded from the same inputs for
+now: it is the upgrade path
 from it, differing in the BRDF rather than in what the file stores. The remaining PBR inputs
 (metallic-roughness, occlusion, emissive) are not stored yet; they will extend this payload.
 

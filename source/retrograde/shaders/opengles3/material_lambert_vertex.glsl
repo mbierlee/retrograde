@@ -21,13 +21,12 @@ void main() {
   vertexTextureCoords = textureCoords;
   vertexWorldPosition = (modelMatrix * position).xyz;
 
-  // Normals stand perpendicular to the surface instead of running along it, so the model
-  // matrix would skew them under a non-uniform scale. The normal matrix - its inverse
-  // transpose - is what keeps them perpendicular. Normalized in the fragment stage, after
-  // interpolation.
+  // The model matrix would skew a normal off perpendicular under non-uniform scale; its
+  // inverse transpose - the normal matrix - does not. Normalized after interpolation, in
+  // the fragment stage.
   vertexWorldNormal = normalMatrix * normal;
 
-  // Tangents are directions along the surface, so unlike normals they transform with the
-  // model matrix itself - the normal matrix would be wrong for them.
+  // Tangents run along the surface, so they take the model matrix itself - the normal
+  // matrix would be wrong here.
   vertexWorldTangent = vec4(mat3(modelMatrix) * tangent.xyz, tangent.w);
 }

@@ -23,8 +23,8 @@ import retrograde.engine.rendering.lighting : ActiveLight, ambientGroundColor, a
 import retrograde.engine.rendering.materialshader : maxLights;
 
 import retrograde.assets.model : ModelComponentType, Model, MaterialType, MaterialIndex, noMaterial,
-    isLit, referencesTexture, referencesNormalTexture, TextureIndex, Texture, TextureMagFilter,
-    TextureMinFilter, TextureWrap;
+    isLit, referencesTexture, referencesNormalTexture, BaseColorFactor, TextureIndex, Texture,
+    TextureMagFilter, TextureMinFilter, TextureWrap;
 import retrograde.assets.image : Image, ChannelFormat;
 import retrograde.assets.assetlibrary : getModel, getTexture;
 
@@ -58,6 +58,32 @@ void initRenderApi() {
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_BLEND);
+
+    createDefaultAlbedoTexture();
+}
+
+/**
+ * Creates the 1x1 opaque white texture stood in for a material that has no albedo texture of
+ * its own, or whose texture failed to load.
+ *
+ * Sampling white leaves the shader's `texture(albedoTexture, ...) * baseColorFactor` equal to
+ * the factor, so an untextured material is drawn by the same program, with the same uniforms,
+ * as a textured one - no "has texture" branch in any fragment shader and no second variant to
+ * compile. Filters are nearest and wrapping is clamped because there is nothing to interpolate
+ * or tile across a single texel.
+ */
+private void createDefaultAlbedoTexture() {
+    static immutable ubyte[4] whitePixel = [255, 255, 255, 255];
+
+    defaultAlbedoTextureObject = glCreateTexture();
+    glBindTexture(GL_TEXTURE_2D, defaultAlbedoTextureObject);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, whitePixel[]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void initRenderPass(ref RenderPass renderPass) {
@@ -94,6 +120,7 @@ void initMaterialShader(ref MaterialShader materialShader) {
     if (materialShader.materialType.referencesTexture) {
         shaderInfo.textureCoordsAttribLocation = glGetAttribLocation(program, "textureCoords");
         shaderInfo.albedoTextureUniformLocation = glGetUniformLocation(program, "albedoTexture");
+        shaderInfo.baseColorFactorUniformLocation = glGetUniformLocation(program, "baseColorFactor");
     }
 
     if (materialShader.materialType.referencesNormalTexture) {
@@ -225,6 +252,7 @@ void loadEntityModel(EntityId entity) {
                         materialTextureIndex = material.textureIndex;
                         materialNormalTextureIndex = material.normalTextureIndex;
                         meshInfo.normalTextureScale = cast(GLfloat) material.normalTextureScale;
+                        meshInfo.baseColorFactor = material.baseColorFactor;
                         break;
                     }
                 }
@@ -663,6 +691,7 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
             GLuint shaderProgram;
             GLint mvpMatrixUniformLocation = -1;
             GLint albedoTextureUniformLocation = -1;
+            GLint baseColorFactorUniformLocation = -1;
             GLint normalTextureUniformLocation = -1;
             GLint hasNormalMapUniformLocation = -1;
             GLint normalTextureScaleUniformLocation = -1;
@@ -688,6 +717,8 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
                     shaderProgram = materialShaderInfo.shaderProgram;
                     mvpMatrixUniformLocation = materialShaderInfo.mvpMatrixUniformLocation;
                     albedoTextureUniformLocation = materialShaderInfo.albedoTextureUniformLocation;
+                    baseColorFactorUniformLocation = materialShaderInfo
+                        .baseColorFactorUniformLocation;
                     normalTextureUniformLocation = materialShaderInfo.normalTextureUniformLocation;
                     hasNormalMapUniformLocation = materialShaderInfo.hasNormalMapUniformLocation;
                     normalTextureScaleUniformLocation = materialShaderInfo
@@ -765,11 +796,31 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
                 }
             }
 
-            if (useMaterial && meshInfo.materialType.referencesTexture
-            && meshInfo.textureObject != 0 && albedoTextureUniformLocation >= 0) {
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, meshInfo.textureObject);
-                glUniform1i(albedoTextureUniformLocation, 0);
+            if (useMaterial && meshInfo.materialType.referencesTexture) {
+                // A material may reference no albedo texture at all, or one that failed to
+                // load. Standing the 1x1 white texture in for it makes the shader's albedo
+                // multiply yield the base color factor unchanged, so neither case needs a
+                // branch in the fragment shader - or leaves unit 0 unbound, which would
+                // sample black.
+                GLuint albedoTextureObject = meshInfo.textureObject != 0
+                    ? meshInfo.textureObject : defaultAlbedoTextureObject;
+
+                if (albedoTextureUniformLocation >= 0) {
+                    glActiveTexture(GL_TEXTURE0);
+                    glBindTexture(GL_TEXTURE_2D, albedoTextureObject);
+                    glUniform1i(albedoTextureUniformLocation, 0);
+                }
+
+                if (baseColorFactorUniformLocation >= 0) {
+                    GLfloat[4] baseColorFactorData = [
+                        cast(GLfloat) meshInfo.baseColorFactor.r,
+                        cast(GLfloat) meshInfo.baseColorFactor.g,
+                        cast(GLfloat) meshInfo.baseColorFactor.b,
+                        cast(GLfloat) meshInfo.baseColorFactor.a
+                    ];
+
+                    glUniform4fv(baseColorFactorUniformLocation, 1, baseColorFactorData[]);
+                }
             }
 
             if (useMaterial && meshInfo.materialType.referencesNormalTexture) {
@@ -847,6 +898,11 @@ private uint viewportHeight = 1;
 private HashMap!(StringId, GlRenderPassInfo) renderPassInfos;
 private HashMap!(MaterialType, GlMaterialShaderInfo) materialShaderInfos;
 
+// Shared by every material that has no albedo texture of its own. Deliberately not created by
+// createMaterialTexture: unloadEntityModel deletes any non-zero mesh texture, and this one
+// outlives every model.
+private GLuint defaultAlbedoTextureObject;
+
 static if (maxLights > 0) {
     // Scratch buffers reused by every draw, so packing a frame's lights allocates nothing
     // after the first few draws.
@@ -864,6 +920,10 @@ private struct GlMeshInfo {
     GLuint textureObject;
     GLuint normalTextureObject;
     GLfloat normalTextureScale = 1.0;
+
+    /// Multiplier over the albedo, from the mesh's material. Applies whether or not the
+    /// material has a texture; without one it is the mesh's color outright.
+    BaseColorFactor baseColorFactor;
     HashMap!(StringId, GLuint) vertexArrayObjects;
     GLuint materialVertexArrayObject;
     GLuint elementBufferObject;
@@ -897,6 +957,7 @@ private struct GlMaterialShaderInfo {
     GLint colorsAttribLocation;
     GLint textureCoordsAttribLocation;
     GLint albedoTextureUniformLocation;
+    GLint baseColorFactorUniformLocation = -1;
 
     // A shader that does not declare these - or whose compiler stripped them because nothing
     // reads them - has no location for them, so they start out at the "absent" location.

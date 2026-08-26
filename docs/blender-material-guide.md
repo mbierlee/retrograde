@@ -8,7 +8,7 @@ when you export to glTF and convert to `.rgm`.
 external `.bin` buffer and external image files. Binary `.glb` containers are not
 supported, so in Blender's glTF exporter pick the **glTF Separate (.gltf + .bin +
 textures)** format. Material classification is driven by glTF concepts such as
-the `pbrMetallicRoughness` base color texture and the `doubleSided` flag.
+the `pbrMetallicRoughness` base color texture and factor, and the `doubleSided` flag.
 
 By default `rgmodelconv` infers the type from what the material references. You can
 also name the type outright with an `rg_mat` custom property, which is the only way to
@@ -17,11 +17,11 @@ reach a type that no glTF material maps onto — see
 
 | Retrograde type         | How it's recognized                                            |
 | ----------------------- | -------------------------------------------------------------- |
-| no material / `invalid` | No material is assigned to the mesh.                           |
+| no material / `invalid` | No material is assigned to the mesh. Never inferred for a material that exists — only an `rg_mat` override produces the `invalid` sentinel. |
 | `vertexColors`          | The mesh has a color attribute + the material has no textures. |
-| `unlit`                 | The material references a base color (albedo) image texture **and** declares `KHR_materials_unlit`. |
-| `lambert`               | Never inferred. Requires `rg_mat` on a material that references a base color texture. |
-| `pbrMetallicRoughness`  | The material references a base color (albedo) image texture and is a regular lit one. |
+| `unlit`                 | The material declares `KHR_materials_unlit` (and is not caught by the `vertexColors` rule above). |
+| `lambert`               | Never inferred. Requires `rg_mat`. |
+| `pbrMetallicRoughness`  | Anything else — a regular lit material, with or without textures. |
 
 **The base color and normal textures are converted; the other PBR texture inputs are
 not.** A regular `Principled BSDF` material exports as glTF PBR (metallic-roughness) and
@@ -32,9 +32,17 @@ the RGM format has nowhere to put those yet. The lit types (`lambert`,
 `pbrMetallicRoughness`) carry the normal map; `unlit` keeps only its base color texture,
 since an unlit material is never shaded.
 
-A **base color texture is still what makes a material textured**: a material carrying
-only a normal map and no base color is not recognized as a textured type and falls back
-to the `invalid` sentinel.
+**A base color texture is optional.** A material whose **Base Color** is a plain color
+rather than an image is still a real material: the color is carried over as the base
+color factor and the material is drawn in it. See
+[Coloring a material without a texture](#coloring-a-material-without-a-texture). Where
+there *is* a texture, the base color acts as a tint over it — leave it at white to get
+the texture untouched.
+
+Note the ordering in the table: **the `vertexColors` rule is checked first**. A material
+with no textures on a mesh that carries a color attribute becomes `vertexColors` even
+when its Base Color is set, and that base color is dropped. If you want the flat color
+instead, either remove the mesh's color attribute or set `rg_mat` explicitly.
 
 Per-vertex **geometry** is the exception: normals and tangents are carried over
 into the `.rgm` whenever the export supplies them, independently of the material
@@ -81,10 +89,11 @@ Accepted values are the material type names, matched case-insensitively: `invali
 `vertexColors`, `unlit`, `lambert`, `pbrMetallicRoughness`.
 
 **The override picks a type; it does not invent data.** A material still has to supply
-what its chosen type needs — a base color texture for `unlit`, `lambert` and
-`pbrMetallicRoughness`, a color attribute for `vertexColors`. Ask for a type the
-material cannot back, or misspell the name, and `rgmodelconv` prints a warning and
-keeps the type it inferred, rather than writing out a material the engine cannot read.
+what its chosen type needs — a color attribute for `vertexColors`. (`unlit`, `lambert`
+and `pbrMetallicRoughness` need nothing in particular: without a base color texture they
+fall back to the base color factor.) Ask for a type the material cannot back, or misspell
+the name, and `rgmodelconv` prints a warning and keeps the type it inferred, rather than
+writing out a material the engine cannot read.
 
 See `asset-examples/cube-lambert.blend` for a working example.
 
@@ -132,7 +141,39 @@ attribute **and** the material references no textures at all — so don't add an
 image texture (of any kind, including a normal or roughness map) if you want
 this type.
 
+This rule is checked before every other one, so it also wins over a base color: a
+vertex-painted mesh whose material has a flat Base Color set is still emitted as
+`vertexColors`, and the base color is dropped.
+
 See `asset-examples/cube-vertexcolors.blend` for a working example.
+
+---
+
+## Coloring a material without a texture
+
+Use this for a mesh that should be a plain, even color — no image needed.
+
+1. Add a material to the object.
+2. In the **Material Properties** tab, click the **Base Color** swatch of the
+   `Principled BSDF` and pick your color.
+3. Leave the mesh's **Color Attributes** list empty (in **Object Data Properties**).
+   A color attribute would make the converter emit `vertexColors` instead and drop
+   the color you just picked.
+
+That is the whole setup — there is no node wiring to do:
+
+```
+[Principled BSDF] Base Color = a flat color --BSDF--> [Material Output] Surface
+```
+
+The color exports as glTF's `baseColorFactor` and lands in the `.rgm` as the material's
+base color, giving a `pbrMetallicRoughness` material with no albedo texture. Wire the
+color straight into `Material Output` instead of through the `Principled BSDF` (as in
+[`unlit`](#unlit)) to get an `unlit` material in the same flat color.
+
+The same field doubles as a **tint** when the material *does* have a base color texture:
+the engine multiplies the two. Leaving Base Color at white is what gives an untinted
+texture, which is why every textured example in this guide leaves it alone.
 
 ---
 

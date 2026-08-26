@@ -10,19 +10,18 @@ in vec3 vertexWorldNormal;
 in vec4 vertexWorldTangent;
 
 uniform sampler2D albedoTexture;
+uniform vec4 baseColorFactor;
 
-// The normal map is optional per mesh: a material may carry none, and one that does is
-// still unusable on a mesh without tangents. The renderer decides, and says so here, so
-// that a mesh falling back to its vertex normal costs a uniform branch rather than a
-// second shader program.
+// A uniform branch rather than a second shader variant. Whether a mesh has a usable map
+// depends on its tangents as well as its material, so the renderer decides per draw.
 uniform sampler2D normalTexture;
 uniform bool hasNormalMap;
 
-// How strongly the map perturbs the surface normal. 1 is the map at full strength.
+// 1 is the map at full strength, 0 leaves the surface flat.
 uniform float normalTextureScale;
 
 #if MAX_LIGHTS > 0
-// How many entries of the light arrays below are filled for this draw.
+// Entries filled in the arrays below; anything past it is stale.
 uniform int lightCount;
 
 // xyz = world position, w = attenuation radius
@@ -32,25 +31,17 @@ uniform vec4 lightPositionRadius[MAX_LIGHTS];
 uniform vec4 lightColorIntensity[MAX_LIGHTS];
 #endif
 
-// Stands in for light arriving from everywhere, so faces turned away from every light are
-// not pure black. Split into what arrives from above and what bounces back up from below, so
-// that ambient light still varies with the way a surface faces: a single flat value lights
-// every unlit face identically and erases their shape.
-//
-// Radiance rather than color: the ambient intensity is one dial over both, so it is already
-// folded in by the time these arrive.
+// Light arriving from everywhere, so faces turned away from every light are not pure black.
+// Split sky from ground so it still varies with facing - one flat value would erase the shape
+// of every unlit face. Radiance, not color: the ambient intensity dial is already folded in.
 uniform vec3 ambientSkyRadiance;
 uniform vec3 ambientGroundRadiance;
 
 out vec4 outColor;
 
-// Rebuilds the shading normal from the tangent-space normal map, or returns the interpolated
-// vertex normal unchanged when this mesh has no usable map.
-//
-// Interpolating across a triangle leaves the tangent neither unit-length nor square to the
-// normal, so it is re-orthogonalized (Gram-Schmidt) before the bitangent is derived from it.
-// The bitangent is not stored: its direction follows from the normal and tangent, and only
-// its handedness has to be carried, which keeps mirrored UV islands shading correctly.
+// Interpolation leaves the tangent neither unit-length nor square to the normal, so it is
+// re-orthogonalized first. The bitangent follows from the normal and tangent, so only its
+// handedness is stored - which is what keeps mirrored UV islands shading correctly.
 vec3 shadingNormal(vec3 interpolatedNormal) {
   if (!hasNormalMap) {
     return interpolatedNormal;
@@ -63,19 +54,17 @@ vec3 shadingNormal(vec3 interpolatedNormal) {
   // Maps are stored with the [-1, 1] components biased into the [0, 1] the texture can hold.
   vec3 tangentSpaceNormal = texture(normalTexture, vertexTextureCoords).xyz * 2.0 - 1.0;
 
-  // Scaling only what lies along the surface - the tangent and bitangent components - tilts
-  // the normal back toward the geometric one without changing which way it leans. Below 1
-  // that flattens the relief, above 1 it deepens it, and 0 leaves the surface flat.
+  // Scaling only the components along the surface tilts the normal back toward the geometric
+  // one without changing which way it leans.
   tangentSpaceNormal *= vec3(normalTextureScale, normalTextureScale, 1.0);
 
   return normalize(mat3(tangent, bitangent, interpolatedNormal) * tangentSpaceNormal);
 }
 
-// Lambert diffuse: the albedo texture scaled by how squarely each light faces the surface.
-// Purely diffuse by design - there is no specular term, and none is coming. A material that
-// wants one belongs on pbrMetallicRoughness instead.
+// Purely diffuse by design - no specular term, and none is coming. A material that wants one
+// belongs on pbrMetallicRoughness instead.
 void main() {
-  vec4 albedo = texture(albedoTexture, vertexTextureCoords);
+  vec4 albedo = texture(albedoTexture, vertexTextureCoords) * baseColorFactor;
   vec3 surfaceNormal = shadingNormal(normalize(vertexWorldNormal));
 
   // Y-up: 1 where the surface looks straight up at the sky, 0 where it looks at the ground.
@@ -90,9 +79,9 @@ void main() {
     float lightDistance = length(toLight);
     vec3 lightDirection = lightDistance > 0.0 ? toLight / lightDistance : surfaceNormal;
 
-    // Inverse-square falloff windowed so that it reaches exactly zero at the attenuation
-    // radius: the renderer drops a light past its radius, and without the window that cut
-    // would show up as a seam. The +1 keeps the light finite at its own position.
+    // Windowed to reach exactly zero at the radius: the renderer drops a light past it, and
+    // an unwindowed falloff would show that cut as a seam. The +1 keeps the light finite at
+    // its own position.
     float window = clamp(1.0 - pow(lightDistance / radius, 4.0), 0.0, 1.0);
     float attenuation = (window * window) / (lightDistance * lightDistance + 1.0);
 

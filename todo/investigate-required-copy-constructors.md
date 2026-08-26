@@ -116,3 +116,13 @@ preference does not apply. A struct needing rvalue assignment still hand-rolls t
       compiler's generated ones suffice (single inout-copyable member), or replace with the mixin.
 - [ ] Decide whether the mixin's shallow-copy cast branch should be opt-in, so an owning pointer
       field cannot be aliased by accident.
+- [ ] Decide what to do about the `!__traits(isStaticArray, ...)` guard in both mixin methods.
+      It dates from the mixin's first commit (`107cb4ac`) with no recorded reason, and it makes
+      the mixin **silently drop static array members**: the copy keeps whatever the field's
+      default initializer says, with no error at compile time or run time. Hit for real while
+      adding a `float[4] baseColorFactor` to `Material` (2026-08-26) — every copy reset it to
+      `[1,1,1,1]`, which surfaced only as a failing assert in an RGM loader test. Worked around
+      by making it a `BaseColorFactor` struct of four named floats
+      (`source/retrograde/assets/model.d`). Establish whether static arrays actually break the
+      `inout` copy (a `float[4]` copies fine by hand), and if not, drop the guard — a plain
+      `this.member = other.member` covers them.
