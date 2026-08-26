@@ -452,12 +452,28 @@ private OperationResult readMaterialData(const(ubyte)[] data, ref size_t offset,
 
     // Type-specific payload.
     if (material.type.referencesTexture) {
-        // Read the referenced texture index.
+        // Read the referenced texture index. 0 means the material has no albedo texture and
+        // takes its color from the base color factor alone.
         if (data.length - offset < 4) {
             return failure("Cannot read material texture index: Unexpected end of data.");
         }
 
         material.textureIndex = readUInt(data, offset);
+        offset += 4;
+
+        // The multiplier over that texture, stored even by a material without one - where it
+        // is the albedo outright rather than a tint.
+        if (data.length - offset < 16) {
+            return failure("Cannot read material base color factor: Unexpected end of data.");
+        }
+
+        material.baseColorFactor.r = readFloat(data, offset);
+        offset += 4;
+        material.baseColorFactor.g = readFloat(data, offset);
+        offset += 4;
+        material.baseColorFactor.b = readFloat(data, offset);
+        offset += 4;
+        material.baseColorFactor.a = readFloat(data, offset);
         offset += 4;
     }
 
@@ -672,7 +688,10 @@ private OperationResult validateMaterialTextureReferences(Model* model) {
     Texture[] textures = model.textures.arr();
 
     foreach (ref material; materials) {
-        if (material.type.referencesTexture && !hasTexture(textures, material.textureIndex)) {
+        // An albedo texture index of 0 means the material has none and is colored by its base
+        // color factor alone, so only a non-zero one has to resolve.
+        if (material.type.referencesTexture && material.textureIndex != 0
+            && !hasTexture(textures, material.textureIndex)) {
             return failure("Material references unknown texture index.");
         }
 
@@ -980,7 +999,7 @@ void runRgmTests() {
     });
 
     test("Load model with one Unlit material referencing a texture", {
-        ubyte[148] modelData = [
+        ubyte[164] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -1015,6 +1034,10 @@ void runRgmTests() {
             0x02, // Material type (Unlit)
             0x00, // Common flags (none)
             0x01, 0x00, 0x00, 0x00, // Texture index (1)
+            0x00, 0x00, 0x00, 0x3F, // Base color factor R (0.5)
+            0x00, 0x00, 0x80, 0x3E, // Base color factor G (0.25)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor B (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor A (1)
 
             // Texture 1
             0x01, 0x00, 0x00, 0x00, // Texture index (1)
@@ -1036,6 +1059,10 @@ void runRgmTests() {
         assert(model.materials[0].type == MaterialType.unlit);
         assert(model.materials[0].doubleSided == false);
         assert(model.materials[0].textureIndex == 1);
+        assert(model.materials[0].baseColorFactor.r == 0.5f);
+        assert(model.materials[0].baseColorFactor.g == 0.25f);
+        assert(model.materials[0].baseColorFactor.b == 1.0f);
+        assert(model.materials[0].baseColorFactor.a == 1.0f);
         assert(model.meshes[0].materialIndex == 1);
 
         assert(model.textures.length == 1);
@@ -1099,7 +1126,7 @@ void runRgmTests() {
     });
 
     test("Load model with multiple materials using non-sequential indices", {
-        ubyte[167] modelData = [
+        ubyte[183] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -1141,6 +1168,10 @@ void runRgmTests() {
             0x02, // Material type (Unlit)
             0x00, // Common flags (none)
             0x02, 0x00, 0x00, 0x00, // Texture index (2)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor R (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor G (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor B (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor A (1)
 
             // Material 2: Vertex Colors at index 9
             0x09, 0x00, 0x00, 0x00, // Material index (9)
@@ -1457,7 +1488,7 @@ void runRgmTests() {
     });
 
     test("Reject unlit material referencing unknown texture index", {
-        ubyte[28] modelData = [
+        ubyte[44] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -1470,6 +1501,10 @@ void runRgmTests() {
             0x02, // Material type (Unlit)
             0x00, // Common flags (none)
             0x63, 0x00, 0x00, 0x00, // Texture index (99 - undefined)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor R (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor G (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor B (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor A (1)
         ];
 
         auto result = loadModel(modelData);
@@ -1477,7 +1512,7 @@ void runRgmTests() {
     });
 
     test("Load model with a PBR material referencing an albedo and a normal texture", {
-        ubyte[78] modelData = [
+        ubyte[94] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -1490,6 +1525,10 @@ void runRgmTests() {
             0x04, // Material type (PBR Metallic-Roughness)
             0x00, // Common flags (none)
             0x01, 0x00, 0x00, 0x00, // Albedo texture index (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor R (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor G (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor B (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor A (1)
             0x02, 0x00, 0x00, 0x00, // Normal texture index (2)
             0x00, 0x00, 0x00, 0x3F, // Normal texture scale (0.5)
 
@@ -1521,6 +1560,8 @@ void runRgmTests() {
         assert(model.materials.length == 1);
         assert(model.materials[0].type == MaterialType.pbrMetallicRoughness);
         assert(model.materials[0].textureIndex == 1);
+        assert(model.materials[0].baseColorFactor.r == 1.0f);
+        assert(model.materials[0].baseColorFactor.a == 1.0f);
         assert(model.materials[0].normalTextureIndex == 2);
         assert(model.materials[0].normalTextureScale == 0.5);
 
@@ -1530,7 +1571,7 @@ void runRgmTests() {
     });
 
     test("Load model with a Lambert material without a normal texture", {
-        ubyte[57] modelData = [
+        ubyte[73] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -1543,6 +1584,10 @@ void runRgmTests() {
             0x03, // Material type (Lambert)
             0x00, // Common flags (none)
             0x01, 0x00, 0x00, 0x00, // Albedo texture index (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor R (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor G (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor B (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor A (1)
             0x00, 0x00, 0x00, 0x00, // Normal texture index (0 - none)
             0x00, 0x00, 0x80, 0x3F, // Normal texture scale (1.0 - unused without a map)
 
@@ -1569,7 +1614,7 @@ void runRgmTests() {
     });
 
     test("Reject material referencing unknown normal texture index", {
-        ubyte[57] modelData = [
+        ubyte[73] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -1582,6 +1627,10 @@ void runRgmTests() {
             0x04, // Material type (PBR Metallic-Roughness)
             0x00, // Common flags (none)
             0x01, 0x00, 0x00, 0x00, // Albedo texture index (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor R (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor G (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor B (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor A (1)
             0x63, 0x00, 0x00, 0x00, // Normal texture index (99 - undefined)
             0x00, 0x00, 0x80, 0x3F, // Normal texture scale (1.0)
 
@@ -1600,7 +1649,42 @@ void runRgmTests() {
         assert(!result.isSuccessful());
     });
 
-    test("Reject lit material truncated after its albedo texture index", {
+    test("Load model with a material that has no albedo texture, only a base color", {
+        ubyte[44] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
+
+            // Material 1: index 0 means no texture, so the factor is the albedo outright.
+            // The file declares no textures at all and still validates.
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+            0x02, // Material type (Unlit)
+            0x00, // Common flags (none)
+            0x00, 0x00, 0x00, 0x00, // Albedo texture index (0 - none)
+            0x90, 0x39, 0x89, 0x3D, // Base color factor R (0.067004323)
+            0x4A, 0xCD, 0x4C, 0x3F, // Base color factor G (0.80000746)
+            0x4B, 0x0B, 0x06, 0x3E, // Base color factor B (0.13090245)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor A (1)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(result.isSuccessful());
+
+        auto model = result.unique();
+        assert(model.materials.length == 1);
+        assert(model.materials[0].type == MaterialType.unlit);
+        assert(model.materials[0].textureIndex == 0);
+        assert(model.materials[0].baseColorFactor.r == 0.067004323f);
+        assert(model.materials[0].baseColorFactor.g == 0.80000746f);
+        assert(model.materials[0].baseColorFactor.b == 0.13090245f);
+        assert(model.materials[0].baseColorFactor.a == 1.0f);
+        assert(model.textures.length == 0);
+    });
+
+    test("Reject textured material truncated after its albedo texture index", {
         ubyte[28] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
@@ -1609,7 +1693,7 @@ void runRgmTests() {
             0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
             0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
 
-            // Material 1: the mandatory normal texture index is missing
+            // Material 1: the mandatory base color factor is missing
             0x01, 0x00, 0x00, 0x00, // Material index (1)
             0x04, // Material type (PBR Metallic-Roughness)
             0x00, // Common flags (none)
@@ -1620,8 +1704,30 @@ void runRgmTests() {
         assert(!result.isSuccessful());
     });
 
+    test("Reject textured material truncated part-way through its base color factor", {
+        ubyte[36] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
+
+            // Material 1: only two of the factor's four components are present
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+            0x02, // Material type (Unlit)
+            0x00, // Common flags (none)
+            0x01, 0x00, 0x00, 0x00, // Albedo texture index (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor R (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor G (1)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
     test("Reject lit material truncated after its normal texture index", {
-        ubyte[32] modelData = [
+        ubyte[48] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -1634,6 +1740,10 @@ void runRgmTests() {
             0x04, // Material type (PBR Metallic-Roughness)
             0x00, // Common flags (none)
             0x01, 0x00, 0x00, 0x00, // Albedo texture index (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor R (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor G (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor B (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor A (1)
             0x00, 0x00, 0x00, 0x00, // Normal texture index (0 - none)
         ];
 

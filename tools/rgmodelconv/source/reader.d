@@ -288,6 +288,19 @@ private MaterialInfo parseMaterial(ref JSONValue gltf, JSONValue mat) {
         }
     }
 
+    // Read whether or not a texture was found: the factor multiplies the texture where there
+    // is one, and is the material's color outright where there is not. A malformed factor is
+    // ignored rather than partially applied, leaving glTF's own default of opaque white.
+    if (pbrP !is null) {
+        if (auto factorP = "baseColorFactor" in pbrP.object) {
+            if (factorP.type == JSONType.array && factorP.array.length == 4) {
+                foreach (i, ref component; factorP.array) {
+                    info.baseColorFactor[i] = jsonFloat(component);
+                }
+            }
+        }
+    }
+
     if (normalP !is null) {
         TextureRef texture = resolveTextureRef(gltf, *normalP);
         if (texture.path.length > 0 && !startsWith(texture.path, "data:")) {
