@@ -28,9 +28,11 @@ not.** A regular `Principled BSDF` material exports as glTF PBR (metallic-roughn
 becomes a `pbrMetallicRoughness` material in the `.rgm`, keeping its **Base Color** and
 **Normal** textures (with the normal map's strength) and dropping the rest
 (metallic-roughness, occlusion, emissive) —
-the RGM format has nowhere to put those yet. The lit types (`lambert`,
-`pbrMetallicRoughness`) carry the normal map; `unlit` keeps only its base color texture,
-since an unlit material is never shaded.
+the RGM format has nowhere to put those yet. The **Metallic** and **Roughness** sliders
+*are* carried over, as single values for the whole material: it is only a texture plugged
+into them that is dropped. The lit types (`lambert`, `pbrMetallicRoughness`) carry the
+normal map; `unlit` keeps only its base color texture, since an unlit material is never
+shaded.
 
 **A base color texture is optional.** A material whose **Base Color** is a plain color
 rather than an image is still a real material: the color is carried over as the base
@@ -206,9 +208,10 @@ Alternatively, keep the `Principled BSDF` and plug the Image Texture into its
 
 This exports as a lit PBR material, so the converter writes a
 `pbrMetallicRoughness` material instead — carrying the same base color texture,
-plus a **Normal** map if you plug one in. The rest of the Principled inputs
-(Metallic, Roughness, Emission, ...) are **not** converted — they are dropped,
-including any image textures plugged into them. See `pbrMetallicRoughness` below.
+plus a **Normal** map if you plug one in, and the **Metallic** and **Roughness**
+slider values. The rest of the Principled inputs (Emission, Specular, ...) are
+**not** converted — they are dropped, as are any image textures plugged into
+Metallic or Roughness. See `pbrMetallicRoughness` below.
 
 > At the moment `unlit` only works when exporting as a **`.gltf`** file, because
 > embedded images (as produced by `.glb`) are not supported yet.
@@ -243,7 +246,9 @@ knows nothing of Retrograde's shading models — so the two look identical until
 engine draws them.
 
 Like the other lit type, the **Base Color** and **Normal** textures are carried over
-and the remaining Principled inputs are dropped. See
+and the remaining Principled inputs are dropped. Being purely diffuse, `lambert` has no
+use for the **Metallic** and **Roughness** sliders either, so unlike `pbrMetallicRoughness`
+it does not store them. See
 [Adding a normal map](#adding-a-normal-map) under `pbrMetallicRoughness`.
 
 See `asset-examples/cube-lambert.blend` for a working example.
@@ -267,11 +272,22 @@ would in Blender:
 Anything not declaring `KHR_materials_unlit` and referencing a base color texture
 lands here, so this is what a normal Blender material converts to.
 
-> The remaining PBR inputs (metallic, roughness, occlusion, emissive) are dropped
-> by the converter for now. The engine's shader for this type lights the albedo
-> texture, but with a plain Lambert diffuse term standing in for the
-> metallic-roughness BRDF, so a material set up this way currently renders exactly
-> like a `lambert` one until those inputs are stored and shaded.
+The **Metallic** and **Roughness** sliders are carried over as single values for the
+whole material, and the engine shades with them: a Cook-Torrance metallic-roughness
+BRDF, so **Metallic** decides whether the base color is the surface's diffuse color or
+the tint of its reflection, and **Roughness** how tight the highlight is. A texture
+plugged into either slider is dropped, as are the remaining PBR inputs (occlusion,
+emissive).
+
+> **Watch the Metallic slider.** glTF defaults an unset `metallicFactor` to `1.0`, so
+> a material exported without touching it is a *full metal*: no diffuse color at all,
+> lit only by reflections. Blender's own default is `0.0`, which exports explicitly —
+> but a material assembled by other means may not say, and will render dark and
+> mirror-like. Set the slider deliberately.
+
+> Reflections come from the hemispherical ambient light, not from the scene: there is
+> no environment map yet, so a smooth metal reflects the sky/ground gradient rather
+> than what is actually around it. Highlights from point lights are real.
 
 The same `.gltf`-only restriction on external images applies as for `unlit`.
 
