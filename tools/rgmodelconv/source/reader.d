@@ -263,7 +263,8 @@ private MaterialInfo parseMaterial(ref JSONValue gltf, JSONValue mat) {
     info.doubleSided = optBool(mat, "doubleSided", false);
 
     // The base color (albedo) and normal textures are converted; the remaining PBR
-    // slots (metallic-roughness, occlusion and emissive) have no RGM payload yet. They
+    // texture slots (metallic-roughness, occlusion and emissive) have no RGM payload
+    // yet — only the scalar metallic and roughness factors are carried over. They
     // are still counted in `hasAnyTexture`, so a material carrying only, say, an
     // occlusion map is not mistaken for a textureless vertex-colored one.
     JSONValue* pbrP = "pbrMetallicRoughness" in mat.object;
@@ -299,6 +300,12 @@ private MaterialInfo parseMaterial(ref JSONValue gltf, JSONValue mat) {
                 }
             }
         }
+
+        // glTF defines both as 1 when absent — a fully rough metal — so an omitted factor
+        // and one written out as 1 mean the same thing. Only a material shaded with a
+        // metallic-roughness BRDF ends up writing them.
+        info.metallicFactor = optFloat(*pbrP, "metallicFactor", 1.0f);
+        info.roughnessFactor = optFloat(*pbrP, "roughnessFactor", 1.0f);
     }
 
     if (normalP !is null) {

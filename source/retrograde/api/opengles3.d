@@ -17,14 +17,15 @@ version (OpenGLES3)  :  //
 
 import retrograde.engine.entity : EntityId, hasComponent, withComponentData, addComponent,
     getComponentData;
-import retrograde.engine.rendering : Color, RenderPass, Viewport, renderPasses, MaterialShader;
+import retrograde.engine.rendering : activeCameraWorldPosition, Color, RenderPass, Viewport,
+    renderPasses, MaterialShader;
 import retrograde.engine.rendering.lighting : ActiveLight, ambientGroundColor, ambientIntensity,
     ambientSkyColor, selectActiveLights;
 import retrograde.engine.rendering.materialshader : maxLights;
 
 import retrograde.assets.model : ModelComponentType, Model, MaterialType, MaterialIndex, noMaterial,
-    isLit, referencesTexture, referencesNormalTexture, BaseColorFactor, TextureIndex, Texture,
-    TextureMagFilter, TextureMinFilter, TextureWrap;
+    hasMetallicRoughness, isLit, referencesTexture, referencesNormalTexture, BaseColorFactor,
+    TextureIndex, Texture, TextureMagFilter, TextureMinFilter, TextureWrap;
 import retrograde.assets.image : Image, ChannelFormat;
 import retrograde.assets.assetlibrary : getModel, getTexture;
 
@@ -129,6 +130,14 @@ void initMaterialShader(ref MaterialShader materialShader) {
         shaderInfo.hasNormalMapUniformLocation = glGetUniformLocation(program, "hasNormalMap");
         shaderInfo.normalTextureScaleUniformLocation = glGetUniformLocation(program,
             "normalTextureScale");
+    }
+
+    if (materialShader.materialType.hasMetallicRoughness) {
+        shaderInfo.metallicFactorUniformLocation = glGetUniformLocation(program, "metallicFactor");
+        shaderInfo.roughnessFactorUniformLocation = glGetUniformLocation(program,
+            "roughnessFactor");
+        shaderInfo.cameraWorldPositionUniformLocation = glGetUniformLocation(program,
+            "cameraWorldPosition");
     }
 
     if (materialShader.materialType.isLit) {
@@ -253,6 +262,8 @@ void loadEntityModel(EntityId entity) {
                         materialNormalTextureIndex = material.normalTextureIndex;
                         meshInfo.normalTextureScale = cast(GLfloat) material.normalTextureScale;
                         meshInfo.baseColorFactor = material.baseColorFactor;
+                        meshInfo.metallicFactor = cast(GLfloat) material.metallicFactor;
+                        meshInfo.roughnessFactor = cast(GLfloat) material.roughnessFactor;
                         break;
                     }
                 }
@@ -695,6 +706,9 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
             GLint normalTextureUniformLocation = -1;
             GLint hasNormalMapUniformLocation = -1;
             GLint normalTextureScaleUniformLocation = -1;
+            GLint metallicFactorUniformLocation = -1;
+            GLint roughnessFactorUniformLocation = -1;
+            GLint cameraWorldPositionUniformLocation = -1;
             GLint modelMatrixUniformLocation = -1;
             GLint normalMatrixUniformLocation = -1;
             GLint ambientSkyRadianceUniformLocation = -1;
@@ -723,6 +737,12 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
                     hasNormalMapUniformLocation = materialShaderInfo.hasNormalMapUniformLocation;
                     normalTextureScaleUniformLocation = materialShaderInfo
                         .normalTextureScaleUniformLocation;
+                    metallicFactorUniformLocation = materialShaderInfo
+                        .metallicFactorUniformLocation;
+                    roughnessFactorUniformLocation = materialShaderInfo
+                        .roughnessFactorUniformLocation;
+                    cameraWorldPositionUniformLocation = materialShaderInfo
+                        .cameraWorldPositionUniformLocation;
                     modelMatrixUniformLocation = materialShaderInfo.modelMatrixUniformLocation;
                     normalMatrixUniformLocation = materialShaderInfo.normalMatrixUniformLocation;
                     ambientSkyRadianceUniformLocation = materialShaderInfo
@@ -849,6 +869,26 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
                 }
             }
 
+            if (useMaterial && meshInfo.materialType.hasMetallicRoughness) {
+                if (metallicFactorUniformLocation >= 0) {
+                    glUniform1f(metallicFactorUniformLocation, meshInfo.metallicFactor);
+                }
+
+                if (roughnessFactorUniformLocation >= 0) {
+                    glUniform1f(roughnessFactorUniformLocation, meshInfo.roughnessFactor);
+                }
+
+                if (cameraWorldPositionUniformLocation >= 0) {
+                    GLfloat[3] cameraWorldPositionData = [
+                        cast(GLfloat) activeCameraWorldPosition.x,
+                        cast(GLfloat) activeCameraWorldPosition.y,
+                        cast(GLfloat) activeCameraWorldPosition.z
+                    ];
+
+                    glUniform3fv(cameraWorldPositionUniformLocation, 1, cameraWorldPositionData[]);
+                }
+            }
+
             if (meshInfo.doubleSided) {
                 glDisable(GL_CULL_FACE);
             }
@@ -921,6 +961,11 @@ private struct GlMeshInfo {
     GLuint normalTextureObject;
     GLfloat normalTextureScale = 1.0;
 
+    /// Dials of the mesh material's metallic-roughness BRDF. Both start at glTF's default for
+    /// an absent factor - a fully rough metal - which is what `Material` defaults them to.
+    GLfloat metallicFactor = 1.0;
+    GLfloat roughnessFactor = 1.0;
+
     /// Multiplier over the albedo, from the mesh's material. Applies whether or not the
     /// material has a texture; without one it is the mesh's color outright.
     BaseColorFactor baseColorFactor;
@@ -966,6 +1011,9 @@ private struct GlMaterialShaderInfo {
     GLint normalTextureUniformLocation = -1;
     GLint hasNormalMapUniformLocation = -1;
     GLint normalTextureScaleUniformLocation = -1;
+    GLint metallicFactorUniformLocation = -1;
+    GLint roughnessFactorUniformLocation = -1;
+    GLint cameraWorldPositionUniformLocation = -1;
     GLint modelMatrixUniformLocation = -1;
     GLint normalMatrixUniformLocation = -1;
     GLint ambientSkyRadianceUniformLocation = -1;

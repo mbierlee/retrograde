@@ -162,6 +162,8 @@ void renderFrame() {
         });
     }
 
+    activeCameraWorldPosition = position;
+
     viewMatrix = createViewMatrixQ(position, orientation);
     const Matrix4 viewProjectionMatrix = projectionMatrix * viewMatrix;
 
@@ -241,6 +243,8 @@ Array!RenderPass renderPasses;
 
 HashMap!(MaterialType, MaterialShader) materialShaders;
 
+Vector3 activeCameraWorldPosition;
+
 struct Color {
     /// Red
     float r;
@@ -265,8 +269,9 @@ enum LightType {
  *
  * The defaults make a plain `Light()` a working white point light: the world is metric
  * (one unit is one meter), and at the renderer's windowed inverse-square falloff an
- * intensity and radius of 10 behave like a bare room lamp. It is saturated out to about
- * 3 m, clearly falling off by 5 m, nearly dark at 8 m and exactly zero at its radius.
+ * intensity of 30 over a radius of 10 behaves like a bare room lamp. It is saturated out
+ * to about 3 m, clearly falling off by 5 m, nearly dark at 8 m and exactly zero at its
+ * radius.
  */
 struct Light {
     LightType lightType;
@@ -280,7 +285,10 @@ struct Light {
     /// Brightness/intensity modifier.
     /// Unit depends on the type of light.
     /// An intensity of 0 effectively disables the light.
-    float intensity = 10;
+    ///
+    /// The lit materials divide their diffuse response by pi, so this default carries the
+    /// factor of pi that keeps a plain `Light()` as bright as the description above.
+    float intensity = 30;
 
     /// Radius in which the light operates.
     /// When outside of the radius, it has no effect.

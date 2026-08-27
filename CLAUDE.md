@@ -10,6 +10,17 @@ Retrograde is a D language game engine compiled with **`-betterC`** (no GC, no D
 - **Test:** `make test-native` (uses `dub test --config=unittest-native`, enables `Native` + `UnitTesting` versions). This is the preferred way to verify changes.
 - **WASM build:** from `wasmtest/`, `make build-wasm` (requires LDC2, targets `wasm32-unknown-unknown-wasm`)
 - **WASM test:** from `wasmtest/`, `make run-tests-headless` (builds the suite and runs it under Node via `run-tests-headless.mjs`; exits non-zero on a trap or failed assert). Use this to check that a change also holds up on WASM — a green native suite does not prove it.
+- **Shaders:** nothing above compiles GLSL — the shaders in `source/retrograde/shaders/` are only compiled by the browser at runtime, so a broken one passes every suite. Check them with `glslangValidator`, substituting the engine's placeholder first:
+
+  ```
+  sed 's/<%maxLights%>/8/' <shader>_vertex.glsl > /tmp/x.vert
+  sed 's/<%maxLights%>/8/' <shader>_fragment.glsl > /tmp/x.frag
+  glslangValidator -l /tmp/x.vert /tmp/x.frag
+  ```
+
+  `-l` links the pair, which is what catches a mismatch between the vertex shader's outputs and the fragment shader's inputs. Run it for **each** `maxLights` value (0, 4, 8, 16, 32) — the `#if MAX_LIGHTS > 0` blocks compile differently, and 0 is easy to break without noticing. Use the default OpenGL semantics, **not** `-V`: Vulkan semantics reject the plain non-opaque uniforms these shaders use.
+
+  **Only run this when `glslangValidator` is already installed system-wide** (it is on `PATH`). Do **not** install it yourself — no `apt install`, no npm package, no downloaded binary. If it is missing, say so and leave the shaders unvalidated rather than pulling in a copy.
 
 ## Critical Constraints (betterC)
 

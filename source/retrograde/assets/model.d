@@ -90,7 +90,7 @@ enum MaterialType : ubyte {
     vertexColors = 1, /// Use only the per-vertex RGB colors. No payload.
     unlit = 2, /// Passthrough material — an optional texture (by index) from the model's texture list, tinted by a base color factor.
     lambert = 3, /// Purely diffuse lit material. References an optional albedo texture and base color factor, plus an optional normal map (both textures by index). Has no glTF counterpart to be inferred from, so a converter only assigns it when a material asks for it by name.
-    pbrMetallicRoughness = 4 /// Physically based metallic-roughness material. An upgrade of `lambert`: same albedo and normal map references for now, but shaded with a full BRDF.
+    pbrMetallicRoughness = 4 /// Physically based metallic-roughness material. An upgrade of `lambert`: the same albedo and normal map references plus the metallic and roughness factors, shaded with a full BRDF.
 }
 
 /**
@@ -133,6 +133,8 @@ struct Material {
     BaseColorFactor baseColorFactor; /// Populated when `type.referencesTexture`: an RGBA multiplier over the sampled albedo texture. With no texture referenced it is the albedo outright, which is what lets a flat-colored material exist without an image asset. Stored and used as-is: no range check, no color-space conversion.
     TextureIndex normalTextureIndex; /// Populated when `type.referencesNormalTexture`: the index of the referenced tangent-space normal map `Texture`. 0 when the material has none.
     float normalTextureScale = 1.0; /// Populated when `type.referencesNormalTexture`: how strongly the normal map perturbs the surface normal. Scales the tangent and bitangent components of the sampled normal, leaving the component along the surface normal alone: 1 is full strength, 0 is flat, above 1 exaggerates.
+    float metallicFactor = 1.0; /// Populated when `type.hasMetallicRoughness`: how metallic the surface is, 0 being a dielectric and 1 a raw metal. Stored and used as-is: no range check.
+    float roughnessFactor = 1.0; /// Populated when `type.hasMetallicRoughness`: how rough the surface is, 0 being a perfect mirror and 1 fully diffuse. Stored and used as-is: no range check.
 
     mixin CopyConstructors!Material;
 }
@@ -162,6 +164,17 @@ bool referencesTexture(MaterialType type) {
  */
 bool referencesNormalTexture(MaterialType type) {
     return type == MaterialType.lambert || type == MaterialType.pbrMetallicRoughness;
+}
+
+/**
+ * Whether materials of this type carry the metallic and roughness factors that drive a
+ * metallic-roughness BRDF.
+ *
+ * Only `pbrMetallicRoughness` does: `lambert` is purely diffuse and has no reflectance
+ * model to feed them into, which is the one thing separating the two payloads.
+ */
+bool hasMetallicRoughness(MaterialType type) {
+    return type == MaterialType.pbrMetallicRoughness;
 }
 
 /**

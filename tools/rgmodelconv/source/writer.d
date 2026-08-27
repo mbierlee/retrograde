@@ -10,8 +10,9 @@
  * Textured materials keep their source shading model: `KHR_materials_unlit` ones
  * become `unlit`, the rest become `pbrMetallicRoughness`. Both carry the base color
  * (albedo) texture; the lit types additionally carry the normal map and its strength
- * when the source supplies one. The remaining metallic-roughness inputs are dropped, as
- * the RGM format cannot express them yet.
+ * when the source supplies one, and `pbrMetallicRoughness` carries the metallic and
+ * roughness factors. The remaining metallic-roughness inputs (its texture, occlusion
+ * and emissive) are dropped, as the RGM format cannot express them yet.
  *
  * A material can name the type it wants directly in its glTF `extras.rg_mat`, which
  * overrides that classification. This is the only way to assign a type that no glTF
@@ -35,9 +36,9 @@ import std.string : icmp;
 import std.typecons : Nullable;
 
 import retrograde.assets.rgm : rgmMagicNumber;
-import retrograde.assets.model : MaterialType, MaterialFlags, maxUvChannels,
-    MeshAttributeFlags, noMaterial, referencesTexture, referencesNormalTexture, TextureType,
-    TextureMagFilter, TextureMinFilter, TextureWrap;
+import retrograde.assets.model : hasMetallicRoughness, MaterialType, MaterialFlags,
+    maxUvChannels, MeshAttributeFlags, noMaterial, referencesTexture, referencesNormalTexture,
+    TextureType, TextureMagFilter, TextureMinFilter, TextureWrap;
 
 import model : Primitive, MaterialInfo, ModelData, TextureRef;
 
@@ -245,8 +246,8 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
     // `vertexColors`; everything else maps to `unlit` or `pbrMetallicRoughness` depending
     // on its shading model, carrying an albedo texture index that is 0 when it has none.
     // The lit types carry a further texture index for their normal map, likewise 0 when
-    // they have none. Only an explicit `rg_mat` override still produces the `invalid`
-    // sentinel.
+    // they have none, and the PBR type closes with its metallic and roughness factors.
+    // Only an explicit `rg_mat` override still produces the `invalid` sentinel.
     for (uint i = 0; i < materialCount; i++) {
         if (materialIndexMap[i] == 0) {
             continue;
@@ -281,6 +282,11 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
             // Written even without a map, where it goes unused: it keeps the payload a
             // fixed size, and a material that has no map has nothing to scale anyway.
             writeFloat(buf, data.materials[i].normalTextureScale); // Normal map strength
+        }
+
+        if (type.hasMetallicRoughness) {
+            writeFloat(buf, data.materials[i].metallicFactor); // Metallic factor
+            writeFloat(buf, data.materials[i].roughnessFactor); // Roughness factor
         }
     }
 

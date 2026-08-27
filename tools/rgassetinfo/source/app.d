@@ -24,8 +24,8 @@ import std.array : array;
 import retrograde.assets.rgm : loadModel, loadModelHeader, ModelHeader, rgmMagicNumber;
 import retrograde.assets.rgi : loadImageHeader, ImageHeader, rgiMagicNumber,
     CompressionType, ColorMode, IndexFormat, bytesPerIndex;
-import retrograde.assets.model : Model, Mesh, Material, MaterialType, noMaterial,
-    Texture, TextureType, TextureMagFilter, TextureMinFilter, TextureWrap;
+import retrograde.assets.model : hasMetallicRoughness, Model, Mesh, Material, MaterialType,
+    noMaterial, Texture, TextureType, TextureMagFilter, TextureMinFilter, TextureWrap;
 import retrograde.assets.image : ChannelFormat, bytesPerChannel;
 
 private enum AssetKind {
@@ -437,6 +437,7 @@ string materialPayloadDescription(ref Material material) {
     case MaterialType.pbrMetallicRoughness:
     case MaterialType.lambert:
         import std.conv : to;
+        import std.format : format;
 
         // The lit types carry a second, optional index; stated in both directions so an
         // absent normal map is not mistaken for the tool not reporting one at all. Its
@@ -444,7 +445,14 @@ string materialPayloadDescription(ref Material material) {
         string normal = material.normalTextureIndex == 0 ? ", no normal texture"
             : ", normal texture " ~ to!string(material.normalTextureIndex)
             ~ " (scale " ~ to!string(material.normalTextureScale) ~ ")";
-        return albedoDescription(material) ~ normal;
+
+        // Rounded like the base color factor, and for the same reason: exporters write
+        // these as full float expansions of a slider position.
+        string metallicRoughness = material.type.hasMetallicRoughness
+            ? format(", metallic %.3f, roughness %.3f",
+                material.metallicFactor, material.roughnessFactor) : "";
+
+        return albedoDescription(material) ~ normal ~ metallicRoughness;
     }
 }
 

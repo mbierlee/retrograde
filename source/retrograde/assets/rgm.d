@@ -13,8 +13,8 @@ module retrograde.assets.rgm;
 
 import retrograde.assets.model : Model, Vertex, Face, Mesh, UvCoord, Normal, Tangent,
     maxUvChannels, MeshAttributeFlags, Material, MaterialIndex, MaterialType, MaterialFlags,
-    noMaterial, referencesTexture, referencesNormalTexture, Texture, TextureIndex, TextureType,
-    TextureMagFilter, TextureMinFilter, TextureWrap;
+    noMaterial, hasMetallicRoughness, referencesTexture, referencesNormalTexture, Texture,
+    TextureIndex, TextureType, TextureMagFilter, TextureMinFilter, TextureWrap;
 import retrograde.assets.readercommon : readUInt, readUShort, readFloat;
 import retrograde.std.endian : toPlatformEndian, Endian;
 import retrograde.std.memory : ResultPtr, failedPtr, makeRaw, successPtr;
@@ -494,6 +494,21 @@ private OperationResult readMaterialData(const(ubyte)[] data, ref size_t offset,
         }
 
         material.normalTextureScale = readFloat(data, offset);
+        offset += 4;
+    }
+
+    if (material.type.hasMetallicRoughness) {
+        // The two dials of the metallic-roughness BRDF, always present for the types that
+        // shade with one. Neither is range-checked: like the base color factor, the value
+        // is used as stored.
+        if (data.length - offset < 8) {
+            return failure(
+                "Cannot read material metallic and roughness factors: Unexpected end of data.");
+        }
+
+        material.metallicFactor = readFloat(data, offset);
+        offset += 4;
+        material.roughnessFactor = readFloat(data, offset);
         offset += 4;
     }
 
@@ -1512,7 +1527,7 @@ void runRgmTests() {
     });
 
     test("Load model with a PBR material referencing an albedo and a normal texture", {
-        ubyte[94] modelData = [
+        ubyte[102] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -1531,6 +1546,8 @@ void runRgmTests() {
             0x00, 0x00, 0x80, 0x3F, // Base color factor A (1)
             0x02, 0x00, 0x00, 0x00, // Normal texture index (2)
             0x00, 0x00, 0x00, 0x3F, // Normal texture scale (0.5)
+            0x00, 0x00, 0x40, 0x3F, // Metallic factor (0.75)
+            0x00, 0x00, 0x80, 0x3E, // Roughness factor (0.25)
 
             // Texture 1
             0x01, 0x00, 0x00, 0x00, // Texture index (1)
@@ -1564,6 +1581,8 @@ void runRgmTests() {
         assert(model.materials[0].baseColorFactor.a == 1.0f);
         assert(model.materials[0].normalTextureIndex == 2);
         assert(model.materials[0].normalTextureScale == 0.5);
+        assert(model.materials[0].metallicFactor == 0.75);
+        assert(model.materials[0].roughnessFactor == 0.25);
 
         assert(model.textures.length == 2);
         assert(model.textures[0].path == "albedo.rgi");
@@ -1611,10 +1630,15 @@ void runRgmTests() {
         assert(model.materials[0].textureIndex == 1);
         assert(model.materials[0].normalTextureIndex == 0);
         assert(model.materials[0].normalTextureScale == 1.0);
+
+        // Lambert's payload ends at the normal map scale: it stores no metallic-roughness
+        // factors, so these keep their defaults rather than eating into the texture entry.
+        assert(model.materials[0].metallicFactor == 1.0);
+        assert(model.materials[0].roughnessFactor == 1.0);
     });
 
     test("Reject material referencing unknown normal texture index", {
-        ubyte[73] modelData = [
+        ubyte[81] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -1633,6 +1657,8 @@ void runRgmTests() {
             0x00, 0x00, 0x80, 0x3F, // Base color factor A (1)
             0x63, 0x00, 0x00, 0x00, // Normal texture index (99 - undefined)
             0x00, 0x00, 0x80, 0x3F, // Normal texture scale (1.0)
+            0x00, 0x00, 0x80, 0x3F, // Metallic factor (1.0)
+            0x00, 0x00, 0x80, 0x3F, // Roughness factor (1.0)
 
             // Texture 1
             0x01, 0x00, 0x00, 0x00, // Texture index (1)
@@ -1749,6 +1775,94 @@ void runRgmTests() {
 
         auto result = loadModel(modelData);
         assert(!result.isSuccessful());
+    });
+
+    test("Reject PBR material truncated after its normal texture scale", {
+        ubyte[52] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
+
+            // Material 1: the mandatory metallic and roughness factors are missing
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+            0x04, // Material type (PBR Metallic-Roughness)
+            0x00, // Common flags (none)
+            0x00, 0x00, 0x00, 0x00, // Albedo texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor R (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor G (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor B (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor A (1)
+            0x00, 0x00, 0x00, 0x00, // Normal texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Normal texture scale (1.0)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
+    test("Reject PBR material truncated part-way through its metallic factor", {
+        ubyte[54] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
+
+            // Material 1: only half of the metallic factor is present, and the roughness
+            // factor behind it is missing entirely
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+            0x04, // Material type (PBR Metallic-Roughness)
+            0x00, // Common flags (none)
+            0x00, 0x00, 0x00, 0x00, // Albedo texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor R (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor G (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor B (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor A (1)
+            0x00, 0x00, 0x00, 0x00, // Normal texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Normal texture scale (1.0)
+            0x00, 0x00, // Metallic factor (truncated)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
+    test("Load PBR material without textures, carrying only its factors", {
+        ubyte[60] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
+
+            // Material 1: a plain metal, described by its factors alone
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+            0x04, // Material type (PBR Metallic-Roughness)
+            0x00, // Common flags (none)
+            0x00, 0x00, 0x00, 0x00, // Albedo texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor R (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor G (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor B (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor A (1)
+            0x00, 0x00, 0x00, 0x00, // Normal texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Normal texture scale (1.0 - unused without a map)
+            0x00, 0x00, 0x80, 0x3F, // Metallic factor (1.0)
+            0x00, 0x00, 0x00, 0x00, // Roughness factor (0.0)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(result.isSuccessful());
+
+        auto model = result.unique();
+        assert(model.materials.length == 1);
+        assert(model.materials[0].type == MaterialType.pbrMetallicRoughness);
+        assert(model.materials[0].metallicFactor == 1.0);
+        assert(model.materials[0].roughnessFactor == 0.0);
     });
 
     test("Load model with normals", {

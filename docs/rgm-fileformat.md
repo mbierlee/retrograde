@@ -167,7 +167,7 @@ part of each `materialEntrySize`, which is fixed per type:
 | 1 Vertex Colors            | 6                   |
 | 2 Unlit                    | 26                  |
 | 3 Lambert                  | 34                  |
-| 4 PBR Metallic-Roughness   | 34                  |
+| 4 PBR Metallic-Roughness   | 42                  |
 
 ### Material Types
 
@@ -176,7 +176,7 @@ part of each `materialEntrySize`, which is fixed per type:
 | 1     | Vertex Colors | Renders using only the per-vertex RGB colors. No payload.    |
 | 2     | Unlit         | Passthrough material — an optional texture referenced by index, tinted by a base color factor. |
 | 3     | Lambert       | Purely diffuse lit material. References its optional albedo texture and base color factor, plus an optional normal map by index and that map's strength. |
-| 4     | PBR Metallic-Roughness | Physically based material. An upgrade of `Lambert`; currently references the same albedo texture, base color factor, optional normal map and strength. |
+| 4     | PBR Metallic-Roughness | Physically based material. An upgrade of `Lambert`: references the same albedo texture, base color factor, optional normal map and strength, followed by the metallic and roughness factors. |
 
 ### Common Flags
 
@@ -264,11 +264,34 @@ explicitly through its `rg_mat` extra (see the [Blender authoring guide](blender
 
 ### PBR Metallic-Roughness Payload (type = 4)
 
-Identical to the `Lambert` payload — the same albedo index and base color factor followed by the
-same optional normal map index, subject to the same rules — and shaded from the same inputs for
-now: it is the upgrade path
-from it, differing in the BRDF rather than in what the file stores. The remaining PBR inputs
-(metallic-roughness, occlusion, emissive) are not stored yet; they will extend this payload.
+| Offset | Size | Type    | Description                                                              |
+| ------ | ---- | ------- | ------------------------------------------------------------------------ |
+| 0x00   | 4    | uint    | Albedo texture index (references a texture by its `index`, 0 = none)     |
+| 0x04   | 16   | float×4 | Base color factor (RGBA, see "Base Color Factor" above)                  |
+| 0x14   | 4    | uint    | Normal map texture index (references a texture by its `index`, 0 = none) |
+| 0x18   | 4    | float   | Normal map scale (strength of the normal map)                            |
+| 0x1C   | 4    | float   | Metallic factor                                                          |
+| 0x20   | 4    | float   | Roughness factor                                                         |
+
+The albedo index, base color factor, normal map index and normal map scale are the `Lambert`
+payload verbatim, subject to the same rules. What the PBR type adds is the pair of factors behind
+them, the dials of its metallic-roughness BRDF:
+
+- **Metallic factor** — how metal the surface is. `0.0` is a dielectric (plastic, wood, stone),
+  where the base color is the diffuse albedo and reflections stay uncolored; `1.0` is a raw metal,
+  where the base color tints the reflection instead and there is no diffuse term. Values between
+  the two are for the transition itself (a partly corroded or coated metal), not for materials
+  that are simply shiny.
+- **Roughness factor** — how spread out the surface's reflection is. `0.0` is a perfect mirror,
+  `1.0` is fully diffuse.
+
+Both match the `metallicFactor` and `roughnessFactor` of glTF's `pbrMetallicRoughness`, whose
+defaults of `1.0` a converter writes out for a material that states neither. Like the base color
+factor, they are stored and used as written: readers do not range-check or clamp them, so a value
+outside `[0, 1]` reaches the shader as-is.
+
+The remaining PBR inputs (the metallic-roughness texture, occlusion, emissive) are not stored yet;
+they will extend this payload.
 
 ## Textures (variable size)
 

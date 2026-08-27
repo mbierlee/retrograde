@@ -39,6 +39,8 @@ uniform vec3 ambientGroundRadiance;
 
 out vec4 outColor;
 
+const float PI = 3.14159265359;
+
 // Interpolation leaves the tangent neither unit-length nor square to the normal, so it is
 // re-orthogonalized first. The bitangent follows from the normal and tangent, so only its
 // handedness is stored - which is what keeps mirrored UV islands shading correctly.
@@ -62,12 +64,16 @@ vec3 shadingNormal(vec3 interpolatedNormal) {
 }
 
 // Purely diffuse by design - no specular term, and none is coming. A material that wants one
-// belongs on pbrMetallicRoughness instead.
+// belongs on pbrMetallicRoughness instead, whose diffuse term is normalized the same way this
+// one is: the two are meant to shade identically wherever that material's metallic factor is 0
+// and only its specular lobe sets them apart.
 void main() {
   vec4 albedo = texture(albedoTexture, vertexTextureCoords) * baseColorFactor;
   vec3 surfaceNormal = shadingNormal(normalize(vertexWorldNormal));
 
   // Y-up: 1 where the surface looks straight up at the sky, 0 where it looks at the ground.
+  // Deliberately not divided by PI, unlike the direct lighting below: the hemisphere is
+  // already an irradiance approximation, which is what that PI came from.
   float skyFacing = surfaceNormal.y * 0.5 + 0.5;
   vec3 ambient = mix(ambientGroundRadiance, ambientSkyRadiance, skyFacing);
   vec3 color = ambient * albedo.rgb;
@@ -87,7 +93,10 @@ void main() {
 
     float lambert = max(dot(surfaceNormal, lightDirection), 0.0);
     vec3 radiance = lightColorIntensity[i].rgb * lightColorIntensity[i].a;
-    color += albedo.rgb * radiance * lambert * attenuation;
+
+    // Energy-conserving: a diffuse surface spreads what it receives over the hemisphere, so
+    // it reflects albedo/PI of it per direction rather than the whole of it.
+    color += (albedo.rgb / PI) * radiance * lambert * attenuation;
   }
 #endif
 

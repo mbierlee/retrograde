@@ -64,8 +64,9 @@ struct TextureRef {
  * references.
  *
  * Lit (PBR) materials are converted as `pbrMetallicRoughness` ones, carrying their
- * base color (albedo) and normal textures plus the base color factor: the RGM format
- * cannot express the remaining metallic-roughness inputs yet.
+ * base color (albedo) and normal textures plus the base color, metallic and roughness
+ * factors: the RGM format cannot express the remaining metallic-roughness inputs
+ * (the metallic-roughness map itself, occlusion and emissive) yet.
  */
 struct MaterialInfo {
     bool unlit; /// True when the material declares the KHR_materials_unlit extension. Decides between the `unlit` and `pbrMetallicRoughness` material types for a textured material.
@@ -76,6 +77,8 @@ struct MaterialInfo {
     float[4] baseColorFactor = [1.0f, 1.0f, 1.0f, 1.0f]; /// glTF `pbrMetallicRoughness.baseColorFactor`: the RGBA multiplier over the base color texture, and the material's color outright when it has no texture. Defaults to opaque white, which is also what glTF means by an absent factor.
     TextureRef normalTexture; /// The externally referenced tangent-space normal map (path + filters); `path` is "" when the material has none. Only written for material types that reference one.
     float normalTextureScale = 1.0f; /// glTF `normalTexture.scale`: how strongly the normal map perturbs the surface normal. Defaults to 1 (full strength), which is also what glTF means by an absent `scale`.
+    float metallicFactor = 1.0f; /// glTF `pbrMetallicRoughness.metallicFactor`: how metallic the surface is, 0 being a dielectric and 1 a raw metal. Defaults to 1, which is also what glTF means by an absent factor. Only written for material types that shade with a metallic-roughness BRDF.
+    float roughnessFactor = 1.0f; /// glTF `pbrMetallicRoughness.roughnessFactor`: how rough the surface is, 0 being a perfect mirror and 1 fully diffuse. Defaults to 1, which is also what glTF means by an absent factor. Only written for material types that shade with a metallic-roughness BRDF.
 }
 
 /**
