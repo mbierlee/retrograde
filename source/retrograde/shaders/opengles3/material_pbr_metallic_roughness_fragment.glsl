@@ -17,6 +17,13 @@ uniform vec4 baseColorFactor;
 uniform float metallicFactor;
 uniform float roughnessFactor;
 
+// Both dials again, this time varying across the surface. Packed the way glTF packs them -
+// roughness in green, metalness in blue - so a map exported for glTF is used as-is. The
+// factors above multiply what it samples. Branched on a uniform like the normal map, since
+// whether a mesh has one is a per-draw property rather than a second shader variant.
+uniform sampler2D metallicRoughnessTexture;
+uniform bool hasMetallicRoughnessMap;
+
 // Only the specular lobe needs it, to work out which way the surface reflects toward the eye.
 uniform vec3 cameraWorldPosition;
 
@@ -123,8 +130,17 @@ void main() {
   vec4 albedo = texture(albedoTexture, vertexTextureCoords) * baseColorFactor;
   vec3 surfaceNormal = shadingNormal(normalize(vertexWorldNormal));
 
-  float metallic = clamp(metallicFactor, 0.0, 1.0);
-  float roughness = clamp(roughnessFactor, 0.0, 1.0);
+  // The map varies the pair across the surface and the factors scale what it holds, so a
+  // material with a map still answers to its sliders. Without one the factors describe the
+  // whole surface on their own.
+  vec2 metallicRoughness = vec2(metallicFactor, roughnessFactor);
+  if (hasMetallicRoughnessMap) {
+    vec4 sampledMetallicRoughness = texture(metallicRoughnessTexture, vertexTextureCoords);
+    metallicRoughness *= vec2(sampledMetallicRoughness.b, sampledMetallicRoughness.g);
+  }
+
+  float metallic = clamp(metallicRoughness.x, 0.0, 1.0);
+  float roughness = clamp(metallicRoughness.y, 0.0, 1.0);
   float alpha = max(roughness * roughness, minAlpha);
 
   vec3 viewDirection = normalize(cameraWorldPosition - vertexWorldPosition);

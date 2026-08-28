@@ -446,10 +446,15 @@ string materialPayloadDescription(ref Material material) {
             : ", normal texture " ~ to!string(material.normalTextureIndex)
             ~ " (scale " ~ to!string(material.normalTextureScale) ~ ")";
 
-        // Rounded like the base color factor, and for the same reason: exporters write
+        // The map is stated in both directions like the normal one, and its factors are
+        // reported either way since they scale it where there is one. The values are
+        // rounded like the base color factor, and for the same reason: exporters write
         // these as full float expansions of a slider position.
         string metallicRoughness = material.type.hasMetallicRoughness
-            ? format(", metallic %.3f, roughness %.3f",
+            ? (material.metallicRoughnessTextureIndex == 0 ? ", no metallic-roughness texture"
+                : ", metallic-roughness texture "
+                ~ to!string(material.metallicRoughnessTextureIndex))
+            ~ format(", metallic %.3f, roughness %.3f",
                 material.metallicFactor, material.roughnessFactor) : "";
 
         return albedoDescription(material) ~ normal ~ metallicRoughness;
