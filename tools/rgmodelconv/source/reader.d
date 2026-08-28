@@ -262,13 +262,14 @@ private MaterialInfo parseMaterial(ref JSONValue gltf, JSONValue mat) {
 
     info.doubleSided = optBool(mat, "doubleSided", false);
 
-    // The base color (albedo) and normal textures are converted; the remaining PBR
-    // texture slots (metallic-roughness, occlusion and emissive) have no RGM payload
-    // yet — only the scalar metallic and roughness factors are carried over. They
-    // are still counted in `hasAnyTexture`, so a material carrying only, say, an
+    // The base color (albedo), normal and metallic-roughness textures are converted;
+    // the remaining PBR texture slots (occlusion and emissive) have no RGM payload yet.
+    // They are still counted in `hasAnyTexture`, so a material carrying only, say, an
     // occlusion map is not mistaken for a textureless vertex-colored one.
     JSONValue* pbrP = "pbrMetallicRoughness" in mat.object;
     JSONValue* baseColorP = pbrP is null ? null : "baseColorTexture" in pbrP.object;
+    JSONValue* metallicRoughnessP = pbrP is null ? null
+        : "metallicRoughnessTexture" in pbrP.object;
 
     // Unlike the base color, `normalTexture` sits at the material's top level rather
     // than under `pbrMetallicRoughness`. It is a `normalTextureInfo`: a `textureInfo`
@@ -278,9 +279,9 @@ private MaterialInfo parseMaterial(ref JSONValue gltf, JSONValue mat) {
 
     info.hasAnyTexture = baseColorP !is null
         || normalP !is null
+        || metallicRoughnessP !is null
         || hasKey(mat, "emissiveTexture")
-        || hasKey(mat, "occlusionTexture")
-        || (pbrP !is null && hasKey(*pbrP, "metallicRoughnessTexture"));
+        || hasKey(mat, "occlusionTexture");
 
     if (baseColorP !is null) {
         TextureRef texture = resolveTextureRef(gltf, *baseColorP);
@@ -306,6 +307,17 @@ private MaterialInfo parseMaterial(ref JSONValue gltf, JSONValue mat) {
         // metallic-roughness BRDF ends up writing them.
         info.metallicFactor = optFloat(*pbrP, "metallicFactor", 1.0f);
         info.roughnessFactor = optFloat(*pbrP, "roughnessFactor", 1.0f);
+    }
+
+    // Carried over packed exactly as glTF stores it — roughness in green, metalness in
+    // blue — rather than split into two single-channel maps, so the source image is
+    // referenced unchanged. Its `texCoord` is ignored like every other slot's: RGM samples
+    // every map with UV channel 0.
+    if (metallicRoughnessP !is null) {
+        TextureRef texture = resolveTextureRef(gltf, *metallicRoughnessP);
+        if (texture.path.length > 0 && !startsWith(texture.path, "data:")) {
+            info.metallicRoughnessTexture = texture;
+        }
     }
 
     if (normalP !is null) {

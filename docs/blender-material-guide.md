@@ -23,16 +23,16 @@ reach a type that no glTF material maps onto — see
 | `lambert`               | Never inferred. Requires `rg_mat`. |
 | `pbrMetallicRoughness`  | Anything else — a regular lit material, with or without textures. |
 
-**The base color and normal textures are converted; the other PBR texture inputs are
-not.** A regular `Principled BSDF` material exports as glTF PBR (metallic-roughness) and
-becomes a `pbrMetallicRoughness` material in the `.rgm`, keeping its **Base Color** and
-**Normal** textures (with the normal map's strength) and dropping the rest
-(metallic-roughness, occlusion, emissive) —
-the RGM format has nowhere to put those yet. The **Metallic** and **Roughness** sliders
-*are* carried over, as single values for the whole material: it is only a texture plugged
-into them that is dropped. The lit types (`lambert`, `pbrMetallicRoughness`) carry the
-normal map; `unlit` keeps only its base color texture, since an unlit material is never
-shaded.
+**The base color, normal and metallic-roughness textures are converted; the other PBR
+texture inputs are not.** A regular `Principled BSDF` material exports as glTF PBR
+(metallic-roughness) and becomes a `pbrMetallicRoughness` material in the `.rgm`, keeping
+its **Base Color**, **Normal** (with the normal map's strength) and **Metallic**/**Roughness**
+textures and dropping the rest (occlusion, emissive) — the RGM format has nowhere to put
+those yet. The **Metallic** and **Roughness** sliders are carried over too, and scale the
+map where there is one. Which textures a type carries differs: `pbrMetallicRoughness` takes
+all three, `lambert` the base color and normal maps only (it has no BRDF to feed a
+metallic-roughness map into), and `unlit` only its base color texture, since an unlit
+material is never shaded.
 
 **A base color texture is optional.** A material whose **Base Color** is a plain color
 rather than an image is still a real material: the color is carried over as the base
@@ -247,8 +247,8 @@ engine draws them.
 
 Like the other lit type, the **Base Color** and **Normal** textures are carried over
 and the remaining Principled inputs are dropped. Being purely diffuse, `lambert` has no
-use for the **Metallic** and **Roughness** sliders either, so unlike `pbrMetallicRoughness`
-it does not store them. See
+use for the **Metallic** and **Roughness** sliders — or a texture plugged into them —
+so unlike `pbrMetallicRoughness` it stores neither. See
 [Adding a normal map](#adding-a-normal-map) under `pbrMetallicRoughness`.
 
 See `asset-examples/cube-lambert.blend` for a working example.
@@ -275,9 +275,10 @@ lands here, so this is what a normal Blender material converts to.
 The **Metallic** and **Roughness** sliders are carried over as single values for the
 whole material, and the engine shades with them: a Cook-Torrance metallic-roughness
 BRDF, so **Metallic** decides whether the base color is the surface's diffuse color or
-the tint of its reflection, and **Roughness** how tight the highlight is. A texture
-plugged into either slider is dropped, as are the remaining PBR inputs (occlusion,
-emissive).
+the tint of its reflection, and **Roughness** how tight the highlight is. To vary either
+across the surface, plug in a map as well — see
+[Adding a metallic-roughness map](#adding-a-metallic-roughness-map). The remaining PBR
+inputs (occlusion, emissive) are dropped.
 
 > **Watch the Metallic slider.** glTF defaults an unset `metallicFactor` to `1.0`, so
 > a material exported without touching it is a *full metal*: no diffuse color at all,
@@ -315,9 +316,50 @@ it into the map. `1.0` (Blender's default) is the map at full strength, `0.0` is
 surface, and above `1.0` deepens the relief. Blender omits the value from the export
 when it is exactly 1.0, which glTF and the converter both read as full strength.
 
-A normal map on its own is not enough to make a material textured: without a base
-color texture the material still converts to the `invalid` sentinel. An `unlit`
-material never carries one, since it is not shaded at all.
+A normal map does not need a base color texture beside it: a material with nothing but
+a normal map still converts, colored by its base color factor. An `unlit` material never
+carries one, since it is not shaded at all.
+
+### Adding a metallic-roughness map
+
+**`pbrMetallicRoughness` only** — `lambert` is purely diffuse and has no BRDF to feed
+one into, so it drops the map along with the sliders.
+
+Where the **Metallic** and **Roughness** sliders describe the whole material, a
+metallic-roughness map varies both across the surface. It is a single **packed** image —
+roughness in its green channel, metalness in its blue one — which is how glTF stores the
+pair and how the `.rgm` keeps it:
+
+1. Add a **Texture ▸ Image Texture** node and load the packed map. Set its **Color
+   Space** to **Non-Color**: the map is data, not color.
+2. Add a **Converter ▸ Separate Color** node and connect the image's **`Color`** output
+   to its **`Color`** input.
+3. Connect **`Green`** to the `Principled BSDF`'s **Roughness** socket and **`Blue`** to
+   its **Metallic** socket.
+
+```
+                              /--Green--> [Principled BSDF] Roughness
+[Image Texture (Non-Color)] --Color--> [Separate Color]
+                              \--Blue---> [Principled BSDF] Metallic
+```
+
+Wired this way the exporter recognises the channel split and writes the image straight
+out as the glTF `metallicRoughnessTexture`, so the map you painted is the map that ends
+up in the `.rgm`. Two separate grayscale maps plugged into the two sockets also work, but
+the exporter then packs them into a *new* combined image at export time — check which
+file the `.gltf` ends up referencing before converting.
+
+The **Metallic** and **Roughness** sliders are still written alongside the map, and the
+engine multiplies them into it. Blender leaves them at `1.0` when a texture drives the
+socket, which passes the map through untouched; a value below that scales the whole map
+down.
+
+The map is sampled with UV channel 0, so the mesh needs to be UV-unwrapped — the same
+coordinates the base color and normal maps use. Unlike a normal map it needs no tangents.
+
+As with the normal map, a metallic-roughness map on its own is a complete material: with
+no base color texture the surface takes its color from the base color factor and its
+shading from the map.
 
 ### Texture filtering (min/mag filter)
 

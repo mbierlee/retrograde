@@ -133,6 +133,10 @@ void initMaterialShader(ref MaterialShader materialShader) {
     }
 
     if (materialShader.materialType.hasMetallicRoughness) {
+        shaderInfo.metallicRoughnessTextureUniformLocation = glGetUniformLocation(program,
+            "metallicRoughnessTexture");
+        shaderInfo.hasMetallicRoughnessMapUniformLocation = glGetUniformLocation(program,
+            "hasMetallicRoughnessMap");
         shaderInfo.metallicFactorUniformLocation = glGetUniformLocation(program, "metallicFactor");
         shaderInfo.roughnessFactorUniformLocation = glGetUniformLocation(program,
             "roughnessFactor");
@@ -253,6 +257,7 @@ void loadEntityModel(EntityId entity) {
             meshInfo.materialIndex = mesh.materialIndex;
             TextureIndex materialTextureIndex = 0;
             TextureIndex materialNormalTextureIndex = 0;
+            TextureIndex materialMetallicRoughnessTextureIndex = 0;
             if (mesh.materialIndex != noMaterial) {
                 foreach (ref material; model.materials) {
                     if (material.index == mesh.materialIndex) {
@@ -260,6 +265,8 @@ void loadEntityModel(EntityId entity) {
                         meshInfo.doubleSided = material.doubleSided;
                         materialTextureIndex = material.textureIndex;
                         materialNormalTextureIndex = material.normalTextureIndex;
+                        materialMetallicRoughnessTextureIndex = material
+                            .metallicRoughnessTextureIndex;
                         meshInfo.normalTextureScale = cast(GLfloat) material.normalTextureScale;
                         meshInfo.baseColorFactor = material.baseColorFactor;
                         meshInfo.metallicFactor = cast(GLfloat) material.metallicFactor;
@@ -351,6 +358,15 @@ void loadEntityModel(EntityId entity) {
                             meshInfo.normalTextureObject = createMaterialTexture(model,
                                 materialNormalTextureIndex);
                         }
+                    }
+
+                    // Sampled with UV channel 0, like the albedo: no tangent frame needed,
+                    // so a UV channel is all this map asks of the mesh.
+                    if (meshInfo.materialType.hasMetallicRoughness
+                    && materialMetallicRoughnessTextureIndex != 0
+                    && mesh.uvChannelCount > 0) {
+                        meshInfo.metallicRoughnessTextureObject = createMaterialTexture(model,
+                            materialMetallicRoughnessTextureIndex);
                     }
 
                     auto materialVao = glCreateVertexArray();
@@ -604,6 +620,10 @@ void unloadEntityModel(EntityId entity) {
                 glDeleteTexture(meshInfo.normalTextureObject);
             }
 
+            if (meshInfo.metallicRoughnessTextureObject != 0) {
+                glDeleteTexture(meshInfo.metallicRoughnessTextureObject);
+            }
+
             foreach (ref GLuint vao; meshInfo.vertexArrayObjects) {
                 glDeleteVertexArray(vao);
             }
@@ -706,6 +726,8 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
             GLint normalTextureUniformLocation = -1;
             GLint hasNormalMapUniformLocation = -1;
             GLint normalTextureScaleUniformLocation = -1;
+            GLint metallicRoughnessTextureUniformLocation = -1;
+            GLint hasMetallicRoughnessMapUniformLocation = -1;
             GLint metallicFactorUniformLocation = -1;
             GLint roughnessFactorUniformLocation = -1;
             GLint cameraWorldPositionUniformLocation = -1;
@@ -737,6 +759,10 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
                     hasNormalMapUniformLocation = materialShaderInfo.hasNormalMapUniformLocation;
                     normalTextureScaleUniformLocation = materialShaderInfo
                         .normalTextureScaleUniformLocation;
+                    metallicRoughnessTextureUniformLocation = materialShaderInfo
+                        .metallicRoughnessTextureUniformLocation;
+                    hasMetallicRoughnessMapUniformLocation = materialShaderInfo
+                        .hasMetallicRoughnessMapUniformLocation;
                     metallicFactorUniformLocation = materialShaderInfo
                         .metallicFactorUniformLocation;
                     roughnessFactorUniformLocation = materialShaderInfo
@@ -870,6 +896,26 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
             }
 
             if (useMaterial && meshInfo.materialType.hasMetallicRoughness) {
+                // Told on every draw for the same reason the normal map's flag is: a mesh
+                // without a map would otherwise keep the flag - and the texture - of
+                // whichever mesh was last drawn through this program.
+                bool hasMetallicRoughnessMap = meshInfo.metallicRoughnessTextureObject != 0;
+
+                if (hasMetallicRoughnessMap && metallicRoughnessTextureUniformLocation >= 0) {
+                    glActiveTexture(GL_TEXTURE2);
+                    glBindTexture(GL_TEXTURE_2D, meshInfo.metallicRoughnessTextureObject);
+                    glUniform1i(metallicRoughnessTextureUniformLocation, 2);
+
+                    // Back to the albedo's unit, so nothing drawn after this inherits unit 2
+                    // as the active one.
+                    glActiveTexture(GL_TEXTURE0);
+                }
+
+                if (hasMetallicRoughnessMapUniformLocation >= 0) {
+                    glUniform1i(hasMetallicRoughnessMapUniformLocation,
+                        hasMetallicRoughnessMap ? 1 : 0);
+                }
+
                 if (metallicFactorUniformLocation >= 0) {
                     glUniform1f(metallicFactorUniformLocation, meshInfo.metallicFactor);
                 }
@@ -961,8 +1007,13 @@ private struct GlMeshInfo {
     GLuint normalTextureObject;
     GLfloat normalTextureScale = 1.0;
 
-    /// Dials of the mesh material's metallic-roughness BRDF. Both start at glTF's default for
-    /// an absent factor - a fully rough metal - which is what `Material` defaults them to.
+    /// Packed metallic-roughness map of the mesh's material - roughness in green, metalness in
+    /// blue. 0 when the material has none, leaving the factors below to describe the surface.
+    GLuint metallicRoughnessTextureObject;
+
+    /// Dials of the mesh material's metallic-roughness BRDF, multiplied over the map above where
+    /// there is one. Both start at glTF's default for an absent factor - a fully rough metal -
+    /// which is what `Material` defaults them to.
     GLfloat metallicFactor = 1.0;
     GLfloat roughnessFactor = 1.0;
 
@@ -1011,6 +1062,8 @@ private struct GlMaterialShaderInfo {
     GLint normalTextureUniformLocation = -1;
     GLint hasNormalMapUniformLocation = -1;
     GLint normalTextureScaleUniformLocation = -1;
+    GLint metallicRoughnessTextureUniformLocation = -1;
+    GLint hasMetallicRoughnessMapUniformLocation = -1;
     GLint metallicFactorUniformLocation = -1;
     GLint roughnessFactorUniformLocation = -1;
     GLint cameraWorldPositionUniformLocation = -1;
