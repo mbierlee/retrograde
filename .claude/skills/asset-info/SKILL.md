@@ -11,7 +11,7 @@ that interprets the numbers (not just repeats them).
 
 ## Tool
 
-- Binary: `tools/rgassetinfo/bin/rgassetinfo`, relative to the project root.
+- Binary: `tools/bin/rgassetinfo`, relative to the project root.
   The user is most likely already in the project's working directory, so
   resolve the project root from the current directory (`pwd` on Unix, `cd` with
   no args on Windows) and invoke the binary by its absolute path.
@@ -34,7 +34,7 @@ that interprets the numbers (not just repeats them).
 2. **Run the tool** on the resolved path:
 
    ```
-   <project-root>/tools/rgassetinfo/bin/rgassetinfo <path>
+   <project-root>/tools/bin/rgassetinfo <path>
    ```
 
    For a directory, add `--valid-only` if it likely contains non-asset files.
