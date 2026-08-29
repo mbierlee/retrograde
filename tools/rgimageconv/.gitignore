@@ -15,4 +15,3 @@ rgimageconv-test-*
 *.o
 *.obj
 *.lst
-/bin

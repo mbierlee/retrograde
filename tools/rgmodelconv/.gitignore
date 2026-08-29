@@ -15,4 +15,3 @@ rgmodelconv-test-*
 *.o
 *.obj
 *.lst
-/bin
