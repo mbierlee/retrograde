@@ -1,0 +1,9 @@
+{
+  "name": "rgautoconv",
+  "description": "Automatic asset conversion watchdog",
+  "license": "MIT",
+  "authors": ["Mike Bierlee"],
+  "copyright": "Copyright Mike Bierlee 2026",
+  "targetPath": "../bin",
+  "targetType": "executable"
+}

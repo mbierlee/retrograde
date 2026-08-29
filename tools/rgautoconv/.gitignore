@@ -1,0 +1,17 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/rgautoconv
+rgautoconv.so
+rgautoconv.dylib
+rgautoconv.dll
+librgautoconv.a
+rgautoconv.a
+rgautoconv.lib
+rgautoconv-test-*
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst
