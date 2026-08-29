@@ -1,4 +1,4 @@
-.PHONY: lib test-native rgmodelconv-release rgimageconv-release rgassetinfo-release tools
+.PHONY: lib test-native rgmodelconv-release rgimageconv-release rgassetinfo-release rgautoconv-release tools
 
 lib:
 	dub build --config=library
@@ -15,4 +15,7 @@ rgimageconv-release:
 rgassetinfo-release:
 	cd tools/rgassetinfo && dub build --build=release
 
-tools: rgmodelconv-release rgimageconv-release rgassetinfo-release
+rgautoconv-release:
+	cd tools/rgautoconv && dub build --build=release
+
+tools: rgmodelconv-release rgimageconv-release rgassetinfo-release rgautoconv-release
