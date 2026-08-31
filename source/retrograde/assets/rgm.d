@@ -13,7 +13,7 @@ module retrograde.assets.rgm;
 
 import retrograde.assets.model : Model, Vertex, Face, Mesh, UvCoord, Normal, Tangent,
     maxUvChannels, MeshAttributeFlags, Material, MaterialIndex, MaterialType, MaterialFlags,
-    noMaterial, hasMetallicRoughness, referencesTexture, referencesNormalTexture, Texture,
+    noMaterial, hasMetallicRoughness, hasOcclusion, referencesTexture, referencesNormalTexture, Texture,
     TextureIndex, TextureType, TextureMagFilter, TextureMinFilter, TextureWrap;
 import retrograde.assets.readercommon : readUInt, readUShort, readFloat;
 import retrograde.std.endian : toPlatformEndian, Endian;
@@ -522,6 +522,28 @@ private OperationResult readMaterialData(const(ubyte)[] data, ref size_t offset,
         offset += 4;
     }
 
+    if (material.type.hasOcclusion) {
+        // Baked shadowing, in the red channel the map above leaves free - so this index
+        // often names that same texture. 0 means the material has none, which is why the
+        // reference is kept apart from the metallic-roughness one rather than inferred
+        // from it.
+        if (data.length - offset < 4) {
+            return failure(
+                "Cannot read material occlusion texture index: Unexpected end of data.");
+        }
+
+        material.occlusionTextureIndex = readUInt(data, offset);
+        offset += 4;
+
+        // How far the map is allowed to darken. Not range-checked, like the factors above.
+        if (data.length - offset < 4) {
+            return failure("Cannot read material occlusion strength: Unexpected end of data.");
+        }
+
+        material.occlusionStrength = readFloat(data, offset);
+        offset += 4;
+    }
+
     model.materials ~= material;
     return success();
 }
@@ -732,6 +754,14 @@ private OperationResult validateMaterialTextureReferences(Model* model) {
         if (material.type.hasMetallicRoughness && material.metallicRoughnessTextureIndex != 0
             && !hasTexture(textures, material.metallicRoughnessTextureIndex)) {
             return failure("Material references unknown metallic-roughness texture index.");
+        }
+
+        // Optional the same way. Nothing here requires it to differ from - or match - the
+        // metallic-roughness index: sharing one texture entry between the two is glTF's
+        // packing convention, not a special case.
+        if (material.type.hasOcclusion && material.occlusionTextureIndex != 0
+            && !hasTexture(textures, material.occlusionTextureIndex)) {
+            return failure("Material references unknown occlusion texture index.");
         }
     }
 
@@ -1544,7 +1574,7 @@ void runRgmTests() {
     });
 
     test("Load model with a PBR material referencing an albedo and a normal texture", {
-        ubyte[106] modelData = [
+        ubyte[114] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -1566,6 +1596,8 @@ void runRgmTests() {
             0x00, 0x00, 0x00, 0x00, // Metallic-roughness texture index (0 - none)
             0x00, 0x00, 0x40, 0x3F, // Metallic factor (0.75)
             0x00, 0x00, 0x80, 0x3E, // Roughness factor (0.25)
+            0x00, 0x00, 0x00, 0x00, // Occlusion texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Occlusion strength (1)
 
             // Texture 1
             0x01, 0x00, 0x00, 0x00, // Texture index (1)
@@ -1602,6 +1634,8 @@ void runRgmTests() {
         assert(model.materials[0].metallicRoughnessTextureIndex == 0);
         assert(model.materials[0].metallicFactor == 0.75);
         assert(model.materials[0].roughnessFactor == 0.25);
+        assert(model.materials[0].occlusionTextureIndex == 0);
+        assert(model.materials[0].occlusionStrength == 1.0f);
 
         assert(model.textures.length == 2);
         assert(model.textures[0].path == "albedo.rgi");
@@ -1854,7 +1888,7 @@ void runRgmTests() {
     });
 
     test("Load PBR material without textures, carrying only its factors", {
-        ubyte[64] modelData = [
+        ubyte[72] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -1876,6 +1910,8 @@ void runRgmTests() {
             0x00, 0x00, 0x00, 0x00, // Metallic-roughness texture index (0 - none)
             0x00, 0x00, 0x80, 0x3F, // Metallic factor (1.0)
             0x00, 0x00, 0x00, 0x00, // Roughness factor (0.0)
+            0x00, 0x00, 0x00, 0x00, // Occlusion texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Occlusion strength (1.0 - unused without a map)
         ];
 
         auto result = loadModel(modelData);
@@ -1887,10 +1923,12 @@ void runRgmTests() {
         assert(model.materials[0].metallicRoughnessTextureIndex == 0);
         assert(model.materials[0].metallicFactor == 1.0);
         assert(model.materials[0].roughnessFactor == 0.0);
+        assert(model.materials[0].occlusionTextureIndex == 0);
+        assert(model.materials[0].occlusionStrength == 1.0);
     });
 
     test("Load model with a PBR material referencing a metallic-roughness texture", {
-        ubyte[81] modelData = [
+        ubyte[89] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -1912,6 +1950,8 @@ void runRgmTests() {
             0x01, 0x00, 0x00, 0x00, // Metallic-roughness texture index (1)
             0x00, 0x00, 0x00, 0x3F, // Metallic factor (0.5)
             0x00, 0x00, 0x40, 0x3F, // Roughness factor (0.75)
+            0x00, 0x00, 0x00, 0x00, // Occlusion texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Occlusion strength (1.0)
 
             // Texture 1
             0x01, 0x00, 0x00, 0x00, // Texture index (1)
@@ -1935,10 +1975,11 @@ void runRgmTests() {
         assert(model.materials[0].metallicRoughnessTextureIndex == 1);
         assert(model.materials[0].metallicFactor == 0.5);
         assert(model.materials[0].roughnessFactor == 0.75);
+        assert(model.materials[0].occlusionTextureIndex == 0);
     });
 
     test("Reject material referencing unknown metallic-roughness texture index", {
-        ubyte[85] modelData = [
+        ubyte[93] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -1960,6 +2001,8 @@ void runRgmTests() {
             0x63, 0x00, 0x00, 0x00, // Metallic-roughness texture index (99 - undefined)
             0x00, 0x00, 0x80, 0x3F, // Metallic factor (1.0)
             0x00, 0x00, 0x80, 0x3F, // Roughness factor (1.0)
+            0x00, 0x00, 0x00, 0x00, // Occlusion texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Occlusion strength (1.0)
 
             // Texture 1
             0x01, 0x00, 0x00, 0x00, // Texture index (1)
@@ -1997,6 +2040,206 @@ void runRgmTests() {
             0x00, 0x00, 0x00, 0x00, // Normal texture index (0 - none)
             0x00, 0x00, 0x80, 0x3F, // Normal texture scale (1.0)
             0x00, 0x00, 0x00, 0x00, // Metallic-roughness texture index (0 - none)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
+    test("Load model with a PBR material referencing an occlusion texture", {
+        ubyte[89] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+            0x01, 0x00, 0x00, 0x00, // Amount of textures (1)
+
+            // Material 1: occlusion is its only map, on an image of its own
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+            0x04, // Material type (PBR Metallic-Roughness)
+            0x00, // Common flags (none)
+            0x00, 0x00, 0x00, 0x00, // Albedo texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor R (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor G (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor B (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor A (1)
+            0x00, 0x00, 0x00, 0x00, // Normal texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Normal texture scale (1.0)
+            0x00, 0x00, 0x00, 0x00, // Metallic-roughness texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Metallic factor (1.0)
+            0x00, 0x00, 0x80, 0x3F, // Roughness factor (1.0)
+            0x01, 0x00, 0x00, 0x00, // Occlusion texture index (1)
+            0x00, 0x00, 0x00, 0x3F, // Occlusion strength (0.5)
+
+            // Texture 1
+            0x01, 0x00, 0x00, 0x00, // Texture index (1)
+            0x00, // Texture type (reference)
+            0x00, // magFilter (unspecified)
+            0x00, // minFilter (unspecified)
+            0x00, // wrapS (unspecified)
+            0x00, // wrapT (unspecified)
+            0x06, 0x00, // Path length (6)
+            'a', 'o', '.', 'r', 'g', 'i', // Path
+        ];
+
+        auto result = loadModel(modelData);
+        assert(result.isSuccessful());
+
+        auto model = result.unique();
+        assert(model.materials.length == 1);
+        assert(model.materials[0].type == MaterialType.pbrMetallicRoughness);
+        assert(model.materials[0].metallicRoughnessTextureIndex == 0);
+        assert(model.materials[0].occlusionTextureIndex == 1);
+        assert(model.materials[0].occlusionStrength == 0.5);
+
+        assert(model.textures.length == 1);
+        assert(model.textures[0].path == "ao.rgi");
+    });
+
+    test("Load PBR material sharing one texture between its occlusion and metallic-roughness maps", {
+        ubyte[90] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+            0x01, 0x00, 0x00, 0x00, // Amount of textures (1)
+
+            // Material 1: glTF's packing - occlusion in the red channel of the very image
+            // the roughness and metalness come out of, so both slots name texture 1
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+            0x04, // Material type (PBR Metallic-Roughness)
+            0x00, // Common flags (none)
+            0x00, 0x00, 0x00, 0x00, // Albedo texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor R (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor G (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor B (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor A (1)
+            0x00, 0x00, 0x00, 0x00, // Normal texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Normal texture scale (1.0)
+            0x01, 0x00, 0x00, 0x00, // Metallic-roughness texture index (1)
+            0x00, 0x00, 0x80, 0x3F, // Metallic factor (1.0)
+            0x00, 0x00, 0x80, 0x3F, // Roughness factor (1.0)
+            0x01, 0x00, 0x00, 0x00, // Occlusion texture index (1 - the same texture)
+            0x00, 0x00, 0x80, 0x3F, // Occlusion strength (1.0)
+
+            // Texture 1
+            0x01, 0x00, 0x00, 0x00, // Texture index (1)
+            0x00, // Texture type (reference)
+            0x00, // magFilter (unspecified)
+            0x00, // minFilter (unspecified)
+            0x00, // wrapS (unspecified)
+            0x00, // wrapT (unspecified)
+            0x07, 0x00, // Path length (7)
+            'o', 'r', 'm', '.', 'r', 'g', 'i', // Path
+        ];
+
+        auto result = loadModel(modelData);
+        assert(result.isSuccessful());
+
+        auto model = result.unique();
+        assert(model.materials.length == 1);
+        assert(model.materials[0].metallicRoughnessTextureIndex == 1);
+        assert(model.materials[0].occlusionTextureIndex == 1);
+        assert(model.textures.length == 1);
+    });
+
+    test("Reject material referencing unknown occlusion texture index", {
+        ubyte[93] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+            0x01, 0x00, 0x00, 0x00, // Amount of textures (1)
+
+            // Material 1: albedo resolves, but the occlusion map does not
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+            0x04, // Material type (PBR Metallic-Roughness)
+            0x00, // Common flags (none)
+            0x01, 0x00, 0x00, 0x00, // Albedo texture index (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor R (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor G (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor B (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor A (1)
+            0x00, 0x00, 0x00, 0x00, // Normal texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Normal texture scale (1.0)
+            0x00, 0x00, 0x00, 0x00, // Metallic-roughness texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Metallic factor (1.0)
+            0x00, 0x00, 0x80, 0x3F, // Roughness factor (1.0)
+            0x63, 0x00, 0x00, 0x00, // Occlusion texture index (99 - undefined)
+            0x00, 0x00, 0x80, 0x3F, // Occlusion strength (1.0)
+
+            // Texture 1
+            0x01, 0x00, 0x00, 0x00, // Texture index (1)
+            0x00, // Texture type (reference)
+            0x00, // magFilter (unspecified)
+            0x00, // minFilter (unspecified)
+            0x00, // wrapS (unspecified)
+            0x00, // wrapT (unspecified)
+            0x0A, 0x00, // Path length (10)
+            'a', 'l', 'b', 'e', 'd', 'o', '.', 'r', 'g', 'i', // Path
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
+    test("Reject PBR material truncated after its roughness factor", {
+        ubyte[64] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
+
+            // Material 1: the mandatory occlusion payload is missing entirely
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+            0x04, // Material type (PBR Metallic-Roughness)
+            0x00, // Common flags (none)
+            0x00, 0x00, 0x00, 0x00, // Albedo texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor R (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor G (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor B (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor A (1)
+            0x00, 0x00, 0x00, 0x00, // Normal texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Normal texture scale (1.0)
+            0x00, 0x00, 0x00, 0x00, // Metallic-roughness texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Metallic factor (1.0)
+            0x00, 0x00, 0x80, 0x3F, // Roughness factor (1.0)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
+    test("Reject PBR material truncated part-way through its occlusion strength", {
+        ubyte[70] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
+
+            // Material 1: the occlusion index is present but its strength is cut short
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+            0x04, // Material type (PBR Metallic-Roughness)
+            0x00, // Common flags (none)
+            0x00, 0x00, 0x00, 0x00, // Albedo texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor R (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor G (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor B (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor A (1)
+            0x00, 0x00, 0x00, 0x00, // Normal texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Normal texture scale (1.0)
+            0x00, 0x00, 0x00, 0x00, // Metallic-roughness texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Metallic factor (1.0)
+            0x00, 0x00, 0x80, 0x3F, // Roughness factor (1.0)
+            0x00, 0x00, 0x00, 0x00, // Occlusion texture index (0 - none)
+            0x00, 0x00, // Occlusion strength (truncated)
         ];
 
         auto result = loadModel(modelData);

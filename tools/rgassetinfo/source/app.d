@@ -24,8 +24,9 @@ import std.array : array;
 import retrograde.assets.rgm : loadModel, loadModelHeader, ModelHeader, rgmMagicNumber;
 import retrograde.assets.rgi : loadImageHeader, ImageHeader, rgiMagicNumber,
     CompressionType, ColorMode, IndexFormat, bytesPerIndex;
-import retrograde.assets.model : hasMetallicRoughness, Model, Mesh, Material, MaterialType,
-    noMaterial, Texture, TextureType, TextureMagFilter, TextureMinFilter, TextureWrap;
+import retrograde.assets.model : hasMetallicRoughness, hasOcclusion, Model, Mesh, Material,
+    MaterialType, noMaterial, Texture, TextureType, TextureMagFilter, TextureMinFilter,
+    TextureWrap;
 import retrograde.assets.image : ChannelFormat, bytesPerChannel;
 
 private enum AssetKind {
@@ -457,7 +458,15 @@ string materialPayloadDescription(ref Material material) {
             ~ format(", metallic %.3f, roughness %.3f",
                 material.metallicFactor, material.roughnessFactor) : "";
 
-        return albedoDescription(material) ~ normal ~ metallicRoughness;
+        // Stated in both directions like the maps above. Its index may repeat the
+        // metallic-roughness one - the two share an image under glTF's packing - so the
+        // texture count can be lower than the number of maps a material lists.
+        string occlusion = material.type.hasOcclusion
+            ? (material.occlusionTextureIndex == 0 ? ", no occlusion texture"
+                : ", occlusion texture " ~ to!string(material.occlusionTextureIndex)
+                ~ " (strength " ~ to!string(material.occlusionStrength) ~ ")") : "";
+
+        return albedoDescription(material) ~ normal ~ metallicRoughness ~ occlusion;
     }
 }
 

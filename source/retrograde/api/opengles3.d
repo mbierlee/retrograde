@@ -24,7 +24,7 @@ import retrograde.engine.rendering.lighting : ActiveLight, ambientGroundColor, a
 import retrograde.engine.rendering.materialshader : maxLights;
 
 import retrograde.assets.model : ModelComponentType, Model, MaterialType, MaterialIndex, noMaterial,
-    hasMetallicRoughness, isLit, referencesTexture, referencesNormalTexture, BaseColorFactor,
+    hasMetallicRoughness, hasOcclusion, isLit, referencesTexture, referencesNormalTexture, BaseColorFactor,
     TextureIndex, Texture, TextureMagFilter, TextureMinFilter, TextureWrap;
 import retrograde.assets.image : Image, ChannelFormat;
 import retrograde.assets.assetlibrary : getModel, getTexture;
@@ -144,6 +144,15 @@ void initMaterialShader(ref MaterialShader materialShader) {
             "cameraWorldPosition");
     }
 
+    if (materialShader.materialType.hasOcclusion) {
+        shaderInfo.occlusionTextureUniformLocation = glGetUniformLocation(program,
+            "occlusionTexture");
+        shaderInfo.hasOcclusionMapUniformLocation = glGetUniformLocation(program,
+            "hasOcclusionMap");
+        shaderInfo.occlusionStrengthUniformLocation = glGetUniformLocation(program,
+            "occlusionStrength");
+    }
+
     if (materialShader.materialType.isLit) {
         shaderInfo.normalAttribLocation = glGetAttribLocation(program, "normal");
         shaderInfo.modelMatrixUniformLocation = glGetUniformLocation(program, "modelMatrix");
@@ -258,6 +267,7 @@ void loadEntityModel(EntityId entity) {
             TextureIndex materialTextureIndex = 0;
             TextureIndex materialNormalTextureIndex = 0;
             TextureIndex materialMetallicRoughnessTextureIndex = 0;
+            TextureIndex materialOcclusionTextureIndex = 0;
             if (mesh.materialIndex != noMaterial) {
                 foreach (ref material; model.materials) {
                     if (material.index == mesh.materialIndex) {
@@ -271,6 +281,8 @@ void loadEntityModel(EntityId entity) {
                         meshInfo.baseColorFactor = material.baseColorFactor;
                         meshInfo.metallicFactor = cast(GLfloat) material.metallicFactor;
                         meshInfo.roughnessFactor = cast(GLfloat) material.roughnessFactor;
+                        materialOcclusionTextureIndex = material.occlusionTextureIndex;
+                        meshInfo.occlusionStrength = cast(GLfloat) material.occlusionStrength;
                         break;
                     }
                 }
@@ -367,6 +379,24 @@ void loadEntityModel(EntityId entity) {
                     && mesh.uvChannelCount > 0) {
                         meshInfo.metallicRoughnessTextureObject = createMaterialTexture(model,
                             materialMetallicRoughnessTextureIndex);
+                    }
+
+                    // Asks no more of the mesh than the map above does. glTF packs occlusion
+                    // into the spare red channel of that same image, so where both slots name
+                    // one texture the single upload is bound to two units rather than made
+                    // twice - which is why this has to come after the map above is resolved.
+                    if (meshInfo.materialType.hasOcclusion
+                    && materialOcclusionTextureIndex != 0
+                    && mesh.uvChannelCount > 0) {
+                        if (materialOcclusionTextureIndex == materialMetallicRoughnessTextureIndex
+                        && meshInfo.metallicRoughnessTextureObject != 0) {
+                            meshInfo.occlusionTextureObject = meshInfo
+                                .metallicRoughnessTextureObject;
+                            meshInfo.occlusionTextureIsShared = true;
+                        } else {
+                            meshInfo.occlusionTextureObject = createMaterialTexture(model,
+                                materialOcclusionTextureIndex);
+                        }
                     }
 
                     auto materialVao = glCreateVertexArray();
@@ -624,6 +654,12 @@ void unloadEntityModel(EntityId entity) {
                 glDeleteTexture(meshInfo.metallicRoughnessTextureObject);
             }
 
+            // Borrowed from the slot above when both name one texture, in which case the
+            // delete there already covered it.
+            if (meshInfo.occlusionTextureObject != 0 && !meshInfo.occlusionTextureIsShared) {
+                glDeleteTexture(meshInfo.occlusionTextureObject);
+            }
+
             foreach (ref GLuint vao; meshInfo.vertexArrayObjects) {
                 glDeleteVertexArray(vao);
             }
@@ -730,6 +766,9 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
             GLint hasMetallicRoughnessMapUniformLocation = -1;
             GLint metallicFactorUniformLocation = -1;
             GLint roughnessFactorUniformLocation = -1;
+            GLint occlusionTextureUniformLocation = -1;
+            GLint hasOcclusionMapUniformLocation = -1;
+            GLint occlusionStrengthUniformLocation = -1;
             GLint cameraWorldPositionUniformLocation = -1;
             GLint modelMatrixUniformLocation = -1;
             GLint normalMatrixUniformLocation = -1;
@@ -767,6 +806,12 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
                         .metallicFactorUniformLocation;
                     roughnessFactorUniformLocation = materialShaderInfo
                         .roughnessFactorUniformLocation;
+                    occlusionTextureUniformLocation = materialShaderInfo
+                        .occlusionTextureUniformLocation;
+                    hasOcclusionMapUniformLocation = materialShaderInfo
+                        .hasOcclusionMapUniformLocation;
+                    occlusionStrengthUniformLocation = materialShaderInfo
+                        .occlusionStrengthUniformLocation;
                     cameraWorldPositionUniformLocation = materialShaderInfo
                         .cameraWorldPositionUniformLocation;
                     modelMatrixUniformLocation = materialShaderInfo.modelMatrixUniformLocation;
@@ -935,6 +980,31 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
                 }
             }
 
+            if (useMaterial && meshInfo.materialType.hasOcclusion) {
+                // Told every draw, like the two flags above. The texture object may be the
+                // metallic-roughness one over again, which costs a second binding but no
+                // second upload.
+                bool hasOcclusionMap = meshInfo.occlusionTextureObject != 0;
+
+                if (hasOcclusionMap && occlusionTextureUniformLocation >= 0) {
+                    glActiveTexture(GL_TEXTURE3);
+                    glBindTexture(GL_TEXTURE_2D, meshInfo.occlusionTextureObject);
+                    glUniform1i(occlusionTextureUniformLocation, 3);
+
+                    // Back to the albedo's unit, so nothing drawn after this inherits unit 3
+                    // as the active one.
+                    glActiveTexture(GL_TEXTURE0);
+
+                    if (occlusionStrengthUniformLocation >= 0) {
+                        glUniform1f(occlusionStrengthUniformLocation, meshInfo.occlusionStrength);
+                    }
+                }
+
+                if (hasOcclusionMapUniformLocation >= 0) {
+                    glUniform1i(hasOcclusionMapUniformLocation, hasOcclusionMap ? 1 : 0);
+                }
+            }
+
             if (meshInfo.doubleSided) {
                 glDisable(GL_CULL_FACE);
             }
@@ -1017,6 +1087,19 @@ private struct GlMeshInfo {
     GLfloat metallicFactor = 1.0;
     GLfloat roughnessFactor = 1.0;
 
+    /// Ambient occlusion map of the mesh's material, read from its red channel. 0 when the
+    /// material has none. Often the very object above: glTF packs occlusion into the same
+    /// image, and a material naming one texture for both slots uploads it once.
+    GLuint occlusionTextureObject;
+
+    /// Whether the object above is that borrowed copy rather than one of this slot's own, so
+    /// unloading knows not to delete the same texture twice.
+    bool occlusionTextureIsShared;
+
+    /// How far the occlusion map is allowed to darken indirect light. 1 is the map at full
+    /// strength, 0 ignores it.
+    GLfloat occlusionStrength = 1.0;
+
     /// Multiplier over the albedo, from the mesh's material. Applies whether or not the
     /// material has a texture; without one it is the mesh's color outright.
     BaseColorFactor baseColorFactor;
@@ -1066,6 +1149,9 @@ private struct GlMaterialShaderInfo {
     GLint hasMetallicRoughnessMapUniformLocation = -1;
     GLint metallicFactorUniformLocation = -1;
     GLint roughnessFactorUniformLocation = -1;
+    GLint occlusionTextureUniformLocation = -1;
+    GLint hasOcclusionMapUniformLocation = -1;
+    GLint occlusionStrengthUniformLocation = -1;
     GLint cameraWorldPositionUniformLocation = -1;
     GLint modelMatrixUniformLocation = -1;
     GLint normalMatrixUniformLocation = -1;

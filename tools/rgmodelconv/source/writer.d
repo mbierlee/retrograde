@@ -11,9 +11,9 @@
  * become `unlit`, the rest become `pbrMetallicRoughness`. Both carry the base color
  * (albedo) texture; the lit types additionally carry the normal map and its strength
  * when the source supplies one, and `pbrMetallicRoughness` carries the packed
- * metallic-roughness map alongside the metallic and roughness factors. The remaining
- * PBR inputs (occlusion and emissive) are dropped, as the RGM format cannot express
- * them yet.
+ * metallic-roughness map alongside the metallic and roughness factors, plus the
+ * occlusion map and its strength. The remaining PBR input (emissive) is dropped, as
+ * the RGM format cannot express it yet.
  *
  * A material can name the type it wants directly in its glTF `extras.rg_mat`, which
  * overrides that classification. This is the only way to assign a type that no glTF
@@ -37,7 +37,7 @@ import std.string : icmp;
 import std.typecons : Nullable;
 
 import retrograde.assets.rgm : rgmMagicNumber;
-import retrograde.assets.model : hasMetallicRoughness, MaterialType, MaterialFlags,
+import retrograde.assets.model : hasMetallicRoughness, hasOcclusion, MaterialType, MaterialFlags,
     maxUvChannels, MeshAttributeFlags, noMaterial, referencesTexture, referencesNormalTexture,
     TextureType, TextureMagFilter, TextureMinFilter, TextureWrap;
 
@@ -183,6 +183,7 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
     uint[] materialTextureIndices = new uint[materialCount];
     uint[] materialNormalTextureIndices = new uint[materialCount];
     uint[] materialMetallicRoughnessTextureIndices = new uint[materialCount];
+    uint[] materialOcclusionTextureIndices = new uint[materialCount];
     OutTexture[] textures; // Texture at position p has the 1-based index (p + 1).
     uint[OutTexture] textureToIndex;
     for (uint i = 0; i < materialCount; i++) {
@@ -236,6 +237,16 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
             materialMetallicRoughnessTextureIndices[i] = resolveTextureIndex(
                 material.metallicRoughnessTexture, renameImages, texturePathPrefix,
                 magFilterOverride, minFilterOverride, textures, textureToIndex);
+        }
+
+        // Optional in the same way. Resolved through the same de-duplication as every
+        // other slot, which is what makes glTF's packing free: an occlusion map sharing
+        // its image with the metallic-roughness one above resolves to that same index
+        // rather than a second entry.
+        if (materialType.hasOcclusion && material.occlusionTexture.path.length > 0) {
+            materialOcclusionTextureIndices[i] = resolveTextureIndex(material.occlusionTexture,
+                renameImages, texturePathPrefix, magFilterOverride, minFilterOverride,
+                textures, textureToIndex);
         }
     }
 
@@ -305,6 +316,16 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
             // they describe the whole surface.
             writeFloat(buf, data.materials[i].metallicFactor); // Metallic factor
             writeFloat(buf, data.materials[i].roughnessFactor); // Roughness factor
+        }
+
+        if (type.hasOcclusion) {
+            // Referenced occlusion map index (0 = none), read from its red channel. Equal
+            // to the index above where the source packs both into one image.
+            writeUint(buf, materialOcclusionTextureIndices[i]);
+
+            // Written without a map for the same reason the normal map's strength is: a
+            // fixed-size payload, and nothing to scale where there is no map.
+            writeFloat(buf, data.materials[i].occlusionStrength); // Occlusion strength
         }
     }
 
