@@ -93,8 +93,9 @@ int main(string[] args) {
         return failures > 0 ? 1 : 0;
     }
 
-    writefln("Watching '%s' -> '%s' every %dms. Press Ctrl+C to stop.",
+    writefln("Watching '%s' -> '%s' every %dms.",
         options.inputDir, options.outputDir, options.intervalMs);
+    writeln("Press Ctrl+C to stop.");
     watch(options, tools, state);
     return 0;
 }

@@ -90,7 +90,7 @@ enum MaterialType : ubyte {
     vertexColors = 1, /// Use only the per-vertex RGB colors. No payload.
     unlit = 2, /// Passthrough material — an optional texture (by index) from the model's texture list, tinted by a base color factor.
     lambert = 3, /// Purely diffuse lit material. References an optional albedo texture and base color factor, plus an optional normal map (both textures by index). Has no glTF counterpart to be inferred from, so a converter only assigns it when a material asks for it by name.
-    pbrMetallicRoughness = 4 /// Physically based metallic-roughness material. An upgrade of `lambert`: the same albedo and normal map references plus an optional metallic-roughness map and the factors over it, shaded with a full BRDF.
+    pbrMetallicRoughness = 4 /// Physically based metallic-roughness material. An upgrade of `lambert`: the same albedo and normal map references plus an optional metallic-roughness map and the factors over it, an optional occlusion map and its strength, shaded with a full BRDF.
 }
 
 /**
@@ -136,6 +136,8 @@ struct Material {
     TextureIndex metallicRoughnessTextureIndex; /// Populated when `type.hasMetallicRoughness`: the index of the referenced metallic-roughness map `Texture`, which packs roughness in its green channel and metalness in its blue one. 0 when the material has none.
     float metallicFactor = 1.0; /// Populated when `type.hasMetallicRoughness`: how metallic the surface is, 0 being a dielectric and 1 a raw metal. Multiplies the map's blue channel where there is one. Stored and used as-is: no range check.
     float roughnessFactor = 1.0; /// Populated when `type.hasMetallicRoughness`: how rough the surface is, 0 being a perfect mirror and 1 fully diffuse. Multiplies the map's green channel where there is one. Stored and used as-is: no range check.
+    TextureIndex occlusionTextureIndex; /// Populated when `type.hasOcclusion`: the index of the referenced ambient occlusion map `Texture`, read from its red channel. 0 when the material has none. May name the same texture as `metallicRoughnessTextureIndex`, which is how glTF packs the two.
+    float occlusionStrength = 1.0; /// Populated when `type.hasOcclusion`: how strongly the occlusion map attenuates indirect light. 1 is the map at full strength, 0 disables it. Stored and used as-is: no range check.
 
     mixin CopyConstructors!Material;
 }
@@ -180,6 +182,27 @@ bool referencesNormalTexture(MaterialType type) {
  * reflectance model to feed them into, which is the one thing separating the two payloads.
  */
 bool hasMetallicRoughness(MaterialType type) {
+    return type == MaterialType.pbrMetallicRoughness;
+}
+
+/**
+ * Whether materials of this type carry an ambient occlusion payload: an optional texture
+ * index referencing an occlusion map, plus the strength with which it applies.
+ *
+ * The map is optional the way the metallic-roughness one is - an index of 0 means the
+ * material has none - but both fields are present either way, so this predicate says what
+ * the payload holds rather than what the material ended up with.
+ *
+ * It may name the same texture as the metallic-roughness map: glTF packs occlusion into
+ * that image's spare red channel. It is a separate reference regardless, since a material
+ * is free to occlude from its own image, or to carry a metallic-roughness map and no
+ * occlusion at all.
+ *
+ * Only `pbrMetallicRoughness` carries it, for the same reason it alone carries the
+ * metallic-roughness pair: occlusion attenuates the indirect light of a BRDF that `lambert`
+ * does not have.
+ */
+bool hasOcclusion(MaterialType type) {
     return type == MaterialType.pbrMetallicRoughness;
 }
 

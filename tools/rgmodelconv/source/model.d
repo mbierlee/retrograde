@@ -64,9 +64,9 @@ struct TextureRef {
  * references.
  *
  * Lit (PBR) materials are converted as `pbrMetallicRoughness` ones, carrying their
- * base color (albedo), normal and metallic-roughness textures plus the base color,
- * metallic and roughness factors: the RGM format cannot express the remaining
- * metallic-roughness inputs (occlusion and emissive) yet.
+ * base color (albedo), normal, metallic-roughness and occlusion textures plus the base
+ * color, metallic, roughness and occlusion strength factors: the RGM format cannot
+ * express the remaining metallic-roughness input (emissive) yet.
  */
 struct MaterialInfo {
     bool unlit; /// True when the material declares the KHR_materials_unlit extension. Decides between the `unlit` and `pbrMetallicRoughness` material types for a textured material.
@@ -80,6 +80,8 @@ struct MaterialInfo {
     TextureRef metallicRoughnessTexture; /// The externally referenced metallic-roughness map (path + filters), packing roughness in green and metalness in blue; `path` is "" when the material has none. Only written for material types that shade with a metallic-roughness BRDF.
     float metallicFactor = 1.0f; /// glTF `pbrMetallicRoughness.metallicFactor`: how metallic the surface is, 0 being a dielectric and 1 a raw metal. Multiplies the map's blue channel where there is one. Defaults to 1, which is also what glTF means by an absent factor. Only written for material types that shade with a metallic-roughness BRDF.
     float roughnessFactor = 1.0f; /// glTF `pbrMetallicRoughness.roughnessFactor`: how rough the surface is, 0 being a perfect mirror and 1 fully diffuse. Multiplies the map's green channel where there is one. Defaults to 1, which is also what glTF means by an absent factor. Only written for material types that shade with a metallic-roughness BRDF.
+    TextureRef occlusionTexture; /// The externally referenced ambient occlusion map (path + filters), read from its red channel; `path` is "" when the material has none. Commonly the same image as `metallicRoughnessTexture`, which the writer's de-duplication then collapses into one texture entry. Only written for material types that carry an occlusion payload.
+    float occlusionStrength = 1.0f; /// glTF `occlusionTexture.strength`: how strongly the occlusion map attenuates indirect light. Defaults to 1 (full strength), which is also what glTF means by an absent `strength`. Only written for material types that carry an occlusion payload.
 }
 
 /**

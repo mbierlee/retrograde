@@ -262,10 +262,10 @@ private MaterialInfo parseMaterial(ref JSONValue gltf, JSONValue mat) {
 
     info.doubleSided = optBool(mat, "doubleSided", false);
 
-    // The base color (albedo), normal and metallic-roughness textures are converted;
-    // the remaining PBR texture slots (occlusion and emissive) have no RGM payload yet.
-    // They are still counted in `hasAnyTexture`, so a material carrying only, say, an
-    // occlusion map is not mistaken for a textureless vertex-colored one.
+    // The base color (albedo), normal, metallic-roughness and occlusion textures are
+    // converted; the remaining PBR texture slot (emissive) has no RGM payload yet. It is
+    // still counted in `hasAnyTexture`, so a material carrying only an emissive map is not
+    // mistaken for a textureless vertex-colored one.
     JSONValue* pbrP = "pbrMetallicRoughness" in mat.object;
     JSONValue* baseColorP = pbrP is null ? null : "baseColorTexture" in pbrP.object;
     JSONValue* metallicRoughnessP = pbrP is null ? null
@@ -277,11 +277,15 @@ private MaterialInfo parseMaterial(ref JSONValue gltf, JSONValue mat) {
     // exporters leave it at, and the only one Blender omits.
     JSONValue* normalP = "normalTexture" in mat.object;
 
+    // Sits at the top level too, and is an `occlusionTextureInfo`: the same shape as the
+    // normal map's, except its extra scalar is named `strength` rather than `scale`.
+    JSONValue* occlusionP = "occlusionTexture" in mat.object;
+
     info.hasAnyTexture = baseColorP !is null
         || normalP !is null
         || metallicRoughnessP !is null
-        || hasKey(mat, "emissiveTexture")
-        || hasKey(mat, "occlusionTexture");
+        || occlusionP !is null
+        || hasKey(mat, "emissiveTexture");
 
     if (baseColorP !is null) {
         TextureRef texture = resolveTextureRef(gltf, *baseColorP);
@@ -325,6 +329,17 @@ private MaterialInfo parseMaterial(ref JSONValue gltf, JSONValue mat) {
         if (texture.path.length > 0 && !startsWith(texture.path, "data:")) {
             info.normalTexture = texture;
             info.normalTextureScale = optFloat(*normalP, "scale", 1.0f);
+        }
+    }
+
+    // Resolved separately from the metallic-roughness map even where glTF's packing puts
+    // both in one image: the two slots are free to disagree, and the writer collapses them
+    // back into a single texture entry when they do not.
+    if (occlusionP !is null) {
+        TextureRef texture = resolveTextureRef(gltf, *occlusionP);
+        if (texture.path.length > 0 && !startsWith(texture.path, "data:")) {
+            info.occlusionTexture = texture;
+            info.occlusionStrength = optFloat(*occlusionP, "strength", 1.0f);
         }
     }
 

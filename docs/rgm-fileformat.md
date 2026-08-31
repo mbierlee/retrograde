@@ -167,7 +167,7 @@ part of each `materialEntrySize`, which is fixed per type:
 | 1 Vertex Colors            | 6                   |
 | 2 Unlit                    | 26                  |
 | 3 Lambert                  | 34                  |
-| 4 PBR Metallic-Roughness   | 46                  |
+| 4 PBR Metallic-Roughness   | 54                  |
 
 ### Material Types
 
@@ -176,7 +176,7 @@ part of each `materialEntrySize`, which is fixed per type:
 | 1     | Vertex Colors | Renders using only the per-vertex RGB colors. No payload.    |
 | 2     | Unlit         | Passthrough material — an optional texture referenced by index, tinted by a base color factor. |
 | 3     | Lambert       | Purely diffuse lit material. References its optional albedo texture and base color factor, plus an optional normal map by index and that map's strength. |
-| 4     | PBR Metallic-Roughness | Physically based material. An upgrade of `Lambert`: references the same albedo texture, base color factor, optional normal map and strength, followed by an optional packed metallic-roughness map and the metallic and roughness factors over it. |
+| 4     | PBR Metallic-Roughness | Physically based material. An upgrade of `Lambert`: references the same albedo texture, base color factor, optional normal map and strength, followed by an optional packed metallic-roughness map and the metallic and roughness factors over it, and finally an optional occlusion map and its strength. |
 
 ### Common Flags
 
@@ -273,18 +273,19 @@ explicitly through its `rg_mat` extra (see the [Blender authoring guide](blender
 | 0x1C   | 4    | uint    | Metallic-roughness texture index (references a texture by its `index`, 0 = none) |
 | 0x20   | 4    | float   | Metallic factor                                                          |
 | 0x24   | 4    | float   | Roughness factor                                                         |
+| 0x28   | 4    | uint    | Occlusion texture index (references a texture by its `index`, 0 = none)  |
+| 0x2C   | 4    | float   | Occlusion strength                                                       |
 
 The albedo index, base color factor, normal map index and normal map scale are the `Lambert`
 payload verbatim, subject to the same rules. What the PBR type adds behind them are the inputs of
-its metallic-roughness BRDF: a map, and the pair of factors that scale it.
+its metallic-roughness BRDF: a map, the pair of factors that scale it, and an occlusion map with
+the strength that scales *it*.
 
 The metallic-roughness texture index is optional the same way the normal map's is — `0` means the
 material has none, and any other value must match a defined texture. The map is **packed**, in the
-same layout glTF uses: **roughness in the green channel, metalness in the blue one**. The red
-channel is unused and the alpha channel is ignored, which leaves red free for an occlusion map to
-share the image later, as glTF's `occlusionTexture` convention does. It is sampled with UV
-channel 0, like the albedo and normal maps, and its values are read linearly — it is data, not
-color.
+same layout glTF uses: **roughness in the green channel, metalness in the blue one**, leaving red
+to the occlusion map below and ignoring alpha. It is sampled with UV channel 0, like the albedo
+and normal maps, and its values are read linearly — it is data, not color.
 
 The two factors below it are:
 
@@ -312,7 +313,38 @@ roughness = roughnessFactor × sample.g
 Both fields are present regardless, so a material with a map it does not want scaled stores the
 identity `1.0`, and a material with no map is described by its factors alone.
 
-The remaining PBR inputs (occlusion, emissive) are not stored yet; they will extend this payload.
+#### Occlusion
+
+The occlusion texture index is optional in the same way — `0` means the material has none, and any
+other value must match a defined texture. The map holds baked ambient occlusion in its **red
+channel**; the other channels are ignored. Like the maps above it is sampled with UV channel 0 and
+read linearly.
+
+It is **a reference in its own right, not a channel of the metallic-roughness map**. The two
+indices are free to name the same texture entry — which is exactly what glTF's `occlusionTexture`
+convention produces, and what packing all three inputs into one image means here — but equally
+free to differ, and a material may carry one map without the other. A reader must not infer
+occlusion from the metallic-roughness map's red channel: a metallic-roughness map written from a
+single-channel source has its value replicated across all three channels, so its red holds
+roughness rather than occlusion.
+
+The occlusion strength says how strongly the map applies, matching the `strength` of glTF's
+`occlusionTextureInfo`. It interpolates toward no occlusion rather than scaling the sample, so
+`0.0` leaves the surface unoccluded rather than black:
+
+```
+occlusion = 1 + strength × (sample.r - 1)
+```
+
+`1.0` is the map at full strength. Like the index, the field is always present: a material with no
+occlusion map still stores a strength (conventionally `1.0`), which readers ignore. It is not
+range-checked either — the value is used as stored.
+
+Occlusion attenuates **indirect (ambient) light only**, as glTF specifies. Light arriving from a
+scene light is left alone, so a crease a lamp shines straight into still lights up. This is what
+separates a baked occlusion map from a shadow.
+
+The remaining PBR input (emissive) is not stored yet; it will extend this payload.
 
 ## Textures (variable size)
 

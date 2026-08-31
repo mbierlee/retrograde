@@ -24,6 +24,16 @@ uniform float roughnessFactor;
 uniform sampler2D metallicRoughnessTexture;
 uniform bool hasMetallicRoughnessMap;
 
+// Shadowing baked into creases and contact points, in the red channel the map above leaves
+// free - so this is often that same image sampled a second time. Attenuates only the ambient
+// terms below: a light shining straight into a crease should still light it, which is what
+// separates a baked occlusion map from a shadow.
+uniform sampler2D occlusionTexture;
+uniform bool hasOcclusionMap;
+
+// 1 is the map at full strength, 0 ignores it.
+uniform float occlusionStrength;
+
 // Only the specular lobe needs it, to work out which way the surface reflects toward the eye.
 uniform vec3 cameraWorldPosition;
 
@@ -153,11 +163,20 @@ void main() {
   vec3 diffuseColor = albedo.rgb * (1.0 - metallic);
   vec3 f0 = mix(dielectricF0, albedo.rgb, metallic);
 
+  // Interpolated toward 1 rather than scaled, so the strength dials the map out to an
+  // unoccluded surface instead of down to a black one. This is glTF's formula.
+  float occlusion = 1.0;
+  if (hasOcclusionMap) {
+    float sampledOcclusion = texture(occlusionTexture, vertexTextureCoords).r;
+    occlusion = 1.0 + occlusionStrength * (sampledOcclusion - 1.0);
+  }
+
   // Y-up: 1 where the surface looks straight up at the sky, 0 where it looks at the ground.
   // Deliberately not divided by PI, unlike the direct lighting below: the hemisphere is
   // already an irradiance approximation, which is what that PI came from.
   float skyFacing = surfaceNormal.y * 0.5 + 0.5;
-  vec3 color = mix(ambientGroundRadiance, ambientSkyRadiance, skyFacing) * diffuseColor;
+  vec3 color = mix(ambientGroundRadiance, ambientSkyRadiance, skyFacing) * diffuseColor
+               * occlusion;
 
   // The specular half of the same ambient. Sampled along the reflection rather than the
   // normal, so a smooth surface still picks a side of the hemisphere and a metal lit by
@@ -165,7 +184,7 @@ void main() {
   vec3 reflected = reflect(-viewDirection, surfaceNormal);
   vec3 ambientRadiance = mix(ambientGroundRadiance, ambientSkyRadiance, reflected.y * 0.5 + 0.5);
   vec2 environmentBrdf = environmentBrdfApprox(roughness, NdotV);
-  color += ambientRadiance * (f0 * environmentBrdf.x + environmentBrdf.y);
+  color += ambientRadiance * (f0 * environmentBrdf.x + environmentBrdf.y) * occlusion;
 
 #if MAX_LIGHTS > 0
   for (int i = 0; i < lightCount; i++) {

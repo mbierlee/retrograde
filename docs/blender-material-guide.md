@@ -23,16 +23,16 @@ reach a type that no glTF material maps onto — see
 | `lambert`               | Never inferred. Requires `rg_mat`. |
 | `pbrMetallicRoughness`  | Anything else — a regular lit material, with or without textures. |
 
-**The base color, normal and metallic-roughness textures are converted; the other PBR
-texture inputs are not.** A regular `Principled BSDF` material exports as glTF PBR
+**The base color, normal, metallic-roughness and occlusion textures are converted; the
+emissive one is not.** A regular `Principled BSDF` material exports as glTF PBR
 (metallic-roughness) and becomes a `pbrMetallicRoughness` material in the `.rgm`, keeping
-its **Base Color**, **Normal** (with the normal map's strength) and **Metallic**/**Roughness**
-textures and dropping the rest (occlusion, emissive) — the RGM format has nowhere to put
-those yet. The **Metallic** and **Roughness** sliders are carried over too, and scale the
-map where there is one. Which textures a type carries differs: `pbrMetallicRoughness` takes
-all three, `lambert` the base color and normal maps only (it has no BRDF to feed a
-metallic-roughness map into), and `unlit` only its base color texture, since an unlit
-material is never shaded.
+its **Base Color**, **Normal** (with the normal map's strength), **Metallic**/**Roughness**
+and occlusion (with its strength) textures and dropping the emissive one — the RGM format
+has nowhere to put it yet. The **Metallic** and **Roughness** sliders are carried over too,
+and scale the map where there is one. Which textures a type carries differs:
+`pbrMetallicRoughness` takes all four, `lambert` the base color and normal maps only (it has
+no BRDF to feed a metallic-roughness map or occlusion into), and `unlit` only its base color
+texture, since an unlit material is never shaded.
 
 **A base color texture is optional.** A material whose **Base Color** is a plain color
 rather than an image is still a real material: the color is carried over as the base
@@ -360,6 +360,82 @@ coordinates the base color and normal maps use. Unlike a normal map it needs no 
 As with the normal map, a metallic-roughness map on its own is a complete material: with
 no base color texture the surface takes its color from the base color factor and its
 shading from the map.
+
+### Adding an occlusion map
+
+**`pbrMetallicRoughness` only** — like the metallic-roughness map, `lambert` drops it.
+
+An occlusion map is baked shadowing: the creases, crevices and contact points that stay
+dark because the surface around them blocks most of the light reaching them. It lives in
+the image's **red** channel — the channel the metallic-roughness map leaves free — so one
+image can carry all three inputs. That combination is usually called an **ORM** map
+(occlusion, roughness, metalness), and it is what most texture libraries ship.
+
+The wrinkle is that `Principled BSDF` has **no occlusion socket**. Blender's glTF exporter
+picks occlusion up from a separate node group instead:
+
+1. Add a **Group** node named **`glTF Material Output`** (called **`glTF Settings`** in
+   Blender 3.x and earlier). If it does not exist yet, create a new node group with a
+   single input socket named exactly **`Occlusion`**. The name is what the exporter
+   matches on.
+2. Add a **Texture ▸ Image Texture** node and load the map. Set its **Color Space** to
+   **Non-Color**: like the metallic-roughness map, it is data rather than color.
+3. Add a **Converter ▸ Separate Color** node and connect the image's **`Color`** output to
+   its **`Color`** input.
+4. Connect **`Red`** to the group's **`Occlusion`** input.
+
+With an ORM map the same **Separate Color** node feeds all three sockets:
+
+```
+                              /--Red----> [glTF Material Output] Occlusion
+[Image Texture (Non-Color)] --Color--> [Separate Color]
+                              |--Green--> [Principled BSDF] Roughness
+                              \--Blue---> [Principled BSDF] Metallic
+```
+
+The `.rgm` stores occlusion as a texture reference of its own, so the two slots may point
+at one image (as above) or at two separate ones. Where they share an image the converter
+writes a single texture entry and the renderer uploads it once, so packing costs nothing
+either way.
+
+#### Seeing it in the viewport
+
+That node group is **export-only** — Blender's viewport ignores it, so the occlusion you
+just wired up will not show up in Material Preview or Rendered mode. To preview it,
+additionally multiply the map into the base color with a **Color ▸ Mix** node set to
+**Multiply**, feeding the result into **Base Color**:
+
+```
+[Base Color image]  --> A --\
+                             [Mix (Multiply)] --> [Principled BSDF] Base Color
+[Occlusion (Red)]   --> B --/
+```
+
+**The socket order matters for the export, not just the look.** Put the base color texture
+in slot **A** and the occlusion in slot **B**. The exporter walks the chain into **Base
+Color** and takes the *first* image it finds as the material's `baseColorTexture`, so
+wiring them the other way round exports the **occlusion map as the albedo** — a material
+that converts without complaint and comes out grey and wrong.
+
+Note this is a preview convenience only. The engine applies occlusion itself, so a map
+multiplied into the base color *and* exported through the group is applied twice — once
+baked into the albedo, once by the shader. If you want the viewport and the engine to
+match exactly, mute the **Mix** node before exporting.
+
+#### What it affects
+
+Occlusion attenuates **indirect (ambient) light only**, which is what glTF specifies. Light
+from a scene light is left alone, so a crease a lamp shines straight into still lights up —
+that is the difference between baked occlusion and a shadow. In a scene lit purely by
+bright point lights the effect is therefore subtle; it shows up most on surfaces facing
+away from every light, where the ambient hemisphere is all the light there is.
+
+The **strength** (glTF `occlusionTexture.strength`, exposed by Blender on the group input's
+default value) dials the map back toward no occlusion at all: `1.0` is full strength, `0.0`
+ignores the map. Values in between fade it rather than darkening it further.
+
+The map is sampled with UV channel 0, so the mesh needs to be UV-unwrapped. Like the
+metallic-roughness map, it needs no tangents.
 
 ### Texture filtering (min/mag filter)
 

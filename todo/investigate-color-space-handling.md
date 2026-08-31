@@ -22,9 +22,12 @@ settling properly.
 ## Questions to answer
 
 - Should albedo textures be uploaded as `GL_SRGB8` / `GL_SRGB8_ALPHA8` so the sampler linearizes
-  them, leaving the shader working in linear space throughout? Note that normal and
-  metallic-roughness maps — and any future occlusion map — must **stay** linear: they are data,
-  not color. Today nothing distinguishes them, since every texture is uploaded the same way.
+  them, leaving the shader working in linear space throughout? Note that the normal,
+  metallic-roughness and occlusion maps must **stay** linear: they are data, not color. Today
+  nothing distinguishes them, since every texture is uploaded the same way. The occlusion map
+  makes this concrete rather than hypothetical: it commonly shares one image with the
+  metallic-roughness map, so whatever decides a texture's internal format cannot key off the
+  material slot alone — the same texture object is bound to two of them.
 - Is a gamma or tonemap step wanted at the end of the frame, and where would it live given there
   is no post-process pass today?
 - Do the other color inputs need the same treatment: `Color` (`engine/rendering/package.d`), the
