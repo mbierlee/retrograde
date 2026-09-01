@@ -25,6 +25,10 @@ private struct EntityEntry {
     String name;
     Array!Component components;
 
+    /// Entities are only processed once finalized, so that a half-built
+    /// entity is never updated.
+    bool isFinalized;
+
     mixin CopyConstructors!EntityEntry;
 }
 
@@ -70,13 +74,38 @@ Result!EntityId createEntity(string name) {
 
 /** 
  * Called when all components are added to an entity.
+ *
+ * Finalizing an entity that is already finalized, or one that does not exist,
+ * does nothing.
  */
 void finalizeEntity(EntityId entityId) {
-    //TODO: prevent double finalization
-    //TODO: do not update non-finalized entities
-    foreach (hook; entityFinalizedHooks) {
-        hook(entityId);
+    foreach (size_t i, ref entity; entities) {
+        if (entities.getSerial(i) == entityId) {
+            if (entity.isFinalized) {
+                return;
+            }
+
+            entity.isFinalized = true;
+            foreach (hook; entityFinalizedHooks) {
+                hook(entityId);
+            }
+
+            return;
+        }
     }
+}
+
+/** 
+ * Returns: whether the given entity exists and has been finalized.
+ */
+bool isEntityFinalized(EntityId entityId) {
+    foreach (size_t i, ref entity; entities) {
+        if (entities.getSerial(i) == entityId) {
+            return entity.isFinalized;
+        }
+    }
+
+    return false;
 }
 
 OperationResult removeEntity(EntityId entityId) {
@@ -169,7 +198,9 @@ void addEntityProcessor(ProcessorFunction processor) {
 void updateEntities() {
     foreach (processor; processors) {
         foreach (size_t i, ref entity; entities) {
-            processor(entities.getSerial(i));
+            if (entity.isFinalized) {
+                processor(entities.getSerial(i));
+            }
         }
     }
 }
@@ -474,8 +505,51 @@ void runEntityTests() {
         addEntityProcessor((EntityId entityId) { processedEntityId = entityId; });
 
         EntityId entityId = createEntity("ent_test".s).value;
+        finalizeEntity(entityId);
         updateEntities();
         assert(processedEntityId == entityId);
+    });
+
+    test("Entities that are not finalized are not processed", {
+        resetEcs();
+        static uint processedCount = 0;
+        addEntityProcessor((EntityId) { processedCount++; });
+
+        createEntity("ent_unfinalized_test".s);
+        updateEntities();
+        assert(processedCount == 0);
+    });
+
+    test("An entity is only finalized once", {
+        resetEcs();
+        static uint finalizedCount = 0;
+        addEntityFinalizedHook((EntityId) { finalizedCount++; });
+
+        EntityId entityId = createEntity("ent_test".s).value;
+        assert(!isEntityFinalized(entityId));
+
+        finalizeEntity(entityId);
+        finalizeEntity(entityId);
+        assert(finalizedCount == 1);
+        assert(isEntityFinalized(entityId));
+    });
+
+    test("Finalizing a non-existent entity does nothing", {
+        resetEcs();
+        static uint finalizedCount = 0;
+        addEntityFinalizedHook((EntityId) { finalizedCount++; });
+
+        finalizeEntity(999);
+        assert(finalizedCount == 0);
+        assert(!isEntityFinalized(999));
+    });
+
+    test("A removed entity is no longer finalized", {
+        resetEcs();
+        EntityId entityId = createEntity("ent_test".s).value;
+        finalizeEntity(entityId);
+        removeEntity(entityId);
+        assert(!isEntityFinalized(entityId));
     });
 
     test("entityAdded hook is called when entity is created", {
@@ -484,7 +558,6 @@ void runEntityTests() {
         addEntityAddedHook((EntityId entityId) { hookedEntityId = entityId; });
 
         EntityId entityId = createEntity("ent_test".s).value;
-        finalizeEntity(entityId);
         assert(hookedEntityId == entityId);
     });
 
