@@ -505,8 +505,8 @@ private scalar allowedPitch(const Quaternion orientation, const scalar pitch,
 
 version (UnitTesting)  :  ///
 
-import retrograde.engine.entity : addComponent, addEntityProcessor, createEntity, getComponentData,
-    resetEcs, updateEntities;
+import retrograde.engine.entity : addComponent, addEntityProcessor, createEntity, finalizeEntity,
+    getComponentData, resetEcs, updateEntities;
 import retrograde.engine.event : eventQueue, processEvents;
 import retrograde.engine.input : EventMapping, hasKeyMapping, hasMouseModeMapping,
     hasMouseMovementMapping, KeyBinding, keyMapping, processInput, resetInput, setMouseMode;
@@ -568,6 +568,7 @@ private EntityId createLookAroundEntity() {
     EntityId entity = createEntity("ent_look_around_test").value;
     entity.addComponent(LookAroundComponentType);
     entity.addComponent(OrientationComponentType, makeUnique(Quaternion.init));
+    entity.finalizeEntity();
     return entity;
 }
 
@@ -576,12 +577,14 @@ private EntityId createLookAroundEntity(LookAroundConfiguration configuration) {
     EntityId entity = createEntity("ent_configured_look_around_test").value;
     entity.addComponent(LookAroundComponentType, makeUnique(configuration));
     entity.addComponent(OrientationComponentType, makeUnique(Quaternion.init));
+    entity.finalizeEntity();
     return entity;
 }
 
 private EntityId createOrientedEntity() {
     EntityId entity = createEntity("ent_oriented_test").value;
     entity.addComponent(OrientationComponentType, makeUnique(Quaternion.init));
+    entity.finalizeEntity();
     return entity;
 }
 

@@ -458,7 +458,8 @@ private enum scalar headingEpsilon = 0.0001;
 
 version (UnitTesting)  :  ///
 
-import retrograde.engine.entity : addComponent, createEntity, resetEcs, updateEntities;
+import retrograde.engine.entity : addComponent, createEntity, finalizeEntity, resetEcs,
+    updateEntities;
 import retrograde.engine.event : eventQueue, processEvents;
 import retrograde.engine.input : EventMapping, hasKeyMapping, hasMouseModeMapping, KeyBinding,
     keyMapping, processInput, resetInput, setMouseMode;
@@ -522,6 +523,7 @@ private EntityId createWalkerEntity() {
     entity.addComponent(WalkerComponentType);
     entity.addComponent(PositionComponentType, makeUnique(Vector3(0, 0, 0)));
     entity.addComponent(OrientationComponentType, makeUnique(Quaternion.init));
+    entity.finalizeEntity();
     return entity;
 }
 
@@ -531,6 +533,7 @@ private EntityId createWalkerEntity(WalkConfiguration configuration) {
     entity.addComponent(WalkerComponentType, makeUnique(configuration));
     entity.addComponent(PositionComponentType, makeUnique(Vector3(0, 0, 0)));
     entity.addComponent(OrientationComponentType, makeUnique(Quaternion.init));
+    entity.finalizeEntity();
     return entity;
 }
 
@@ -540,6 +543,7 @@ private EntityId createWalkerEntity(Quaternion orientation) {
     entity.addComponent(WalkerComponentType);
     entity.addComponent(PositionComponentType, makeUnique(Vector3(0, 0, 0)));
     entity.addComponent(OrientationComponentType, makeUnique(orientation));
+    entity.finalizeEntity();
     return entity;
 }
 
@@ -548,6 +552,7 @@ private EntityId createStandingEntity() {
     EntityId entity = createEntity("ent_standing_test").value;
     entity.addComponent(PositionComponentType, makeUnique(Vector3(0, 0, 0)));
     entity.addComponent(OrientationComponentType, makeUnique(Quaternion.init));
+    entity.finalizeEntity();
     return entity;
 }
 
@@ -556,6 +561,7 @@ private EntityId createUnorientedWalkerEntity() {
     EntityId entity = createEntity("ent_unoriented_walker_test").value;
     entity.addComponent(WalkerComponentType);
     entity.addComponent(PositionComponentType, makeUnique(Vector3(0, 0, 0)));
+    entity.finalizeEntity();
     return entity;
 }
 
