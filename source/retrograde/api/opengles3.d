@@ -17,8 +17,8 @@ version (OpenGLES3)  :  //
 
 import retrograde.engine.entity : EntityId, hasComponent, withComponentData, addComponent,
     getComponentData;
-import retrograde.engine.rendering : activeCameraWorldPosition, Color, RenderPass, Viewport,
-    renderPasses, MaterialShader;
+import retrograde.engine.rendering : activeCameraWorldPosition, Color, LightType, RenderPass,
+    Viewport, renderPasses, MaterialShader;
 import retrograde.engine.rendering.lighting : ActiveLight, ambientGroundColor, ambientIntensity,
     ambientSkyColor, selectActiveLights;
 import retrograde.engine.rendering.materialshader : maxLights;
@@ -733,7 +733,8 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
 
         static if (maxLights > 0) {
             // Picked once for the whole entity: every mesh of a model is lit by the same lights.
-            GLsizei selectedLightCount = cast(GLsizei) selectActiveLights(position, selectedLights);
+            GLsizei selectedLightCount = cast(GLsizei) selectActiveLights(position,
+                shadeableLightTypes[], selectedLights);
 
             lightPositionRadiusData.truncate(0);
             lightColorIntensityData.truncate(0);
@@ -1060,6 +1061,11 @@ private HashMap!(MaterialType, GlMaterialShaderInfo) materialShaderInfos;
 private GLuint defaultAlbedoTextureObject;
 
 static if (maxLights > 0) {
+    // The light types the material shaders have a term and uniforms for: lightPositionRadius
+    // and lightColorIntensity describe a point light and the shaders shade them as one, so any
+    // other type needs its own uniforms and its own term before it can be added here.
+    private static immutable LightType[1] shadeableLightTypes = [LightType.point];
+
     // Scratch buffers reused by every draw, so packing a frame's lights allocates nothing
     // after the first few draws.
     private Array!ActiveLight selectedLights;
