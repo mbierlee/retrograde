@@ -17,7 +17,7 @@
 module retrograde.engine.rendering.lighting;
 
 import retrograde.engine.entity : EntityId, getComponentData;
-import retrograde.engine.rendering : Color, Light, LightComponentType;
+import retrograde.engine.rendering : Color, Light, LightComponentType, LightType;
 import retrograde.engine.rendering.materialshader : maxLights;
 
 import retrograde.std.collections : Array;
@@ -172,10 +172,14 @@ void collectActiveLights() {
 }
 
 /**
- * Picks the lights among `candidates` that reach `target`, nearest first, at most `maxCount`
- * of them.
+ * Picks the lights among `candidates` that reach `target` and are of a type in `acceptedTypes`,
+ * nearest first, at most `maxCount` of them.
  *
- * Which lights are culled for being irrelevant is up to the current
+ * A light of a type the caller did not accept is culled whatever the strategy, since a selection
+ * is what fills the caller's light budget: leaving one in would cost a slot that a light the
+ * caller can actually shade with could have had.
+ *
+ * Which of the remaining lights are culled for being irrelevant is up to the current
  * $(D lightCullingStrategy). Under $(D LightCullingStrategy.outsideRange) a light is culled
  * unless the target is within its attenuation radius, beyond which the falloff has it
  * contribute nothing anyway. Under $(D LightCullingStrategy.none) that range test is skipped
@@ -190,20 +194,27 @@ void collectActiveLights() {
  * Params:
  *  candidates = the lights to choose from, typically $(D activeLights).
  *  target = the world position being lit.
+ *  acceptedTypes = the light types the caller can shade with, in any order. An empty list
+ *                  selects nothing: which types a shader has a term and uniforms for is the
+ *                  renderer's to say, and one that says "none" gets none.
  *  maxCount = how many lights the caller can take. Zero selects nothing.
  *  selected = receives the chosen lights, nearest first. Truncated first, so its capacity
  *             carries over between calls.
  * Returns: the number of lights written to `selected`.
  */
 size_t selectLights(const ref Array!ActiveLight candidates, const Vector3 target,
-    const size_t maxCount, ref Array!ActiveLight selected) {
+    const(LightType)[] acceptedTypes, const size_t maxCount, ref Array!ActiveLight selected) {
     selected.truncate(0);
-    if (maxCount == 0) {
+    if (maxCount == 0 || acceptedTypes.length == 0) {
         return 0;
     }
 
     foreach (i; 0 .. candidates.length) {
         ActiveLight candidate = candidates[i];
+
+        if (!isAccepted(candidate.light.lightType, acceptedTypes)) {
+            continue;
+        }
 
         // Needed whatever the strategy: it is what orders the selection, and so what decides
         // which lights survive the final maxCount cull.
@@ -246,20 +257,41 @@ size_t selectLights(const ref Array!ActiveLight candidates, const Vector3 target
     return selected.length;
 }
 
+private bool isAccepted(const LightType type, const(LightType)[] acceptedTypes) {
+    foreach (acceptedType; acceptedTypes) {
+        if (acceptedType == type) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 /**
- * Picks the lights of the current frame that reach `target`, nearest first, culling by the
- * current $(D lightCullingStrategy) and then by the build's $(D maxLights) budget - which
- * culls whatever the strategy, since that is the room the shader has.
+ * Picks the lights of the current frame that reach `target`, nearest first, culling lights of a
+ * type outside `acceptedTypes`, then by the current $(D lightCullingStrategy), and then by the
+ * build's $(D maxLights) budget - which culls whatever the strategy, since that is the room the
+ * shader has.
  *
  * Returns: the number of lights written to `selected`.
  */
-size_t selectActiveLights(const Vector3 target, ref Array!ActiveLight selected) {
-    return selectLights(activeLights, target, maxLights, selected);
+size_t selectActiveLights(const Vector3 target, const(LightType)[] acceptedTypes,
+    ref Array!ActiveLight selected) {
+    return selectLights(activeLights, target, acceptedTypes, maxLights, selected);
 }
 
 version (UnitTesting)  :  //
 
 import retrograde.std.test : test, writeSection;
+
+// LightType has only the one member, so a type nothing accepts has to be conjured up.
+private enum unshadeableLightType = cast(LightType)(LightType.max + 1);
+
+// Hoisted out of the test lambdas: a bare array literal passed to a slice parameter needs the
+// GC and is silently dropped in betterC.
+private static immutable LightType[1] pointLights = [LightType.point];
+private static immutable LightType[0] noLightTypes = [];
+private static immutable LightType[2] bothLightTypes = [unshadeableLightType, LightType.point];
 
 private ActiveLight testLight(scalar x, scalar y, scalar z, scalar attenuationRadius) {
     Light light;
@@ -310,7 +342,7 @@ void runLightingTests() {
         Array!ActiveLight candidates;
         Array!ActiveLight selected;
 
-        assert(selectLights(candidates, Vector3(0, 0, 0), 8, selected) == 0);
+        assert(selectLights(candidates, Vector3(0, 0, 0), pointLights[], 8, selected) == 0);
         assert(selected.length == 0);
     });
 
@@ -319,7 +351,7 @@ void runLightingTests() {
         candidates.add(testLight(1, 0, 0, 10));
         Array!ActiveLight selected;
 
-        assert(selectLights(candidates, Vector3(0, 0, 0), 0, selected) == 0);
+        assert(selectLights(candidates, Vector3(0, 0, 0), pointLights[], 0, selected) == 0);
         assert(selected.length == 0);
     });
 
@@ -331,7 +363,7 @@ void runLightingTests() {
         Array!ActiveLight selected;
 
         lightCullingStrategy = LightCullingStrategy.outsideRange;
-        assert(selectLights(candidates, Vector3(0, 0, 0), 8, selected) == 2);
+        assert(selectLights(candidates, Vector3(0, 0, 0), pointLights[], 8, selected) == 2);
         assert(selected.length == 2);
         assert(selected[0].position.x == 3);
         assert(selected[1].position.x == 10);
@@ -344,7 +376,7 @@ void runLightingTests() {
         Array!ActiveLight selected;
 
         lightCullingStrategy = LightCullingStrategy.none;
-        assert(selectLights(candidates, Vector3(0, 0, 0), 8, selected) == 2);
+        assert(selectLights(candidates, Vector3(0, 0, 0), pointLights[], 8, selected) == 2);
         assert(selected[0].position.x == 3);
         assert(selected[1].position.x == 20);
 
@@ -360,12 +392,12 @@ void runLightingTests() {
         Array!ActiveLight selected;
 
         lightCullingStrategy = LightCullingStrategy.none;
-        assert(selectLights(candidates, Vector3(0, 0, 0), 2, selected) == 2);
+        assert(selectLights(candidates, Vector3(0, 0, 0), pointLights[], 2, selected) == 2);
         assert(selected[0].position.z == 10);
         assert(selected[1].position.z == 20);
 
         lightCullingStrategy = LightCullingStrategy.outsideRange;
-        assert(selectLights(candidates, Vector3(0, 0, 0), 2, selected) == 0);
+        assert(selectLights(candidates, Vector3(0, 0, 0), pointLights[], 2, selected) == 0);
     });
 
     test("Select lights nearest first", {
@@ -376,7 +408,7 @@ void runLightingTests() {
         candidates.add(testLight(0, 0, 3, 100));
         Array!ActiveLight selected;
 
-        assert(selectLights(candidates, Vector3(0, 0, 0), 8, selected) == 4);
+        assert(selectLights(candidates, Vector3(0, 0, 0), pointLights[], 8, selected) == 4);
         assert(selected[0].position.z == 1);
         assert(selected[1].position.z == 3);
         assert(selected[2].position.z == 5);
@@ -391,10 +423,69 @@ void runLightingTests() {
         candidates.add(testLight(0, 0, 4, 100));
         Array!ActiveLight selected;
 
-        assert(selectLights(candidates, Vector3(0, 0, 0), 2, selected) == 2);
+        assert(selectLights(candidates, Vector3(0, 0, 0), pointLights[], 2, selected) == 2);
         assert(selected.length == 2);
         assert(selected[0].position.z == 2);
         assert(selected[1].position.z == 4);
+    });
+
+    test("Select nothing when the caller accepts no light types", {
+        Array!ActiveLight candidates;
+        candidates.add(testLight(1, 0, 0, 10));
+        Array!ActiveLight selected;
+
+        assert(selectLights(candidates, Vector3(0, 0, 0), noLightTypes[], 8, selected) == 0);
+        assert(selected.length == 0);
+    });
+
+    test("Select a light of any type the caller accepts", {
+        Array!ActiveLight candidates;
+
+        ActiveLight otherType = testLight(1, 0, 0, 10);
+        otherType.light.lightType = unshadeableLightType;
+        candidates.add(otherType);
+        candidates.add(testLight(5, 0, 0, 10));
+
+        Array!ActiveLight selected;
+
+        assert(selectLights(candidates, Vector3(0, 0, 0), bothLightTypes[], 8, selected) == 2);
+        assert(selected[0].position.x == 1);
+        assert(selected[1].position.x == 5);
+    });
+
+    test("Never select a light of a type the caller does not accept", {
+        Array!ActiveLight candidates;
+
+        ActiveLight unshadeable = testLight(1, 0, 0, 10);
+        unshadeable.light.lightType = unshadeableLightType;
+        candidates.add(unshadeable);
+        candidates.add(testLight(5, 0, 0, 10));
+
+        Array!ActiveLight selected;
+
+        // Even with room to spare and nothing culled by relevance, the type alone excludes it.
+        lightCullingStrategy = LightCullingStrategy.none;
+        assert(selectLights(candidates, Vector3(0, 0, 0), pointLights[], 8, selected) == 1);
+        assert(selected[0].position.x == 5);
+
+        lightCullingStrategy = LightCullingStrategy.outsideRange;
+    });
+
+    test("An unaccepted light does not take up a slot in the light budget", {
+        Array!ActiveLight candidates;
+
+        // Nearest of the three, so it would win a slot outright if the type were not checked.
+        ActiveLight unshadeable = testLight(0, 0, 1, 10);
+        unshadeable.light.lightType = unshadeableLightType;
+        candidates.add(unshadeable);
+        candidates.add(testLight(0, 0, 2, 10));
+        candidates.add(testLight(0, 0, 3, 10));
+
+        Array!ActiveLight selected;
+
+        assert(selectLights(candidates, Vector3(0, 0, 0), pointLights[], 2, selected) == 2);
+        assert(selected[0].position.z == 2);
+        assert(selected[1].position.z == 3);
     });
 
     test("Select lights relative to the target, not the origin", {
@@ -403,7 +494,7 @@ void runLightingTests() {
         candidates.add(testLight(10, 0, 0, 3));
         Array!ActiveLight selected;
 
-        assert(selectLights(candidates, Vector3(9, 0, 0), 8, selected) == 1);
+        assert(selectLights(candidates, Vector3(9, 0, 0), pointLights[], 8, selected) == 1);
         assert(selected[0].position.x == 10);
     });
 
