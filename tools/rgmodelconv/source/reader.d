@@ -263,9 +263,9 @@ private MaterialInfo parseMaterial(ref JSONValue gltf, JSONValue mat) {
     info.doubleSided = optBool(mat, "doubleSided", false);
 
     // The base color (albedo), normal, metallic-roughness and occlusion textures are
-    // converted; the remaining PBR texture slot (emissive) has no RGM payload yet. It is
-    // still counted in `hasAnyTexture`, so a material carrying only an emissive map is not
-    // mistaken for a textureless vertex-colored one.
+    // converted; the remaining PBR texture slot (emissive) has no RGM payload yet - only its
+    // factor and strength do. The map is still counted in `hasAnyTexture`, so a material
+    // carrying only an emissive map is not mistaken for a textureless vertex-colored one.
     JSONValue* pbrP = "pbrMetallicRoughness" in mat.object;
     JSONValue* baseColorP = pbrP is null ? null : "baseColorTexture" in pbrP.object;
     JSONValue* metallicRoughnessP = pbrP is null ? null
@@ -340,6 +340,29 @@ private MaterialInfo parseMaterial(ref JSONValue gltf, JSONValue mat) {
         if (texture.path.length > 0 && !startsWith(texture.path, "data:")) {
             info.occlusionTexture = texture;
             info.occlusionStrength = optFloat(*occlusionP, "strength", 1.0f);
+        }
+    }
+
+    // Sits at the material's top level, next to the emissive texture that is not converted:
+    // the factor stands on its own without one, describing a surface that glows evenly.
+    // Malformed input is ignored rather than partially applied, leaving glTF's own default
+    // of black - a material that emits nothing.
+    if (auto emissiveP = "emissiveFactor" in mat.object) {
+        if (emissiveP.type == JSONType.array && emissiveP.array.length == 3) {
+            foreach (i, ref component; emissiveP.array) {
+                info.emissiveFactor[i] = jsonFloat(component);
+            }
+        }
+    }
+
+    // glTF caps `emissiveFactor` at 1 per component, so anything brighter than the surface's
+    // own albedo arrives through this extension instead. Absent, it means 1: the factor as
+    // written, which is what a material without the extension asks for.
+    if (auto extP = "extensions" in mat.object) {
+        if (auto strengthP = "KHR_materials_emissive_strength" in extP.object) {
+            if (strengthP.type == JSONType.object) {
+                info.emissiveStrength = optFloat(*strengthP, "emissiveStrength", 1.0f);
+            }
         }
     }
 

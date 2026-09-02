@@ -24,7 +24,7 @@ import std.array : array;
 import retrograde.assets.rgm : loadModel, loadModelHeader, ModelHeader, rgmMagicNumber;
 import retrograde.assets.rgi : loadImageHeader, ImageHeader, rgiMagicNumber,
     CompressionType, ColorMode, IndexFormat, bytesPerIndex;
-import retrograde.assets.model : hasMetallicRoughness, hasOcclusion, Model, Mesh, Material,
+import retrograde.assets.model : hasEmissive, hasMetallicRoughness, hasOcclusion, Model, Mesh, Material,
     MaterialType, noMaterial, Texture, TextureType, TextureMagFilter, TextureMinFilter,
     TextureWrap;
 import retrograde.assets.image : ChannelFormat, bytesPerChannel;
@@ -466,7 +466,18 @@ string materialPayloadDescription(ref Material material) {
                 : ", occlusion texture " ~ to!string(material.occlusionTextureIndex)
                 ~ " (strength " ~ to!string(material.occlusionStrength) ~ ")") : "";
 
-        return albedoDescription(material) ~ normal ~ metallicRoughness ~ occlusion;
+        // Reported only when it says something: emission is off by default, and a line
+        // stating that of every material in a model would drown the ones that do glow.
+        // Rounded like the factors above, and multiplied out so the number read is the
+        // radiance the shader adds rather than a factor and a dial to combine by eye.
+        bool emits = material.type.hasEmissive
+            && (material.emissiveFactor.r > 0.0 || material.emissiveFactor.g > 0.0
+                || material.emissiveFactor.b > 0.0) && material.emissiveStrength != 0.0;
+        string emissive = emits ? format(", emissive (%.3f, %.3f, %.3f) × %.3f",
+            material.emissiveFactor.r, material.emissiveFactor.g, material.emissiveFactor.b,
+            material.emissiveStrength) : "";
+
+        return albedoDescription(material) ~ normal ~ metallicRoughness ~ occlusion ~ emissive;
     }
 }
 

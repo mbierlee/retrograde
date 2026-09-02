@@ -24,8 +24,9 @@ import retrograde.engine.rendering.lighting : ActiveLight, ambientGroundColor, a
 import retrograde.engine.rendering.materialshader : maxLights;
 
 import retrograde.assets.model : ModelComponentType, Model, MaterialType, MaterialIndex, noMaterial,
-    hasMetallicRoughness, hasOcclusion, isLit, referencesTexture, referencesNormalTexture, BaseColorFactor,
-    TextureIndex, Texture, TextureMagFilter, TextureMinFilter, TextureWrap;
+    hasEmissive, hasMetallicRoughness, hasOcclusion, isLit, referencesTexture,
+    referencesNormalTexture, BaseColorFactor, EmissiveFactor, TextureIndex, Texture,
+    TextureMagFilter, TextureMinFilter, TextureWrap;
 import retrograde.assets.image : Image, ChannelFormat;
 import retrograde.assets.assetlibrary : getModel, getTexture;
 
@@ -151,6 +152,13 @@ void initMaterialShader(ref MaterialShader materialShader) {
             "hasOcclusionMap");
         shaderInfo.occlusionStrengthUniformLocation = glGetUniformLocation(program,
             "occlusionStrength");
+    }
+
+    if (materialShader.materialType.hasEmissive) {
+        shaderInfo.emissiveFactorUniformLocation = glGetUniformLocation(program,
+            "emissiveFactor");
+        shaderInfo.emissiveStrengthUniformLocation = glGetUniformLocation(program,
+            "emissiveStrength");
     }
 
     if (materialShader.materialType.isLit) {
@@ -283,6 +291,8 @@ void loadEntityModel(EntityId entity) {
                         meshInfo.roughnessFactor = cast(GLfloat) material.roughnessFactor;
                         materialOcclusionTextureIndex = material.occlusionTextureIndex;
                         meshInfo.occlusionStrength = cast(GLfloat) material.occlusionStrength;
+                        meshInfo.emissiveFactor = material.emissiveFactor;
+                        meshInfo.emissiveStrength = cast(GLfloat) material.emissiveStrength;
                         break;
                     }
                 }
@@ -770,6 +780,8 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
             GLint occlusionTextureUniformLocation = -1;
             GLint hasOcclusionMapUniformLocation = -1;
             GLint occlusionStrengthUniformLocation = -1;
+            GLint emissiveFactorUniformLocation = -1;
+            GLint emissiveStrengthUniformLocation = -1;
             GLint cameraWorldPositionUniformLocation = -1;
             GLint modelMatrixUniformLocation = -1;
             GLint normalMatrixUniformLocation = -1;
@@ -813,6 +825,10 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
                         .hasOcclusionMapUniformLocation;
                     occlusionStrengthUniformLocation = materialShaderInfo
                         .occlusionStrengthUniformLocation;
+                    emissiveFactorUniformLocation = materialShaderInfo
+                        .emissiveFactorUniformLocation;
+                    emissiveStrengthUniformLocation = materialShaderInfo
+                        .emissiveStrengthUniformLocation;
                     cameraWorldPositionUniformLocation = materialShaderInfo
                         .cameraWorldPositionUniformLocation;
                     modelMatrixUniformLocation = materialShaderInfo.modelMatrixUniformLocation;
@@ -1006,6 +1022,24 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
                 }
             }
 
+            if (useMaterial && meshInfo.materialType.hasEmissive) {
+                // No map to branch on: emission is the factor and the strength over it, so
+                // both are simply told to the program on every draw.
+                if (emissiveFactorUniformLocation >= 0) {
+                    GLfloat[3] emissiveFactorData = [
+                        cast(GLfloat) meshInfo.emissiveFactor.r,
+                        cast(GLfloat) meshInfo.emissiveFactor.g,
+                        cast(GLfloat) meshInfo.emissiveFactor.b
+                    ];
+
+                    glUniform3fv(emissiveFactorUniformLocation, 1, emissiveFactorData[]);
+                }
+
+                if (emissiveStrengthUniformLocation >= 0) {
+                    glUniform1f(emissiveStrengthUniformLocation, meshInfo.emissiveStrength);
+                }
+            }
+
             if (meshInfo.doubleSided) {
                 glDisable(GL_CULL_FACE);
             }
@@ -1106,6 +1140,13 @@ private struct GlMeshInfo {
     /// strength, 0 ignores it.
     GLfloat occlusionStrength = 1.0;
 
+    /// Light the mesh's material gives off by itself, added to the shaded surface. Black - the
+    /// default - emits nothing, which is what a material that never asked to glow stores.
+    EmissiveFactor emissiveFactor;
+
+    /// Multiplier over the factor above, carrying emission past the [0, 1] it is authored in.
+    GLfloat emissiveStrength = 1.0;
+
     /// Multiplier over the albedo, from the mesh's material. Applies whether or not the
     /// material has a texture; without one it is the mesh's color outright.
     BaseColorFactor baseColorFactor;
@@ -1158,6 +1199,8 @@ private struct GlMaterialShaderInfo {
     GLint occlusionTextureUniformLocation = -1;
     GLint hasOcclusionMapUniformLocation = -1;
     GLint occlusionStrengthUniformLocation = -1;
+    GLint emissiveFactorUniformLocation = -1;
+    GLint emissiveStrengthUniformLocation = -1;
     GLint cameraWorldPositionUniformLocation = -1;
     GLint modelMatrixUniformLocation = -1;
     GLint normalMatrixUniformLocation = -1;

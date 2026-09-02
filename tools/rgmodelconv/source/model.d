@@ -65,8 +65,8 @@ struct TextureRef {
  *
  * Lit (PBR) materials are converted as `pbrMetallicRoughness` ones, carrying their
  * base color (albedo), normal, metallic-roughness and occlusion textures plus the base
- * color, metallic, roughness and occlusion strength factors: the RGM format cannot
- * express the remaining metallic-roughness input (emissive) yet.
+ * color, metallic, roughness and occlusion strength factors and the emissive factor with
+ * its strength: the RGM format cannot express the emissive texture yet.
  */
 struct MaterialInfo {
     bool unlit; /// True when the material declares the KHR_materials_unlit extension. Decides between the `unlit` and `pbrMetallicRoughness` material types for a textured material.
@@ -82,6 +82,8 @@ struct MaterialInfo {
     float roughnessFactor = 1.0f; /// glTF `pbrMetallicRoughness.roughnessFactor`: how rough the surface is, 0 being a perfect mirror and 1 fully diffuse. Multiplies the map's green channel where there is one. Defaults to 1, which is also what glTF means by an absent factor. Only written for material types that shade with a metallic-roughness BRDF.
     TextureRef occlusionTexture; /// The externally referenced ambient occlusion map (path + filters), read from its red channel; `path` is "" when the material has none. Commonly the same image as `metallicRoughnessTexture`, which the writer's de-duplication then collapses into one texture entry. Only written for material types that carry an occlusion payload.
     float occlusionStrength = 1.0f; /// glTF `occlusionTexture.strength`: how strongly the occlusion map attenuates indirect light. Defaults to 1 (full strength), which is also what glTF means by an absent `strength`. Only written for material types that carry an occlusion payload.
+    float[3] emissiveFactor = [0.0f, 0.0f, 0.0f]; /// glTF `material.emissiveFactor`: the RGB light the material gives off by itself. Defaults to black, which is also what glTF means by an absent factor - a material that emits nothing. Only written for material types that carry an emissive payload.
+    float emissiveStrength = 1.0f; /// glTF `KHR_materials_emissive_strength.emissiveStrength`: multiplier over the factor above, carrying emission past the [0, 1] the factor is authored in. Defaults to 1, which is what a material without the extension means. Only written for material types that carry an emissive payload.
 }
 
 /**

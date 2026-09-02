@@ -29,7 +29,12 @@ settling properly.
   metallic-roughness map, so whatever decides a texture's internal format cannot key off the
   material slot alone — the same texture object is bound to two of them.
 - Is a gamma or tonemap step wanted at the end of the frame, and where would it live given there
-  is no post-process pass today?
+  is no post-process pass today? Emission makes this pressing rather than academic: the emissive
+  strength exists precisely to carry a factor past `1.0`, so a `pbrMetallicRoughness` material
+  with an emitter already hands the framebuffer values it can only clip to white.
+- Does the emissive factor belong with the linear inputs? glTF defines it as linear, like the base
+  color factor, and it is added straight to the shaded color — so whatever the answer is for one,
+  it has to be the same for the other.
 - Do the other color inputs need the same treatment: `Color` (`engine/rendering/package.d`), the
   clear color, `Light.color`, and the hemispherical ambient sky/ground colors? They are authored
   as if they were sRGB but consumed as if they were linear.

@@ -34,6 +34,16 @@ uniform bool hasOcclusionMap;
 // 1 is the map at full strength, 0 ignores it.
 uniform float occlusionStrength;
 
+// Light the surface gives off by itself, added after everything else: it is not lit, not
+// occluded, and does not light anything around it either - a glowing surface is drawn glowing,
+// not turned into a lamp. Black leaves the material as it was.
+uniform vec3 emissiveFactor;
+
+// Multiplies the factor above, which is what carries emission past the [0, 1] the factor is
+// authored in - the difference between a surface tinted bright and one that reads as a source
+// of light.
+uniform float emissiveStrength;
+
 // Only the specular lobe needs it, to work out which way the surface reflects toward the eye.
 uniform vec3 cameraWorldPosition;
 
@@ -216,6 +226,10 @@ void main() {
     color += (diffuse + specular) * radiance * NdotL * attenuation;
   }
 #endif
+
+  // Added last, and deliberately outside everything above: emission answers to no light in
+  // the scene, and to neither the occlusion nor the ambient terms.
+  color += emissiveFactor * emissiveStrength;
 
   outColor = vec4(color, albedo.a);
 }
