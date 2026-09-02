@@ -12,8 +12,9 @@
  * (albedo) texture; the lit types additionally carry the normal map and its strength
  * when the source supplies one, and `pbrMetallicRoughness` carries the packed
  * metallic-roughness map alongside the metallic and roughness factors, plus the
- * occlusion map and its strength. The remaining PBR input (emissive) is dropped, as
- * the RGM format cannot express it yet.
+ * occlusion map and its strength and the emissive factor with its strength. The
+ * remaining PBR input (the emissive map) is dropped, as the RGM format cannot
+ * express it yet.
  *
  * A material can name the type it wants directly in its glTF `extras.rg_mat`, which
  * overrides that classification. This is the only way to assign a type that no glTF
@@ -37,7 +38,7 @@ import std.string : icmp;
 import std.typecons : Nullable;
 
 import retrograde.assets.rgm : rgmMagicNumber;
-import retrograde.assets.model : hasMetallicRoughness, hasOcclusion, MaterialType, MaterialFlags,
+import retrograde.assets.model : hasEmissive, hasMetallicRoughness, hasOcclusion, MaterialType, MaterialFlags,
     maxUvChannels, MeshAttributeFlags, noMaterial, referencesTexture, referencesNormalTexture,
     TextureType, TextureMagFilter, TextureMinFilter, TextureWrap;
 
@@ -269,7 +270,8 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
     // on its shading model, carrying an albedo texture index that is 0 when it has none.
     // The lit types carry a further texture index for their normal map, likewise 0 when
     // they have none, and the PBR type closes with its metallic-roughness map — 0 again
-    // when absent — and the two factors over it.
+    // when absent — the two factors over it, the occlusion map with its strength, and the
+    // emissive factor with its own.
     // Only an explicit `rg_mat` override still produces the `invalid` sentinel.
     for (uint i = 0; i < materialCount; i++) {
         if (materialIndexMap[i] == 0) {
@@ -326,6 +328,18 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
             // Written without a map for the same reason the normal map's strength is: a
             // fixed-size payload, and nothing to scale where there is no map.
             writeFloat(buf, data.materials[i].occlusionStrength); // Occlusion strength
+        }
+
+        if (type.hasEmissive) {
+            // No map to reference yet, so this pair is the whole emissive payload: a
+            // material that glows evenly, or - at the default black - not at all.
+            foreach (component; data.materials[i].emissiveFactor) {
+                writeFloat(buf, component); // Emissive factor (R, G, B)
+            }
+
+            // The multiplier glTF keeps in its own extension, since the factor above is
+            // capped at 1 per component and emission is not.
+            writeFloat(buf, data.materials[i].emissiveStrength); // Emissive strength
         }
     }
 

@@ -28,11 +28,12 @@ emissive one is not.** A regular `Principled BSDF` material exports as glTF PBR
 (metallic-roughness) and becomes a `pbrMetallicRoughness` material in the `.rgm`, keeping
 its **Base Color**, **Normal** (with the normal map's strength), **Metallic**/**Roughness**
 and occlusion (with its strength) textures and dropping the emissive one — the RGM format
-has nowhere to put it yet. The **Metallic** and **Roughness** sliders are carried over too,
-and scale the map where there is one. Which textures a type carries differs:
-`pbrMetallicRoughness` takes all four, `lambert` the base color and normal maps only (it has
-no BRDF to feed a metallic-roughness map or occlusion into), and `unlit` only its base color
-texture, since an unlit material is never shaded.
+has nowhere to put that map yet. The **Metallic**, **Roughness**, **Emission Color** and
+**Emission Strength** sliders are carried over too, and scale their map where there is one.
+Which textures a type carries differs: `pbrMetallicRoughness` takes all four, `lambert` the
+base color and normal maps only (it has no BRDF to feed a metallic-roughness map or
+occlusion into), and `unlit` only its base color texture, since an unlit material is never
+shaded.
 
 **A base color texture is optional.** A material whose **Base Color** is a plain color
 rather than an image is still a real material: the color is carried over as the base
@@ -277,8 +278,10 @@ whole material, and the engine shades with them: a Cook-Torrance metallic-roughn
 BRDF, so **Metallic** decides whether the base color is the surface's diffuse color or
 the tint of its reflection, and **Roughness** how tight the highlight is. To vary either
 across the surface, plug in a map as well — see
-[Adding a metallic-roughness map](#adding-a-metallic-roughness-map). The remaining PBR
-inputs (occlusion, emissive) are dropped.
+[Adding a metallic-roughness map](#adding-a-metallic-roughness-map). Occlusion and
+emission are carried over too — see [Adding an occlusion map](#adding-an-occlusion-map)
+and [Making a material glow](#making-a-material-glow) — the emissive *texture* being the
+one input still dropped.
 
 > **Watch the Metallic slider.** glTF defaults an unset `metallicFactor` to `1.0`, so
 > a material exported without touching it is a *full metal*: no diffuse color at all,
@@ -436,6 +439,47 @@ ignores the map. Values in between fade it rather than darkening it further.
 
 The map is sampled with UV channel 0, so the mesh needs to be UV-unwrapped. Like the
 metallic-roughness map, it needs no tangents.
+
+### Making a material glow
+
+A `pbrMetallicRoughness` material carries the `Principled BSDF`'s emission, which is
+light the surface gives off by itself:
+
+1. Set **Emission Color** to the color it should glow in.
+2. Raise **Emission Strength** above `0` — at `0` the material emits nothing, which is
+   Blender's default for everything except a material built from an emission preset.
+
+Both are per-material values, not maps: an emissive material glows evenly across its
+whole surface. **An image plugged into Emission Color is not converted** — the exporter
+writes it as glTF's `emissiveTexture`, which the RGM format has no payload for yet, and
+what survives is the flat factor beside it. That factor is usually white, so a material
+textured this way glows *uniformly white* rather than in the pattern of its map. Where
+that is worse than not glowing at all, set **Emission Strength** to `0` and leave the
+map for later.
+
+Blender splits the value it exports in two. Emission Color goes to glTF's
+`emissiveFactor`, which is capped at `1.0` per component; a strength above that is
+exported separately as `KHR_materials_emissive_strength`, with the color normalized to
+fit. `rgmodelconv` stores both, and the engine multiplies them back together — so the
+number to reach for when a surface should read as a *source of light* rather than a
+brightly tinted object is **Emission Strength**, not a brighter color.
+
+#### What it affects
+
+Emission is added to the surface **after all shading**, and answers to nothing else in
+the scene:
+
+- It is **not lit**, so it shows at full brightness on faces turned away from every
+  light — which is exactly what makes it read as a glow.
+- It is **not attenuated by the occlusion map**, unlike the ambient terms: a surface that
+  emits is a source, not a receiver.
+- It **lights nothing around it**. There is no global illumination, so a glowing panel
+  does not brighten the wall beside it. Put an actual light there as well when the scene
+  needs that.
+- It does **not** affect opacity: transparency still comes from the base color factor's
+  alpha.
+
+Nothing tone-maps the result either, so a large enough strength simply clips to white.
 
 ### Texture filtering (min/mag filter)
 

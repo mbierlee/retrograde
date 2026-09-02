@@ -90,7 +90,7 @@ enum MaterialType : ubyte {
     vertexColors = 1, /// Use only the per-vertex RGB colors. No payload.
     unlit = 2, /// Passthrough material — an optional texture (by index) from the model's texture list, tinted by a base color factor.
     lambert = 3, /// Purely diffuse lit material. References an optional albedo texture and base color factor, plus an optional normal map (both textures by index). Has no glTF counterpart to be inferred from, so a converter only assigns it when a material asks for it by name.
-    pbrMetallicRoughness = 4 /// Physically based metallic-roughness material. An upgrade of `lambert`: the same albedo and normal map references plus an optional metallic-roughness map and the factors over it, an optional occlusion map and its strength, shaded with a full BRDF.
+    pbrMetallicRoughness = 4 /// Physically based metallic-roughness material. An upgrade of `lambert`: the same albedo and normal map references plus an optional metallic-roughness map and the factors over it, an optional occlusion map and its strength, and the emissive factor and its strength, shaded with a full BRDF.
 }
 
 /**
@@ -120,6 +120,20 @@ struct BaseColorFactor {
 }
 
 /**
+ * The light a material gives off by itself, as an RGB color.
+ *
+ * Has no alpha: emission adds to the surface's color rather than replacing it, so there is
+ * nothing for one to blend. Named components rather than a `float[3]` for the same reason
+ * `BaseColorFactor` has them: `CopyConstructors` skips static array members, which would
+ * silently reset one on every copy of a `Material`.
+ */
+struct EmissiveFactor {
+    float r = 0.0;
+    float g = 0.0;
+    float b = 0.0;
+}
+
+/**
  * Represents a material referenced by one or more meshes.
  *
  * Materials are stored in a flat list on `Model` and looked up by their
@@ -138,6 +152,8 @@ struct Material {
     float roughnessFactor = 1.0; /// Populated when `type.hasMetallicRoughness`: how rough the surface is, 0 being a perfect mirror and 1 fully diffuse. Multiplies the map's green channel where there is one. Stored and used as-is: no range check.
     TextureIndex occlusionTextureIndex; /// Populated when `type.hasOcclusion`: the index of the referenced ambient occlusion map `Texture`, read from its red channel. 0 when the material has none. May name the same texture as `metallicRoughnessTextureIndex`, which is how glTF packs the two.
     float occlusionStrength = 1.0; /// Populated when `type.hasOcclusion`: how strongly the occlusion map attenuates indirect light. 1 is the map at full strength, 0 disables it. Stored and used as-is: no range check.
+    EmissiveFactor emissiveFactor; /// Populated when `type.hasEmissive`: the color the material emits on its own, added to the shaded surface. Black (the default) means it emits nothing. Stored and used as-is: no range check, no color-space conversion.
+    float emissiveStrength = 1.0; /// Populated when `type.hasEmissive`: multiplier over `emissiveFactor`, which is what lets emission exceed the `[0, 1]` the factor is authored in. 1 leaves the factor as written. Stored and used as-is: no range check.
 
     mixin CopyConstructors!Material;
 }
@@ -203,6 +219,24 @@ bool hasMetallicRoughness(MaterialType type) {
  * does not have.
  */
 bool hasOcclusion(MaterialType type) {
+    return type == MaterialType.pbrMetallicRoughness;
+}
+
+/**
+ * Whether materials of this type carry an emissive payload: the color the surface emits by
+ * itself, plus the strength multiplied over it.
+ *
+ * Unlike the payloads above this one references no texture yet, so it is always the pair of
+ * values; a material that emits nothing carries a black factor rather than omitting them.
+ *
+ * The strength is a separate field rather than folded into the factor because glTF keeps
+ * them apart: the factor is authored in `[0, 1]` alongside the base color, and
+ * `KHR_materials_emissive_strength` is what lifts it past that into HDR territory.
+ *
+ * Only `pbrMetallicRoughness` carries it, like the payloads above: `lambert` sums a diffuse
+ * response to the scene's lights, with no term an emitted radiance would belong in.
+ */
+bool hasEmissive(MaterialType type) {
     return type == MaterialType.pbrMetallicRoughness;
 }
 
