@@ -23,17 +23,16 @@ reach a type that no glTF material maps onto — see
 | `lambert`               | Never inferred. Requires `rg_mat`. |
 | `pbrMetallicRoughness`  | Anything else — a regular lit material, with or without textures. |
 
-**The base color, normal, metallic-roughness and occlusion textures are converted; the
-emissive one is not.** A regular `Principled BSDF` material exports as glTF PBR
-(metallic-roughness) and becomes a `pbrMetallicRoughness` material in the `.rgm`, keeping
-its **Base Color**, **Normal** (with the normal map's strength), **Metallic**/**Roughness**
-and occlusion (with its strength) textures and dropping the emissive one — the RGM format
-has nowhere to put that map yet. The **Metallic**, **Roughness**, **Emission Color** and
+**The base color, normal, metallic-roughness, occlusion and emissive textures are all
+converted.** A regular `Principled BSDF` material exports as glTF PBR (metallic-roughness)
+and becomes a `pbrMetallicRoughness` material in the `.rgm`, keeping its **Base Color**,
+**Normal** (with the normal map's strength), **Metallic**/**Roughness**, occlusion (with its
+strength) and **Emission** textures. The **Metallic**, **Roughness**, **Emission Color** and
 **Emission Strength** sliders are carried over too, and scale their map where there is one.
-Which textures a type carries differs: `pbrMetallicRoughness` takes all four, `lambert` the
+Which textures a type carries differs: `pbrMetallicRoughness` takes all five, `lambert` the
 base color and normal maps only (it has no BRDF to feed a metallic-roughness map or
-occlusion into), and `unlit` only its base color texture, since an unlit material is never
-shaded.
+occlusion into, and no term an emitted radiance would belong in), and `unlit` only its base
+color texture, since an unlit material is never shaded.
 
 **A base color texture is optional.** A material whose **Base Color** is a plain color
 rather than an image is still a real material: the color is carried over as the base
@@ -214,8 +213,8 @@ slider values. The rest of the Principled inputs (Emission, Specular, ...) are
 **not** converted — they are dropped, as are any image textures plugged into
 Metallic or Roughness. See `pbrMetallicRoughness` below.
 
-> At the moment `unlit` only works when exporting as a **`.gltf`** file, because
-> embedded images (as produced by `.glb`) are not supported yet.
+> `unlit` only works when exporting as a **`.gltf`** file, because embedded images
+> (as produced by `.glb`) are not supported.
 
 See `asset-examples/cube-unlit-textured.blend` for a working example.
 
@@ -279,9 +278,9 @@ BRDF, so **Metallic** decides whether the base color is the surface's diffuse co
 the tint of its reflection, and **Roughness** how tight the highlight is. To vary either
 across the surface, plug in a map as well — see
 [Adding a metallic-roughness map](#adding-a-metallic-roughness-map). Occlusion and
-emission are carried over too — see [Adding an occlusion map](#adding-an-occlusion-map)
-and [Making a material glow](#making-a-material-glow) — the emissive *texture* being the
-one input still dropped.
+emission are carried over too, maps and all — see
+[Adding an occlusion map](#adding-an-occlusion-map) and
+[Making a material glow](#making-a-material-glow).
 
 > **Watch the Metallic slider.** glTF defaults an unset `metallicFactor` to `1.0`, so
 > a material exported without touching it is a *full metal*: no diffuse color at all,
@@ -290,7 +289,7 @@ one input still dropped.
 > mirror-like. Set the slider deliberately.
 
 > Reflections come from the hemispherical ambient light, not from the scene: there is
-> no environment map yet, so a smooth metal reflects the sky/ground gradient rather
+> no environment map, so a smooth metal reflects the sky/ground gradient rather
 > than what is actually around it. Highlights from point lights are real.
 
 The same `.gltf`-only restriction on external images applies as for `unlit`.
@@ -449,13 +448,9 @@ light the surface gives off by itself:
 2. Raise **Emission Strength** above `0` — at `0` the material emits nothing, which is
    Blender's default for everything except a material built from an emission preset.
 
-Both are per-material values, not maps: an emissive material glows evenly across its
-whole surface. **An image plugged into Emission Color is not converted** — the exporter
-writes it as glTF's `emissiveTexture`, which the RGM format has no payload for yet, and
-what survives is the flat factor beside it. That factor is usually white, so a material
-textured this way glows *uniformly white* rather than in the pattern of its map. Where
-that is worse than not glowing at all, set **Emission Strength** to `0` and leave the
-map for later.
+On their own the two are per-material values, so the surface glows evenly across its whole
+area. To pick out *which parts* glow, plug an image into **Emission Color** — see
+[Adding an emissive map](#adding-an-emissive-map).
 
 Blender splits the value it exports in two. Emission Color goes to glTF's
 `emissiveFactor`, which is capped at `1.0` per component; a strength above that is
@@ -463,6 +458,28 @@ exported separately as `KHR_materials_emissive_strength`, with the color normali
 fit. `rgmodelconv` stores both, and the engine multiplies them back together — so the
 number to reach for when a surface should read as a *source of light* rather than a
 brightly tinted object is **Emission Strength**, not a brighter color.
+
+#### Adding an emissive map
+
+**`pbrMetallicRoughness` only** — `lambert` has no term to add emitted light to, so it
+drops the map along with the factor.
+
+An emissive map says *where* a surface glows: the lit windows on a building, the display
+on a panel, the runes on a blade. Plug a **Texture ▸ Image Texture** node into the
+`Principled BSDF`'s **Emission Color** socket and the exporter writes it as glTF's
+`emissiveTexture`, which `rgmodelconv` carries over.
+
+Unlike the metallic-roughness and occlusion maps, leave its **Color Space** at **sRGB**:
+this map is color the eye sees directly, not data fed into the BRDF.
+
+The map is sampled with UV channel 0, so the mesh needs to be UV-unwrapped. Like the
+metallic-roughness and occlusion maps, it needs no tangents.
+
+> **Emission Strength gates the map too.** Blender writes an image on Emission Color as
+> the texture plus a white `emissiveFactor`, and the engine multiplies the two — so a
+> material left at Blender's default **Emission Strength** of `0` emits *nothing at all*,
+> map or no map. Raise it above `0` or the map will not show. The same applies to a black
+> Emission Color: the factor multiplies the map rather than being replaced by it.
 
 #### What it affects
 

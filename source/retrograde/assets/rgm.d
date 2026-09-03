@@ -546,8 +546,18 @@ private OperationResult readMaterialData(const(ubyte)[] data, ref size_t offset,
     }
 
     if (material.type.hasEmissive) {
-        // Light the surface gives off by itself, with no texture to vary it across the
-        // surface yet. Always present: a material that emits nothing stores black.
+        // Where the surface glows, as opposed to how much - the factor below multiplies what
+        // this samples. 0 means the material has none and emits evenly by that factor alone.
+        if (data.length - offset < 4) {
+            return failure(
+                "Cannot read material emissive texture index: Unexpected end of data.");
+        }
+
+        material.emissiveTextureIndex = readUInt(data, offset);
+        offset += 4;
+
+        // Light the surface gives off by itself, over the whole surface where the map above
+        // is absent. Always present: a material that emits nothing stores black.
         if (data.length - offset < 12) {
             return failure("Cannot read material emissive factor: Unexpected end of data.");
         }
@@ -787,6 +797,13 @@ private OperationResult validateMaterialTextureReferences(Model* model) {
         if (material.type.hasOcclusion && material.occlusionTextureIndex != 0
             && !hasTexture(textures, material.occlusionTextureIndex)) {
             return failure("Material references unknown occlusion texture index.");
+        }
+
+        // Optional the same way: 0 means the material has no emissive map and glows evenly
+        // by its factor alone.
+        if (material.type.hasEmissive && material.emissiveTextureIndex != 0
+            && !hasTexture(textures, material.emissiveTextureIndex)) {
+            return failure("Material references unknown emissive texture index.");
         }
     }
 
@@ -1599,7 +1616,7 @@ void runRgmTests() {
     });
 
     test("Load model with a PBR material referencing an albedo and a normal texture", {
-        ubyte[130] modelData = [
+        ubyte[134] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -1623,6 +1640,7 @@ void runRgmTests() {
             0x00, 0x00, 0x80, 0x3E, // Roughness factor (0.25)
             0x00, 0x00, 0x00, 0x00, // Occlusion texture index (0 - none)
             0x00, 0x00, 0x80, 0x3F, // Occlusion strength (1)
+            0x00, 0x00, 0x00, 0x00, // Emissive texture index (0 - none)
             0x00, 0x00, 0x80, 0x3F, // Emissive factor R (1)
             0x79, 0x70, 0x82, 0x3D, // Emissive factor G (0.06369109)
             0x6C, 0x17, 0x09, 0x3E, // Emissive factor B (0.13387841)
@@ -1731,7 +1749,7 @@ void runRgmTests() {
     });
 
     test("Reject material referencing unknown normal texture index", {
-        ubyte[109] modelData = [
+        ubyte[113] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -1755,6 +1773,7 @@ void runRgmTests() {
             0x00, 0x00, 0x80, 0x3F, // Roughness factor (1.0)
             0x00, 0x00, 0x00, 0x00, // Occlusion texture index (0 - none)
             0x00, 0x00, 0x80, 0x3F, // Occlusion strength (1.0)
+            0x00, 0x00, 0x00, 0x00, // Emissive texture index (0 - none)
             0x00, 0x00, 0x00, 0x00, // Emissive factor R (0)
             0x00, 0x00, 0x00, 0x00, // Emissive factor G (0)
             0x00, 0x00, 0x00, 0x00, // Emissive factor B (0)
@@ -1933,7 +1952,7 @@ void runRgmTests() {
     });
 
     test("Load PBR material without textures, carrying only its factors", {
-        ubyte[88] modelData = [
+        ubyte[92] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -1957,6 +1976,7 @@ void runRgmTests() {
             0x00, 0x00, 0x00, 0x00, // Roughness factor (0.0)
             0x00, 0x00, 0x00, 0x00, // Occlusion texture index (0 - none)
             0x00, 0x00, 0x80, 0x3F, // Occlusion strength (1.0 - unused without a map)
+            0x00, 0x00, 0x00, 0x00, // Emissive texture index (0 - none)
             0x00, 0x00, 0x00, 0x00, // Emissive factor R (0)
             0x00, 0x00, 0x00, 0x00, // Emissive factor G (0)
             0x00, 0x00, 0x00, 0x00, // Emissive factor B (0)
@@ -1981,7 +2001,7 @@ void runRgmTests() {
     });
 
     test("Load model with a PBR material referencing a metallic-roughness texture", {
-        ubyte[105] modelData = [
+        ubyte[109] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -2005,6 +2025,7 @@ void runRgmTests() {
             0x00, 0x00, 0x40, 0x3F, // Roughness factor (0.75)
             0x00, 0x00, 0x00, 0x00, // Occlusion texture index (0 - none)
             0x00, 0x00, 0x80, 0x3F, // Occlusion strength (1.0)
+            0x00, 0x00, 0x00, 0x00, // Emissive texture index (0 - none)
             0x00, 0x00, 0x00, 0x00, // Emissive factor R (0)
             0x00, 0x00, 0x00, 0x00, // Emissive factor G (0)
             0x00, 0x00, 0x00, 0x00, // Emissive factor B (0)
@@ -2036,7 +2057,7 @@ void runRgmTests() {
     });
 
     test("Reject material referencing unknown metallic-roughness texture index", {
-        ubyte[109] modelData = [
+        ubyte[113] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -2060,6 +2081,7 @@ void runRgmTests() {
             0x00, 0x00, 0x80, 0x3F, // Roughness factor (1.0)
             0x00, 0x00, 0x00, 0x00, // Occlusion texture index (0 - none)
             0x00, 0x00, 0x80, 0x3F, // Occlusion strength (1.0)
+            0x00, 0x00, 0x00, 0x00, // Emissive texture index (0 - none)
             0x00, 0x00, 0x00, 0x00, // Emissive factor R (0)
             0x00, 0x00, 0x00, 0x00, // Emissive factor G (0)
             0x00, 0x00, 0x00, 0x00, // Emissive factor B (0)
@@ -2108,7 +2130,7 @@ void runRgmTests() {
     });
 
     test("Load model with a PBR material referencing an occlusion texture", {
-        ubyte[105] modelData = [
+        ubyte[109] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -2132,6 +2154,7 @@ void runRgmTests() {
             0x00, 0x00, 0x80, 0x3F, // Roughness factor (1.0)
             0x01, 0x00, 0x00, 0x00, // Occlusion texture index (1)
             0x00, 0x00, 0x00, 0x3F, // Occlusion strength (0.5)
+            0x00, 0x00, 0x00, 0x00, // Emissive texture index (0 - none)
             0x00, 0x00, 0x00, 0x00, // Emissive factor R (0)
             0x00, 0x00, 0x00, 0x00, // Emissive factor G (0)
             0x00, 0x00, 0x00, 0x00, // Emissive factor B (0)
@@ -2163,7 +2186,7 @@ void runRgmTests() {
     });
 
     test("Load PBR material sharing one texture between its occlusion and metallic-roughness maps", {
-        ubyte[106] modelData = [
+        ubyte[110] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -2188,6 +2211,7 @@ void runRgmTests() {
             0x00, 0x00, 0x80, 0x3F, // Roughness factor (1.0)
             0x01, 0x00, 0x00, 0x00, // Occlusion texture index (1 - the same texture)
             0x00, 0x00, 0x80, 0x3F, // Occlusion strength (1.0)
+            0x00, 0x00, 0x00, 0x00, // Emissive texture index (0 - none)
             0x00, 0x00, 0x00, 0x00, // Emissive factor R (0)
             0x00, 0x00, 0x00, 0x00, // Emissive factor G (0)
             0x00, 0x00, 0x00, 0x00, // Emissive factor B (0)
@@ -2215,7 +2239,7 @@ void runRgmTests() {
     });
 
     test("Reject material referencing unknown occlusion texture index", {
-        ubyte[109] modelData = [
+        ubyte[113] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -2239,10 +2263,114 @@ void runRgmTests() {
             0x00, 0x00, 0x80, 0x3F, // Roughness factor (1.0)
             0x63, 0x00, 0x00, 0x00, // Occlusion texture index (99 - undefined)
             0x00, 0x00, 0x80, 0x3F, // Occlusion strength (1.0)
+            0x00, 0x00, 0x00, 0x00, // Emissive texture index (0 - none)
             0x00, 0x00, 0x00, 0x00, // Emissive factor R (0)
             0x00, 0x00, 0x00, 0x00, // Emissive factor G (0)
             0x00, 0x00, 0x00, 0x00, // Emissive factor B (0)
             0x00, 0x00, 0x80, 0x3F, // Emissive strength (1.0 - nothing to scale)
+
+            // Texture 1
+            0x01, 0x00, 0x00, 0x00, // Texture index (1)
+            0x00, // Texture type (reference)
+            0x00, // magFilter (unspecified)
+            0x00, // minFilter (unspecified)
+            0x00, // wrapS (unspecified)
+            0x00, // wrapT (unspecified)
+            0x0A, 0x00, // Path length (10)
+            'a', 'l', 'b', 'e', 'd', 'o', '.', 'r', 'g', 'i', // Path
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
+    test("Load model with a PBR material referencing an emissive texture", {
+        ubyte[115] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+            0x01, 0x00, 0x00, 0x00, // Amount of textures (1)
+
+            // Material 1: an emissive map, with a factor that tints rather than gates it
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+            0x04, // Material type (PBR Metallic-Roughness)
+            0x00, // Common flags (none)
+            0x00, 0x00, 0x00, 0x00, // Albedo texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor R (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor G (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor B (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor A (1)
+            0x00, 0x00, 0x00, 0x00, // Normal texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Normal texture scale (1.0)
+            0x00, 0x00, 0x00, 0x00, // Metallic-roughness texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Metallic factor (1.0)
+            0x00, 0x00, 0x80, 0x3F, // Roughness factor (1.0)
+            0x00, 0x00, 0x00, 0x00, // Occlusion texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Occlusion strength (1.0)
+            0x01, 0x00, 0x00, 0x00, // Emissive texture index (1)
+            0x00, 0x00, 0x80, 0x3F, // Emissive factor R (1)
+            0x00, 0x00, 0x00, 0x3F, // Emissive factor G (0.5)
+            0x00, 0x00, 0x00, 0x00, // Emissive factor B (0)
+            0x00, 0x00, 0x00, 0x40, // Emissive strength (2.0)
+
+            // Texture 1
+            0x01, 0x00, 0x00, 0x00, // Texture index (1)
+            0x00, // Texture type (reference)
+            0x00, // magFilter (unspecified)
+            0x00, // minFilter (unspecified)
+            0x00, // wrapS (unspecified)
+            0x00, // wrapT (unspecified)
+            0x0C, 0x00, // Path length (12)
+            'e', 'm', 'i', 's', 's', 'i', 'v', 'e', '.', 'r', 'g', 'i', // Path
+        ];
+
+        auto result = loadModel(modelData);
+        assert(result.isSuccessful());
+
+        auto model = result.unique();
+        assert(model.materials.length == 1);
+        assert(model.materials[0].type == MaterialType.pbrMetallicRoughness);
+        assert(model.materials[0].emissiveTextureIndex == 1);
+        assert(model.materials[0].emissiveFactor.r == 1.0);
+        assert(model.materials[0].emissiveFactor.g == 0.5);
+        assert(model.materials[0].emissiveFactor.b == 0.0);
+        assert(model.materials[0].emissiveStrength == 2.0);
+        assert(model.textures.length == 1);
+        assert(model.textures[0].path == "emissive.rgi");
+    });
+
+    test("Reject material referencing unknown emissive texture index", {
+        ubyte[113] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+            0x01, 0x00, 0x00, 0x00, // Amount of textures (1)
+
+            // Material 1: albedo resolves, but the emissive map does not
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+            0x04, // Material type (PBR Metallic-Roughness)
+            0x00, // Common flags (none)
+            0x01, 0x00, 0x00, 0x00, // Albedo texture index (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor R (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor G (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor B (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor A (1)
+            0x00, 0x00, 0x00, 0x00, // Normal texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Normal texture scale (1.0)
+            0x00, 0x00, 0x00, 0x00, // Metallic-roughness texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Metallic factor (1.0)
+            0x00, 0x00, 0x80, 0x3F, // Roughness factor (1.0)
+            0x00, 0x00, 0x00, 0x00, // Occlusion texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Occlusion strength (1.0)
+            0x63, 0x00, 0x00, 0x00, // Emissive texture index (99 - undefined)
+            0x00, 0x00, 0x80, 0x3F, // Emissive factor R (1)
+            0x00, 0x00, 0x80, 0x3F, // Emissive factor G (1)
+            0x00, 0x00, 0x80, 0x3F, // Emissive factor B (1)
+            0x00, 0x00, 0x80, 0x3F, // Emissive strength (1.0)
 
             // Texture 1
             0x01, 0x00, 0x00, 0x00, // Texture index (1)
@@ -2350,8 +2478,40 @@ void runRgmTests() {
         assert(!result.isSuccessful());
     });
 
+    test("Reject PBR material truncated part-way through its emissive texture index", {
+        ubyte[74] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x01, 0x00, 0x00, 0x00, // Amount of materials (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
+
+            // Material 1: the emissive payload starts but its index is cut short
+            0x01, 0x00, 0x00, 0x00, // Material index (1)
+            0x04, // Material type (PBR Metallic-Roughness)
+            0x00, // Common flags (none)
+            0x00, 0x00, 0x00, 0x00, // Albedo texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor R (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor G (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor B (1)
+            0x00, 0x00, 0x80, 0x3F, // Base color factor A (1)
+            0x00, 0x00, 0x00, 0x00, // Normal texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Normal texture scale (1.0)
+            0x00, 0x00, 0x00, 0x00, // Metallic-roughness texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Metallic factor (1.0)
+            0x00, 0x00, 0x80, 0x3F, // Roughness factor (1.0)
+            0x00, 0x00, 0x00, 0x00, // Occlusion texture index (0 - none)
+            0x00, 0x00, 0x80, 0x3F, // Occlusion strength (1.0)
+            0x00, 0x00, // Emissive texture index (truncated)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
     test("Reject PBR material truncated part-way through its emissive factor", {
-        ubyte[80] modelData = [
+        ubyte[84] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -2376,6 +2536,7 @@ void runRgmTests() {
             0x00, 0x00, 0x80, 0x3F, // Roughness factor (1.0)
             0x00, 0x00, 0x00, 0x00, // Occlusion texture index (0 - none)
             0x00, 0x00, 0x80, 0x3F, // Occlusion strength (1.0)
+            0x00, 0x00, 0x00, 0x00, // Emissive texture index (0 - none)
             0x00, 0x00, 0x80, 0x3F, // Emissive factor R (1)
             0x00, 0x00, 0x80, 0x3F, // Emissive factor G (1)
         ];
@@ -2385,7 +2546,7 @@ void runRgmTests() {
     });
 
     test("Reject PBR material truncated part-way through its emissive strength", {
-        ubyte[86] modelData = [
+        ubyte[90] modelData = [
             // Header
             0x52, 0x47, 0x4D, 0x20, // Magic
             0x01, 0x00, // Version
@@ -2409,6 +2570,7 @@ void runRgmTests() {
             0x00, 0x00, 0x80, 0x3F, // Roughness factor (1.0)
             0x00, 0x00, 0x00, 0x00, // Occlusion texture index (0 - none)
             0x00, 0x00, 0x80, 0x3F, // Occlusion strength (1.0)
+            0x00, 0x00, 0x00, 0x00, // Emissive texture index (0 - none)
             0x00, 0x00, 0x80, 0x3F, // Emissive factor R (1)
             0x00, 0x00, 0x80, 0x3F, // Emissive factor G (1)
             0x00, 0x00, 0x80, 0x3F, // Emissive factor B (1)

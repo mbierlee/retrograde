@@ -34,9 +34,15 @@ uniform bool hasOcclusionMap;
 // 1 is the map at full strength, 0 ignores it.
 uniform float occlusionStrength;
 
+// Where the surface glows, as opposed to how much: the factor below multiplies what this
+// samples, so a map picks out the emitting parts and the factor tints them. Branched on a
+// uniform like the maps above, since whether a mesh has one is a per-draw property.
+uniform sampler2D emissiveTexture;
+uniform bool hasEmissiveMap;
+
 // Light the surface gives off by itself, added after everything else: it is not lit, not
 // occluded, and does not light anything around it either - a glowing surface is drawn glowing,
-// not turned into a lamp. Black leaves the material as it was.
+// not turned into a lamp. Black leaves the material as it was, map or no map.
 uniform vec3 emissiveFactor;
 
 // Multiplies the factor above, which is what carries emission past the [0, 1] the factor is
@@ -228,8 +234,15 @@ void main() {
 #endif
 
   // Added last, and deliberately outside everything above: emission answers to no light in
-  // the scene, and to neither the occlusion nor the ambient terms.
-  color += emissiveFactor * emissiveStrength;
+  // the scene, and to neither the occlusion nor the ambient terms. The map varies it across
+  // the surface the way the albedo texture varies the base color - alpha ignored, since
+  // emission adds to the surface rather than covering it.
+  vec3 emission = emissiveFactor * emissiveStrength;
+  if (hasEmissiveMap) {
+    emission *= texture(emissiveTexture, vertexTextureCoords).rgb;
+  }
+
+  color += emission;
 
   outColor = vec4(color, albedo.a);
 }
