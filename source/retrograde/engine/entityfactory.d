@@ -89,3 +89,25 @@ void addPointLight(EntityId entity, const Color color, const float intensity, co
     light.attenuationRadius = attenuationRadius;
     entity.addLight(light);
 }
+
+/**
+ * Gives the entity a directional light of the given color: a sun, shining the same
+ * everywhere in the world rather than from a place in it.
+ *
+ * Aim it with $(D addOrientation); the light travels the way the entity faces, along its
+ * negative Z axis. An entity that carries no orientation shines along the world's negative
+ * Z axis.
+ *
+ * Params:
+ *  intensity = brightness modifier. Nothing dims a directional light with distance, so this
+ *              is what every lit surface receives: around 3 lights a white surface facing it
+ *              to full brightness, well under a point light's 30. Zero leaves the light dark.
+ */
+void addDirectionalLight(EntityId entity, const Color color, const float intensity) {
+    Light light;
+    light.lightType = LightType.directional;
+    light.isEnabled = true;
+    light.color = color;
+    light.intensity = intensity;
+    entity.addLight(light);
+}

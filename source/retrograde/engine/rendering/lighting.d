@@ -21,8 +21,8 @@ import retrograde.engine.rendering : Color, Light, LightComponentType, LightType
 import retrograde.engine.rendering.materialshader : maxLights;
 
 import retrograde.std.collections : Array;
-import retrograde.std.geometry : PositionComponentType;
-import retrograde.std.math : scalar, Vector3;
+import retrograde.std.geometry : forwardOf, OrientationComponentType, PositionComponentType;
+import retrograde.std.math : Quaternion, scalar, Vector3;
 
 /**
  * The ambient color arriving from above, applied to surfaces facing the sky.
@@ -99,13 +99,21 @@ enum LightCullingStrategy {
      * Cull lights that fall outside an entity's range,
      * based on their position, the light's position and its
      * attenuation range.
+     *
+     * A directional light has neither, and reaches the whole world: it is never
+     * culled for being out of range.
      */
     outsideRange,
 }
 
-/// A light collected for the current frame, together with the world position it shines from.
+/// A light collected for the current frame, together with where it shines from and which way.
 struct ActiveLight {
+    /// World position the light shines from. Only a point light has one.
     Vector3 position;
+
+    /// Unit direction the light travels in. Only a directional light has one.
+    Vector3 direction;
+
     Light light;
 }
 
@@ -142,9 +150,12 @@ void unregisterLightEntity(EntityId entity) {
 /**
  * Refills $(D activeLights) from the registered light entities.
  *
- * Lights that cannot emit anything - switched off, or with an intensity or attenuation
- * radius of zero - are left out, as are entities that lost their light or position
- * component since they were registered.
+ * Lights that cannot emit anything - switched off, or with an intensity of zero, or a point
+ * light with an attenuation radius of zero - are left out, as are entities that lost their
+ * light component since they were registered, or a point light's position component.
+ *
+ * A directional light needs neither: it is aimed by its entity's orientation, and one
+ * without an orientation shines along the world's negative Z axis.
  */
 void collectActiveLights() {
     // Truncating rather than clearing keeps the capacity from last frame, so a scene with a
@@ -158,7 +169,22 @@ void collectActiveLights() {
         }
 
         Light light = *maybeLight.value;
-        if (!light.isEnabled || light.intensity <= 0 || light.attenuationRadius <= 0) {
+        if (!light.isEnabled || light.intensity <= 0) {
+            continue;
+        }
+
+        if (light.lightType == LightType.directional) {
+            Quaternion orientation;
+            auto maybeOrientation = entity.getComponentData!Quaternion(OrientationComponentType);
+            if (maybeOrientation.isDefined) {
+                orientation = *maybeOrientation.value;
+            }
+
+            activeLights.add(ActiveLight(Vector3(0), forwardOf(orientation), light));
+            continue;
+        }
+
+        if (light.attenuationRadius <= 0) {
             continue;
         }
 
@@ -167,7 +193,7 @@ void collectActiveLights() {
             continue;
         }
 
-        activeLights.add(ActiveLight(*maybePosition.value, light));
+        activeLights.add(ActiveLight(*maybePosition.value, Vector3(0), light));
     }
 }
 
@@ -190,6 +216,11 @@ void collectActiveLights() {
  * number of lights: $(D LightCullingStrategy.none) means "never cull a light for being out of
  * range", not "hand back more lights than fit". Whatever the strategy, it is the nearest
  * lights that survive that final cull.
+ *
+ * A directional light is nowhere in particular and reaches everything, so it counts as being
+ * at no distance at all: it is never culled for being out of range, and comes ahead of every
+ * point light in the ordering. Losing the sun to a lamp standing closer would be the more
+ * visible mistake by far.
  *
  * Params:
  *  candidates = the lights to choose from, typically $(D activeLights).
@@ -218,12 +249,13 @@ size_t selectLights(const ref Array!ActiveLight candidates, const Vector3 target
 
         // Needed whatever the strategy: it is what orders the selection, and so what decides
         // which lights survive the final maxCount cull.
-        scalar distance = (candidate.position - target).magnitude;
+        scalar distance = cullDistance(candidate, target);
 
         //TODO: Measured from the entity's origin, so a mesh bigger than the light's radius
         //      can be culled even though part of it is lit. Needs per-entity bounding volumes.
         //      LightCullingStrategy.none is the blunt way out of that until it exists.
         if (lightCullingStrategy == LightCullingStrategy.outsideRange
+            && candidate.light.lightType != LightType.directional
             && distance > candidate.light.attenuationRadius) {
             continue;
         }
@@ -231,13 +263,13 @@ size_t selectLights(const ref Array!ActiveLight candidates, const Vector3 target
         // `selected` is kept sorted as it is built, so the last entry is the farthest one held
         // and a full selection can reject a farther candidate outright.
         if (selected.length == maxCount
-            && distance >= (selected[maxCount - 1].position - target).magnitude) {
+            && distance >= cullDistance(selected[maxCount - 1], target)) {
             continue;
         }
 
         size_t insertIndex = selected.length;
         foreach (j; 0 .. selected.length) {
-            if (distance < (selected[j].position - target).magnitude) {
+            if (distance < cullDistance(selected[j], target)) {
                 insertIndex = j;
                 break;
             }
@@ -255,6 +287,20 @@ size_t selectLights(const ref Array!ActiveLight candidates, const Vector3 target
     }
 
     return selected.length;
+}
+
+/**
+ * How far the given light counts as being from `target` when ordering and culling a selection.
+ *
+ * A directional light shines from nowhere in particular - its position means nothing - and
+ * reaches every surface alike, so it is at no distance from anything.
+ */
+private scalar cullDistance(const ActiveLight light, const Vector3 target) {
+    if (light.light.lightType == LightType.directional) {
+        return 0;
+    }
+
+    return (light.position - target).magnitude;
 }
 
 private bool isAccepted(const LightType type, const(LightType)[] acceptedTypes) {
@@ -284,19 +330,30 @@ version (UnitTesting)  :  //
 
 import retrograde.std.test : test, writeSection;
 
-// LightType has only the one member, so a type nothing accepts has to be conjured up.
+// Every type LightType has is one a renderer might accept, so a type nothing accepts has to
+// be conjured up.
 private enum unshadeableLightType = cast(LightType)(LightType.max + 1);
 
 // Hoisted out of the test lambdas: a bare array literal passed to a slice parameter needs the
 // GC and is silently dropped in betterC.
 private static immutable LightType[1] pointLights = [LightType.point];
+private static immutable LightType[1] directionalLights = [LightType.directional];
 private static immutable LightType[0] noLightTypes = [];
 private static immutable LightType[2] bothLightTypes = [unshadeableLightType, LightType.point];
+private static immutable LightType[2] shadeableLightTypes = [
+    LightType.point, LightType.directional
+];
 
 private ActiveLight testLight(scalar x, scalar y, scalar z, scalar attenuationRadius) {
     Light light;
     light.attenuationRadius = attenuationRadius;
-    return ActiveLight(Vector3(x, y, z), light);
+    return ActiveLight(Vector3(x, y, z), Vector3(0), light);
+}
+
+private ActiveLight testDirectionalLight(scalar x, scalar y, scalar z) {
+    Light light;
+    light.lightType = LightType.directional;
+    return ActiveLight(Vector3(0), Vector3(x, y, z), light);
 }
 
 void runLightingTests() {
@@ -498,6 +555,40 @@ void runLightingTests() {
         assert(selected[0].position.x == 10);
     });
 
+    test("Never cull a directional light for being out of range", {
+        Array!ActiveLight candidates;
+        candidates.add(testDirectionalLight(0, -1, 0));
+        Array!ActiveLight selected;
+
+        // Its radius is the point light default, which the target is far outside of.
+        lightCullingStrategy = LightCullingStrategy.outsideRange;
+        assert(selectLights(candidates, Vector3(0, 0, 1000), directionalLights[], 8, selected) == 1);
+        assert(selected[0].direction.y == -1);
+    });
+
+    test("Select directional lights ahead of any point light", {
+        Array!ActiveLight candidates;
+        candidates.add(testLight(0, 0, 1, 100)); // right next to the target
+        candidates.add(testDirectionalLight(0, -1, 0));
+        Array!ActiveLight selected;
+
+        assert(selectLights(candidates, Vector3(0, 0, 0), shadeableLightTypes[], 8, selected) == 2);
+        assert(selected[0].light.lightType == LightType.directional);
+        assert(selected[1].light.lightType == LightType.point);
+    });
+
+    test("A directional light survives a budget cull that drops a nearer point light", {
+        Array!ActiveLight candidates;
+        candidates.add(testLight(0, 0, 1, 100));
+        candidates.add(testLight(0, 0, 2, 100));
+        candidates.add(testDirectionalLight(0, -1, 0));
+        Array!ActiveLight selected;
+
+        assert(selectLights(candidates, Vector3(0, 0, 0), shadeableLightTypes[], 2, selected) == 2);
+        assert(selected[0].light.lightType == LightType.directional);
+        assert(selected[1].position.z == 1);
+    });
+
     test("Collect lights of entities that emit", {
         import retrograde.engine.entity : createEntity, resetEcs;
         import retrograde.engine.entityfactory : addLight, addPosition;
@@ -561,6 +652,56 @@ void runLightingTests() {
         noIntensityEntity.unregisterLightEntity();
         noRadiusEntity.unregisterLightEntity();
         positionlessEntity.unregisterLightEntity();
+    });
+
+    test("Collect directional lights without a position or a radius", {
+        import retrograde.engine.entity : createEntity, resetEcs;
+        import retrograde.engine.entityfactory : addLight;
+        import retrograde.std.string : s;
+
+        resetEcs();
+
+        // Neither of the two things a point light cannot do without, and neither missed.
+        Light sun;
+        sun.lightType = LightType.directional;
+        sun.attenuationRadius = 0;
+
+        auto entity = createEntity("ent_sun".s).value;
+        entity.addLight(sun);
+        entity.registerLightEntity();
+
+        collectActiveLights();
+        assert(activeLights.length == 1);
+
+        // Aimed the way the world faces, having nothing to say which way it faces itself.
+        assert(activeLights[0].direction == Vector3(0, 0, -1));
+
+        entity.unregisterLightEntity();
+    });
+
+    test("A directional light shines the way its entity is oriented", {
+        import retrograde.engine.entity : createEntity, resetEcs;
+        import retrograde.engine.entityfactory : addDirectionalLight, addOrientation;
+        import retrograde.std.math : degreesToRadians;
+        import retrograde.std.string : s;
+
+        resetEcs();
+
+        auto entity = createEntity("ent_sun".s).value;
+        entity.addOrientation(degreesToRadians(-90), Vector3(1, 0, 0));
+        entity.addDirectionalLight(Color(1, 1, 1, 1), 3);
+        entity.registerLightEntity();
+
+        collectActiveLights();
+        assert(activeLights.length == 1);
+
+        // Tipped a quarter turn down from the horizon: straight at the ground.
+        auto direction = activeLights[0].direction;
+        assert(direction.x < 0.001 && direction.x > -0.001);
+        assert(direction.y < -0.999);
+        assert(direction.z < 0.001 && direction.z > -0.001);
+
+        entity.unregisterLightEntity();
     });
 
     test("Unregistered light entities stop being collected", {

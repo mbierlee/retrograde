@@ -29,6 +29,9 @@ uniform vec4 lightPositionRadius[MAX_LIGHTS];
 
 // rgb = color, a = intensity
 uniform vec4 lightColorIntensity[MAX_LIGHTS];
+
+// xyz = the direction the light travels, w = 1 when the light is directional
+uniform vec4 lightDirection[MAX_LIGHTS];
 #endif
 
 // Light arriving from everywhere, so faces turned away from every light are not pure black.
@@ -80,18 +83,28 @@ void main() {
 
 #if MAX_LIGHTS > 0
   for (int i = 0; i < lightCount; i++) {
-    vec3 toLight = lightPositionRadius[i].xyz - vertexWorldPosition;
-    float radius = lightPositionRadius[i].w;
-    float lightDistance = length(toLight);
-    vec3 lightDirection = lightDistance > 0.0 ? toLight / lightDistance : surfaceNormal;
+    vec3 toLightDirection;
+    float attenuation;
 
-    // Windowed to reach exactly zero at the radius: the renderer drops a light past it, and
-    // an unwindowed falloff would show that cut as a seam. The +1 keeps the light finite at
-    // its own position.
-    float window = clamp(1.0 - pow(lightDistance / radius, 4.0), 0.0, 1.0);
-    float attenuation = (window * window) / (lightDistance * lightDistance + 1.0);
+    if (lightDirection[i].w > 0.5) {
+      // Parallel rays from far enough away that neither the light's position nor the distance
+      // to it means anything: every surface receives the whole of what it emits.
+      toLightDirection = -normalize(lightDirection[i].xyz);
+      attenuation = 1.0;
+    } else {
+      vec3 toLight = lightPositionRadius[i].xyz - vertexWorldPosition;
+      float radius = lightPositionRadius[i].w;
+      float lightDistance = length(toLight);
+      toLightDirection = lightDistance > 0.0 ? toLight / lightDistance : surfaceNormal;
 
-    float lambert = max(dot(surfaceNormal, lightDirection), 0.0);
+      // Windowed to reach exactly zero at the radius: the renderer drops a light past it, and
+      // an unwindowed falloff would show that cut as a seam. The +1 keeps the light finite at
+      // its own position.
+      float window = clamp(1.0 - pow(lightDistance / radius, 4.0), 0.0, 1.0);
+      attenuation = (window * window) / (lightDistance * lightDistance + 1.0);
+    }
+
+    float lambert = max(dot(surfaceNormal, toLightDirection), 0.0);
     vec3 radiance = lightColorIntensity[i].rgb * lightColorIntensity[i].a;
 
     // Energy-conserving: a diffuse surface spreads what it receives over the hemisphere, so

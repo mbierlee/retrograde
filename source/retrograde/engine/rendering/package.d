@@ -260,12 +260,21 @@ struct Color {
 }
 
 enum LightType {
-    point
+    /// Shines in every direction from where its entity is positioned, falling off with distance.
+    point,
+
+    /// Shines the same everywhere, along the direction its entity is oriented in. A sun.
+    directional
 }
 
 /**
- * A light source. Attach one to an entity together with a position component to have
- * it light the scene.
+ * A light source. Attach one to an entity to have it light the scene.
+ *
+ * Where the light shines from comes from the entity, not from here: a point light is
+ * placed by its position component, a directional light aimed by its orientation
+ * component - along that orientation's negative Z axis, the way everything else in the
+ * engine faces. A directional light without an orientation shines along the world's
+ * negative Z axis.
  *
  * The defaults make a plain `Light()` a working white point light: the world is metric
  * (one unit is one meter), and at the renderer's windowed inverse-square falloff an
@@ -288,11 +297,17 @@ struct Light {
     ///
     /// The lit materials divide their diffuse response by pi, so this default carries the
     /// factor of pi that keeps a plain `Light()` as bright as the description above.
+    ///
+    /// A directional light has no falloff to dim it, so what it emits is what every lit
+    /// surface receives: for one of those the factor of pi is the whole of it, and an
+    /// intensity of about 3 lights a white surface facing it to full brightness.
     float intensity = 30;
 
     /// Radius in which the light operates.
     /// When outside of the radius, it has no effect.
     /// A radius of 0 effectively disables the light.
+    ///
+    /// Only read for a point light: a directional light reaches everything whatever this says.
     float attenuationRadius = 10;
 }
 
