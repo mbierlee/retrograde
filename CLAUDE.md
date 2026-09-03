@@ -22,6 +22,12 @@ Retrograde is a D language game engine compiled with **`-betterC`** (no GC, no D
 
   **Only run this when `glslangValidator` is already installed system-wide** (it is on `PATH`). Do **not** install it yourself — no `apt install`, no npm package, no downloaded binary. If it is missing, say so and leave the shaders unvalidated rather than pulling in a copy.
 
+## Installing Tools
+
+**Never install anything unless explicitly instructed to.** No `apt`/`apt-get` installs, no `npm install -g`, no `pip install`, no `dub fetch`, no downloading binaries, no adding dependencies to `dub.json`/`package.json`. Work with what is already on `PATH` and already in the project.
+
+If a task needs a tool that is missing, say which tool is missing and what it would be used for, then continue with the rest of the work and report that step as unverified. Asking is fine; installing on your own initiative is not.
+
 ## Critical Constraints (betterC)
 
 - **No garbage collector.** All memory via `malloc`/`realloc`/`free` from `retrograde.std.memory`.

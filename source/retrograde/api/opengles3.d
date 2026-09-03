@@ -155,6 +155,10 @@ void initMaterialShader(ref MaterialShader materialShader) {
     }
 
     if (materialShader.materialType.hasEmissive) {
+        shaderInfo.emissiveTextureUniformLocation = glGetUniformLocation(program,
+            "emissiveTexture");
+        shaderInfo.hasEmissiveMapUniformLocation = glGetUniformLocation(program,
+            "hasEmissiveMap");
         shaderInfo.emissiveFactorUniformLocation = glGetUniformLocation(program,
             "emissiveFactor");
         shaderInfo.emissiveStrengthUniformLocation = glGetUniformLocation(program,
@@ -276,6 +280,7 @@ void loadEntityModel(EntityId entity) {
             TextureIndex materialNormalTextureIndex = 0;
             TextureIndex materialMetallicRoughnessTextureIndex = 0;
             TextureIndex materialOcclusionTextureIndex = 0;
+            TextureIndex materialEmissiveTextureIndex = 0;
             if (mesh.materialIndex != noMaterial) {
                 foreach (ref material; model.materials) {
                     if (material.index == mesh.materialIndex) {
@@ -291,6 +296,7 @@ void loadEntityModel(EntityId entity) {
                         meshInfo.roughnessFactor = cast(GLfloat) material.roughnessFactor;
                         materialOcclusionTextureIndex = material.occlusionTextureIndex;
                         meshInfo.occlusionStrength = cast(GLfloat) material.occlusionStrength;
+                        materialEmissiveTextureIndex = material.emissiveTextureIndex;
                         meshInfo.emissiveFactor = material.emissiveFactor;
                         meshInfo.emissiveStrength = cast(GLfloat) material.emissiveStrength;
                         break;
@@ -334,8 +340,6 @@ void loadEntityModel(EntityId entity) {
                     }
 
                     if (meshInfo.materialType.referencesTexture && mesh.uvChannelCount > 0) {
-                        // The first UV channel occupies the first `vertices.length` entries
-                        // of the channel-major `uvCoords` array.
                         Array!GLfloat textureCoordsData;
                         textureCoordsData.capacity = mesh.vertices.length * 2;
                         foreach (i; 0 .. mesh.vertices.length) {
@@ -351,10 +355,6 @@ void loadEntityModel(EntityId entity) {
                         meshInfo.textureObject = createMaterialTexture(model, materialTextureIndex);
                     }
 
-                    // A normal map is only usable with a tangent frame to resolve it against.
-                    // RGM guarantees tangents come with normals and a UV channel, so a mesh
-                    // that carries them can be mapped; one that does not keeps shading from its
-                    // vertex normal rather than from a broken frame.
                     if (meshInfo.materialType.referencesNormalTexture
                     && materialNormalTextureIndex != 0
                     && mesh.uvChannelCount > 0) {
@@ -382,8 +382,6 @@ void loadEntityModel(EntityId entity) {
                         }
                     }
 
-                    // Sampled with UV channel 0, like the albedo: no tangent frame needed,
-                    // so a UV channel is all this map asks of the mesh.
                     if (meshInfo.materialType.hasMetallicRoughness
                     && materialMetallicRoughnessTextureIndex != 0
                     && mesh.uvChannelCount > 0) {
@@ -391,10 +389,6 @@ void loadEntityModel(EntityId entity) {
                             materialMetallicRoughnessTextureIndex);
                     }
 
-                    // Asks no more of the mesh than the map above does. glTF packs occlusion
-                    // into the spare red channel of that same image, so where both slots name
-                    // one texture the single upload is bound to two units rather than made
-                    // twice - which is why this has to come after the map above is resolved.
                     if (meshInfo.materialType.hasOcclusion
                     && materialOcclusionTextureIndex != 0
                     && mesh.uvChannelCount > 0) {
@@ -407,6 +401,13 @@ void loadEntityModel(EntityId entity) {
                             meshInfo.occlusionTextureObject = createMaterialTexture(model,
                                 materialOcclusionTextureIndex);
                         }
+                    }
+
+                    if (meshInfo.materialType.hasEmissive
+                    && materialEmissiveTextureIndex != 0
+                    && mesh.uvChannelCount > 0) {
+                        meshInfo.emissiveTextureObject = createMaterialTexture(model,
+                            materialEmissiveTextureIndex);
                     }
 
                     auto materialVao = glCreateVertexArray();
@@ -670,6 +671,10 @@ void unloadEntityModel(EntityId entity) {
                 glDeleteTexture(meshInfo.occlusionTextureObject);
             }
 
+            if (meshInfo.emissiveTextureObject != 0) {
+                glDeleteTexture(meshInfo.emissiveTextureObject);
+            }
+
             foreach (ref GLuint vao; meshInfo.vertexArrayObjects) {
                 glDeleteVertexArray(vao);
             }
@@ -780,6 +785,8 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
             GLint occlusionTextureUniformLocation = -1;
             GLint hasOcclusionMapUniformLocation = -1;
             GLint occlusionStrengthUniformLocation = -1;
+            GLint emissiveTextureUniformLocation = -1;
+            GLint hasEmissiveMapUniformLocation = -1;
             GLint emissiveFactorUniformLocation = -1;
             GLint emissiveStrengthUniformLocation = -1;
             GLint cameraWorldPositionUniformLocation = -1;
@@ -825,6 +832,10 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
                         .hasOcclusionMapUniformLocation;
                     occlusionStrengthUniformLocation = materialShaderInfo
                         .occlusionStrengthUniformLocation;
+                    emissiveTextureUniformLocation = materialShaderInfo
+                        .emissiveTextureUniformLocation;
+                    hasEmissiveMapUniformLocation = materialShaderInfo
+                        .hasEmissiveMapUniformLocation;
                     emissiveFactorUniformLocation = materialShaderInfo
                         .emissiveFactorUniformLocation;
                     emissiveStrengthUniformLocation = materialShaderInfo
@@ -1023,8 +1034,24 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
             }
 
             if (useMaterial && meshInfo.materialType.hasEmissive) {
-                // No map to branch on: emission is the factor and the strength over it, so
-                // both are simply told to the program on every draw.
+                // Told every draw, like the flags above: a mesh without a map would otherwise
+                // keep the flag - and the texture - of whichever mesh this program drew last.
+                bool hasEmissiveMap = meshInfo.emissiveTextureObject != 0;
+
+                if (hasEmissiveMap && emissiveTextureUniformLocation >= 0) {
+                    glActiveTexture(GL_TEXTURE4);
+                    glBindTexture(GL_TEXTURE_2D, meshInfo.emissiveTextureObject);
+                    glUniform1i(emissiveTextureUniformLocation, 4);
+
+                    // Back to the albedo's unit, so nothing drawn after this inherits unit 4
+                    // as the active one.
+                    glActiveTexture(GL_TEXTURE0);
+                }
+
+                if (hasEmissiveMapUniformLocation >= 0) {
+                    glUniform1i(hasEmissiveMapUniformLocation, hasEmissiveMap ? 1 : 0);
+                }
+
                 if (emissiveFactorUniformLocation >= 0) {
                     GLfloat[3] emissiveFactorData = [
                         cast(GLfloat) meshInfo.emissiveFactor.r,
@@ -1140,8 +1167,13 @@ private struct GlMeshInfo {
     /// strength, 0 ignores it.
     GLfloat occlusionStrength = 1.0;
 
-    /// Light the mesh's material gives off by itself, added to the shaded surface. Black - the
-    /// default - emits nothing, which is what a material that never asked to glow stores.
+    /// Emissive map of the mesh's material, saying where the surface glows. 0 when the
+    /// material has none and it emits evenly by its factor alone.
+    GLuint emissiveTextureObject;
+
+    /// Light the mesh's material gives off by itself, added to the shaded surface. Multiplies
+    /// the map above where there is one. Black - the default - emits nothing, which is what a
+    /// material that never asked to glow stores.
     EmissiveFactor emissiveFactor;
 
     /// Multiplier over the factor above, carrying emission past the [0, 1] it is authored in.
@@ -1199,6 +1231,8 @@ private struct GlMaterialShaderInfo {
     GLint occlusionTextureUniformLocation = -1;
     GLint hasOcclusionMapUniformLocation = -1;
     GLint occlusionStrengthUniformLocation = -1;
+    GLint emissiveTextureUniformLocation = -1;
+    GLint hasEmissiveMapUniformLocation = -1;
     GLint emissiveFactorUniformLocation = -1;
     GLint emissiveStrengthUniformLocation = -1;
     GLint cameraWorldPositionUniformLocation = -1;

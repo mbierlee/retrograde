@@ -176,7 +176,7 @@ part of each `materialEntrySize`, which is fixed per type:
 | 1     | Vertex Colors | Renders using only the per-vertex RGB colors. No payload.    |
 | 2     | Unlit         | Passthrough material — an optional texture referenced by index, tinted by a base color factor. |
 | 3     | Lambert       | Purely diffuse lit material. References its optional albedo texture and base color factor, plus an optional normal map by index and that map's strength. |
-| 4     | PBR Metallic-Roughness | Physically based material. An upgrade of `Lambert`: references the same albedo texture, base color factor, optional normal map and strength, followed by an optional packed metallic-roughness map and the metallic and roughness factors over it, an optional occlusion map and its strength, and finally the emissive factor and the strength over it. |
+| 4     | PBR Metallic-Roughness | Physically based material. An upgrade of `Lambert`: references the same albedo texture, base color factor, optional normal map and strength, followed by an optional packed metallic-roughness map and the metallic and roughness factors over it, an optional occlusion map and its strength, and finally an optional emissive map with the emissive factor and strength over it. |
 
 ### Common Flags
 
@@ -275,13 +275,14 @@ explicitly through its `rg_mat` extra (see the [Blender authoring guide](blender
 | 0x24   | 4    | float   | Roughness factor                                                         |
 | 0x28   | 4    | uint    | Occlusion texture index (references a texture by its `index`, 0 = none)  |
 | 0x2C   | 4    | float   | Occlusion strength                                                       |
-| 0x30   | 12   | float×3 | Emissive factor (RGB)                                                    |
-| 0x3C   | 4    | float   | Emissive strength                                                        |
+| 0x30   | 4    | uint    | Emissive texture index (references a texture by its `index`, 0 = none)   |
+| 0x34   | 12   | float×3 | Emissive factor (RGB)                                                    |
+| 0x40   | 4    | float   | Emissive strength                                                        |
 
 The albedo index, base color factor, normal map index and normal map scale are the `Lambert`
 payload verbatim, subject to the same rules. What the PBR type adds behind them are the inputs of
 its metallic-roughness BRDF: a map, the pair of factors that scale it, an occlusion map with the
-strength that scales *it*, and the light the surface gives off by itself.
+strength that scales *it*, and an emissive map with the light the surface gives off by itself.
 
 The metallic-roughness texture index is optional the same way the normal map's is — `0` means the
 material has none, and any other value must match a defined texture. The map is **packed**, in the
@@ -348,12 +349,28 @@ separates a baked occlusion map from a shadow.
 
 #### Emissive
 
-Three consecutive `float`s — red, green, blue — holding the light the surface gives off on its
-own, followed by the `float` strength multiplied over them:
+An optional texture index, then three consecutive `float`s — red, green, blue — holding the light
+the surface gives off on its own, followed by the `float` strength multiplied over them.
+
+The emissive texture index is optional the way the maps above are: `0` means the material has
+none, and any other value must match a defined texture. The map's **RGB** says *where* the surface
+glows and in what color; alpha is ignored. Like the other maps it is sampled with UV channel 0.
+Unlike the metallic-roughness and occlusion maps it is **color, not data** — it holds radiance the
+eye sees directly rather than a coefficient fed into the BRDF, which is what will place it with
+the albedo rather than with them once the format settles its color-space handling.
+
+Where the material has a map, the factor multiplies what it samples — the same relationship the
+base color factor has with the albedo texture — and the strength scales the product:
 
 ```
-emission = emissiveFactor × emissiveStrength
+emission = emissiveFactor × emissiveStrength × sample.rgb   (with a map)
+emission = emissiveFactor × emissiveStrength                (without one)
 ```
+
+Because the factor multiplies the map rather than being replaced by it, a **black factor emits
+nothing whether or not a map is named**: the factor gates the map as well as standing in for it.
+A material that wants its map at face value stores white, which is what a converter writes for a
+glTF material carrying an `emissiveTexture` and no `emissiveFactor` of its own.
 
 Emission is **added to the shaded surface**, after every other term:
 
@@ -369,18 +386,15 @@ illuminate other geometry. Alpha is untouched: the material's opacity is still t
 factor's.
 
 The factor matches glTF's `emissiveFactor`, whose absent value is black — a material that emits
-nothing, which is what the vast majority store. The strength matches the `emissiveStrength` of
+nothing, which is what the vast majority store. Note that glTF's own default therefore makes a
+lone `emissiveTexture` invisible, exactly as it does here. The strength matches the `emissiveStrength` of
 `KHR_materials_emissive_strength`, and is a field of its own for the reason glTF made it an
 extension: `emissiveFactor` is capped at `1.0` per component, so the strength is what carries an
 emitter past the surface's own albedo and into HDR territory. A material without the extension
 means `1.0` — the factor as written.
 
-Both are stored and used as-is: no range check, no color-space conversion, and nothing tone-maps
-the result, so a strength large enough will simply clip to white.
-
-Unlike the inputs above, this payload references **no texture**. The emissive map is the one PBR
-input the format does not store yet; it will extend this payload, and the factor will then
-multiply what it samples the way the base color factor multiplies the albedo.
+All three are stored and used as-is: no range check, no color-space conversion, and nothing
+tone-maps the result, so a strength large enough will simply clip to white.
 
 ## Textures (variable size)
 

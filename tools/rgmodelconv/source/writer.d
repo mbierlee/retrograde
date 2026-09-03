@@ -12,9 +12,8 @@
  * (albedo) texture; the lit types additionally carry the normal map and its strength
  * when the source supplies one, and `pbrMetallicRoughness` carries the packed
  * metallic-roughness map alongside the metallic and roughness factors, plus the
- * occlusion map and its strength and the emissive factor with its strength. The
- * remaining PBR input (the emissive map) is dropped, as the RGM format cannot
- * express it yet.
+ * occlusion map and its strength and the emissive map with the factor and strength
+ * over it.
  *
  * A material can name the type it wants directly in its glTF `extras.rg_mat`, which
  * overrides that classification. This is the only way to assign a type that no glTF
@@ -185,6 +184,7 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
     uint[] materialNormalTextureIndices = new uint[materialCount];
     uint[] materialMetallicRoughnessTextureIndices = new uint[materialCount];
     uint[] materialOcclusionTextureIndices = new uint[materialCount];
+    uint[] materialEmissiveTextureIndices = new uint[materialCount];
     OutTexture[] textures; // Texture at position p has the 1-based index (p + 1).
     uint[OutTexture] textureToIndex;
     for (uint i = 0; i < materialCount; i++) {
@@ -249,6 +249,15 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
                 renameImages, texturePathPrefix, magFilterOverride, minFilterOverride,
                 textures, textureToIndex);
         }
+
+        // Optional in the same way, and de-duplicated like the rest - though unlike the
+        // occlusion map it rarely shares an image with anything, being color rather than a
+        // channel of packed data.
+        if (materialType.hasEmissive && material.emissiveTexture.path.length > 0) {
+            materialEmissiveTextureIndices[i] = resolveTextureIndex(material.emissiveTexture,
+                renameImages, texturePathPrefix, magFilterOverride, minFilterOverride,
+                textures, textureToIndex);
+        }
     }
 
     auto buf = appender!(ubyte[])();
@@ -271,7 +280,7 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
     // The lit types carry a further texture index for their normal map, likewise 0 when
     // they have none, and the PBR type closes with its metallic-roughness map — 0 again
     // when absent — the two factors over it, the occlusion map with its strength, and the
-    // emissive factor with its own.
+    // emissive map with the factor and strength over it.
     // Only an explicit `rg_mat` override still produces the `invalid` sentinel.
     for (uint i = 0; i < materialCount; i++) {
         if (materialIndexMap[i] == 0) {
@@ -331,8 +340,12 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
         }
 
         if (type.hasEmissive) {
-            // No map to reference yet, so this pair is the whole emissive payload: a
-            // material that glows evenly, or - at the default black - not at all.
+            // Referenced emissive map index (0 = none), saying where the surface glows.
+            writeUint(buf, materialEmissiveTextureIndices[i]);
+
+            // Written whether or not there is a map: with one it tints what the map
+            // samples, without one it describes a material that glows evenly - or, at the
+            // default black, not at all.
             foreach (component; data.materials[i].emissiveFactor) {
                 writeFloat(buf, component); // Emissive factor (R, G, B)
             }

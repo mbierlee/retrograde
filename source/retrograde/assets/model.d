@@ -89,8 +89,8 @@ enum MaterialType : ubyte {
     invalid = 0, /// Sentinel for an unrecognized or missing material type. Renderers treat this like `noMaterial`, falling back to the render pass shader.
     vertexColors = 1, /// Use only the per-vertex RGB colors. No payload.
     unlit = 2, /// Passthrough material — an optional texture (by index) from the model's texture list, tinted by a base color factor.
-    lambert = 3, /// Purely diffuse lit material. References an optional albedo texture and base color factor, plus an optional normal map (both textures by index). Has no glTF counterpart to be inferred from, so a converter only assigns it when a material asks for it by name.
-    pbrMetallicRoughness = 4 /// Physically based metallic-roughness material. An upgrade of `lambert`: the same albedo and normal map references plus an optional metallic-roughness map and the factors over it, an optional occlusion map and its strength, and the emissive factor and its strength, shaded with a full BRDF.
+    lambert = 3, /// Purely diffuse lit material. References an optional albedo texture and base color factor, plus an optional normal map (both textures by index). Has no counterpart in the common source formats to be inferred from, so a converter only assigns it when a material asks for it by name.
+    pbrMetallicRoughness = 4 /// Physically based metallic-roughness material. An upgrade of `lambert`: the same albedo and normal map references plus an optional metallic-roughness map and the factors over it, an optional occlusion map and its strength, and an optional emissive map with the emissive factor and strength over it, shaded with a full BRDF.
 }
 
 /**
@@ -150,9 +150,10 @@ struct Material {
     TextureIndex metallicRoughnessTextureIndex; /// Populated when `type.hasMetallicRoughness`: the index of the referenced metallic-roughness map `Texture`, which packs roughness in its green channel and metalness in its blue one. 0 when the material has none.
     float metallicFactor = 1.0; /// Populated when `type.hasMetallicRoughness`: how metallic the surface is, 0 being a dielectric and 1 a raw metal. Multiplies the map's blue channel where there is one. Stored and used as-is: no range check.
     float roughnessFactor = 1.0; /// Populated when `type.hasMetallicRoughness`: how rough the surface is, 0 being a perfect mirror and 1 fully diffuse. Multiplies the map's green channel where there is one. Stored and used as-is: no range check.
-    TextureIndex occlusionTextureIndex; /// Populated when `type.hasOcclusion`: the index of the referenced ambient occlusion map `Texture`, read from its red channel. 0 when the material has none. May name the same texture as `metallicRoughnessTextureIndex`, which is how glTF packs the two.
+    TextureIndex occlusionTextureIndex; /// Populated when `type.hasOcclusion`: the index of the referenced ambient occlusion map `Texture`, read from its red channel. 0 when the material has none. May name the same texture as `metallicRoughnessTextureIndex`: occlusion is conventionally packed into that image's spare red channel.
     float occlusionStrength = 1.0; /// Populated when `type.hasOcclusion`: how strongly the occlusion map attenuates indirect light. 1 is the map at full strength, 0 disables it. Stored and used as-is: no range check.
-    EmissiveFactor emissiveFactor; /// Populated when `type.hasEmissive`: the color the material emits on its own, added to the shaded surface. Black (the default) means it emits nothing. Stored and used as-is: no range check, no color-space conversion.
+    TextureIndex emissiveTextureIndex; /// Populated when `type.hasEmissive`: the index of the referenced emissive map `Texture`, whose RGB says where the surface glows. 0 when the material has none and it emits evenly by its factor alone.
+    EmissiveFactor emissiveFactor; /// Populated when `type.hasEmissive`: the color the material emits on its own, added to the shaded surface. Multiplies the emissive map where there is one. Black (the default) means it emits nothing. Stored and used as-is: no range check, no color-space conversion.
     float emissiveStrength = 1.0; /// Populated when `type.hasEmissive`: multiplier over `emissiveFactor`, which is what lets emission exceed the `[0, 1]` the factor is authored in. 1 leaves the factor as written. Stored and used as-is: no range check.
 
     mixin CopyConstructors!Material;
@@ -209,10 +210,10 @@ bool hasMetallicRoughness(MaterialType type) {
  * material has none - but both fields are present either way, so this predicate says what
  * the payload holds rather than what the material ended up with.
  *
- * It may name the same texture as the metallic-roughness map: glTF packs occlusion into
- * that image's spare red channel. It is a separate reference regardless, since a material
- * is free to occlude from its own image, or to carry a metallic-roughness map and no
- * occlusion at all.
+ * It may name the same texture as the metallic-roughness map, occlusion being conventionally
+ * packed into that image's spare red channel. It is a separate reference regardless, since
+ * a material is free to occlude from its own image, or to carry a metallic-roughness map
+ * and no occlusion at all.
  *
  * Only `pbrMetallicRoughness` carries it, for the same reason it alone carries the
  * metallic-roughness pair: occlusion attenuates the indirect light of a BRDF that `lambert`
@@ -223,15 +224,13 @@ bool hasOcclusion(MaterialType type) {
 }
 
 /**
- * Whether materials of this type carry an emissive payload: the color the surface emits by
- * itself, plus the strength multiplied over it.
+ * Whether materials of this type carry an emissive payload: an optional texture index
+ * referencing an emissive map, the color the surface emits by itself, and the strength
+ * multiplied over it.
  *
- * Unlike the payloads above this one references no texture yet, so it is always the pair of
- * values; a material that emits nothing carries a black factor rather than omitting them.
- *
- * The strength is a separate field rather than folded into the factor because glTF keeps
- * them apart: the factor is authored in `[0, 1]` alongside the base color, and
- * `KHR_materials_emissive_strength` is what lifts it past that into HDR territory.
+ * The map is optional the way the ones above are - an index of 0 means the material has none
+ * and glows evenly by its factor alone - but all three fields are present either way, so this
+ * predicate says what the payload holds rather than what the material ended up with.
  *
  * Only `pbrMetallicRoughness` carries it, like the payloads above: `lambert` sums a diffuse
  * response to the scene's lights, with no term an emitted radiance would belong in.
@@ -261,9 +260,9 @@ enum TextureType : ubyte {
 /**
  * Magnification filter used when sampling a texture.
  *
- * Mirrors the option set of the glTF sampler `magFilter` (and OpenGL's
- * `GL_TEXTURE_MAG_FILTER`), but uses engine-local sequential values rather than
- * the glTF/GL constant numbers. `unspecified` means the engine picks a default.
+ * Mirrors the option set of OpenGL's `GL_TEXTURE_MAG_FILTER`, but uses engine-local
+ * sequential values rather than the GL constant numbers. `unspecified` means the
+ * engine picks a default.
  */
 enum TextureMagFilter : ubyte {
     unspecified = 0, /// No filter stored; the renderer chooses its default.
@@ -274,9 +273,9 @@ enum TextureMagFilter : ubyte {
 /**
  * Minification filter used when sampling a texture.
  *
- * Mirrors the option set of the glTF sampler `minFilter` (and OpenGL's
- * `GL_TEXTURE_MIN_FILTER`), but uses engine-local sequential values rather than
- * the glTF/GL constant numbers. `unspecified` means the engine picks a default.
+ * Mirrors the option set of OpenGL's `GL_TEXTURE_MIN_FILTER`, but uses engine-local
+ * sequential values rather than the GL constant numbers. `unspecified` means the
+ * engine picks a default.
  */
 enum TextureMinFilter : ubyte {
     unspecified = 0, /// No filter stored; the renderer chooses its default.
@@ -291,10 +290,9 @@ enum TextureMinFilter : ubyte {
 /**
  * Wrap (address) mode used when sampling a texture outside the `[0, 1]` range.
  *
- * Applied independently to the S and T axes. Mirrors the option set of the
- * glTF sampler `wrapS`/`wrapT` (and OpenGL's `GL_TEXTURE_WRAP_S`/`_T`), but uses
- * engine-local sequential values rather than the glTF/GL constant numbers.
- * `unspecified` means the engine picks a default.
+ * Applied independently to the S and T axes. Mirrors the option set of OpenGL's
+ * `GL_TEXTURE_WRAP_S`/`_T`, but uses engine-local sequential values rather than the
+ * GL constant numbers. `unspecified` means the engine picks a default.
  */
 enum TextureWrap : ubyte {
     unspecified = 0, /// No wrap mode stored; the renderer chooses its default.

@@ -467,15 +467,19 @@ string materialPayloadDescription(ref Material material) {
                 ~ " (strength " ~ to!string(material.occlusionStrength) ~ ")") : "";
 
         // Reported only when it says something: emission is off by default, and a line
-        // stating that of every material in a model would drown the ones that do glow.
-        // Rounded like the factors above, and multiplied out so the number read is the
-        // radiance the shader adds rather than a factor and a dial to combine by eye.
+        // stating that of every material in a model would drown the ones that do glow. The
+        // factor gates the map as well as standing alone, so a black one means the material
+        // does not emit whether or not it names a texture. Rounded like the factors above,
+        // and multiplied out so the number read is the radiance the shader adds rather than
+        // a factor and a dial to combine by eye.
         bool emits = material.type.hasEmissive
             && (material.emissiveFactor.r > 0.0 || material.emissiveFactor.g > 0.0
                 || material.emissiveFactor.b > 0.0) && material.emissiveStrength != 0.0;
+        string emissiveMap = material.emissiveTextureIndex == 0 ? ""
+            : " via texture " ~ to!string(material.emissiveTextureIndex);
         string emissive = emits ? format(", emissive (%.3f, %.3f, %.3f) × %.3f",
             material.emissiveFactor.r, material.emissiveFactor.g, material.emissiveFactor.b,
-            material.emissiveStrength) : "";
+            material.emissiveStrength) ~ emissiveMap : "";
 
         return albedoDescription(material) ~ normal ~ metallicRoughness ~ occlusion ~ emissive;
     }
