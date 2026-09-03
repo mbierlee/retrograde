@@ -176,6 +176,7 @@ void initMaterialShader(ref MaterialShader materialShader) {
             shaderInfo.lightCountUniformLocation = glGetUniformLocation(program, "lightCount");
             shaderInfo.lightPositionRadiusUniformLocation = glGetUniformLocation(program, "lightPositionRadius[0]");
             shaderInfo.lightColorIntensityUniformLocation = glGetUniformLocation(program, "lightColorIntensity[0]");
+            shaderInfo.lightDirectionUniformLocation = glGetUniformLocation(program, "lightDirection[0]");
         }
     }
 
@@ -753,6 +754,7 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
 
             lightPositionRadiusData.truncate(0);
             lightColorIntensityData.truncate(0);
+            lightDirectionData.truncate(0);
             foreach (i; 0 .. selectedLights.length) {
                 auto activeLight = selectedLights[i];
                 lightPositionRadiusData.add(cast(GLfloat) activeLight.position.x);
@@ -764,6 +766,14 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
                 lightColorIntensityData.add(cast(GLfloat) activeLight.light.color.g);
                 lightColorIntensityData.add(cast(GLfloat) activeLight.light.color.b);
                 lightColorIntensityData.add(cast(GLfloat) activeLight.light.intensity);
+
+                // The flag is what the shader picks its term by: a point light's direction is
+                // never read, and goes up as the zero vector it was collected as.
+                lightDirectionData.add(cast(GLfloat) activeLight.direction.x);
+                lightDirectionData.add(cast(GLfloat) activeLight.direction.y);
+                lightDirectionData.add(cast(GLfloat) activeLight.direction.z);
+                lightDirectionData.add(
+                    activeLight.light.lightType == LightType.directional ? 1.0f : 0.0f);
             }
         }
 
@@ -801,6 +811,7 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
                 GLint lightCountUniformLocation = -1;
                 GLint lightPositionRadiusUniformLocation = -1;
                 GLint lightColorIntensityUniformLocation = -1;
+                GLint lightDirectionUniformLocation = -1;
             }
 
             if (meshInfo.materialIndex != noMaterial
@@ -857,6 +868,8 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
                             .lightPositionRadiusUniformLocation;
                         lightColorIntensityUniformLocation = materialShaderInfo
                             .lightColorIntensityUniformLocation;
+                        lightDirectionUniformLocation = materialShaderInfo
+                            .lightDirectionUniformLocation;
                     }
                 }
             }
@@ -910,6 +923,11 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
                         if (lightColorIntensityUniformLocation >= 0) {
                             glUniform4fv(lightColorIntensityUniformLocation, selectedLightCount,
                                 lightColorIntensityData.arr);
+                        }
+
+                        if (lightDirectionUniformLocation >= 0) {
+                            glUniform4fv(lightDirectionUniformLocation, selectedLightCount,
+                                lightDirectionData.arr);
                         }
                     }
                 }
@@ -1123,15 +1141,19 @@ private GLuint defaultAlbedoTextureObject;
 
 static if (maxLights > 0) {
     // The light types the material shaders have a term and uniforms for: lightPositionRadius
-    // and lightColorIntensity describe a point light and the shaders shade them as one, so any
-    // other type needs its own uniforms and its own term before it can be added here.
-    private static immutable LightType[1] shadeableLightTypes = [LightType.point];
+    // places a point light, lightDirection aims a directional one, and lightColorIntensity
+    // describes both. Any other type needs its own uniforms and its own term before it can be
+    // added here.
+    private static immutable LightType[2] shadeableLightTypes = [
+        LightType.point, LightType.directional
+    ];
 
     // Scratch buffers reused by every draw, so packing a frame's lights allocates nothing
     // after the first few draws.
     private Array!ActiveLight selectedLights;
     private Array!GLfloat lightPositionRadiusData;
     private Array!GLfloat lightColorIntensityData;
+    private Array!GLfloat lightDirectionData;
 }
 
 private struct GlMeshInfo {
@@ -1245,5 +1267,6 @@ private struct GlMaterialShaderInfo {
         GLint lightCountUniformLocation = -1;
         GLint lightPositionRadiusUniformLocation = -1;
         GLint lightColorIntensityUniformLocation = -1;
+        GLint lightDirectionUniformLocation = -1;
     }
 }
