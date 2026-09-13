@@ -12,9 +12,11 @@
 module retrograde.assets.model;
 
 import retrograde.std.collections : Array;
-import retrograde.std.stringid : StringId, sid;
 import retrograde.std.dlang : CopyConstructors;
+import retrograde.std.geometry : Aabb;
+import retrograde.std.math : Vector3;
 import retrograde.std.string : String;
+import retrograde.std.stringid : StringId, sid;
 
 alias VertexComponent = float;
 alias VertexIndex = size_t;
@@ -37,6 +39,12 @@ struct Model {
     Array!Mesh meshes;
     Array!Material materials;
     Array!Texture textures;
+
+    /**
+     * The box enclosing every mesh, in model space: the union of their `bounds`. Empty at
+     * the origin for a model without meshes.
+     */
+    Aabb bounds;
 
     mixin CopyConstructors!Model;
 }
@@ -63,23 +71,71 @@ struct Mesh {
     /// Index of the material to use for this mesh. `noMaterial` (0) means no material is assigned.
     MaterialIndex materialIndex = noMaterial;
 
+    /**
+     * The box enclosing every vertex, in model space.
+     *
+     * Always set on a loaded mesh: taken from the file when it stores one, and computed
+     * from the vertices otherwise. Empty at the origin for a mesh without vertices.
+     */
+    Aabb bounds;
+
     mixin CopyConstructors!Mesh;
+}
+
+/**
+ * Returns: The tightest box around the given mesh's vertices, or an empty box at the origin
+ * when it has none.
+ */
+Aabb computeBounds(ref Mesh mesh) {
+    Vertex[] vertices = mesh.vertices.arr();
+    if (vertices.length == 0) {
+        return Aabb.init;
+    }
+
+    auto bounds = Aabb(
+        Vector3(vertices[0].x, vertices[0].y, vertices[0].z),
+        Vector3(vertices[0].x, vertices[0].y, vertices[0].z)
+    );
+
+    foreach (ref vertex; vertices[1 .. $]) {
+        if (vertex.x < bounds.min.x) {
+            bounds.min.x = vertex.x;
+        } else if (vertex.x > bounds.max.x) {
+            bounds.max.x = vertex.x;
+        }
+
+        if (vertex.y < bounds.min.y) {
+            bounds.min.y = vertex.y;
+        } else if (vertex.y > bounds.max.y) {
+            bounds.max.y = vertex.y;
+        }
+
+        if (vertex.z < bounds.min.z) {
+            bounds.min.z = vertex.z;
+        } else if (vertex.z > bounds.max.z) {
+            bounds.max.z = vertex.z;
+        }
+    }
+
+    return bounds;
 }
 
 /**
  * Bit flags packed into a mesh's "attribute flags" byte.
  *
- * These mark which optional per-vertex attribute blocks follow the mesh's UV
- * data in the RGM file. Bits not listed here are reserved; they are written as
- * 0 and rejected on read.
+ * These mark which optional blocks the mesh carries in the RGM file: the per-vertex
+ * attribute blocks that follow the mesh's UV data, and the bounds block in its header.
+ * Bits not listed here are reserved; they are written as 0 and rejected on read.
  *
- * On a loaded `Mesh` the presence of an attribute is derived from the length of
- * its array, so these flags are only used while reading and writing the file.
+ * On a loaded `Mesh` the presence of a per-vertex attribute is derived from the length
+ * of its array, and bounds are always present, so these flags are only used while
+ * reading and writing the file.
  */
 enum MeshAttributeFlags : ubyte {
     none = 0,
     normals = 1 << 0, /// A normal block follows the UV data.
-    tangents = 1 << 1 /// A tangent block follows the normal data. Requires `normals` and at least one UV channel.
+    tangents = 1 << 1, /// A tangent block follows the normal data. Requires `normals` and at least one UV channel.
+    bounds = 1 << 2 /// A bounds block follows the material index. A loader computes the bounds itself when it is absent.
 }
 
 /**

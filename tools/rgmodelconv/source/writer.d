@@ -15,6 +15,9 @@
  * occlusion map and its strength and the emissive map with the factor and strength
  * over it.
  *
+ * Every mesh is also written with the bounding box of its vertices, unless asked not
+ * to, which spares the engine a pass over the vertices when it loads the model.
+ *
  * A material can name the type it wants directly in its glTF `extras.rg_mat`, which
  * overrides that classification. This is the only way to assign a type that no glTF
  * material maps onto, such as `lambert`.
@@ -152,13 +155,17 @@ private uint resolveTextureIndex(in TextureRef textureRef, bool renameImages,
  *                       filter instead of the one from its glTF sampler.
  *   minFilterOverride = When set, every texture is written with this minification
  *                       filter instead of the one from its glTF sampler.
+ *   writeBounds       = When true, every mesh is written with the bounding box of
+ *                       its vertices; otherwise the block is left out and the engine
+ *                       computes the box itself when it loads the model.
  * Throws: Exception if the model exceeds an RGM format limit (too many UV
  *   channels, or a texture path longer than a ushort can address).
  */
 ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix,
     bool forceBackfaceCulling = false,
     Nullable!TextureMagFilter magFilterOverride = Nullable!TextureMagFilter.init,
-    Nullable!TextureMinFilter minFilterOverride = Nullable!TextureMinFilter.init) {
+    Nullable!TextureMinFilter minFilterOverride = Nullable!TextureMinFilter.init,
+    bool writeBounds = true) {
     // Map glTF material index -> RGM material index. Materials get a sequential
     // 1-based RGM index the first time a primitive references them (in primitive
     // order); materials no primitive references are never emitted. Primitives
@@ -270,7 +277,7 @@ ubyte[] encodeRgm(in ModelData data, bool renameImages, string texturePathPrefix
     writeUint(buf, cast(uint) textures.length); // Texture count
 
     foreach (ref prim; data.primitives) {
-        writeMeshData(buf, prim, materialIndexMap);
+        writeMeshData(buf, prim, materialIndexMap, writeBounds);
     }
 
     // Emit one material entry per used material, in the order they were first
@@ -388,7 +395,8 @@ private bool materialHasVertexColors(in Primitive[] primitives, uint materialInd
     return false;
 }
 
-private void writeMeshData(ref Appender!(ubyte[]) buf, in Primitive prim, const uint[] materialIndexMap) {
+private void writeMeshData(ref Appender!(ubyte[]) buf, in Primitive prim,
+    const uint[] materialIndexMap, bool writeBounds) {
     uint triangleCount = cast(uint)(prim.indices.length / 3);
     uint uvChannelCount = cast(uint) prim.uvChannels.length;
 
@@ -412,12 +420,23 @@ private void writeMeshData(ref Appender!(ubyte[]) buf, in Primitive prim, const 
         attributeFlags |= MeshAttributeFlags.tangents;
     }
 
+    if (writeBounds) {
+        attributeFlags |= MeshAttributeFlags.bounds;
+    }
+
     // Mesh header
     writeUint(buf, prim.vertexCount);
     writeUint(buf, triangleCount);
     writeUbyte(buf, cast(ubyte) uvChannelCount);
     writeUbyte(buf, attributeFlags);
     writeUint(buf, materialIndex);
+
+    // Bounds (24 bytes: min x, y, z, then max x, y, z)
+    if (writeBounds) {
+        foreach (component; computeBounds(prim)) {
+            writeFloat(buf, component);
+        }
+    }
 
     // Vertex data (24 bytes per vertex: x, y, z, r, g, b)
     for (uint i = 0; i < prim.vertexCount; i++) {
@@ -471,6 +490,33 @@ private void writeMeshData(ref Appender!(ubyte[]) buf, in Primitive prim, const 
             writeFloat(buf, prim.tangents[i * 4 + 3]);
         }
     }
+}
+
+/**
+ * Returns: the tightest axis-aligned box around the primitive's vertices, as its min
+ *   corner followed by its max corner. All zeros for a primitive without vertices,
+ *   which is what the engine computes for one too.
+ */
+private float[6] computeBounds(in Primitive prim) {
+    float[6] bounds = 0;
+    if (prim.vertexCount == 0) {
+        return bounds;
+    }
+
+    bounds[0 .. 3] = prim.positions[0 .. 3];
+    bounds[3 .. 6] = prim.positions[0 .. 3];
+    for (uint i = 1; i < prim.vertexCount; i++) {
+        for (uint axis = 0; axis < 3; axis++) {
+            float value = prim.positions[i * 3 + axis];
+            if (value < bounds[axis]) {
+                bounds[axis] = value;
+            } else if (value > bounds[3 + axis]) {
+                bounds[3 + axis] = value;
+            }
+        }
+    }
+
+    return bounds;
 }
 
 private void writeUint(ref Appender!(ubyte[]) buf, uint value) {

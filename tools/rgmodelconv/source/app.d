@@ -36,6 +36,7 @@ struct Options {
     bool noRenameImages;
     string texturePath;
     bool forceBackfaceCulling;
+    bool noBounds;
     Nullable!TextureMagFilter magFilter; /// Null unless --mag-filter was given.
     Nullable!TextureMinFilter minFilter; /// Null unless --min-filter was given.
 }
@@ -70,7 +71,7 @@ int main(string[] args) {
 
     try {
         ubyte[] bytes = encodeRgm(readResult.model, !options.noRenameImages, options.texturePath,
-            options.forceBackfaceCulling, options.magFilter, options.minFilter);
+            options.forceBackfaceCulling, options.magFilter, options.minFilter, !options.noBounds);
         auto output = File(options.outputFile, "wb");
         output.rawWrite(bytes);
     } catch (Exception e) {
@@ -111,6 +112,9 @@ int parseArgs(ref string[] args, out Options options) {
             "force-backface-culling",
             "Write all materials as single-sided, ignoring the source model's double-sided flag",
             &options.forceBackfaceCulling,
+            "no-bounds",
+            "Leave the per-mesh bounding boxes out of the file; the engine computes them on load instead",
+            &options.noBounds,
             "mag-filter",
             "Write all textures with this magnification filter, ignoring the source model's sampler. One of: " ~
                 enumValueList!TextureMagFilter,

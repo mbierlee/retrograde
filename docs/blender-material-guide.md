@@ -616,3 +616,22 @@ material double-sided (both front and back faces rendered, the default).
 To cull back faces everywhere without touching the source model, convert with
 `rgmodelconv --force-backface-culling`. Every material is then written as
 single-sided, whatever the glTF's `doubleSided` flag says.
+
+---
+
+## Bounding boxes
+
+Nothing needs setting up in Blender for these. `rgmodelconv` writes each mesh with
+the axis-aligned box around its vertices, which the engine uses for broad checks such
+as whether an entity may be in view.
+
+Blender's exporter also writes a box of its own into the glTF, as the `min` and `max`
+of every mesh's position accessor. **The converter ignores those values** and
+computes the box from the vertex positions it decodes: exporters have shipped
+stale or rounded values there, and the decoded positions are already at hand,
+so recomputing costs nothing and is always right. Editing those values by hand
+therefore has no effect on the converted file.
+
+To leave the box out of the file and have the engine compute it on load instead,
+convert with `rgmodelconv --no-bounds`. To see what was written, run `rgassetinfo`
+on the converted file; each mesh lists its box as `bounds min (...) max (...)`.
