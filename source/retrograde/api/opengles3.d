@@ -15,8 +15,8 @@ module retrograde.api.opengles3;
 
 version (OpenGLES3)  :  //
 
-import retrograde.engine.entity : EntityId, hasComponent, withComponentData, addComponent,
-    getComponentData;
+import retrograde.engine.entity : EntityId, hasComponent, withComponentData, addComponent;
+import retrograde.engine.geometry : worldTransformOf;
 import retrograde.engine.rendering : activeCameraWorldPosition, Color, LightType, RenderPass,
     Viewport, renderPasses, MaterialShader;
 import retrograde.engine.rendering.lighting : ActiveLight, ambientGroundColor, ambientIntensity,
@@ -33,9 +33,7 @@ import retrograde.assets.assetlibrary : getModel, getTexture;
 import retrograde.std.memory : makeRaw, unique;
 import retrograde.std.collections : Array, HashMap;
 import retrograde.std.stringid : StringId, sid;
-import retrograde.std.math : Matrix4, Vector3, Quaternion, toNormalMatrix, toTranslationMatrix4,
-    toScalingMatrix4;
-import retrograde.std.geometry : PositionComponentType, OrientationComponentType, ScaleComponentType;
+import retrograde.std.math : Matrix4, Vector3, toNormalMatrix, toTranslationVector;
 import retrograde.std.assets : AssetHandle;
 import retrograde.std.dlang : CopyConstructors;
 import retrograde.std.stdio : writeErrLn;
@@ -710,26 +708,8 @@ void clearShaderProgram() {
 
 void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matrix4 viewProjectionMatrix) {
     entity.withComponentData(GlModelInfoComponentType, (GlModelInfo* modelInfo) {
-        Vector3 position;
-        Quaternion orientation;
-        Vector3 scale = 1;
-
-        auto maybePosition = entity.getComponentData!Vector3(PositionComponentType);
-        if (maybePosition.isDefined()) {
-            position = *maybePosition.value;
-        }
-
-        auto maybeOrientation = entity.getComponentData!Quaternion(OrientationComponentType);
-        if (maybeOrientation.isDefined()) {
-            orientation = *maybeOrientation.value;
-        }
-
-        auto maybeScale = entity.getComponentData!Vector3(ScaleComponentType);
-        if (maybeScale.isDefined()) {
-            scale = *maybeScale.value;
-        }
-
-        auto modelMatrix = position.toTranslationMatrix4() * orientation.toRotationMatrix() * scale.toScalingMatrix4();
+        auto modelMatrix = entity.worldTransformOf();
+        auto position = modelMatrix.toTranslationVector();
         auto modelViewProjectionMatrix = viewProjectionMatrix * modelMatrix;
         auto modelViewProjectionMatrixData = modelViewProjectionMatrix.getDataArray!float;
         auto modelMatrixData = modelMatrix.getDataArray!float;

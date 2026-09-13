@@ -15,6 +15,7 @@ import retrograde.assets.model : ModelComponentType, MaterialType;
 
 import retrograde.engine.entity : addEntityFinalizedHook, addEntityRemovedHook, EntityId, forEachEntity,
     hasComponent, withComponentData;
+import retrograde.engine.geometry : worldPositionOf;
 import retrograde.engine.graphicsapi : clearShaderProgram, getViewport, initFrame, initRenderApi,
     initRenderPass, initMaterialShader, loadEntityModel, setClearColor, unloadEntityModel, useRenderPassShaderProgram;
 import retrograde.engine.rendering.lighting : collectActiveLights, registerLightEntity,
@@ -24,7 +25,7 @@ import retrograde.engine.rendering.materialshader : vertexColorsMaterialShader, 
     pbrMetallicRoughnessMaterialShader, lambertMaterialShader;
 
 import retrograde.std.collections : Array, HashMap;
-import retrograde.std.geometry : OrientationComponentType, PositionComponentType;
+import retrograde.std.geometry : OrientationComponentType;
 import retrograde.std.math : createOrthographicMatrix, createPerspectiveMatrix, createViewMatrixQ,
     degreesToRadians, Matrix4, Quaternion, scalar, Vector3;
 import retrograde.std.stringid : sid, StringId;
@@ -148,9 +149,7 @@ void renderFrame() {
     Quaternion orientation;
 
     if (cameraEntity != 0) {
-        cameraEntity.withComponentData!Vector3(PositionComponentType, (Vector3* p) {
-            position = *p;
-        });
+        position = cameraEntity.worldPositionOf();
 
         cameraEntity.withComponentData!Quaternion(OrientationComponentType, (Quaternion* o) {
             orientation = *o;
