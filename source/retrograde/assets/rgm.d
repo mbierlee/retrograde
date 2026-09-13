@@ -13,11 +13,13 @@ module retrograde.assets.rgm;
 
 import retrograde.assets.model : Model, Vertex, Face, Mesh, UvCoord, Normal, Tangent,
     maxUvChannels, MeshAttributeFlags, Material, MaterialIndex, MaterialType, MaterialFlags,
-    noMaterial, hasEmissive, hasMetallicRoughness, hasOcclusion, referencesTexture,
-    referencesNormalTexture, Texture, TextureIndex, TextureType, TextureMagFilter,
-    TextureMinFilter, TextureWrap;
+    noMaterial, computeBounds, hasEmissive, hasMetallicRoughness, hasOcclusion,
+    referencesTexture, referencesNormalTexture, Texture, TextureIndex, TextureType,
+    TextureMagFilter, TextureMinFilter, TextureWrap;
 import retrograde.assets.readercommon : readUInt, readUShort, readFloat;
 import retrograde.std.endian : toPlatformEndian, Endian;
+import retrograde.std.geometry : Aabb;
+import retrograde.std.math : Vector3;
 import retrograde.std.memory : ResultPtr, failedPtr, makeRaw, successPtr;
 import retrograde.std.stringid : StringId, sid;
 import retrograde.std.string : String;
@@ -95,6 +97,13 @@ ResultPtr!Model loadModel(const(ubyte)[] data, StringId name = sid("unknown")) {
         }
     }
 
+    // Started from the first mesh rather than a default box, since a default box takes up
+    // the origin and would drag the union out to it.
+    Mesh[] meshes = model.meshes.arr();
+    foreach (i, ref mesh; meshes) {
+        model.bounds = i == 0 ? mesh.bounds : model.bounds.unionWith(mesh.bounds);
+    }
+
     for (uint i; i < header.materialCount; i++) {
         OperationResult result = readMaterialData(data, offset, model);
         if (result.isFailure()) {
@@ -165,13 +174,15 @@ private OperationResult readMeshData(const(ubyte)[] data, ref size_t offset, Mod
     ubyte attributeFlags = data[offset];
     offset += 1;
 
-    enum ubyte knownAttributeFlags = MeshAttributeFlags.normals | MeshAttributeFlags.tangents;
+    enum ubyte knownAttributeFlags = MeshAttributeFlags.normals | MeshAttributeFlags.tangents
+        | MeshAttributeFlags.bounds;
     if ((attributeFlags & ~knownAttributeFlags) != 0) {
         return failure("Invalid attribute flags: reserved bits are set.");
     }
 
     bool hasNormals = (attributeFlags & MeshAttributeFlags.normals) != 0;
     bool hasTangents = (attributeFlags & MeshAttributeFlags.tangents) != 0;
+    bool hasBounds = (attributeFlags & MeshAttributeFlags.bounds) != 0;
 
     // A tangent is only meaningful alongside the normal it is orthogonal to, and
     // it describes the gradient of the first UV channel, so both must be present.
@@ -191,6 +202,14 @@ private OperationResult readMeshData(const(ubyte)[] data, ref size_t offset, Mod
     MaterialIndex materialIndex = readUInt(data, offset);
     offset += 4;
     mesh.materialIndex = materialIndex;
+
+    // Read bounds
+    if (hasBounds) {
+        OperationResult boundsResult = readBoundsData(data, offset, mesh);
+        if (boundsResult.isFailure()) {
+            return boundsResult;
+        }
+    }
 
     // Read vertices
     for (uint i; i < vertexCount; i++) {
@@ -232,7 +251,31 @@ private OperationResult readMeshData(const(ubyte)[] data, ref size_t offset, Mod
         }
     }
 
+    // A file may leave the bounds out, so a mesh always ends up with them either way.
+    if (!hasBounds) {
+        mesh.bounds = computeBounds(mesh);
+    }
+
     model.meshes ~= mesh;
+    return success();
+}
+
+private OperationResult readBoundsData(const(ubyte)[] data, ref size_t offset, ref Mesh mesh) {
+    if (data.length - offset < 24) {
+        return failure("Cannot read bounds: Unexpected end of data.");
+    }
+
+    float[6] corners;
+    foreach (ref corner; corners) {
+        corner = readFloat(data, offset);
+        offset += 4;
+    }
+
+    mesh.bounds = Aabb(
+        Vector3(corners[0], corners[1], corners[2]),
+        Vector3(corners[3], corners[4], corners[5])
+    );
+
     return success();
 }
 
@@ -2815,6 +2858,216 @@ void runRgmTests() {
         assert(!result.isSuccessful());
     });
 
+    test("Load mesh with stored bounds", {
+        ubyte[140] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
+
+            // Mesh 1
+            0x03, 0x00, 0x00, 0x00, // Vertex count (3)
+            0x01, 0x00, 0x00, 0x00, // Face count (1)
+            0x00, // UV channel count (0)
+            0x04, // Attribute flags (bounds)
+            0x00, 0x00, 0x00, 0x00, // Material index (0 = no material)
+
+            // Bounds, padded out past the vertices so that reading them is told apart
+            // from computing them
+            0x00, 0x00, 0x00, 0xC0, // Min X (-2.0)
+            0x00, 0x00, 0x80, 0xBF, // Min Y (-1.0)
+            0x00, 0x00, 0x00, 0xC0, // Min Z (-2.0)
+            0x00, 0x00, 0x00, 0x40, // Max X (2.0)
+            0x00, 0x00, 0x00, 0x40, // Max Y (2.0)
+            0x00, 0x00, 0x80, 0x3F, // Max Z (1.0)
+
+            // Vertex 1
+            0x00, 0x00, 0x00, 0x00, // X coordinate (0.0)
+            0x00, 0x00, 0x00, 0x00, // Y coordinate (0.0)
+            0x00, 0x00, 0x00, 0x00, // Z coordinate (0.0)
+            0x00, 0x00, 0x80, 0x3F, // R color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // G color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // B color (1.0)
+
+            // Vertex 2
+            0x00, 0x00, 0x80, 0x3F, // X coordinate (1.0)
+            0x00, 0x00, 0x00, 0x00, // Y coordinate (0.0)
+            0x00, 0x00, 0x00, 0x00, // Z coordinate (0.0)
+            0x00, 0x00, 0x80, 0x3F, // R color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // G color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // B color (1.0)
+
+            // Vertex 3
+            0x00, 0x00, 0x00, 0x00, // X coordinate (0.0)
+            0x00, 0x00, 0x80, 0x3F, // Y coordinate (1.0)
+            0x00, 0x00, 0x00, 0x00, // Z coordinate (0.0)
+            0x00, 0x00, 0x80, 0x3F, // R color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // G color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // B color (1.0)
+
+            // Face 1
+            0x00, 0x00, 0x00, 0x00, // Vertex index 1 (0)
+            0x01, 0x00, 0x00, 0x00, // Vertex index 2 (1)
+            0x02, 0x00, 0x00, 0x00, // Vertex index 3 (2)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(result.isSuccessful());
+
+        auto model = result.unique();
+        assert(model.meshes[0].vertices.length == 3);
+        assert(model.meshes[0].bounds.min == Vector3(-2, -1, -2));
+        assert(model.meshes[0].bounds.max == Vector3(2, 2, 1));
+        assert(model.bounds == model.meshes[0].bounds);
+    });
+
+    test("Compute mesh bounds from its vertices when the file stores none", {
+        ubyte[116] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
+
+            // Mesh 1
+            0x03, 0x00, 0x00, 0x00, // Vertex count (3)
+            0x01, 0x00, 0x00, 0x00, // Face count (1)
+            0x00, // UV channel count (0)
+            0x00, // Attribute flags (none)
+            0x00, 0x00, 0x00, 0x00, // Material index (0 = no material)
+
+            // Vertex 1
+            0x00, 0x00, 0x80, 0xBF, // X coordinate (-1.0)
+            0x00, 0x00, 0x00, 0x00, // Y coordinate (0.0)
+            0x00, 0x00, 0x00, 0x40, // Z coordinate (2.0)
+            0x00, 0x00, 0x80, 0x3F, // R color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // G color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // B color (1.0)
+
+            // Vertex 2
+            0x00, 0x00, 0x80, 0x3F, // X coordinate (1.0)
+            0x00, 0x00, 0x00, 0x00, // Y coordinate (0.0)
+            0x00, 0x00, 0x00, 0x00, // Z coordinate (0.0)
+            0x00, 0x00, 0x80, 0x3F, // R color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // G color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // B color (1.0)
+
+            // Vertex 3
+            0x00, 0x00, 0x00, 0x00, // X coordinate (0.0)
+            0x00, 0x00, 0x40, 0x40, // Y coordinate (3.0)
+            0x00, 0x00, 0x80, 0xBF, // Z coordinate (-1.0)
+            0x00, 0x00, 0x80, 0x3F, // R color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // G color (1.0)
+            0x00, 0x00, 0x80, 0x3F, // B color (1.0)
+
+            // Face 1
+            0x00, 0x00, 0x00, 0x00, // Vertex index 1 (0)
+            0x01, 0x00, 0x00, 0x00, // Vertex index 2 (1)
+            0x02, 0x00, 0x00, 0x00, // Vertex index 3 (2)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(result.isSuccessful());
+
+        auto model = result.unique();
+        assert(model.meshes[0].bounds.min == Vector3(-1, 0, -1));
+        assert(model.meshes[0].bounds.max == Vector3(1, 3, 2));
+        assert(model.bounds == model.meshes[0].bounds);
+    });
+
+    test("A model's bounds enclose every mesh", {
+        ubyte[94] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x02, 0x00, 0x00, 0x00, // Amount of meshes (2)
+            0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
+
+            // Mesh 1
+            0x00, 0x00, 0x00, 0x00, // Vertex count (0)
+            0x00, 0x00, 0x00, 0x00, // Face count (0)
+            0x00, // UV channel count (0)
+            0x04, // Attribute flags (bounds)
+            0x00, 0x00, 0x00, 0x00, // Material index (0 = no material)
+
+            // Bounds
+            0x00, 0x00, 0x00, 0xC0, // Min X (-2.0)
+            0x00, 0x00, 0x80, 0xBF, // Min Y (-1.0)
+            0x00, 0x00, 0x00, 0x00, // Min Z (0.0)
+            0x00, 0x00, 0x00, 0x00, // Max X (0.0)
+            0x00, 0x00, 0x80, 0x3F, // Max Y (1.0)
+            0x00, 0x00, 0x00, 0x40, // Max Z (2.0)
+
+            // Mesh 2
+            0x00, 0x00, 0x00, 0x00, // Vertex count (0)
+            0x00, 0x00, 0x00, 0x00, // Face count (0)
+            0x00, // UV channel count (0)
+            0x04, // Attribute flags (bounds)
+            0x00, 0x00, 0x00, 0x00, // Material index (0 = no material)
+
+            // Bounds
+            0x00, 0x00, 0x80, 0x3F, // Min X (1.0)
+            0x00, 0x00, 0x40, 0xC0, // Min Y (-3.0)
+            0x00, 0x00, 0x80, 0xBF, // Min Z (-1.0)
+            0x00, 0x00, 0x40, 0x40, // Max X (3.0)
+            0x00, 0x00, 0x00, 0x00, // Max Y (0.0)
+            0x00, 0x00, 0x80, 0x3F, // Max Z (1.0)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(result.isSuccessful());
+
+        auto model = result.unique();
+        assert(model.bounds.min == Vector3(-2, -3, -1));
+        assert(model.bounds.max == Vector3(3, 1, 2));
+    });
+
+    test("A model without meshes has empty bounds", {
+        ubyte[18] modelData = [
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x00, 0x00, 0x00, 0x00, // Amount of meshes (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(result.isSuccessful());
+
+        auto model = result.unique();
+        assert(model.bounds == Aabb.init);
+    });
+
+    test("Reject mesh with a truncated bounds block", {
+        ubyte[44] modelData = [
+            // Header
+            0x52, 0x47, 0x4D, 0x20, // Magic
+            0x01, 0x00, // Version
+            0x01, 0x00, 0x00, 0x00, // Amount of meshes (1)
+            0x00, 0x00, 0x00, 0x00, // Amount of materials (0)
+            0x00, 0x00, 0x00, 0x00, // Amount of textures (0)
+
+            // Mesh 1
+            0x00, 0x00, 0x00, 0x00, // Vertex count (0)
+            0x00, 0x00, 0x00, 0x00, // Face count (0)
+            0x00, // UV channel count (0)
+            0x04, // Attribute flags (bounds)
+            0x00, 0x00, 0x00, 0x00, // Material index (0 = no material)
+
+            // Bounds, cut off after the min corner
+            0x00, 0x00, 0x00, 0xC0, // Min X (-2.0)
+            0x00, 0x00, 0x80, 0xBF, // Min Y (-1.0)
+            0x00, 0x00, 0x00, 0x00, // Min Z (0.0)
+        ];
+
+        auto result = loadModel(modelData);
+        assert(!result.isSuccessful());
+    });
+
     test("Reject mesh with reserved attribute flag bits set", {
         ubyte[32] modelData = [
             // Header
@@ -2828,7 +3081,7 @@ void runRgmTests() {
             0x00, 0x00, 0x00, 0x00, // Vertex count (0)
             0x00, 0x00, 0x00, 0x00, // Face count (0)
             0x00, // UV channel count (0)
-            0x04, // Attribute flags (reserved bit 2)
+            0x08, // Attribute flags (reserved bit 3)
             0x00, 0x00, 0x00, 0x00, // Material index (0 = no material)
         ];
 

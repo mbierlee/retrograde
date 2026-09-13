@@ -20,6 +20,7 @@ import std.getopt;
 import std.file : exists, isDir, isFile, read, dirEntries, SpanMode;
 import std.algorithm : sort;
 import std.array : array;
+import std.format : format;
 
 import retrograde.assets.rgm : loadModel, loadModelHeader, ModelHeader, rgmMagicNumber;
 import retrograde.assets.rgi : loadImageHeader, ImageHeader, rgiMagicNumber,
@@ -28,6 +29,7 @@ import retrograde.assets.model : hasEmissive, hasMetallicRoughness, hasOcclusion
     MaterialType, noMaterial, Texture, TextureType, TextureMagFilter, TextureMinFilter,
     TextureWrap;
 import retrograde.assets.image : ChannelFormat, bytesPerChannel;
+import retrograde.std.geometry : Aabb;
 
 private enum AssetKind {
     unknown,
@@ -277,6 +279,7 @@ int showModelInfo(string inputFile, const(ubyte)[] data, ref bool printedAny) {
     writefln("Max UV chans/mesh: %d", maxUvChannelsUsed);
     writefln("Meshes w/normals:  %d", meshesWithNormals);
     writefln("Meshes w/tangents: %d", meshesWithTangents);
+    writefln("Bounds:            %s", boundsLabel(model.ptr.bounds));
 
     string cullingSummary = backfaceCullingSummary(materials);
     if (cullingSummary.length > 0) {
@@ -286,10 +289,11 @@ int showModelInfo(string inputFile, const(ubyte)[] data, ref bool printedAny) {
     if (meshes.length > 0) {
         writeln("Per-mesh:");
         foreach (i, ref mesh; meshes) {
-            writefln("  Mesh %d: %d vertices, %d faces, %d UV channels, %s, material %s",
+            writefln("  Mesh %d: %d vertices, %d faces, %d UV channels, %s, material %s, bounds %s",
                 i, mesh.vertices.length, mesh.faces.length, mesh.uvChannelCount,
                 meshAttributeLabel(mesh),
-                materialReferenceLabel(mesh.materialIndex)
+                materialReferenceLabel(mesh.materialIndex),
+                boundsLabel(mesh.bounds)
             );
         }
     }
@@ -331,6 +335,18 @@ string materialTypeName(MaterialType type) {
     case MaterialType.lambert:
         return "Lambert";
     }
+}
+
+/**
+ * Describes a bounding box by its two corners.
+ *
+ * A loaded mesh always has one, whether the file stored it or the loader computed it,
+ * so this does not say which.
+ */
+string boundsLabel(in Aabb bounds) {
+    return format("min (%g, %g, %g) max (%g, %g, %g)",
+        bounds.min.x, bounds.min.y, bounds.min.z,
+        bounds.max.x, bounds.max.y, bounds.max.z);
 }
 
 /**
