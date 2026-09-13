@@ -13,7 +13,8 @@ module retrograde.engine.entityfactory;
 
 import retrograde.std.memory : makeUnique;
 import retrograde.std.math : Vector3, Quaternion;
-import retrograde.std.geometry : PositionComponentType, OrientationComponentType, ScaleComponentType;
+import retrograde.std.geometry : OriginOffsetComponentType, PositionComponentType,
+    OrientationComponentType, ScaleComponentType;
 
 import retrograde.engine.entity : EntityId, addComponent;
 import retrograde.engine.animation.kinetic : RotationComponentType, TranslationComponentType,
@@ -26,6 +27,14 @@ void addPosition(EntityId entity, const double x, const double y, const double z
 
 void addPosition(EntityId entity, const Vector3 position) {
     entity.addComponent(PositionComponentType, makeUnique(position));
+}
+
+void addOriginOffset(EntityId entity, const double x, const double y, const double z) {
+    entity.addOriginOffset(Vector3(x, y, z));
+}
+
+void addOriginOffset(EntityId entity, const Vector3 offset) {
+    entity.addComponent(OriginOffsetComponentType, makeUnique(offset));
 }
 
 void addOrientation(EntityId entity, double radianAngle, const Vector3 axis) {

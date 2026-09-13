@@ -16,7 +16,8 @@
 
 module retrograde.engine.rendering.lighting;
 
-import retrograde.engine.entity : EntityId, getComponentData;
+import retrograde.engine.entity : EntityId, getComponentData, hasComponent;
+import retrograde.engine.geometry : worldPositionOf;
 import retrograde.engine.rendering : Color, Light, LightComponentType, LightType;
 import retrograde.engine.rendering.materialshader : maxLights;
 
@@ -188,12 +189,11 @@ void collectActiveLights() {
             continue;
         }
 
-        auto maybePosition = entity.getComponentData!Vector3(PositionComponentType);
-        if (!maybePosition.isDefined) {
+        if (!entity.hasComponent(PositionComponentType)) {
             continue;
         }
 
-        activeLights.add(ActiveLight(*maybePosition.value, Vector3(0), light));
+        activeLights.add(ActiveLight(entity.worldPositionOf(), Vector3(0), light));
     }
 }
 
@@ -605,6 +605,32 @@ void runLightingTests() {
         assert(activeLights.length == 1);
         assert(activeLights[0].position == Vector3(1, 2, 3));
         assert(activeLights[0].light.isEnabled);
+
+        entity.unregisterLightEntity();
+    });
+
+    test("A collected light shines from where its entity swung to around its position", {
+        import retrograde.engine.entity : createEntity, resetEcs;
+        import retrograde.engine.entityfactory : addLight, addOrientation, addOriginOffset,
+            addPosition;
+        import retrograde.std.math : degreesToRadians;
+        import retrograde.std.string : s;
+
+        resetEcs();
+
+        auto entity = createEntity("ent_light_test".s).value;
+        entity.addPosition(1, 2, 3);
+        entity.addOriginOffset(-10, 0, 0);
+        entity.addOrientation(degreesToRadians(180), Vector3(0, 1, 0));
+        entity.addLight(Light());
+        entity.registerLightEntity();
+
+        collectActiveLights();
+        assert(activeLights.length == 1);
+        auto position = activeLights[0].position;
+        assert(position.x > 10.999 && position.x < 11.001);
+        assert(position.y > 1.999 && position.y < 2.001);
+        assert(position.z > 2.999 && position.z < 3.001);
 
         entity.unregisterLightEntity();
     });
