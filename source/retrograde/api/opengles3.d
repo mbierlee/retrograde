@@ -17,8 +17,8 @@ version (OpenGLES3)  :  //
 
 import retrograde.engine.entity : EntityId, hasComponent, withComponentData, addComponent;
 import retrograde.engine.geometry : worldTransformOf;
-import retrograde.engine.rendering : activeCameraWorldPosition, Color, LightType, RenderPass,
-    Viewport, renderPasses, MaterialShader;
+import retrograde.engine.rendering : activeCameraFrustum, activeCameraWorldPosition, Color,
+    frustumCullingEnabled, LightType, RenderPass, Viewport, renderPasses, MaterialShader;
 import retrograde.engine.rendering.lighting : ActiveLight, ambientGroundColor, ambientIntensity,
     ambientSkyColor, selectActiveLights;
 import retrograde.engine.rendering.materialshader : maxLights;
@@ -711,6 +711,15 @@ void clearShaderProgram() {
 void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matrix4 viewProjectionMatrix) {
     entity.withComponentData(GlModelInfoComponentType, (GlModelInfo* modelInfo) {
         auto modelMatrix = entity.worldTransformOf();
+
+        // Measured against the model's bounds in the world rather than its origin, so a
+        // model whose origin is off screen still draws when one end of it is not. The same
+        // box then picks its lights, so a light that reaches only one end is not culled.
+        auto worldBounds = modelInfo.bounds.transformedBy(modelMatrix);
+        if (frustumCullingEnabled && !activeCameraFrustum.overlaps(worldBounds)) {
+            return;
+        }
+
         auto modelViewProjectionMatrix = viewProjectionMatrix * modelMatrix;
         auto modelViewProjectionMatrixData = modelViewProjectionMatrix.getDataArray!float;
         auto modelMatrixData = modelMatrix.getDataArray!float;
@@ -730,9 +739,6 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
 
         static if (maxLights > 0) {
             // Picked once for the whole entity: every mesh of a model is lit by the same lights.
-            // Measured against the model's bounds in the world rather than its origin, so a
-            // light that reaches only one end of a large model is not culled.
-            auto worldBounds = modelInfo.bounds.transformedBy(modelMatrix);
             GLsizei selectedLightCount = cast(GLsizei) selectActiveLights(worldBounds,
                 shadeableLightTypes[], selectedLights);
 

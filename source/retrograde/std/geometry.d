@@ -162,13 +162,117 @@ struct Aabb {
                 min.x < other.min.x ? min.x : other.min.x,
                 min.y < other.min.y ? min.y : other.min.y,
                 min.z < other.min.z ? min.z : other.min.z
-            ),
-            Vector3(
-                max.x > other.max.x ? max.x : other.max.x,
-                max.y > other.max.y ? max.y : other.max.y,
-                max.z > other.max.z ? max.z : other.max.z
-            )
+        ),
+        Vector3(
+            max.x > other.max.x ? max.x : other.max.x,
+            max.y > other.max.y ? max.y : other.max.y,
+            max.z > other.max.z ? max.z : other.max.z
+        )
         );
+    }
+}
+
+/**
+ * A flat surface dividing space in two, kept as its unit normal and its signed distance
+ * from the origin.
+ *
+ * The normal points to the plane's front. A point is in front of the plane when its signed
+ * distance is positive, and behind it when negative.
+ */
+struct Plane {
+    /// The direction the plane faces, of unit length.
+    Vector3 normal;
+
+    /// How far the plane lies from the origin along its normal, negated: the plane holds
+    /// every point where the dot product with the normal equals `-distance`.
+    scalar distance = 0;
+
+    /**
+     * Returns: How far `point` lies in front of the plane, negative when it lies behind it.
+     */
+    scalar signedDistanceTo(const Vector3 point) const {
+        return normal.dot(point) + distance;
+    }
+
+    /**
+     * Returns: Whether `box` lies entirely behind the plane.
+     *
+     * Only the box's corner furthest along the normal is tested, since if even that corner
+     * is behind the plane the whole box is.
+     */
+    bool isBehind(const Aabb box) const {
+        Vector3 furthestCorner = Vector3(
+            normal.x >= 0 ? box.max.x : box.min.x,
+            normal.y >= 0 ? box.max.y : box.min.y,
+            normal.z >= 0 ? box.max.z : box.min.z
+        );
+
+        return signedDistanceTo(furthestCorner) < 0;
+    }
+}
+
+/**
+ * The volume a camera sees, bounded by six planes that all face inward.
+ *
+ * Built from a camera's combined view and projection matrix, so it lives in world space and
+ * can be tested against entities' world bounds directly. That is what it is for: telling
+ * which entities a frame can skip drawing because nothing of them could reach the screen.
+ */
+struct Frustum {
+    /// The bounding planes, facing inward: left, right, bottom, top, near, far.
+    Plane[6] planes;
+
+    /**
+     * Returns: The frustum of a camera with the given combined view and projection matrix.
+     *
+     * Each clip-space bound, such as $(D -w <= x), is a half-space in world space whose
+     * plane is the sum or difference of two rows of the matrix. Those rows are not unit
+     * length, so each plane is normalized to keep its distances meaningful.
+     */
+    static Frustum fromViewProjection(const ref Matrix4 viewProjection) {
+        Frustum frustum;
+        static foreach (i; 0 .. 3) {
+            frustum.planes[i * 2] = planeFromRows(viewProjection, i, 1);
+            frustum.planes[i * 2 + 1] = planeFromRows(viewProjection, i, -1);
+        }
+
+        return frustum;
+    }
+
+    /**
+     * Returns: Whether any part of `box` could lie inside the frustum.
+     *
+     * A box is only ruled out when it lies entirely behind one of the planes. A box that
+     * is behind none of them yet still misses the frustum, because it sits in a corner
+     * where two planes' outsides meet, is reported as overlapping. That errs toward
+     * drawing, which is the safe way to be wrong.
+     */
+    bool overlaps(const Aabb box) const {
+        foreach (ref plane; planes) {
+            if (plane.isBehind(box)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static Plane planeFromRows(const ref Matrix4 m, const size_t row, const scalar sign) {
+        Plane plane;
+        plane.normal = Vector3(
+            m[3, 0] + sign * m[row, 0],
+            m[3, 1] + sign * m[row, 1],
+            m[3, 2] + sign * m[row, 2]
+        );
+        plane.distance = m[3, 3] + sign * m[row, 3];
+
+        scalar normalLength = plane.normal.magnitude;
+        if (normalLength > 0) {
+            plane.normal = plane.normal / normalLength;
+            plane.distance = plane.distance / normalLength;
+        }
+
+        return plane;
     }
 }
 
@@ -186,7 +290,7 @@ Vector3 forwardOf(const Quaternion orientation) {
 
 version (UnitTesting)  :  //
 
-import retrograde.std.math : degreesToRadians;
+import retrograde.std.math : createPerspectiveMatrix, degreesToRadians;
 import retrograde.std.test : test, writeSection;
 
 void runGeometryTests() {
@@ -332,6 +436,101 @@ void runGeometryTests() {
         assert(turned.max.z > 1.414 && turned.max.z < 1.415);
         assert(turned.min.x > -1.415 && turned.min.x < -1.414);
         assert(turned.max.y == 1);
+    });
+
+    test("A point in front of a plane is at a positive distance from it", {
+        auto plane = Plane(Vector3(0, 1, 0), -2);
+
+        assert(plane.signedDistanceTo(Vector3(0, 5, 0)) == 3);
+        assert(plane.signedDistanceTo(Vector3(0, 2, 0)) == 0);
+        assert(plane.signedDistanceTo(Vector3(0, -1, 0)) == -3);
+    });
+
+    test("A box is behind a plane only when all of it is", {
+        auto plane = Plane(Vector3(0, 1, 0), -2);
+
+        assert(plane.isBehind(Aabb(Vector3(-1, -1, -1), Vector3(1, 1, 1))));
+        assert(!plane.isBehind(Aabb(Vector3(-1, 1, -1), Vector3(1, 3, 1))));
+        assert(!plane.isBehind(Aabb(Vector3(-1, 3, -1), Vector3(1, 4, 1))));
+    });
+
+    test("A frustum of the identity matrix is the clip-space cube", {
+        auto identity = Matrix4.identity;
+        auto frustum = Frustum.fromViewProjection(identity);
+
+        assert(frustum.overlaps(Aabb(Vector3(-0.5, -0.5, -0.5), Vector3(0.5, 0.5, 0.5))));
+        assert(frustum.overlaps(Aabb(Vector3(0.5, 0.5, 0.5), Vector3(2, 2, 2))));
+        assert(!frustum.overlaps(Aabb(Vector3(1.5, -0.5, -0.5), Vector3(2, 0.5, 0.5))));
+        assert(!frustum.overlaps(Aabb(Vector3(-0.5, -3, -0.5), Vector3(0.5, -2, 0.5))));
+        assert(!frustum.overlaps(Aabb(Vector3(-0.5, -0.5, 4), Vector3(0.5, 0.5, 5))));
+    });
+
+    test("A perspective frustum's planes face inward and are unit length", {
+        auto projection = createPerspectiveMatrix(degreesToRadians(90), 1, 1, 100);
+        auto frustum = Frustum.fromViewProjection(projection);
+
+        foreach (ref plane; frustum.planes) {
+            assert(plane.normal.magnitude > 0.999 && plane.normal.magnitude < 1.001);
+            assert(plane.signedDistanceTo(Vector3(0, 0, -10)) > 0);
+        }
+    });
+
+    test("A perspective frustum sees what is ahead of the camera", {
+        auto projection = createPerspectiveMatrix(degreesToRadians(90), 1, 1, 100);
+        auto frustum = Frustum.fromViewProjection(projection);
+
+        assert(frustum.overlaps(Aabb(Vector3(-1, -1, -11), Vector3(1, 1, -9))));
+        assert(frustum.overlaps(Aabb(Vector3(-1, -1, -101), Vector3(1, 1, -99))));
+    });
+
+    test("A perspective frustum does not see behind the camera", {
+        auto projection = createPerspectiveMatrix(degreesToRadians(90), 1, 1, 100);
+        auto frustum = Frustum.fromViewProjection(projection);
+
+        assert(!frustum.overlaps(Aabb(Vector3(-1, -1, 9), Vector3(1, 1, 11))));
+        assert(!frustum.overlaps(Aabb(Vector3(-1, -1, -0.5), Vector3(1, 1, 0.5))));
+    });
+
+    test("A perspective frustum does not see past its far plane", {
+        auto projection = createPerspectiveMatrix(degreesToRadians(90), 1, 1, 100);
+        auto frustum = Frustum.fromViewProjection(projection);
+
+        assert(!frustum.overlaps(Aabb(Vector3(-1, -1, -111), Vector3(1, 1, -109))));
+    });
+
+    test("A perspective frustum does not see off to its sides", {
+        auto projection = createPerspectiveMatrix(degreesToRadians(90), 1, 1, 100);
+        auto frustum = Frustum.fromViewProjection(projection);
+
+        // At 90 degrees the frustum is as wide as it is deep, so eleven units ahead it
+        // reaches eleven units to each side, up and down, and no further.
+        assert(!frustum.overlaps(Aabb(Vector3(12, -1, -11), Vector3(14, 1, -9))));
+        assert(!frustum.overlaps(Aabb(Vector3(-14, -1, -11), Vector3(-12, 1, -9))));
+        assert(!frustum.overlaps(Aabb(Vector3(-1, 12, -11), Vector3(1, 14, -9))));
+        assert(!frustum.overlaps(Aabb(Vector3(-1, -14, -11), Vector3(1, -12, -9))));
+        assert(frustum.overlaps(Aabb(Vector3(10, -1, -11), Vector3(12, 1, -9))));
+    });
+
+    test("A box enclosing the whole frustum overlaps it", {
+        auto projection = createPerspectiveMatrix(degreesToRadians(90), 1, 1, 100);
+        auto frustum = Frustum.fromViewProjection(projection);
+
+        assert(frustum.overlaps(Aabb(Vector3(-1000, -1000, -1000), Vector3(1000, 1000, 1000))));
+    });
+
+    test("A frustum follows the camera's view", {
+        import retrograde.std.math : createViewMatrixQ;
+
+        auto projection = createPerspectiveMatrix(degreesToRadians(90), 1, 1, 100);
+        // A camera at x = 50 turned a quarter to its left looks down the negative X axis.
+        auto view = createViewMatrixQ(Vector3(50, 0, 0),
+            Quaternion.createRotation(degreesToRadians(90), Vector3(0, 1, 0)));
+        auto viewProjection = projection * view;
+        auto frustum = Frustum.fromViewProjection(viewProjection);
+
+        assert(frustum.overlaps(Aabb(Vector3(-1, -1, -1), Vector3(1, 1, 1))));
+        assert(!frustum.overlaps(Aabb(Vector3(99, -1, -1), Vector3(101, 1, 1))));
+        assert(!frustum.overlaps(Aabb(Vector3(49, -1, -11), Vector3(51, 1, -9))));
     });
 
     test("An unrotated orientation faces the world's negative Z axis", {

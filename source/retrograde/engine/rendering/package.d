@@ -25,7 +25,7 @@ import retrograde.engine.rendering.materialshader : vertexColorsMaterialShader, 
     pbrMetallicRoughnessMaterialShader, lambertMaterialShader;
 
 import retrograde.std.collections : Array, HashMap;
-import retrograde.std.geometry : OrientationComponentType;
+import retrograde.std.geometry : Frustum, OrientationComponentType;
 import retrograde.std.math : createOrthographicMatrix, createPerspectiveMatrix, createViewMatrixQ,
     degreesToRadians, Matrix4, Quaternion, scalar, Vector3;
 import retrograde.std.stringid : sid, StringId;
@@ -165,6 +165,7 @@ void renderFrame() {
 
     viewMatrix = createViewMatrixQ(position, orientation);
     const Matrix4 viewProjectionMatrix = projectionMatrix * viewMatrix;
+    activeCameraFrustum = Frustum.fromViewProjection(viewProjectionMatrix);
 
     foreach (ref renderPass; renderPasses) {
         useRenderPassShaderProgram(renderPass);
@@ -242,7 +243,22 @@ Array!RenderPass renderPasses;
 
 HashMap!(MaterialType, MaterialShader) materialShaders;
 
+/// Where the camera of the frame being rendered sits in the world.
 Vector3 activeCameraWorldPosition;
+
+/// What the camera of the frame being rendered sees, in world space. Entities whose bounds
+/// fall outside it are not drawn while $(D frustumCullingEnabled) is set.
+Frustum activeCameraFrustum;
+
+/**
+ * Whether entities whose bounds fall outside the active camera's frustum are skipped.
+ *
+ * On by default. Turn it off to draw everything regardless of where the camera looks, which
+ * is useful when an entity is missing and the bounds it was culled by are suspect: a model
+ * whose bounds do not cover its vertices is culled while still on screen, and this tells
+ * that apart from it not being drawn at all.
+ */
+bool frustumCullingEnabled = true;
 
 struct Color {
     /// Red
