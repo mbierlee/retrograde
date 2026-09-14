@@ -11,7 +11,7 @@
 
 module retrograde.std.geometry;
 
-import retrograde.std.math : Quaternion, Vector3;
+import retrograde.std.math : abs, Matrix4, Quaternion, scalar, Vector3;
 import retrograde.std.stringid : sid;
 
 /**
@@ -49,16 +49,6 @@ enum ScaleComponentType = sid("comp_scale");
  * pushes it away from its position.
  */
 enum OriginOffsetComponentType = sid("comp_origin_offset");
-
-/**
- * An $(D Aabb) enclosing an entity in world space.
- *
- * The box is aligned to the world axes and stays that way as the entity turns, so it is a
- * loose fit for a rotated entity. That is enough for the broad checks it exists for, such as
- * deciding whether an entity may be in view or may touch another, which only need the box to
- * never be too small.
- */
-enum AabbComponentType = sid("comp_aabb");
 
 /**
  * An axis-aligned bounding box, kept as its two extreme corners.
@@ -110,6 +100,54 @@ struct Aabb {
      */
     Vector3 halfExtents() const {
         return (max - min) * 0.5;
+    }
+
+    /**
+     * Returns: The point of the box nearest to `point`, which is `point` itself when it lies
+     * inside the box.
+     */
+    Vector3 closestPointTo(const Vector3 point) const {
+        return Vector3(
+            point.x < min.x ? min.x : (point.x > max.x ? max.x : point.x),
+            point.y < min.y ? min.y : (point.y > max.y ? max.y : point.y),
+            point.z < min.z ? min.z : (point.z > max.z ? max.z : point.z)
+        );
+    }
+
+    /**
+     * Returns: How far `point` is from the box's surface, or zero when it lies inside.
+     */
+    scalar distanceTo(const Vector3 point) const {
+        return (point - closestPointTo(point)).magnitude;
+    }
+
+    /**
+     * Returns: The smallest axis-aligned box enclosing this box after `transform` is applied
+     * to it.
+     *
+     * The result is a loose fit when the transform rotates: it encloses the turned box, not
+     * the turned contents. That is the box's nature, and what keeps this cheap: the center
+     * goes through the transform as a point, and each half extent is stretched by the
+     * absolute values of the transform's upper-left 3x3, which is the same as projecting
+     * all eight corners without visiting any of them.
+     */
+    Aabb transformedBy(const ref Matrix4 transform) const {
+        Vector3 c = center();
+        Vector3 h = halfExtents();
+
+        Vector3 newCenter = Vector3(
+            transform[0, 0] * c.x + transform[0, 1] * c.y + transform[0, 2] * c.z + transform[0, 3],
+            transform[1, 0] * c.x + transform[1, 1] * c.y + transform[1, 2] * c.z + transform[1, 3],
+            transform[2, 0] * c.x + transform[2, 1] * c.y + transform[2, 2] * c.z + transform[2, 3]
+        );
+
+        Vector3 newHalfExtents = Vector3(
+            abs(transform[0, 0]) * h.x + abs(transform[0, 1]) * h.y + abs(transform[0, 2]) * h.z,
+            abs(transform[1, 0]) * h.x + abs(transform[1, 1]) * h.y + abs(transform[1, 2]) * h.z,
+            abs(transform[2, 0]) * h.x + abs(transform[2, 1]) * h.y + abs(transform[2, 2]) * h.z
+        );
+
+        return fromCenter(newCenter, newHalfExtents);
     }
 
     /**
@@ -206,6 +244,94 @@ void runGeometryTests() {
 
         assert(box.unionWith(inner) == box);
         assert(inner.unionWith(box) == box);
+    });
+
+    test("A point inside a box is at no distance from it", {
+        auto box = Aabb(Vector3(-1, -1, -1), Vector3(1, 1, 1));
+
+        assert(box.distanceTo(Vector3(0.5, -0.5, 0)) == 0);
+        assert(box.closestPointTo(Vector3(0.5, -0.5, 0)) == Vector3(0.5, -0.5, 0));
+    });
+
+    test("A point on a box's surface is at no distance from it", {
+        auto box = Aabb(Vector3(-1, -1, -1), Vector3(1, 1, 1));
+
+        assert(box.distanceTo(Vector3(1, 0, 0)) == 0);
+    });
+
+    test("A point facing a box's side is as far as that side", {
+        auto box = Aabb(Vector3(-1, -1, -1), Vector3(1, 1, 1));
+
+        assert(box.closestPointTo(Vector3(4, 0, 0)) == Vector3(1, 0, 0));
+        assert(box.distanceTo(Vector3(4, 0, 0)) == 3);
+    });
+
+    test("A point off a box's corner is as far as that corner", {
+        auto box = Aabb(Vector3(-1, -1, -1), Vector3(1, 1, 1));
+
+        assert(box.closestPointTo(Vector3(4, 5, 1)) == Vector3(1, 1, 1));
+        assert(box.distanceTo(Vector3(4, 5, 1)) == 5);
+    });
+
+    test("A translated box moves with the translation", {
+        import retrograde.std.math : toTranslationMatrix4;
+
+        auto box = Aabb(Vector3(-1, -2, -3), Vector3(1, 2, 3));
+        auto transform = Vector3(10, 20, 30).toTranslationMatrix4();
+        auto moved = box.transformedBy(transform);
+
+        assert(moved.min == Vector3(9, 18, 27));
+        assert(moved.max == Vector3(11, 22, 33));
+    });
+
+    test("A scaled box grows about the origin", {
+        import retrograde.std.math : toScalingMatrix4;
+
+        auto box = Aabb(Vector3(0, 0, 0), Vector3(1, 2, 3));
+        auto transform = Vector3(2, 3, 4).toScalingMatrix4();
+        auto scaled = box.transformedBy(transform);
+
+        assert(scaled.min == Vector3(0, 0, 0));
+        assert(scaled.max == Vector3(2, 6, 12));
+    });
+
+    test("A box mirrored by a negative scale keeps its corners in order", {
+        import retrograde.std.math : toScalingMatrix4;
+
+        auto box = Aabb(Vector3(1, 0, 0), Vector3(3, 1, 1));
+        auto transform = Vector3(-1, 1, 1).toScalingMatrix4();
+        auto mirrored = box.transformedBy(transform);
+
+        assert(mirrored.min == Vector3(-3, 0, 0));
+        assert(mirrored.max == Vector3(-1, 1, 1));
+    });
+
+    test("A box turned a quarter swaps the axes it spans", {
+        auto box = Aabb(Vector3(-1, -2, -3), Vector3(1, 2, 3));
+        auto transform = Quaternion.createRotation(degreesToRadians(90), Vector3(0, 1, 0))
+            .toRotationMatrix();
+        auto turned = box.transformedBy(transform);
+
+        // A quarter turn about Y takes the Z extent onto X and the X extent onto Z.
+        assert(turned.min.x > -3.001 && turned.min.x < -2.999);
+        assert(turned.max.x > 2.999 && turned.max.x < 3.001);
+        assert(turned.min.y == -2);
+        assert(turned.max.y == 2);
+        assert(turned.min.z > -1.001 && turned.min.z < -0.999);
+        assert(turned.max.z > 0.999 && turned.max.z < 1.001);
+    });
+
+    test("A box turned an eighth grows to enclose its turned corners", {
+        auto box = Aabb(Vector3(-1, -1, -1), Vector3(1, 1, 1));
+        auto transform = Quaternion.createRotation(degreesToRadians(45), Vector3(0, 1, 0))
+            .toRotationMatrix();
+        auto turned = box.transformedBy(transform);
+
+        // The corners of a unit cube reach sqrt(2) along X and Z once turned by 45 degrees.
+        assert(turned.max.x > 1.414 && turned.max.x < 1.415);
+        assert(turned.max.z > 1.414 && turned.max.z < 1.415);
+        assert(turned.min.x > -1.415 && turned.min.x < -1.414);
+        assert(turned.max.y == 1);
     });
 
     test("An unrotated orientation faces the world's negative Z axis", {
