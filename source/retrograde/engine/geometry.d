@@ -79,16 +79,9 @@ version (UnitTesting)  :  //
 
 import retrograde.engine.entity : createEntity, resetEcs;
 import retrograde.engine.entityfactory : addOrientation, addOriginOffset, addPosition, addScale;
-import retrograde.std.math : degreesToRadians, Vector4;
+import retrograde.std.math : degreesToRadians, isNear, Vector4;
 import retrograde.std.string : s;
 import retrograde.std.test : test, writeSection;
-
-private bool isNear(const Vector3 actual, const scalar x, const scalar y, const scalar z) {
-    enum tolerance = 0.001;
-    return actual.x > x - tolerance && actual.x < x + tolerance
-        && actual.y > y - tolerance && actual.y < y + tolerance
-        && actual.z > z - tolerance && actual.z < z + tolerance;
-}
 
 void runEngineGeometryTests() {
     writeSection("-- Engine geometry tests --");
@@ -126,7 +119,7 @@ void runEngineGeometryTests() {
         entity.addOrientation(degreesToRadians(180), Vector3(0, 1, 0));
 
         // The entity is 10 to the left of its position; a half turn puts it 10 to the right.
-        assert(isNear(entity.worldPositionOf(), 11, 2, 3));
+        assert(isNear(entity.worldPositionOf(), Vector3(11, 2, 3)));
     });
 
     test("A scaled entity is pushed away from its position", {
@@ -136,7 +129,7 @@ void runEngineGeometryTests() {
         entity.addOriginOffset(-10, 0, 0);
         entity.addScale(2);
 
-        assert(isNear(entity.worldPositionOf(), -19, 2, 3));
+        assert(isNear(entity.worldPositionOf(), Vector3(-19, 2, 3)));
     });
 
     test("Points of an offset entity are turned about its position", {
@@ -149,6 +142,6 @@ void runEngineGeometryTests() {
         // quarter turn to the left about the Y axis brings that to one ahead of the position.
         auto point = entity.worldTransformOf() * Vector4(2, 0, 0, 1);
 
-        assert(isNear(Vector3(point.x, point.y, point.z), 0, 0, -1));
+        assert(isNear(Vector3(point.x, point.y, point.z), Vector3(0, 0, -1)));
     });
 }

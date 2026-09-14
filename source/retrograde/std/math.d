@@ -1632,6 +1632,24 @@ bool approxEqual(T)(inout T lhs, inout T rhs, T deviation = 0.0001)
     }
 }
 
+/**
+ * Returns: Whether every component of `actual` lies within `tolerance` of the matching
+ * component of `expected`.
+ *
+ * A vector that has been through a rotation or a normalization rarely lands on exact values,
+ * so comparing one for equality is a test that fails on the last bit. This is the comparison
+ * to make instead.
+ */
+bool isNear(VecT)(const VecT actual, const VecT expected, const double tolerance = 0.001) {
+    static foreach (i; 0 .. VecT._N) {
+        if (abs(actual[i] - expected[i]) > tolerance) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 //TODO: Port bezier curves and splines from old Retrograde?
 
 version (UnitTesting)  :  ///
@@ -1724,6 +1742,16 @@ void runMathFunctionsTests() {
         assert(approxEqual(acos(0.5), 1.047197, 0.0001));
         assert(approxEqual(acos(0.0), 1.570796, 0.0001));
         assert(approxEqual(acos(-0.5), 2.094395, 0.0001));
+    });
+
+    test("isNear", {
+        assert(isNear(Vector3F(1, 2, 3), Vector3F(1, 2, 3)));
+        assert(isNear(Vector3F(1.0005, 2, 3), Vector3F(1, 2, 3)));
+        assert(isNear(Vector3F(1, 1.9995, 3), Vector3F(1, 2, 3)));
+        assert(!isNear(Vector3F(1.1, 2, 3), Vector3F(1, 2, 3)));
+        assert(!isNear(Vector3F(1, 2, 2.9), Vector3F(1, 2, 3)));
+        assert(isNear(Vector3F(1.1, 2, 3), Vector3F(1, 2, 3), 0.2));
+        assert(isNear(Vector2D(-0.5, 0.5), Vector2D(-0.5, 0.5)));
     });
 
     test("approxEqual", {
