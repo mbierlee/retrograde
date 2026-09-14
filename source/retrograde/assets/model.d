@@ -166,7 +166,8 @@ enum MaterialFlags : ubyte {
  * An RGBA multiplier over a material's albedo.
  *
  * Named components rather than a `float[4]`: `CopyConstructors` skips static array members,
- * so one would be silently reset to its default every time a `Material` is copied.
+ * so one would be silently reset to its default every time a struct carrying it through that
+ * mixin is copied, as the renderer's `GlMeshInfo` does.
  */
 struct BaseColorFactor {
     float r = 1.0;
@@ -181,7 +182,7 @@ struct BaseColorFactor {
  * Has no alpha: emission adds to the surface's color rather than replacing it, so there is
  * nothing for one to blend. Named components rather than a `float[3]` for the same reason
  * `BaseColorFactor` has them: `CopyConstructors` skips static array members, which would
- * silently reset one on every copy of a `Material`.
+ * silently reset one on every copy of a `GlMeshInfo`.
  */
 struct EmissiveFactor {
     float r = 0.0;
@@ -211,8 +212,6 @@ struct Material {
     TextureIndex emissiveTextureIndex; /// Populated when `type.hasEmissive`: the index of the referenced emissive map `Texture`, whose RGB says where the surface glows. 0 when the material has none and it emits evenly by its factor alone.
     EmissiveFactor emissiveFactor; /// Populated when `type.hasEmissive`: the color the material emits on its own, added to the shaded surface. Multiplies the emissive map where there is one. Black (the default) means it emits nothing. Stored and used as-is: no range check, no color-space conversion.
     float emissiveStrength = 1.0; /// Populated when `type.hasEmissive`: multiplier over `emissiveFactor`, which is what lets emission exceed the `[0, 1]` the factor is authored in. 1 leaves the factor as written. Stored and used as-is: no range check.
-
-    mixin CopyConstructors!Material;
 }
 
 /**
