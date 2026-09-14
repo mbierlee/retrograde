@@ -3,7 +3,7 @@
  *
  * Collection and per-entity selection of the lights that shine on a frame.
  *
- * This module is renderer-agnostic: it decides which lights reach a given point in the
+ * This module is renderer-agnostic: it decides which lights reach a given box in the
  * world, a graphics API implementation only uploads what it hands back.
  *
  * Authors:
@@ -22,7 +22,7 @@ import retrograde.engine.rendering : Color, Light, LightComponentType, LightType
 import retrograde.engine.rendering.materialshader : maxLights;
 
 import retrograde.std.collections : Array;
-import retrograde.std.geometry : forwardOf, OrientationComponentType, PositionComponentType;
+import retrograde.std.geometry : Aabb, forwardOf, OrientationComponentType, PositionComponentType;
 import retrograde.std.math : Quaternion, scalar, Vector3;
 
 /**
@@ -97,12 +97,10 @@ enum LightCullingStrategy {
     none,
 
     /**
-     * Cull lights that fall outside an entity's range,
-     * based on their position, the light's position and its
-     * attenuation range.
+     * Cull lights whose attenuation range stops short of an entity's bounds.
      *
-     * A directional light has neither, and reaches the whole world: it is never
-     * culled for being out of range.
+     * A directional light has neither a position nor a range, and reaches the whole world:
+     * it is never culled for being out of range.
      */
     outsideRange,
 }
@@ -122,7 +120,7 @@ struct ActiveLight {
  * The lights that emit anything this frame, in no particular order.
  *
  * Rebuilt by $(D collectActiveLights) once per frame; use $(D selectActiveLights) to get
- * the ones that actually reach a particular spot.
+ * the ones that actually reach a particular box.
  */
 Array!ActiveLight activeLights;
 
@@ -207,15 +205,20 @@ void collectActiveLights() {
  *
  * Which of the remaining lights are culled for being irrelevant is up to the current
  * $(D lightCullingStrategy). Under $(D LightCullingStrategy.outsideRange) a light is culled
- * unless the target is within its attenuation radius, beyond which the falloff has it
+ * unless its attenuation radius reaches the target box, beyond which the falloff has it
  * contribute nothing anyway. Under $(D LightCullingStrategy.none) that range test is skipped
- * and every candidate is considered, so a light whose radius falls short of the entity's
- * origin can still light part of its mesh.
+ * and every candidate is considered.
  *
  * `maxCount` culls in the end whatever the strategy, since the shader has room for a fixed
  * number of lights: $(D LightCullingStrategy.none) means "never cull a light for being out of
  * range", not "hand back more lights than fit". Whatever the strategy, it is the nearest
  * lights that survive that final cull.
+ *
+ * Both the range test and the ordering measure a light's distance to the nearest point of the
+ * box, not to its center: a lamp at the far end of a long wall lights that end however far
+ * the wall's middle is, and a light inside the box is at no distance at all. The box is a
+ * loose fit for a turned entity, so a light may be kept that only reaches the empty corner of
+ * the box, which costs a slot in the budget but never loses a light that shows.
  *
  * A directional light is nowhere in particular and reaches everything, so it counts as being
  * at no distance at all: it is never culled for being out of range, and comes ahead of every
@@ -224,7 +227,8 @@ void collectActiveLights() {
  *
  * Params:
  *  candidates = the lights to choose from, typically $(D activeLights).
- *  target = the world position being lit.
+ *  target = the world-space box being lit. An entity's is its model's bounds carried
+ *           through its world transform.
  *  acceptedTypes = the light types the caller can shade with, in any order. An empty list
  *                  selects nothing: which types a shader has a term and uniforms for is the
  *                  renderer's to say, and one that says "none" gets none.
@@ -233,7 +237,7 @@ void collectActiveLights() {
  *             carries over between calls.
  * Returns: the number of lights written to `selected`.
  */
-size_t selectLights(const ref Array!ActiveLight candidates, const Vector3 target,
+size_t selectLights(const ref Array!ActiveLight candidates, const Aabb target,
     const(LightType)[] acceptedTypes, const size_t maxCount, ref Array!ActiveLight selected) {
     selected.truncate(0);
     if (maxCount == 0 || acceptedTypes.length == 0) {
@@ -251,9 +255,6 @@ size_t selectLights(const ref Array!ActiveLight candidates, const Vector3 target
         // which lights survive the final maxCount cull.
         scalar distance = cullDistance(candidate, target);
 
-        //TODO: Measured from the entity's origin, so a mesh bigger than the light's radius
-        //      can be culled even though part of it is lit. Needs per-entity bounding volumes.
-        //      LightCullingStrategy.none is the blunt way out of that until it exists.
         if (lightCullingStrategy == LightCullingStrategy.outsideRange
             && candidate.light.lightType != LightType.directional
             && distance > candidate.light.attenuationRadius) {
@@ -290,17 +291,27 @@ size_t selectLights(const ref Array!ActiveLight candidates, const Vector3 target
 }
 
 /**
- * How far the given light counts as being from `target` when ordering and culling a selection.
+ * Picks the lights among `candidates` that reach the point `target`, as if it were a box of
+ * no size. See the box-taking overload for how the selection is made.
+ */
+size_t selectLights(const ref Array!ActiveLight candidates, const Vector3 target,
+    const(LightType)[] acceptedTypes, const size_t maxCount, ref Array!ActiveLight selected) {
+    return selectLights(candidates, Aabb(target, target), acceptedTypes, maxCount, selected);
+}
+
+/**
+ * How far the given light counts as being from `target` when ordering and culling a selection:
+ * the distance to the nearest point of the box, so zero for a light inside it.
  *
  * A directional light shines from nowhere in particular - its position means nothing - and
  * reaches every surface alike, so it is at no distance from anything.
  */
-private scalar cullDistance(const ActiveLight light, const Vector3 target) {
+private scalar cullDistance(const ActiveLight light, const Aabb target) {
     if (light.light.lightType == LightType.directional) {
         return 0;
     }
 
-    return (light.position - target).magnitude;
+    return target.distanceTo(light.position);
 }
 
 private bool isAccepted(const LightType type, const(LightType)[] acceptedTypes) {
@@ -314,16 +325,25 @@ private bool isAccepted(const LightType type, const(LightType)[] acceptedTypes) 
 }
 
 /**
- * Picks the lights of the current frame that reach `target`, nearest first, culling lights of a
- * type outside `acceptedTypes`, then by the current $(D lightCullingStrategy), and then by the
- * build's $(D maxLights) budget - which culls whatever the strategy, since that is the room the
- * shader has.
+ * Picks the lights of the current frame that reach the box `target`, nearest first, culling
+ * lights of a type outside `acceptedTypes`, then by the current $(D lightCullingStrategy), and
+ * then by the build's $(D maxLights) budget - which culls whatever the strategy, since that is
+ * the room the shader has.
  *
  * Returns: the number of lights written to `selected`.
  */
-size_t selectActiveLights(const Vector3 target, const(LightType)[] acceptedTypes,
+size_t selectActiveLights(const Aabb target, const(LightType)[] acceptedTypes,
     ref Array!ActiveLight selected) {
     return selectLights(activeLights, target, acceptedTypes, maxLights, selected);
+}
+
+/**
+ * Picks the lights of the current frame that reach the point `target`, as if it were a box of
+ * no size. See the box-taking overload for how the selection is made.
+ */
+size_t selectActiveLights(const Vector3 target, const(LightType)[] acceptedTypes,
+    ref Array!ActiveLight selected) {
+    return selectActiveLights(Aabb(target, target), acceptedTypes, selected);
 }
 
 version (UnitTesting)  :  //
@@ -552,6 +572,71 @@ void runLightingTests() {
         Array!ActiveLight selected;
 
         assert(selectLights(candidates, Vector3(9, 0, 0), pointLights[], 8, selected) == 1);
+        assert(selected[0].position.x == 10);
+    });
+
+    test("A light that reaches only part of an entity is kept", {
+        Array!ActiveLight candidates;
+        candidates.add(testLight(12, 0, 0, 3)); // 12 from the center, 2 from the box's edge
+        Array!ActiveLight selected;
+
+        auto bounds = Aabb(Vector3(-10, -1, -1), Vector3(10, 1, 1));
+
+        lightCullingStrategy = LightCullingStrategy.outsideRange;
+        assert(selectLights(candidates, bounds, pointLights[], 8, selected) == 1);
+        assert(selected[0].position.x == 12);
+    });
+
+    test("A light that stops short of an entity's bounds is culled", {
+        Array!ActiveLight candidates;
+        candidates.add(testLight(14, 0, 0, 3)); // 4 from the box's edge
+        Array!ActiveLight selected;
+
+        auto bounds = Aabb(Vector3(-10, -1, -1), Vector3(10, 1, 1));
+
+        lightCullingStrategy = LightCullingStrategy.outsideRange;
+        assert(selectLights(candidates, bounds, pointLights[], 8, selected) == 0);
+    });
+
+    test("Lights are ordered by their distance to the bounds, not to their center", {
+        Array!ActiveLight candidates;
+        candidates.add(testLight(0, 0, 5, 100)); // 5 from the center, 4 from the box
+        candidates.add(testLight(13, 0, 0, 100)); // 13 from the center, 3 from the box
+        Array!ActiveLight selected;
+
+        auto bounds = Aabb(Vector3(-10, -1, -1), Vector3(10, 1, 1));
+
+        assert(selectLights(candidates, bounds, pointLights[], 8, selected) == 2);
+        assert(selected[0].position.x == 13);
+        assert(selected[1].position.z == 5);
+    });
+
+    test("A light inside an entity's bounds comes ahead of one outside them", {
+        Array!ActiveLight candidates;
+        candidates.add(testLight(0, 0, 2, 100)); // 1 from the box
+        candidates.add(testLight(9, 0, 0, 100)); // inside the box, though far from its center
+        Array!ActiveLight selected;
+
+        auto bounds = Aabb(Vector3(-10, -1, -1), Vector3(10, 1, 1));
+
+        assert(selectLights(candidates, bounds, pointLights[], 2, selected) == 2);
+        assert(selected[0].position.x == 9);
+        assert(selected[1].position.z == 2);
+    });
+
+    test("A point target selects as a box of no size would", {
+        Array!ActiveLight candidates;
+        candidates.add(testLight(0, 0, 0, 3));
+        candidates.add(testLight(10, 0, 0, 3));
+        Array!ActiveLight selected;
+
+        auto asPoint = selectLights(candidates, Vector3(9, 0, 0), pointLights[], 8, selected);
+        assert(asPoint == 1);
+        assert(selected[0].position.x == 10);
+
+        auto asBox = selectLights(candidates, Aabb(Vector3(9, 0, 0), Vector3(9, 0, 0)),
+            pointLights[], 8, selected);
+        assert(asBox == 1);
         assert(selected[0].position.x == 10);
     });
 

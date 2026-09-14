@@ -1616,6 +1616,13 @@ version (DoublePrecision) {
     alias radiansToDegrees = radiansToDegreesF;
 }
 
+/**
+ * Returns: The absolute value of `value`.
+ */
+T abs(T)(const T value) {
+    return value < 0 ? -value : value;
+}
+
 bool approxEqual(T)(inout T lhs, inout T rhs, T deviation = 0.0001)
         if (is(T == float) || is(T == double) || is(T == real)) {
     if (lhs > 0) {
@@ -1652,6 +1659,14 @@ void runMathFunctionsTests() {
         assert(ceil(1.5) == 2.0);
         assert(ceil(1.9) == 2.0);
         assert(ceil(2.0) == 2.0);
+    });
+
+    test("abs", {
+        assert(abs(-1.5) == 1.5);
+        assert(abs(1.5) == 1.5);
+        assert(abs(0.0) == 0.0);
+        assert(abs(-3) == 3);
+        assert(abs(-2.5f) == 2.5f);
     });
 
     test("floor", {

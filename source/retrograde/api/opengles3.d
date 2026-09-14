@@ -33,7 +33,8 @@ import retrograde.assets.assetlibrary : getModel, getTexture;
 import retrograde.std.memory : makeRaw, unique;
 import retrograde.std.collections : Array, HashMap;
 import retrograde.std.stringid : StringId, sid;
-import retrograde.std.math : Matrix4, Vector3, toNormalMatrix, toTranslationVector;
+import retrograde.std.geometry : Aabb;
+import retrograde.std.math : Matrix4, Vector3, toNormalMatrix;
 import retrograde.std.assets : AssetHandle;
 import retrograde.std.dlang : CopyConstructors;
 import retrograde.std.stdio : writeErrLn;
@@ -208,6 +209,7 @@ void loadEntityModel(EntityId entity) {
         // }
 
         auto modelInfo = makeRaw!GlModelInfo;
+        modelInfo.bounds = model.bounds;
         foreach (ref mesh; model.meshes) {
             Array!GLfloat positionData;
 
@@ -709,7 +711,6 @@ void clearShaderProgram() {
 void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matrix4 viewProjectionMatrix) {
     entity.withComponentData(GlModelInfoComponentType, (GlModelInfo* modelInfo) {
         auto modelMatrix = entity.worldTransformOf();
-        auto position = modelMatrix.toTranslationVector();
         auto modelViewProjectionMatrix = viewProjectionMatrix * modelMatrix;
         auto modelViewProjectionMatrixData = modelViewProjectionMatrix.getDataArray!float;
         auto modelMatrixData = modelMatrix.getDataArray!float;
@@ -729,7 +730,10 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matri
 
         static if (maxLights > 0) {
             // Picked once for the whole entity: every mesh of a model is lit by the same lights.
-            GLsizei selectedLightCount = cast(GLsizei) selectActiveLights(position,
+            // Measured against the model's bounds in the world rather than its origin, so a
+            // light that reaches only one end of a large model is not culled.
+            auto worldBounds = modelInfo.bounds.transformedBy(modelMatrix);
+            GLsizei selectedLightCount = cast(GLsizei) selectActiveLights(worldBounds,
                 shadeableLightTypes[], selectedLights);
 
             lightPositionRadiusData.truncate(0);
@@ -1200,6 +1204,9 @@ private struct GlMeshInfo {
 
 private struct GlModelInfo {
     Array!GlMeshInfo meshes;
+
+    /// The model's bounds in its own space, kept so a frame need not go back to the asset.
+    Aabb bounds;
 
     mixin CopyConstructors!GlModelInfo;
 }
