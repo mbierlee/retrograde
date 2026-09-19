@@ -34,6 +34,7 @@ void runTests() {
     import retrograde.engine.mechanic.lookaround : runLookAroundTests;
     import retrograde.engine.mechanic.walk : runWalkTests;
     import retrograde.engine.rendering.lighting : runLightingTests;
+    import retrograde.engine.rendering.shadow : runShadowTests;
     import retrograde.std.geometry : runGeometryTests;
     import retrograde.engine.geometry : runEngineGeometryTests;
 
@@ -57,6 +58,7 @@ void runTests() {
     runLookAroundTests();
     runWalkTests();
     runLightingTests();
+    runShadowTests();
     runGeometryTests();
     runEngineGeometryTests();
 

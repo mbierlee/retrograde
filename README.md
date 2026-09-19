@@ -39,3 +39,4 @@ The following table lists all [version conditions](https://dlang.org/spec/versio
 | DoublePrecision          | Use double precision (64-bit) for scalar math operations instead of single precision (32-bit float). Affects Vector and Matrix types.                       |
 | LargeEventData           | Add 64-bit members (long, ulong, double) to event data, growing it from 4 to 8 bytes. Omit it to keep events small.                                         |
 | MaxLights0/4/8/16/32     | Amount of dynamic forward-rendered lights a material can be lit by, exposed to shaders as MAX_LIGHTS. MaxLights0 disables them. Defaults to 8 when omitted.  |
+| MaxShadowViews0/1/4/8/16 | Shadow maps a frame can render, exposed to shaders as MAX_SHADOW_VIEWS. Counts maps, not lights: a point light needs six, one per direction it shines in, while a directional light needs one. MaxShadowViews0 disables shadows entirely, as does MaxLights0. Defaults to 8 when omitted. |

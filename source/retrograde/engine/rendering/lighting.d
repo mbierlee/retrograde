@@ -114,6 +114,21 @@ struct ActiveLight {
     Vector3 direction;
 
     Light light;
+
+    /**
+     * First layer of the shadow map array this light's maps were rendered into, or -1 when
+     * it has none this frame - because it does not cast, or because the frame's budget of
+     * maps ran out before it.
+     *
+     * Stamped by the shadow pass before any surface picks its lights, so that it survives
+     * into the selection a surface shades with: which lights those are differs per surface,
+     * and this is what ties one of them back to its maps.
+     */
+    int shadowView = -1;
+
+    /// How many layers from $(D shadowView) this light's maps take: one for a directional
+    /// light, six for a point light, and zero when it has none.
+    int shadowViewCount = 0;
 }
 
 /**

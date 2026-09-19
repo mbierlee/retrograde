@@ -1,6 +1,7 @@
 #version 300 es
 
 #define MAX_LIGHTS <%maxLights%>
+#define MAX_SHADOW_VIEWS <%maxShadowViews%>
 
 precision highp float;
 
@@ -73,6 +74,26 @@ uniform vec4 lightColorIntensity[MAX_LIGHTS];
 
 // xyz = the direction the light travels, w = 1 when the light is directional
 uniform vec4 lightDirection[MAX_LIGHTS];
+#if MAX_SHADOW_VIEWS > 0
+// x = first shadow map this light was rendered into, or -1 when it casts none this frame.
+// y = how many maps it has: one for a directional light, six for a point light.
+uniform vec4 lightShadowParams[MAX_LIGHTS];
+
+// Every shadow map of the frame, one layer each. One array rather than a sampler per light
+// because a sampler array cannot be indexed by the loop variable below.
+//
+// The precision qualifier is not optional: this sampler type has no default in ES 3.00, and
+// a shader that leaves it off does not compile.
+uniform highp sampler2DArrayShadow shadowMaps;
+
+// Where each map looks from, already carrying the conversion from clip space to the [0, 1]
+// a map is sampled over.
+uniform mat4 shadowViewProjection[MAX_SHADOW_VIEWS];
+
+// How far a lookup is pushed along the surface's own normal before it is projected, which is
+// what keeps a surface from shadowing itself where the light grazes it.
+uniform float shadowNormalBias;
+#endif
 #endif
 
 // Light arriving from everywhere, so faces turned away from every light are not pure black.
@@ -155,6 +176,59 @@ vec2 environmentBrdfApprox(float roughness, float NdotV) {
 //      - Full IBL on top of that: SH irradiance, prefiltered radiance and a real BRDF lookup
 //        replacing environmentBrdfApprox. The sky/ground pair is the first two bands of that
 //        expansion, so the coefficients grow around it rather than replacing it.
+#if MAX_LIGHTS > 0 && MAX_SHADOW_VIEWS > 0
+// Which of a point light's six maps covers the given direction: the one whose axis it leans
+// furthest along. The order is the one the renderer renders the faces in.
+int cubeFaceOf(vec3 direction) {
+  vec3 extent = abs(direction);
+  if (extent.x >= extent.y && extent.x >= extent.z) {
+    return direction.x > 0.0 ? 0 : 1;
+  }
+
+  if (extent.y >= extent.z) {
+    return direction.y > 0.0 ? 2 : 3;
+  }
+
+  return direction.z > 0.0 ? 4 : 5;
+}
+
+// How much of a light reaches this surface: 1 where nothing blocks it, 0 in full shadow, and
+// in between along an edge, where the comparison filter averaged what several of the map's
+// texels had to say.
+float shadowFactor(int lightIndex, vec3 worldPosition, vec3 surfaceNormal, float normalDotLight) {
+  int firstView = int(lightShadowParams[lightIndex].x);
+  if (firstView < 0) {
+    return 1.0;
+  }
+
+  int view = firstView;
+  if (lightShadowParams[lightIndex].y > 1.5) {
+    view += cubeFaceOf(worldPosition - lightPositionRadius[lightIndex].xyz);
+  }
+
+  // Lifted off the surface before being projected, by more the more steeply the light grazes
+  // it - which is exactly where a surface otherwise shadows itself.
+  vec3 samplePosition = worldPosition + surfaceNormal * (shadowNormalBias * (1.0 - normalDotLight));
+  vec4 lightSpacePosition = shadowViewProjection[view] * vec4(samplePosition, 1.0);
+  if (lightSpacePosition.w <= 0.0) {
+    return 1.0;
+  }
+
+  // By hand: there is no projecting lookup for this kind of sampler in ES 3.00.
+  vec3 mapPosition = lightSpacePosition.xyz / lightSpacePosition.w;
+
+  // Outside the map nothing was recorded that could block this surface, so it is lit. Beyond
+  // the far plane too: that is past everything the map was built to cover.
+  if (mapPosition.x < 0.0 || mapPosition.x > 1.0 ||
+      mapPosition.y < 0.0 || mapPosition.y > 1.0 ||
+      mapPosition.z > 1.0) {
+    return 1.0;
+  }
+
+  return texture(shadowMaps, vec4(mapPosition.xy, float(view), mapPosition.z));
+}
+#endif
+
 void main() {
   vec4 albedo = texture(albedoTexture, vertexTextureCoords) * baseColorFactor;
   vec3 surfaceNormal = shadingNormal(normalize(vertexWorldNormal));
@@ -242,6 +316,11 @@ void main() {
     vec3 diffuse = (1.0 - fresnel) * diffuseColor / PI;
 
     vec3 radiance = lightColorIntensity[i].rgb * lightColorIntensity[i].a;
+
+#if MAX_SHADOW_VIEWS > 0
+    attenuation *= shadowFactor(i, vertexWorldPosition, surfaceNormal, NdotL);
+#endif
+
     color += (diffuse + specular) * radiance * NdotL * attenuation;
   }
 #endif

@@ -20,7 +20,7 @@ version (OpenGLES3) {
 
 version (NoGraphicsApi) {
     import retrograde.engine.entity : EntityId;
-    import retrograde.engine.rendering : RenderPass, Color, Viewport, MaterialShader;
+    import retrograde.engine.rendering : RenderPass, RenderView, Color, Viewport, MaterialShader;
 
     import retrograde.std.math : Matrix4;
 
@@ -31,6 +31,21 @@ version (NoGraphicsApi) {
     }
 
     void initMaterialShader(ref MaterialShader materialShader) {
+    }
+
+    void initShadowMaps(bool enabled) {
+    }
+
+    void syncShadowMapSize() {
+    }
+
+    void beginShadowView(const ref RenderView view) {
+    }
+
+    void endShadowPass() {
+    }
+
+    void drawModelDepth(EntityId entity, const ref RenderPass renderPass, const ref RenderView view) {
     }
 
     void loadEntityModel(EntityId entity) {
@@ -51,7 +66,7 @@ version (NoGraphicsApi) {
     void clearShaderProgram() {
     }
 
-    void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Matrix4 viewProjectionMatrix) {
+    void drawModel(EntityId entity, const ref RenderPass renderPass, const ref RenderView view) {
     }
 
     Viewport getViewport() {

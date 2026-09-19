@@ -91,3 +91,67 @@ nm -C <object>.o | grep -i lambda
 A `U` in front of the lambda's name means the body was dropped. Lifting the
 same code out of the lambda into a named function makes the compiler report
 the real error.
+
+## A local array of structs whose default is not all-zero needs `_memset*`
+
+### Symptom
+
+The module compiles, and the link fails on a symbol that is in no source file:
+
+```
+undefined reference to `_memset128'
+  referenced from `Quaternion[6] cubeFaceOrientations()'
+```
+
+The number varies with the element's size in bits — `_memset128` for a 16-byte
+element, and so on.
+
+### Cause
+
+Declaring a fixed-size array of a struct initializes every element to that
+struct's default. When the default is all zero bits, the compiler emits a plain
+`memset`, which is in libc and links fine. When it is not — `QuaternionT` starts
+at `realPart = 1`, so its 16 bytes are `00 00 80 3F 00 ...` — there is no single
+byte to fill with, so the compiler emits a call to druntime's block-fill helper
+for that element width instead. `-betterC` has no druntime, so nothing defines it.
+
+It is easy to miss which types are affected. An array of `Vector3` is fine: its
+components default to 0, so the fill is a `memset`. An array of `Quaternion`,
+of any struct with a non-zero default field, or of a struct holding one, is not.
+
+### Fix / rule
+
+Do not declare a local or return a fixed-size array of such a struct. Hand back
+one element at a time instead:
+
+```d
+// Fails to link.
+private Quaternion[6] cubeFaceOrientations() {
+    Quaternion[6] orientations;
+    orientations[0] = Quaternion.createRotation(...);
+    ...
+    return orientations;
+}
+
+// Links.
+private Quaternion cubeFaceOrientation(const size_t face) {
+    if (face == 0) {
+        return Quaternion.createRotation(...);
+    }
+    ...
+}
+```
+
+Where the values are compile-time constants, `static immutable T[N]` also works:
+it lands in rodata with no fill at all. That is not an option when the elements
+come from `cos`/`sin`, which do not run at compile time on every target.
+
+Passing the array by `ref` for the callee to fill is fine too — the caller's
+declaration is what needs a default, and one at the caller's own scope is under
+the same rule.
+
+### How to diagnose
+
+The linker error names the function, which is the whole of it: look in that
+function for a fixed-size array of a struct, then check whether that struct's
+fields all default to 0. If any does not, that array is the one.

@@ -15,6 +15,7 @@ export default class RetrogradeRuntime {
   buffers = [];
   vertextArrayObjects = [];
   textures = [];
+  framebuffers = [];
 
   uniformLocations = [];
   uniformLocationDict = {};
@@ -567,6 +568,24 @@ export default class RetrogradeRuntime {
         );
       },
 
+      glTexStorage3D: (
+        target,
+        levels,
+        internalformat,
+        width,
+        height,
+        depth,
+      ) => {
+        this.glContext.texStorage3D(
+          target,
+          levels,
+          internalformat,
+          width,
+          height,
+          depth,
+        );
+      },
+
       glTexParameteri: (target, pname, param) => {
         this.glContext.texParameteri(target, pname, param);
       },
@@ -587,6 +606,51 @@ export default class RetrogradeRuntime {
       glUniform1f: (location, value) => {
         const locationObject = this.getUniformLocationObject(location);
         this.glContext.uniform1f(locationObject, value);
+      },
+
+      glCreateFramebuffer: () => {
+        const framebuffer = this.glContext.createFramebuffer();
+        this.framebuffers.push(framebuffer);
+        return this.framebuffers.length;
+      },
+
+      glDeleteFramebuffer: (framebuffer) => {
+        const framebufferObject = this.getFramebufferObject(framebuffer);
+        this.glContext.deleteFramebuffer(framebufferObject);
+      },
+
+      glBindFramebuffer: (target, framebuffer) => {
+        const framebufferObject = this.getFramebufferObject(framebuffer);
+        this.glContext.bindFramebuffer(target, framebufferObject);
+      },
+
+      glFramebufferTextureLayer: (
+        target,
+        attachment,
+        texture,
+        level,
+        layer,
+      ) => {
+        const textureObject = this.getTextureObject(texture);
+        this.glContext.framebufferTextureLayer(
+          target,
+          attachment,
+          textureObject,
+          level,
+          layer,
+        );
+      },
+
+      glCheckFramebufferStatus: (target) => {
+        return this.glContext.checkFramebufferStatus(target);
+      },
+
+      glViewport: (x, y, width, height) => {
+        this.glContext.viewport(x, y, width, height);
+      },
+
+      glPolygonOffset: (factor, units) => {
+        this.glContext.polygonOffset(factor, units);
       },
 
       // Asset Loading
@@ -801,6 +865,10 @@ export default class RetrogradeRuntime {
 
   getTextureObject(name) {
     return this.getGlObject(this.textures, name, "Texture");
+  }
+
+  getFramebufferObject(name) {
+    return this.getGlObject(this.framebuffers, name, "Framebuffer");
   }
 
   setupCanvas() {

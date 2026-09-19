@@ -17,6 +17,7 @@ version (OpenGLES3)  :  //
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Constants
 
 // Clearing buffers
+enum GL_DEPTH_BUFFER_BIT = 0x00000100;
 enum GL_COLOR_BUFFER_BIT = 0x00004000;
 
 // Rendering primitives
@@ -41,6 +42,7 @@ enum GL_FRONT_AND_BACK = 0x0408;
 enum GL_BLEND = 0x0BE2;
 enum GL_DEPTH_TEST = 0x0B71;
 enum GL_DITHER = 0x0BD0;
+enum GL_POLYGON_OFFSET_FILL = 0x8037;
 enum GL_STENCIL_TEST = 0x0B90;
 
 // Depth or stencil tests
@@ -55,17 +57,21 @@ enum GL_FLOAT = 0x1406;
 // Pixel formats
 enum GL_RGB = 0x1907;
 enum GL_RGBA = 0x1908;
+enum GL_DEPTH_COMPONENT = 0x1902;
+enum GL_DEPTH_COMPONENT24 = 0x81A6;
 
 // Pixel storage modes
 enum GL_UNPACK_ALIGNMENT = 0x0CF5;
 
 // Textures
 enum GL_TEXTURE_2D = 0x0DE1;
+enum GL_TEXTURE_2D_ARRAY = 0x8C1A;
 enum GL_TEXTURE0 = 0x84C0;
 enum GL_TEXTURE1 = 0x84C1;
 enum GL_TEXTURE2 = 0x84C2;
 enum GL_TEXTURE3 = 0x84C3;
 enum GL_TEXTURE4 = 0x84C4;
+enum GL_TEXTURE5 = 0x84C5;
 enum GL_TEXTURE_MAG_FILTER = 0x2800;
 enum GL_TEXTURE_MIN_FILTER = 0x2801;
 enum GL_TEXTURE_WRAP_S = 0x2802;
@@ -79,3 +85,15 @@ enum GL_LINEAR_MIPMAP_LINEAR = 0x2703;
 enum GL_REPEAT = 0x2901;
 enum GL_CLAMP_TO_EDGE = 0x812F;
 enum GL_MIRRORED_REPEAT = 0x8370;
+
+// Depth comparison sampling, as used by shadow maps: with the compare mode on, a sampler
+// returns how the sampled depth compares to the reference the shader passes in, rather than
+// the depth itself. That is what makes filtering the result meaningful.
+enum GL_TEXTURE_COMPARE_MODE = 0x884C;
+enum GL_TEXTURE_COMPARE_FUNC = 0x884D;
+enum GL_COMPARE_REF_TO_TEXTURE = 0x884E;
+
+// Framebuffers and renderbuffers
+enum GL_FRAMEBUFFER = 0x8D40;
+enum GL_DEPTH_ATTACHMENT = 0x8D00;
+enum GL_FRAMEBUFFER_COMPLETE = 0x8CD5;

@@ -51,8 +51,17 @@ void glBindTexture(GLenum target, GLuint texture);
 void glActiveTexture(GLenum texture);
 void glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height,
     GLint border, GLenum format, GLenum type, const(ubyte)[] pixels);
+void glTexStorage3D(GLenum target, GLsizei levels, GLenum internalformat, GLsizei width,
+    GLsizei height, GLsizei depth);
 void glTexParameteri(GLenum target, GLenum pname, GLint param);
 void glGenerateMipmap(GLenum target);
 void glPixelStorei(GLenum pname, GLint param);
 void glUniform1i(GLint location, GLint value);
 void glUniform1f(GLint location, GLfloat value);
+GLuint glCreateFramebuffer();
+void glDeleteFramebuffer(GLuint framebuffer);
+void glBindFramebuffer(GLenum target, GLuint framebuffer);
+void glFramebufferTextureLayer(GLenum target, GLenum attachment, GLuint texture, GLint level, GLint layer);
+GLenum glCheckFramebufferStatus(GLenum target);
+void glViewport(GLint x, GLint y, GLsizei width, GLsizei height);
+void glPolygonOffset(GLfloat factor, GLfloat units);

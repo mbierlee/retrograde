@@ -13,12 +13,12 @@ Retrograde is a D language game engine compiled with **`-betterC`** (no GC, no D
 - **Shaders:** nothing above compiles GLSL — the shaders in `source/retrograde/shaders/` are only compiled by the browser at runtime, so a broken one passes every suite. Check them with `glslangValidator`, substituting the engine's placeholder first:
 
   ```
-  sed 's/<%maxLights%>/8/' <shader>_vertex.glsl > /tmp/x.vert
-  sed 's/<%maxLights%>/8/' <shader>_fragment.glsl > /tmp/x.frag
+  sed -e 's/<%maxLights%>/8/' -e 's/<%maxShadowViews%>/8/' <shader>_vertex.glsl > /tmp/x.vert
+  sed -e 's/<%maxLights%>/8/' -e 's/<%maxShadowViews%>/8/' <shader>_fragment.glsl > /tmp/x.frag
   glslangValidator -l /tmp/x.vert /tmp/x.frag
   ```
 
-  `-l` links the pair, which is what catches a mismatch between the vertex shader's outputs and the fragment shader's inputs. Run it for **each** `maxLights` value (0, 4, 8, 16, 32) — the `#if MAX_LIGHTS > 0` blocks compile differently, and 0 is easy to break without noticing. Use the default OpenGL semantics, **not** `-V`: Vulkan semantics reject the plain non-opaque uniforms these shaders use.
+  `-l` links the pair, which is what catches a mismatch between the vertex shader's outputs and the fragment shader's inputs. Run it for **each** `maxLights` value (0, 4, 8, 16, 32) crossed with **each** `maxShadowViews` value (0, 1, 4, 8, 16) — the `#if MAX_LIGHTS > 0` and `#if MAX_SHADOW_VIEWS > 0` blocks compile differently, and 0 is easy to break without noticing. Copy to `.vert`/`.frag` rather than passing the `.glsl` files directly: the validator infers the stage from the extension and rejects `.glsl`. Use the default OpenGL semantics, **not** `-V`: Vulkan semantics reject the plain non-opaque uniforms these shaders use.
 
   **Only run this when `glslangValidator` is already installed system-wide** (it is on `PATH`). Do **not** install it yourself — no `apt install`, no npm package, no downloaded binary. If it is missing, say so and leave the shaders unvalidated rather than pulling in a copy.
 

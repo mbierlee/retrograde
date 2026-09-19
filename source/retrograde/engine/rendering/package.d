@@ -17,12 +17,17 @@ import retrograde.engine.entity : addEntityFinalizedHook, addEntityRemovedHook, 
     hasComponent, withComponentData;
 import retrograde.engine.geometry : worldPositionOf;
 import retrograde.engine.graphicsapi : clearShaderProgram, getViewport, initFrame, initRenderApi,
-    initRenderPass, initMaterialShader, loadEntityModel, setClearColor, unloadEntityModel, useRenderPassShaderProgram;
+    initRenderPass, initMaterialShader, initShadowMaps, loadEntityModel, setClearColor,
+    unloadEntityModel, useRenderPassShaderProgram;
 import retrograde.engine.rendering.lighting : collectActiveLights, registerLightEntity,
     unregisterLightEntity;
 import retrograde.engine.rendering.renderpass : genericModelRenderPass;
-import retrograde.engine.rendering.materialshader : vertexColorsMaterialShader, unlitMaterialShader,
-    pbrMetallicRoughnessMaterialShader, lambertMaterialShader;
+import retrograde.engine.rendering.materialshader : maxShadowViews, vertexColorsMaterialShader,
+    unlitMaterialShader, pbrMetallicRoughnessMaterialShader, lambertMaterialShader;
+
+static if (maxShadowViews > 0) {
+    import retrograde.engine.rendering.renderpass : shadowMapRenderPass;
+}
 
 import retrograde.std.collections : Array, HashMap;
 import retrograde.std.geometry : Frustum, OrientationComponentType;
@@ -135,6 +140,11 @@ void initRenderer() {
     initRenderApi();
     setClearColor(Color(0, 0, 0, 1));
     initRenderPasses();
+
+    // After the passes, which is what says whether the maps are worth allocating, and before
+    // the material shaders, which bind the sampler that reads them.
+    initShadowMaps(shadowMapsAreRendered());
+
     initMaterialShaders();
     initEntityManagerHooks();
 }
@@ -157,30 +167,67 @@ void renderFrame() {
 
         cameraEntity.withComponentData!CameraConfiguration(CameraComponentType, (
                 CameraConfiguration* c) {
+            activeCameraConfiguration = *c;
             projectionMatrix = createProjectionMatrix(*c);
         });
     }
 
     activeCameraWorldPosition = position;
+    activeCameraOrientation = orientation;
+    activeCameraViewport = getViewport();
 
     viewMatrix = createViewMatrixQ(position, orientation);
     const Matrix4 viewProjectionMatrix = projectionMatrix * viewMatrix;
     activeCameraFrustum = Frustum.fromViewProjection(viewProjectionMatrix);
 
+    RenderView cameraView;
+    cameraView.viewProjectionMatrix = viewProjectionMatrix;
+    cameraView.frustum = activeCameraFrustum;
+    cameraView.eyePosition = position;
+
     foreach (ref renderPass; renderPasses) {
         useRenderPassShaderProgram(renderPass);
 
+        // Gathered once and drawn from every view of the pass: a pass that draws the world
+        // several times over - a shadow pass, once per casting light - would otherwise walk
+        // every entity in the world again for each of them.
         //TODO: Optimize? Don't attempt each entity in each pass, but batch them.
+        passEntities.truncate(0);
         forEachEntity((EntityId entity) {
             if (entity.hasComponent(RenderableComponentType) &&
             entity.hasComponent(renderPass.componentType)) {
-                renderPass.render(entity, renderPass, viewProjectionMatrix);
+                passEntities.add(entity);
             }
         });
+
+        passViews.truncate(0);
+        if (renderPass.beginPass !is null) {
+            renderPass.beginPass(passViews);
+        } else {
+            passViews.add(cameraView);
+        }
+
+        foreach (ref view; passViews) {
+            if (renderPass.beginView !is null) {
+                renderPass.beginView(view);
+            }
+
+            foreach (entity; passEntities) {
+                renderPass.render(entity, renderPass, view);
+            }
+        }
+
+        if (renderPass.endPass !is null) {
+            renderPass.endPass();
+        }
 
         clearShaderProgram();
     }
 }
+
+// Reused between passes and frames, so a steady scene stops allocating after the first frame.
+private Array!EntityId passEntities;
+private Array!RenderView passViews;
 
 private Matrix4 createProjectionMatrix(const ref CameraConfiguration cameraConfiguration) {
     auto viewport = getViewport();
@@ -229,7 +276,51 @@ struct RenderPass {
     string vertexShader;
     string fragmentShader;
     StringId componentType;
-    void delegate(EntityId entity, const ref RenderPass renderPass, const ref Matrix4 viewProjectionMatrix) render;
+    void delegate(EntityId entity, const ref RenderPass renderPass, const ref RenderView view) render;
+
+    /**
+     * Optional. Called once before any view, and fills the views this pass draws this frame.
+     *
+     * A pass that leaves this null draws the active camera's view, once, which is what an
+     * ordinary pass wants. One that fills several - a shadow pass, one per casting light -
+     * has its entities drawn once per view.
+     */
+    void delegate(ref Array!RenderView views) beginPass;
+
+    /**
+     * Optional. Called before each view, and makes what that view draws into current: its
+     * framebuffer and layer, its viewport, and whatever it needs cleared.
+     */
+    void delegate(const ref RenderView view) beginView;
+
+    /**
+     * Optional. Called once after the last view, and puts back whatever $(D beginView)
+     * changed, so the pass after this one draws to the screen as it expects to.
+     *
+     * There is deliberately no per-view counterpart: the next $(D beginView) makes its own
+     * target current, so a view has nothing to undo.
+     */
+    void delegate() endPass;
+}
+
+/**
+ * One point of view the world is drawn from in a frame.
+ *
+ * Ordinarily that is the active camera's, but a pass may draw the same entities from
+ * somewhere else entirely - a shadow pass draws them as each casting light sees them.
+ */
+struct RenderView {
+    /// Combined view and projection of this point of view.
+    Matrix4 viewProjectionMatrix;
+
+    /// What this point of view sees, in world space. Entities outside it are not drawn.
+    Frustum frustum;
+
+    /// Where this point of view sits in the world.
+    Vector3 eyePosition;
+
+    /// Which layer of the shadow map array this view renders into. Unused by a camera view.
+    uint targetLayer;
 }
 
 struct MaterialShader {
@@ -245,6 +336,16 @@ HashMap!(MaterialType, MaterialShader) materialShaders;
 
 /// Where the camera of the frame being rendered sits in the world.
 Vector3 activeCameraWorldPosition;
+
+/// Which way the camera of the frame being rendered faces.
+Quaternion activeCameraOrientation;
+
+/// How the camera of the frame being rendered projects the world.
+CameraConfiguration activeCameraConfiguration;
+
+/// The viewport the frame being rendered is sized to, which is what a camera without an
+/// aspect ratio of its own derives one from.
+Viewport activeCameraViewport;
 
 /// What the camera of the frame being rendered sees, in world space. Entities whose bounds
 /// fall outside it are not drawn while $(D frustumCullingEnabled) is set.
@@ -324,18 +425,55 @@ struct Light {
     ///
     /// Only read for a point light: a directional light reaches everything whatever this says.
     float attenuationRadius = 10;
+
+    /**
+     * Whether this light casts shadows.
+     *
+     * Off by default: a casting light has the scene's casters drawn again from where it
+     * stands - six times over for a point light - so it is worth opting in to deliberately
+     * rather than paying for by surprise. A light that casts nothing still lights everything
+     * it reaches; what it loses is only that other things block it.
+     *
+     * Needs the shadow render pass to be registered. Without it this is read by nothing and
+     * costs nothing.
+     */
+    bool castsShadows = false;
 }
 
 private EntityId cameraEntity = 0;
 
 private void initRenderPasses() {
     if (renderPasses.length == 0) {
+        static if (maxShadowViews > 0) {
+            // Before the pass that draws lit surfaces: a shadow map has to be complete before
+            // anything samples it.
+            renderPasses.add(shadowMapRenderPass);
+        }
+
         renderPasses.add(genericModelRenderPass);
     }
 
     foreach (ref renderPass; renderPasses) {
         initRenderPass(renderPass);
     }
+}
+
+/**
+ * Whether any registered pass renders shadow maps.
+ *
+ * What the maps cost is only worth paying where something draws them, and a game is free to
+ * set up its passes without the shadow pass.
+ */
+private bool shadowMapsAreRendered() {
+    static if (maxShadowViews > 0) {
+        foreach (ref renderPass; renderPasses) {
+            if (renderPass.passName.sid == shadowMapRenderPass.passName.sid) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 private void initMaterialShaders() {

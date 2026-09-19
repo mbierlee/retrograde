@@ -50,14 +50,65 @@ version (MaxLights0) {
     private enum maxLightsValue = "8";
 }
 
+version (MaxShadowViews0) {
+    private enum requestedMaxShadowViews = 0;
+} else version (MaxShadowViews1) {
+    private enum requestedMaxShadowViews = 1;
+} else version (MaxShadowViews4) {
+    private enum requestedMaxShadowViews = 4;
+} else version (MaxShadowViews8) {
+    private enum requestedMaxShadowViews = 8;
+} else version (MaxShadowViews16) {
+    private enum requestedMaxShadowViews = 16;
+} else {
+    // Enough for a sun and one point light, which is the scene most games start from.
+    private enum requestedMaxShadowViews = 8;
+}
+
+/**
+ * Shadow maps a frame can render, which is not the same as lights that can cast: a point
+ * light needs six, one per cube face, while a directional or spot light needs one.
+ *
+ * Zero disables shadows entirely - no pass, no uniforms, no maps allocated. Lights with
+ * nothing to shade are pointless, so a build without lights has no shadows either.
+ */
+static if (maxLights > 0) {
+    enum maxShadowViews = requestedMaxShadowViews;
+} else {
+    enum maxShadowViews = 0;
+}
+
+private enum maxShadowViewsValue = toShaderValue!maxShadowViews;
+
+private template toShaderValue(int value) {
+    private string run() {
+        if (value == 0) {
+            return "0";
+        }
+
+        string digits;
+        int remaining = value;
+        while (remaining > 0) {
+            digits = cast(char)('0' + (remaining % 10)) ~ digits;
+            remaining /= 10;
+        }
+
+        return digits;
+    }
+
+    enum toShaderValue = run();
+}
+
 enum pbrVertexShader = preprocess!(
         import("opengles3/material_pbr_metallic_roughness_vertex.glsl"),
-        "maxLights", maxLightsValue
+        "maxLights", maxLightsValue,
+        "maxShadowViews", maxShadowViewsValue
     );
 
 enum pbrFragmentShader = preprocess!(
         import("opengles3/material_pbr_metallic_roughness_fragment.glsl"),
-        "maxLights", maxLightsValue
+        "maxLights", maxLightsValue,
+        "maxShadowViews", maxShadowViewsValue
     );
 
 MaterialShader pbrMetallicRoughnessMaterialShader = MaterialShader(
@@ -69,12 +120,14 @@ MaterialShader pbrMetallicRoughnessMaterialShader = MaterialShader(
 
 enum lambertVertexShader = preprocess!(
         import("opengles3/material_lambert_vertex.glsl"),
-        "maxLights", maxLightsValue
+        "maxLights", maxLightsValue,
+        "maxShadowViews", maxShadowViewsValue
     );
 
 enum lambertFragmentShader = preprocess!(
         import("opengles3/material_lambert_fragment.glsl"),
-        "maxLights", maxLightsValue
+        "maxLights", maxLightsValue,
+        "maxShadowViews", maxShadowViewsValue
     );
 
 /**
