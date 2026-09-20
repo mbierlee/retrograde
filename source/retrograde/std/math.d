@@ -1650,6 +1650,36 @@ bool isNear(VecT)(const VecT actual, const VecT expected, const double tolerance
     return true;
 }
 
+/**
+ * Returns: A vector taking each component from whichever of the two given vectors has the
+ * smaller one.
+ *
+ * The result is a corner of the box the two vectors span, so it is usually neither of them.
+ */
+VecT minOf(VecT)(const VecT a, const VecT b) {
+    VecT result;
+    static foreach (i; 0 .. VecT._N) {
+        result[i] = a[i] < b[i] ? a[i] : b[i];
+    }
+
+    return result;
+}
+
+/**
+ * Returns: A vector taking each component from whichever of the two given vectors has the
+ * bigger one.
+ *
+ * The opposite corner of the box [minOf] gives.
+ */
+VecT maxOf(VecT)(const VecT a, const VecT b) {
+    VecT result;
+    static foreach (i; 0 .. VecT._N) {
+        result[i] = a[i] > b[i] ? a[i] : b[i];
+    }
+
+    return result;
+}
+
 //TODO: Port bezier curves and splines from old Retrograde?
 
 version (UnitTesting)  :  ///
@@ -1752,6 +1782,18 @@ void runMathFunctionsTests() {
         assert(!isNear(Vector3F(1, 2, 2.9), Vector3F(1, 2, 3)));
         assert(isNear(Vector3F(1.1, 2, 3), Vector3F(1, 2, 3), 0.2));
         assert(isNear(Vector2D(-0.5, 0.5), Vector2D(-0.5, 0.5)));
+    });
+
+    test("minOf", {
+        assert(minOf(Vector3F(1, 5, 3), Vector3F(4, 2, 6)) == Vector3F(1, 2, 3));
+        assert(minOf(Vector3F(-1, -5, 0), Vector3F(1, 5, 0)) == Vector3F(-1, -5, 0));
+        assert(minOf(Vector2I(7, 7), Vector2I(7, 7)) == Vector2I(7, 7));
+    });
+
+    test("maxOf", {
+        assert(maxOf(Vector3F(1, 5, 3), Vector3F(4, 2, 6)) == Vector3F(4, 5, 6));
+        assert(maxOf(Vector3F(-1, -5, 0), Vector3F(1, 5, 0)) == Vector3F(1, 5, 0));
+        assert(maxOf(Vector2I(7, 7), Vector2I(7, 7)) == Vector2I(7, 7));
     });
 
     test("approxEqual", {

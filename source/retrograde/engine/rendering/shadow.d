@@ -33,8 +33,9 @@ import retrograde.engine.rendering.materialshader : maxShadowViews;
 
 import retrograde.std.collections : Array;
 import retrograde.std.geometry : Frustum;
-import retrograde.std.math : createOrthographicMatrix, createPerspectiveMatrix, createViewMatrixQ,
-    degreesToRadians, Matrix4, Quaternion, scalar, tan, Vector3, Vector4;
+import retrograde.std.math : atan2, createOrthographicMatrix, createPerspectiveMatrix,
+    createViewMatrixQ, degreesToRadians, Matrix4, maxOf, minOf, Quaternion, scalar, tan,
+    Vector3, Vector4;
 
 /**
  * How shadows are rendered. Every setting can be changed at any time; a change takes effect
@@ -61,7 +62,8 @@ struct ShadowSettings {
      * A directional light shines over the whole world, so something has to say which part of
      * it is worth spending a map on. Its map covers the camera's view up to this distance;
      * past it, surfaces are lit as if nothing blocked the light. Raising it shadows more of
-     * the view at the cost of spreading the same texels over more world.
+     * the view at the cost of spreading the same texels over more world, making the shadow's
+     * edges more aliased.
      *
      * It also sets how far behind that volume casters are still drawn, so a wall just out of
      * view still casts into it.
@@ -111,12 +113,14 @@ Array!RenderView shadowViews;
  * comparison both want [0, 1]. Folding the conversion in here keeps it out of the shader,
  * which would otherwise do it per light per fragment.
  */
+// dfmt off
 static immutable Matrix4 shadowBiasMatrix = Matrix4(
-    0.5, 0, 0, 0.5,
-    0, 0.5, 0, 0.5,
-    0, 0, 0.5, 0.5,
-    0, 0, 0, 1
+    0.5, 0,   0,   0.5,
+    0,   0.5, 0,   0.5,
+    0,   0,   0.5, 0.5,
+    0,   0,   0,   1
 );
+// dfmt on
 
 /**
  * The direction the given face of a point light's cube of maps looks in, in the order
@@ -455,36 +459,14 @@ private Quaternion orientationFacing(const Vector3 direction) {
     }
 
     Vector3 axis = defaultForward.cross(forward);
-    scalar angle = atan2Safe(axis.magnitude, alignment);
+    scalar angle = atan2(axis.magnitude, alignment);
     return Quaternion.createRotation(angle, axis);
-}
-
-private scalar atan2Safe(const scalar y, const scalar x) {
-    import retrograde.std.math : atan2;
-
-    return cast(scalar) atan2(cast(scalar) y, cast(scalar) x);
 }
 
 /// Applies a transform to a point, ignoring the perspective row.
 private Vector3 transformPoint(const Matrix4 transform, const Vector3 point) {
     Vector4 transformed = transform * Vector4(point, 1);
     return Vector3(transformed.x, transformed.y, transformed.z);
-}
-
-private Vector3 minOf(const Vector3 a, const Vector3 b) {
-    return Vector3(
-        a.x < b.x ? a.x : b.x,
-        a.y < b.y ? a.y : b.y,
-        a.z < b.z ? a.z : b.z
-    );
-}
-
-private Vector3 maxOf(const Vector3 a, const Vector3 b) {
-    return Vector3(
-        a.x > b.x ? a.x : b.x,
-        a.y > b.y ? a.y : b.y,
-        a.z > b.z ? a.z : b.z
-    );
 }
 
 version (UnitTesting)  :  //
