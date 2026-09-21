@@ -22,7 +22,8 @@ import retrograde.engine.rendering : activeCameraFrustum, activeCameraWorldPosit
 import retrograde.engine.rendering.lighting : ActiveLight, ambientGroundColor, ambientIntensity,
     ambientSkyColor, selectActiveLights;
 import retrograde.engine.rendering.materialshader : maxLights, maxShadowViews;
-import retrograde.engine.rendering.shadow : shadowBiasMatrix, shadowSettings, shadowViews;
+import retrograde.engine.rendering.shadow : isShadowReceiver, shadowBiasMatrix, shadowSettings,
+    shadowViews;
 
 import retrograde.assets.model : ModelComponentType, Model, MaterialType, MaterialIndex, noMaterial,
     hasEmissive, hasMetallicRoughness, hasOcclusion, isLit, referencesTexture,
@@ -456,10 +457,6 @@ void loadEntityModel(EntityId entity) {
             }
 
             foreach (ref renderPass; renderPasses) {
-                if (!entity.hasComponent(renderPass.componentType)) {
-                    continue;
-                }
-
                 auto passSid = renderPass.passName.sid;
                 auto maybePassInfo = renderPassInfos.get(passSid);
                 if (!maybePassInfo.isDefined) {
@@ -1049,11 +1046,17 @@ void drawModel(EntityId entity, const ref RenderPass renderPass, const ref Rende
                 // Which of this frame's maps belongs to each of the lights this entity ended
                 // up with. The selection is per entity and ordered by distance, so a light's
                 // slot here is not the one it had for the entity drawn before this.
+                //
+                // An entity that does not receive is told no light has a map, which the
+                // shaders already read as unshadowed - no uniform or branch of its own needed.
+                bool receivesShadows = entity.isShadowReceiver();
                 lightShadowParamsData.truncate(0);
                 foreach (i; 0 .. selectedLights.length) {
                     auto activeLight = selectedLights[i];
-                    lightShadowParamsData.add(cast(GLfloat) activeLight.shadowView);
-                    lightShadowParamsData.add(cast(GLfloat) activeLight.shadowViewCount);
+                    lightShadowParamsData.add(
+                        receivesShadows ? cast(GLfloat) activeLight.shadowView : -1.0f);
+                    lightShadowParamsData.add(
+                        receivesShadows ? cast(GLfloat) activeLight.shadowViewCount : 0.0f);
                     lightShadowParamsData.add(0);
                     lightShadowParamsData.add(0);
                 }

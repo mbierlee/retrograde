@@ -4,17 +4,14 @@
 `source/retrograde/engine/rendering/shadow.d`, `source/retrograde/api/opengles3.d`,
 `source/retrograde/shaders/opengles3/`
 
-**Depends on:** `investigate-shadow-caster-receiver-opt-in.md`, whose caster rule decides what
-a catcher shows.
-
 A shadow catcher is a surface that is never drawn itself, but has the shadows cast onto it
 drawn: an invisible ground plane under a character standing in front of a skybox or a
 background image, so the character still looks grounded. Blender and most offline renderers
 have one; the engine has no way to express it.
 
-It is not the same as an invisible caster. That one - a model with `ShadowCasterComponentType`
-and no `RenderableComponentType` - throws a shadow without being seen, and the opt-in plan
-already gives it. A catcher is the other side: it receives without being seen.
+It is not the same as an invisible caster. That one - a model that is a shadow caster (see
+`isShadowCaster` in `shadow.d`) but has no `RenderableComponentType` - throws a shadow without
+being seen, and the engine already supports it. A catcher is the other side: it receives without being seen.
 
 ## Why it fits
 
@@ -49,9 +46,10 @@ already gives it. A catcher is the other side: it receives without being seen.
   best but needs the catcher to evaluate lighting it then throws away.
 - Should the shadow's color and strength be settable - a component with data rather than a
   tag - so a catcher can match the tint of the background it sits over?
-- Should a catcher also be excluded from casting outright, whatever the switches say? A ground
+- Should a catcher be excluded from casting outright, whatever the switches say? A ground
   plane that casts shadows onto nothing costs a full draw per map, and with
-  `allModelsCastShadows` set it would.
+  `allModelsCastShadows` set it would. `NonShadowCasterComponentType` already lets a scene
+  exclude it by hand; the question is whether a catcher should imply it.
 - Should a catcher take ambient occlusion-like contact darkening too, or only what the maps
   give? Contact shadows are where a grounded look comes from and a shadow map at modest
   resolution loses them.

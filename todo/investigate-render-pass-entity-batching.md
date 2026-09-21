@@ -11,8 +11,7 @@ foreach (ref renderPass; renderPasses) {
     //TODO: Optimize? Don't attempt each entity in each pass, but batch them.
     passEntities.truncate(0);
     forEachEntity((EntityId entity) {
-        if (entity.hasComponent(RenderableComponentType) &&
-        entity.hasComponent(renderPass.componentType)) {
+        if (renderPass.acceptsEntity(entity)) {
             passEntities.add(entity);
         }
     });
@@ -21,8 +20,8 @@ foreach (ref renderPass; renderPasses) {
 }
 ```
 
-So the cost per frame is `passes × entities`, and every entity pays two `hasComponent` lookups in
-every pass — including entities that are not renderable at all and can never match any pass. Only a
+So the cost per frame is `passes × entities`, and every entity is put to every pass's
+`acceptsEntity` — two or three `hasComponent` lookups for the built-in passes — including entities that are not renderable at all and can never match any pass. Only a
 subset of entities is renderable, and each renderable one is generally drawn by exactly one pass, so
 nearly all of that work is rejection.
 
@@ -52,9 +51,11 @@ is filled, and sorting would be a step after it is filled.
 
 - Should the set of entities per pass be maintained incrementally (built as entities are added and
   finalized, via the existing entity hooks) rather than rediscovered each frame? What invalidates
-  such a list — components can presumably be added or removed after an entity is created.
+  such a list — components can presumably be added or removed after an entity is created, and an
+  `acceptsEntity` may read more than components: the shadow pass's also reads the
+  `allModelsCastShadows` switch, which can change at any time.
 - Where would such a list live: on the `RenderPass`, next to the entity storage, or in a separate
-  render-side structure? `RenderPass` is currently a plain description (shaders, component type,
+  render-side structure? `RenderPass` is currently a plain description (shaders, entity test,
   draw delegate) with no per-frame state.
 - Does an entity ever match more than one render pass, and is that intended? The current loop
   happily draws it once per matching pass.

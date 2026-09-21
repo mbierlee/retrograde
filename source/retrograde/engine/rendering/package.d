@@ -33,7 +33,7 @@ import retrograde.std.collections : Array, HashMap;
 import retrograde.std.geometry : Frustum, OrientationComponentType;
 import retrograde.std.math : createOrthographicMatrix, createPerspectiveMatrix, createViewMatrixQ,
     degreesToRadians, Matrix4, Quaternion, scalar, Vector3;
-import retrograde.std.stringid : sid, StringId;
+import retrograde.std.stringid : sid;
 
 /// Given to entities that should be rendered by the renderer.
 enum RenderableComponentType = sid("comp_renderable");
@@ -186,6 +186,12 @@ void renderFrame() {
     cameraView.eyePosition = position;
 
     foreach (ref renderPass; renderPasses) {
+        // Skipped whole rather than run empty: its beginPass and endPass would still switch
+        // render targets and state for a pass that draws nothing.
+        if (renderPass.acceptsEntity is null || renderPass.render is null) {
+            continue;
+        }
+
         useRenderPassShaderProgram(renderPass);
 
         // Gathered once and drawn from every view of the pass: a pass that draws the world
@@ -194,8 +200,7 @@ void renderFrame() {
         //TODO: Optimize? Don't attempt each entity in each pass, but batch them.
         passEntities.truncate(0);
         forEachEntity((EntityId entity) {
-            if (entity.hasComponent(RenderableComponentType) &&
-            entity.hasComponent(renderPass.componentType)) {
+            if (renderPass.acceptsEntity(entity)) {
                 passEntities.add(entity);
             }
         });
@@ -263,27 +268,60 @@ private Matrix4 createProjectionMatrix(const ref CameraConfiguration cameraConfi
 /**
  * A render pass represents a single rendering operation in the frame rendering pipeline.
  * 
- * Render passes are used to organize rendering by grouping entities with specific components
- * and rendering them with a particular shader program. During frame rendering, each render pass
- * is executed in sequence, processing all entities that have both the RenderableComponentType
- * and the pass's specific componentType.
+ * Render passes are used to organize rendering by grouping entities and rendering them with a
+ * particular shader program. During frame rendering, each render pass is executed in sequence,
+ * processing the entities its $(D acceptsEntity) picks.
  * 
  * This allows for flexible rendering pipelines where different types of objects (models, particles,
  * UI elements, etc.) can be rendered with different shaders and techniques.
  */
 struct RenderPass {
+    /**
+     * Identifies the pass. The graphics API files what it builds for the pass under this
+     * name, so it has to be unique among the registered passes: of two passes with the same
+     * name, both end up drawing with the shader program of the one initialized last.
+     */
     string passName;
+
+    /**
+     * Source of the pass's vertex shader, in the shading language of the graphics API in use.
+     * Compiled once, when the renderer is initialized.
+     */
     string vertexShader;
+
+    /// Source of the pass's fragment shader. See $(D vertexShader).
     string fragmentShader;
-    StringId componentType;
+
+    /**
+     * Says whether the given entity is drawn by this pass.
+     *
+     * Asked once per entity per frame, when the pass gathers what it draws, not once per view.
+     * Nothing is required of an entity beyond what this says: a pass is free to take entities
+     * that are not renderable.
+     *
+     * A pass that leaves this null is skipped entirely every frame: nothing is drawn, and
+     * none of its other delegates are called. Nothing reports it, so a pass that silently
+     * draws nothing is worth checking for this first.
+     */
+    bool delegate(EntityId entity) acceptsEntity;
+
+    /**
+     * Draws one entity from one view. Called for every entity $(D acceptsEntity) took, once
+     * per view the pass draws this frame, after that view's $(D beginView).
+     *
+     * The pass's shader program is current when this is called, but a pass is free to switch
+     * to another for what it draws.
+     *
+     * A pass that leaves this null is skipped entirely, the same as one without
+     * $(D acceptsEntity).
+     */
     void delegate(EntityId entity, const ref RenderPass renderPass, const ref RenderView view) render;
 
     /**
      * Optional. Called once before any view, and fills the views this pass draws this frame.
      *
-     * A pass that leaves this null draws the active camera's view, once, which is what an
-     * ordinary pass wants. One that fills several - a shadow pass, one per casting light -
-     * has its entities drawn once per view.
+     * A pass that leaves this null draws the active camera's view, once. One that fills
+     * several has its entities drawn once per view.
      */
     void delegate(ref Array!RenderView views) beginPass;
 
@@ -360,6 +398,30 @@ Frustum activeCameraFrustum;
  * that apart from it not being drawn at all.
  */
 bool frustumCullingEnabled = true;
+
+/**
+ * Makes every model a shadow caster, except those given a
+ * $(D retrograde.engine.rendering.shadow.NonShadowCasterComponentType). While off, only
+ * models given a $(D retrograde.engine.rendering.shadow.ShadowCasterComponentType) cast.
+ * Either way, the component that agrees with the switch is ignored.
+ *
+ * On by default, so a light that casts shadows has something to cast them with. Every caster
+ * is drawn again into every map of every light that casts shadows, six times over for a point
+ * light, so a scene where few things need to cast is cheaper with this off and those few
+ * tagged instead.
+ */
+bool allModelsCastShadows = true;
+
+/**
+ * Makes every lit model a shadow receiver, except those given a
+ * $(D retrograde.engine.rendering.shadow.NonShadowReceiverComponentType). While off, only
+ * models given a $(D retrograde.engine.rendering.shadow.ShadowReceiverComponentType) receive.
+ * Either way, the component that agrees with the switch is ignored.
+ *
+ * On by default, like $(D allModelsCastShadows). Only entities that are drawn receive, so
+ * this does nothing for one without $(D RenderableComponentType).
+ */
+bool allModelsReceiveShadows = true;
 
 struct Color {
     /// Red

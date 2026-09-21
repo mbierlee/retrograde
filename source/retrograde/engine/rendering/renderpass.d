@@ -13,12 +13,12 @@ module retrograde.engine.rendering.renderpass;
 
 import retrograde.assets.model : ModelComponentType;
 
-import retrograde.engine.entity : EntityId;
+import retrograde.engine.entity : EntityId, hasComponent;
 import retrograde.engine.graphicsapi : beginShadowView, drawModel, drawModelDepth, endShadowPass,
     syncShadowMapSize;
-import retrograde.engine.rendering : RenderPass, RenderView;
+import retrograde.engine.rendering : RenderableComponentType, RenderPass, RenderView;
 import retrograde.engine.rendering.materialshader : maxShadowViews;
-import retrograde.engine.rendering.shadow : prepareShadowViews;
+import retrograde.engine.rendering.shadow : isShadowCaster, prepareShadowViews;
 
 import retrograde.std.collections : Array;
 
@@ -26,7 +26,9 @@ RenderPass genericModelRenderPass = RenderPass(
     "renderpass_generic_model",
     import("opengles3/renderpass_genericmodel_vertex.glsl"),
     import("opengles3/renderpass_genericmodel_fragment.glsl"),
-    ModelComponentType,
+    (EntityId entity) {
+    return entity.hasComponent(RenderableComponentType) && entity.hasComponent(ModelComponentType);
+},
     (EntityId entity, const ref RenderPass renderPass, const ref RenderView view) {
     drawModel(entity, renderPass, view);
 }
@@ -41,14 +43,17 @@ static if (maxShadowViews > 0) {
      * anything reads it. Registering it after one still works, but those surfaces sample the
      * previous frame's maps and their shadows lag a frame behind what casts them.
      *
-     * Without this pass registered nothing casts: lights keep lighting, `Light.castsShadows`
-     * is read by nothing, and no maps are allocated.
+     * Draws the shadow casters - see $(D isShadowCaster) - whether or not they are
+     * renderable, so an entity can block a light without being seen.
+     *
+     * Without this pass registered no light has a shadow map: lights keep lighting,
+     * `Light.castsShadows` is read by nothing, and no maps are allocated.
      */
     RenderPass shadowMapRenderPass = RenderPass(
         "renderpass_shadow_map",
         import("opengles3/renderpass_shadow_vertex.glsl"),
         import("opengles3/renderpass_shadow_fragment.glsl"),
-        ModelComponentType,
+        (EntityId entity) { return entity.isShadowCaster(); },
         (EntityId entity, const ref RenderPass renderPass, const ref RenderView view) {
         drawModelDepth(entity, renderPass, view);
     },

@@ -25,9 +25,13 @@
 
 module retrograde.engine.rendering.shadow;
 
+import retrograde.assets.model : ModelComponentType;
+
+import retrograde.engine.entity : EntityId, hasComponent;
 import retrograde.engine.rendering : activeCameraConfiguration, activeCameraOrientation,
-    activeCameraViewport, activeCameraWorldPosition, autoAspectRatio, CameraConfiguration,
-    LightType, ProjectionType, RenderView, Viewport;
+    activeCameraViewport, activeCameraWorldPosition, allModelsCastShadows,
+    allModelsReceiveShadows, autoAspectRatio, CameraConfiguration, LightType, ProjectionType,
+    RenderableComponentType, RenderView, Viewport;
 import retrograde.engine.rendering.lighting : ActiveLight, activeLights;
 import retrograde.engine.rendering.materialshader : maxShadowViews;
 
@@ -36,6 +40,75 @@ import retrograde.std.geometry : Frustum;
 import retrograde.std.math : atan2, createOrthographicMatrix, createPerspectiveMatrix,
     createViewMatrixQ, degreesToRadians, Matrix4, maxOf, minOf, Quaternion, scalar, tan,
     Vector3, Vector4;
+import retrograde.std.stringid : sid;
+
+/**
+ * Makes an entity's model block shadow-casting lights while $(D allModelsCastShadows) is off:
+ * it is drawn into the maps of every light that casts shadows.
+ *
+ * Needs no $(D RenderableComponentType), so an entity that is never drawn can still stand in
+ * the light's way. Ignored while $(D allModelsCastShadows) is on, when every model casts
+ * already and only $(D NonShadowCasterComponentType) is read.
+ */
+enum ShadowCasterComponentType = sid("comp_shadow_caster");
+
+/**
+ * Exempts an entity's model from casting while $(D allModelsCastShadows) is on - a glass pane
+ * in a scene where everything else casts.
+ *
+ * Ignored while $(D allModelsCastShadows) is off, when nothing casts unless it has
+ * $(D ShadowCasterComponentType).
+ */
+enum NonShadowCasterComponentType = sid("comp_non_shadow_caster");
+
+/**
+ * Makes an entity's surfaces darkened by the shadows others cast on them while
+ * $(D allModelsReceiveShadows) is off.
+ *
+ * Only an entity that is drawn by a lit material has a surface to darken, so without
+ * $(D RenderableComponentType) this does nothing. Ignored while $(D allModelsReceiveShadows)
+ * is on, when only $(D NonShadowReceiverComponentType) is read.
+ */
+enum ShadowReceiverComponentType = sid("comp_shadow_receiver");
+
+/**
+ * Exempts an entity's surfaces from being darkened by shadows while
+ * $(D allModelsReceiveShadows) is on.
+ *
+ * Ignored while $(D allModelsReceiveShadows) is off, when nothing receives unless it has
+ * $(D ShadowReceiverComponentType).
+ */
+enum NonShadowReceiverComponentType = sid("comp_non_shadow_receiver");
+
+/**
+ * Whether the entity is drawn into the shadow maps: it has a model, and the component that
+ * turns $(D allModelsCastShadows) around for it is absent if that is on, present if off.
+ */
+bool isShadowCaster(EntityId entity) {
+    if (!entity.hasComponent(ModelComponentType)) {
+        return false;
+    }
+
+    return allModelsCastShadows
+        ? !entity.hasComponent(NonShadowCasterComponentType)
+        : entity.hasComponent(ShadowCasterComponentType);
+}
+
+/**
+ * Whether the entity's surfaces are tested against the shadow maps: it is drawn, has a model,
+ * and the component that turns $(D allModelsReceiveShadows) around for it is absent if that
+ * is on, present if off.
+ */
+bool isShadowReceiver(EntityId entity) {
+    if (!entity.hasComponent(RenderableComponentType) ||
+        !entity.hasComponent(ModelComponentType)) {
+        return false;
+    }
+
+    return allModelsReceiveShadows
+        ? !entity.hasComponent(NonShadowReceiverComponentType)
+        : entity.hasComponent(ShadowReceiverComponentType);
+}
 
 /**
  * How shadows are rendered. Every setting can be changed at any time; a change takes effect
@@ -471,12 +544,150 @@ private Vector3 transformPoint(const Matrix4 transform, const Vector3 point) {
 
 version (UnitTesting)  :  //
 
+import retrograde.engine.entity : addComponent, createEntity, resetEcs;
 import retrograde.engine.rendering : Color, Light;
 import retrograde.std.geometry : Aabb;
+import retrograde.std.string : s;
 import retrograde.std.test : test, writeSection;
 
 void runShadowTests() {
     writeSection("-- Shadow tests --");
+
+    test("A model without the caster component does not cast while the switch is off", {
+        auto entity = createShadowTestEntity(false, false, false);
+        assert(!entity.isShadowCaster());
+        resetShadowSwitches();
+    });
+
+    test("A model with the caster component casts while the switch is off", {
+        auto entity = createShadowTestEntity(false, true, false);
+        assert(entity.isShadowCaster());
+        resetShadowSwitches();
+    });
+
+    test("A model without the caster component casts while the switch is on", {
+        auto entity = createShadowTestEntity(false, false, false);
+        allModelsCastShadows = true;
+        assert(entity.isShadowCaster());
+        resetShadowSwitches();
+    });
+
+    test("A model with the caster component casts while the switch is on", {
+        auto entity = createShadowTestEntity(false, true, false);
+        allModelsCastShadows = true;
+        assert(entity.isShadowCaster());
+        resetShadowSwitches();
+    });
+
+    test("A caster does not need to be renderable", {
+        auto entity = createShadowTestEntity(false, true, false);
+        assert(!entity.hasComponent(RenderableComponentType));
+        assert(entity.isShadowCaster());
+        resetShadowSwitches();
+    });
+
+    test("An entity without a model does not cast", {
+        resetEcs();
+        auto entity = createEntity("ent_shadow_test".s).value;
+        entity.addComponent(ShadowCasterComponentType);
+        allModelsCastShadows = true;
+        assert(!entity.isShadowCaster());
+        resetShadowSwitches();
+    });
+
+    test("A model without the receiver component does not receive while the switch is off", {
+        auto entity = createShadowTestEntity(true, false, false);
+        assert(!entity.isShadowReceiver());
+        resetShadowSwitches();
+    });
+
+    test("A model with the receiver component receives while the switch is off", {
+        auto entity = createShadowTestEntity(true, false, true);
+        assert(entity.isShadowReceiver());
+        resetShadowSwitches();
+    });
+
+    test("A model without the receiver component receives while the switch is on", {
+        auto entity = createShadowTestEntity(true, false, false);
+        allModelsReceiveShadows = true;
+        assert(entity.isShadowReceiver());
+        resetShadowSwitches();
+    });
+
+    test("A model with the receiver component receives while the switch is on", {
+        auto entity = createShadowTestEntity(true, false, true);
+        allModelsReceiveShadows = true;
+        assert(entity.isShadowReceiver());
+        resetShadowSwitches();
+    });
+
+    test("An entity that is not renderable does not receive", {
+        auto entity = createShadowTestEntity(false, false, true);
+        allModelsReceiveShadows = true;
+        assert(!entity.isShadowReceiver());
+        resetShadowSwitches();
+    });
+
+    test("A model that opted out of casting does not cast while the switch is on", {
+        auto entity = createShadowTestEntity(false, false, false);
+        entity.addComponent(NonShadowCasterComponentType);
+        allModelsCastShadows = true;
+        assert(!entity.isShadowCaster());
+        resetShadowSwitches();
+    });
+
+    test("A model that opted out of casting still casts by opting in while the switch is off", {
+        auto entity = createShadowTestEntity(false, true, false);
+        entity.addComponent(NonShadowCasterComponentType);
+        assert(entity.isShadowCaster());
+        resetShadowSwitches();
+    });
+
+    test("A model that opted in to casting still opts out while the switch is on", {
+        auto entity = createShadowTestEntity(false, true, false);
+        entity.addComponent(NonShadowCasterComponentType);
+        allModelsCastShadows = true;
+        assert(!entity.isShadowCaster());
+        resetShadowSwitches();
+    });
+
+    test("A model that opted out of receiving does not receive while the switch is on", {
+        auto entity = createShadowTestEntity(true, false, false);
+        entity.addComponent(NonShadowReceiverComponentType);
+        allModelsReceiveShadows = true;
+        assert(!entity.isShadowReceiver());
+        resetShadowSwitches();
+    });
+
+    test("A model that opted out of receiving still receives by opting in while the switch is off", {
+        auto entity = createShadowTestEntity(true, false, true);
+        entity.addComponent(NonShadowReceiverComponentType);
+        assert(entity.isShadowReceiver());
+        resetShadowSwitches();
+    });
+
+    test("A model that opted in to receiving still opts out while the switch is on", {
+        auto entity = createShadowTestEntity(true, false, true);
+        entity.addComponent(NonShadowReceiverComponentType);
+        allModelsReceiveShadows = true;
+        assert(!entity.isShadowReceiver());
+        resetShadowSwitches();
+    });
+
+    test("Opting out of casting leaves receiving alone", {
+        auto entity = createShadowTestEntity(true, false, true);
+        entity.addComponent(NonShadowCasterComponentType);
+        assert(!entity.isShadowCaster());
+        assert(entity.isShadowReceiver());
+        resetShadowSwitches();
+    });
+
+    test("Casting and receiving are decided separately", {
+        auto entity = createShadowTestEntity(true, true, false);
+        assert(entity.isShadowCaster());
+        assert(!entity.isShadowReceiver());
+        resetShadowSwitches();
+    });
 
     test("Camera frustum corners lie in front of an unturned camera", {
         resetShadowTestState();
@@ -736,4 +947,37 @@ private void addTestLight(const LightType lightType, const bool castsShadows) {
     light.attenuationRadius = 10;
 
     activeLights.add(ActiveLight(Vector3(0, 2, 0), Vector3(0, -1, 0), light));
+}
+
+/// A model entity in a fresh ECS, with whichever of the three components it is asked for.
+private EntityId createShadowTestEntity(const bool renderable, const bool caster,
+    const bool receiver) {
+    resetEcs();
+
+    // Off, whatever the defaults are: a test turns on only the switch it is about.
+    allModelsCastShadows = false;
+    allModelsReceiveShadows = false;
+
+    auto entity = createEntity("ent_shadow_test".s).value;
+    entity.addComponent(ModelComponentType);
+
+    if (renderable) {
+        entity.addComponent(RenderableComponentType);
+    }
+
+    if (caster) {
+        entity.addComponent(ShadowCasterComponentType);
+    }
+
+    if (receiver) {
+        entity.addComponent(ShadowReceiverComponentType);
+    }
+
+    return entity;
+}
+
+/// Puts the switches back to their defaults, so tests elsewhere see what a game would.
+private void resetShadowSwitches() {
+    allModelsCastShadows = true;
+    allModelsReceiveShadows = true;
 }
