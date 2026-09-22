@@ -15,6 +15,7 @@ import retrograde.std.memory : free, calloc, memcpy, realloc, unique, UniquePtr;
 import retrograde.std.hash : hashOf;
 import retrograde.std.collections : Array;
 import retrograde.std.option : Option, some, none;
+import retrograde.std.dlang : swapFields;
 
 /** 
  * A dynamic string that manages its own memory.
@@ -38,7 +39,24 @@ struct StringT(T) if (is(T == char) || is(T == wchar) || is(T == dchar)) {
         freePtr();
     }
 
-    void opAssign(ref return scope inout typeof(this) other) {
+    /** 
+     * Assignment operator for another String.
+     *
+     * An lvalue is deep-copied. An rvalue — a temporary, such as the result of a
+     * function returning a String by value — is moved instead: its storage is taken
+     * over rather than duplicated, and the temporary is left holding ours to release.
+     */
+    void opAssign()(auto ref inout typeof(this) other) {
+        static if (__traits(isRef, other)) {
+            copyAssign(other);
+        } else {
+            // `other` is a temporary that dies at the end of this expression, so take
+            // over its state and hand ours to it: its destructor releases what we held.
+            swapFields(this, *(cast(typeof(this)*)&other));
+        }
+    }
+
+    private void copyAssign(ref return scope inout typeof(this) other) {
         if (this.ptr is other.ptr) {
             return;
         }

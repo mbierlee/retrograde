@@ -11,6 +11,32 @@
 
 module retrograde.std.dlang;
 
+/**
+ * Swaps every field of two values of the same struct type.
+ *
+ * This is the move-assignment primitive for the hand-rolled containers: instead of
+ * releasing our own state and then stealing the source's, the two trade places. The
+ * moved-from value is left holding a fully valid container rather than a hollowed-out
+ * one, so it stays destructible by construction and its destructor is what releases
+ * the state we just replaced.
+ *
+ * Only meant for structs whose fields are pointers and integers; a field that is
+ * itself a value type with a copy constructor would be copied, not swapped.
+ *
+ * Params:
+ *  left = one of the two values to swap.
+ *  right = the other value to swap.
+ */
+void swapFields(T)(ref T left, ref T right) {
+    static foreach (i, FieldType; typeof(T.tupleof)) {
+        {
+            FieldType temp = left.tupleof[i];
+            left.tupleof[i] = right.tupleof[i];
+            right.tupleof[i] = temp;
+        }
+    }
+}
+
 mixin template CopyConstructors(T) {
     this(ref return scope inout typeof(this) other) {
         static foreach (member; __traits(allMembers, T)) {

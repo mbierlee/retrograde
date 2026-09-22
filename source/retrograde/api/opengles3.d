@@ -676,10 +676,11 @@ void loadEntityModel(EntityId entity) {
 
 /**
  * Expands an 8-bit single-channel grayscale image into a tightly packed RGB byte buffer,
- * replicating the gray value across R, G and B. The result is appended to `rgb`.
+ * replicating the gray value across R, G and B.
  */
-private void expandGrayscaleToRgb(const ref Image image, ref Array!ubyte rgb) {
+private Array!ubyte expandGrayscaleToRgb(const ref Image image) {
     size_t pixelCount = cast(size_t) image.width * image.height;
+    Array!ubyte rgb;
     rgb.capacity = pixelCount * 3;
     foreach (i; 0 .. pixelCount) {
         ubyte gray = image.pixelData[i];
@@ -687,15 +688,17 @@ private void expandGrayscaleToRgb(const ref Image image, ref Array!ubyte rgb) {
         rgb.add(gray);
         rgb.add(gray);
     }
+
+    return rgb;
 }
 
 /**
  * Expands an 8-bit grayscale + alpha (2 channel) image into a tightly packed RGBA byte buffer,
  * replicating the gray value across R, G and B and taking the alpha from the second channel.
- * The result is appended to `rgba`.
  */
-private void expandGrayscaleAlphaToRgba(const ref Image image, ref Array!ubyte rgba) {
+private Array!ubyte expandGrayscaleAlphaToRgba(const ref Image image) {
     size_t pixelCount = cast(size_t) image.width * image.height;
+    Array!ubyte rgba;
     rgba.capacity = pixelCount * 4;
     foreach (i; 0 .. pixelCount) {
         ubyte gray = image.pixelData[i * 2];
@@ -705,6 +708,8 @@ private void expandGrayscaleAlphaToRgba(const ref Image image, ref Array!ubyte r
         rgba.add(gray);
         rgba.add(alpha);
     }
+
+    return rgba;
 }
 
 /**
@@ -754,11 +759,11 @@ private GLuint createMaterialTexture(Model* model, TextureIndex textureIndex) {
     const(ubyte)[] pixels;
     if (image.channelCount == 1) {
         format = GL_RGB;
-        expandGrayscaleToRgb(*image, expandedPixels);
+        expandedPixels = expandGrayscaleToRgb(*image);
         pixels = expandedPixels.arr;
     } else if (image.channelCount == 2) {
         format = GL_RGBA;
-        expandGrayscaleAlphaToRgba(*image, expandedPixels);
+        expandedPixels = expandGrayscaleAlphaToRgba(*image);
         pixels = expandedPixels.arr;
     } else if (image.channelCount == 3) {
         format = GL_RGB;

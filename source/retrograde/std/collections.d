@@ -16,6 +16,7 @@ import retrograde.std.math : ceil;
 import retrograde.std.option : Option, some, none;
 import retrograde.std.hash : hashOf;
 import retrograde.std.result : Result, success, failure;
+import retrograde.std.dlang : swapFields;
 
 private enum defaultChunkSize = 8;
 
@@ -258,13 +259,26 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
     }
 
     /**
-     * Assignment operator for copying another Array.
-     * Creates a deep copy of the other array.
+     * Assignment operator for another Array.
+     *
+     * An lvalue is deep-copied. An rvalue — a temporary, such as the result of a
+     * function returning an Array by value — is moved instead: its storage is taken
+     * over rather than duplicated, and the temporary is left holding ours to release.
      *
      * Params:
-     *  other = the array to copy from.
+     *  other = the array to copy or move from.
      */
-    void opAssign(ref return scope inout typeof(this) other) {
+    void opAssign()(auto ref inout typeof(this) other) {
+        static if (__traits(isRef, other)) {
+            copyAssign(other);
+        } else {
+            // `other` is a temporary that dies at the end of this expression, so take
+            // over its state and hand ours to it: its destructor releases what we held.
+            swapFields(this, *(cast(typeof(this)*)&other));
+        }
+    }
+
+    private void copyAssign(ref return scope inout typeof(this) other) {
         if (this is other) {
             return;
         }
@@ -1105,13 +1119,26 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
     }
 
     /**
-     * Assignment operator for copying another SlotList.
-     * Creates a deep copy of the other slot list.
+     * Assignment operator for another SlotList.
+     *
+     * An lvalue is deep-copied. An rvalue — a temporary, such as the result of a
+     * function returning a SlotList by value — is moved instead: its storage is taken
+     * over rather than duplicated, and the temporary is left holding ours to release.
      *
      * Params:
-     *  other = the slot list to copy from.
+     *  other = the slot list to copy or move from.
      */
-    void opAssign(ref return scope inout typeof(this) other) {
+    void opAssign()(auto ref inout typeof(this) other) {
+        static if (__traits(isRef, other)) {
+            copyAssign(other);
+        } else {
+            // `other` is a temporary that dies at the end of this expression, so take
+            // over its state and hand ours to it: its destructor releases what we held.
+            swapFields(this, *(cast(typeof(this)*)&other));
+        }
+    }
+
+    private void copyAssign(ref return scope inout typeof(this) other) {
         if (this is other) {
             return;
         }
@@ -1578,13 +1605,26 @@ struct LinkedList(T) {
     }
 
     /**
-     * Assignment operator for copying another LinkedList.
-     * Creates a deep copy of the other list.
+     * Assignment operator for another LinkedList.
+     *
+     * An lvalue is deep-copied. An rvalue — a temporary, such as the result of a
+     * function returning a LinkedList by value — is moved instead: its storage is taken
+     * over rather than duplicated, and the temporary is left holding ours to release.
      *
      * Params:
-     *  other = the list to copy from.
+     *  other = the list to copy or move from.
      */
-    void opAssign(ref return scope inout typeof(this) other) {
+    void opAssign()(auto ref inout typeof(this) other) {
+        static if (__traits(isRef, other)) {
+            copyAssign(other);
+        } else {
+            // `other` is a temporary that dies at the end of this expression, so take
+            // over its state and hand ours to it: its destructor releases what we held.
+            swapFields(this, *(cast(typeof(this)*)&other));
+        }
+    }
+
+    private void copyAssign(ref return scope inout typeof(this) other) {
         NodePtr node = head;
         while (node !is null) {
             NodePtr next = node.next;
@@ -2012,7 +2052,27 @@ struct HashMap(K, V) {
         clear();
     }
 
-    void opAssign(ref return scope inout typeof(this) other) {
+    /**
+     * Assignment operator for another HashMap.
+     *
+     * An lvalue is deep-copied. An rvalue — a temporary, such as the result of a
+     * function returning a HashMap by value — is moved instead: its storage is taken
+     * over rather than duplicated, and the temporary is left holding ours to release.
+     *
+     * Params:
+     *  other = the map to copy or move from.
+     */
+    void opAssign()(auto ref inout typeof(this) other) {
+        static if (__traits(isRef, other)) {
+            copyAssign(other);
+        } else {
+            // `other` is a temporary that dies at the end of this expression, so take
+            // over its state and hand ours to it: its destructor releases what we held.
+            swapFields(this, *(cast(typeof(this)*)&other));
+        }
+    }
+
+    private void copyAssign(ref return scope inout typeof(this) other) {
         clear();
         auto mutableOther = cast(typeof(this)*) &other;
         copyFrom(*mutableOther);
@@ -2653,13 +2713,26 @@ struct Queue(T, size_t chunkSize = defaultChunkSize) {
     }
 
     /**
-     * Assignment operator for copying another Queue.
-     * Creates a deep copy of the other queue.
+     * Assignment operator for another Queue.
+     *
+     * An lvalue is deep-copied. An rvalue — a temporary, such as the result of a
+     * function returning a Queue by value — is moved instead: its storage is taken
+     * over rather than duplicated, and the temporary is left holding ours to release.
      *
      * Params:
-     *  other = the queue to copy from.
+     *  other = the queue to copy or move from.
      */
-    void opAssign(ref return scope inout typeof(this) other) {
+    void opAssign()(auto ref inout typeof(this) other) {
+        static if (__traits(isRef, other)) {
+            copyAssign(other);
+        } else {
+            // `other` is a temporary that dies at the end of this expression, so take
+            // over its state and hand ours to it: its destructor releases what we held.
+            swapFields(this, *(cast(typeof(this)*)&other));
+        }
+    }
+
+    private void copyAssign(ref return scope inout typeof(this) other) {
         if (this is other) {
             return;
         }
@@ -2961,6 +3034,7 @@ struct Queue(T, size_t chunkSize = defaultChunkSize) {
 version (UnitTesting)  :  ///
 
 import retrograde.std.dlang : CopyConstructors;
+import retrograde.std.string : String;
 
 private struct InnerArrayOwner {
     Array!int values;
@@ -2975,6 +3049,7 @@ void runCollectionsTests() {
     runLinkedListTests();
     runHashMapTests();
     runQueueTests();
+    runMoveAssignmentTests();
 }
 
 void runArrayTests() {
@@ -4908,5 +4983,287 @@ void runQueueTests() {
 
         free(first);
         free(second);
+    });
+}
+
+// Counts how many of these are alive, so a move can be told apart from a copy and a
+// dropped element from a leaked one. Every path that produces an armed instance has to
+// count, including opAssign: the containers assign into raw storage rather than
+// copy-constructing into it.
+private __gshared int liveTrackedCount = 0;
+
+// Counts element-level copies, so a move can be shown to be a move: taking a
+// temporary's buffer must not touch the elements in it at all.
+private __gshared int copiedTrackedCount = 0;
+
+private struct Tracked {
+    int value = 0;
+    private bool armed = false;
+
+    this(int value) {
+        this.value = value;
+        armed = true;
+        liveTrackedCount++;
+    }
+
+    this(ref return scope inout Tracked other) {
+        copiedTrackedCount++;
+        value = other.value;
+        armed = other.armed;
+        if (armed) {
+            liveTrackedCount++;
+        }
+    }
+
+    void opAssign(ref return scope inout Tracked other) {
+        copiedTrackedCount++;
+        if (armed) {
+            liveTrackedCount--;
+        }
+
+        value = other.value;
+        armed = other.armed;
+        if (armed) {
+            liveTrackedCount++;
+        }
+    }
+
+    ~this() {
+        if (armed) {
+            liveTrackedCount--;
+            armed = false;
+        }
+    }
+}
+
+private __gshared const(void)* lastBuiltIntBuffer = null;
+
+private Array!int makeIntArray(int count) {
+    Array!int array;
+    foreach (i; 0 .. count) {
+        array.add(i);
+    }
+
+    lastBuiltIntBuffer = array.arr.ptr;
+    return array;
+}
+
+private __gshared const(void)* lastBuiltBuffer = null;
+
+private Array!Tracked makeTrackedArray(int count) {
+    Array!Tracked array;
+    foreach (i; 0 .. count) {
+        array.add(Tracked(i));
+    }
+
+    lastBuiltBuffer = array.arr.ptr;
+    return array;
+}
+
+private Queue!Tracked makeTrackedQueue(int count) {
+    Queue!Tracked queue;
+    foreach (i; 0 .. count) {
+        queue.enqueue(Tracked(i));
+    }
+
+    return queue;
+}
+
+private SlotList!int makeSlotList(int count) {
+    SlotList!int list;
+    foreach (i; 0 .. count) {
+        list.add(i);
+    }
+
+    return list;
+}
+
+private LinkedList!int makeLinkedList(int count) {
+    LinkedList!int list;
+    foreach (i; 0 .. count) {
+        list.add(i);
+    }
+
+    return list;
+}
+
+private HashMap!(int, int) makeHashMap(int count) {
+    HashMap!(int, int) map;
+    foreach (i; 0 .. count) {
+        map.put(i, i * 10);
+    }
+
+    return map;
+}
+
+private String makeString(string value) {
+    String string_ = value;
+    return string_;
+}
+
+void runMoveAssignmentTests() {
+    import retrograde.std.test : test, writeSection;
+
+    writeSection("-- Container move assignment tests --");
+
+    test("Assigning an Array temporary moves it", () {
+        liveTrackedCount = 0;
+        {
+            Array!Tracked array = makeTrackedArray(3);
+            array = makeTrackedArray(5);
+
+            // The destination ends up owning the exact buffer the temporary built, so
+            // the elements were taken over rather than copied out of it.
+            assert(array.arr.ptr is lastBuiltBuffer);
+            assert(array.length == 5);
+            foreach (i; 0 .. array.length) {
+                assert(array[i].value == cast(int) i);
+            }
+
+            // The five moved-in elements are alive; the three overwritten ones were
+            // destroyed exactly once by the temporary that received them.
+            assert(liveTrackedCount == 5);
+        }
+
+        assert(liveTrackedCount == 0);
+    });
+
+    test("A moved-into Array is still usable", () {
+        Array!int array;
+        array = makeIntArray(3);
+        assert(array.arr.ptr is lastBuiltIntBuffer);
+        array.add(99);
+
+        assert(array.length == 4);
+        assert(array.capacity >= 4);
+        assert(array[3] == 99);
+
+        array.remove(0);
+        assert(array.length == 3);
+        assert(array[0] == 1);
+    });
+
+    test("Assigning an Array lvalue still deep-copies", () {
+        liveTrackedCount = 0;
+        {
+            Array!Tracked source = makeTrackedArray(3);
+            Array!Tracked target;
+            copiedTrackedCount = 0;
+            target = source;
+
+            assert(copiedTrackedCount == 3);
+            assert(source.length == 3);
+            assert(target.length == 3);
+
+            // Counterpart to the move test above: a copy leaves the source's buffer
+            // with the source, so the destination cannot be holding it.
+            assert(source.arr.ptr is lastBuiltBuffer);
+            assert(target.arr.ptr !is lastBuiltBuffer);
+        }
+
+        Array!int source = makeIntArray(3);
+        Array!int target;
+        target = source;
+        source[0] = 99;
+
+        assert(target.length == 3);
+        assert(target[0] == 0);
+    });
+
+    test("Assigning an Array temporary over an empty Array moves it", () {
+        liveTrackedCount = 0;
+        {
+            Array!Tracked array;
+            array = makeTrackedArray(2);
+            assert(array.length == 2);
+            assert(liveTrackedCount == 2);
+        }
+
+        assert(liveTrackedCount == 0);
+    });
+
+    test("Assigning a const Array still compiles and copies", () {
+        const Array!int source = makeIntArray(3);
+        Array!int target;
+        target = source;
+
+        assert(target.length == 3);
+        assert(target[2] == 2);
+    });
+
+    test("Assigning a Queue temporary moves it", () {
+        liveTrackedCount = 0;
+        {
+            Queue!Tracked queue = makeTrackedQueue(2);
+            queue = makeTrackedQueue(4);
+
+            assert(queue.length == 4);
+            assert(liveTrackedCount == 4);
+            assert(queue.dequeue().value.value == 0);
+            assert(queue.length == 3);
+        }
+
+        assert(liveTrackedCount == 0);
+    });
+
+    test("Assigning a SlotList temporary moves it", () {
+        SlotList!int list = makeSlotList(2);
+        list = makeSlotList(4);
+
+        assert(list.length == 4);
+        assert(list[3] == 3);
+
+        // Serials came along with the buffer, so freshly added slots stay unique.
+        auto slot = list.add(99);
+        assert(slot.isSuccessful);
+        assert(list.get(slot.value).value == 99);
+    });
+
+    test("Assigning a LinkedList temporary moves it", () {
+        LinkedList!int list = makeLinkedList(2);
+        list = makeLinkedList(4);
+
+        assert(list.length == 4);
+        assert(list[3] == 3);
+
+        list.add(99);
+        assert(list.length == 5);
+        assert(list[4] == 99);
+    });
+
+    test("Assigning a HashMap temporary moves it", () {
+        HashMap!(int, int) map = makeHashMap(2);
+        map = makeHashMap(8);
+
+        assert(map.length == 8);
+        foreach (i; 0 .. 8) {
+            assert(map[i] == i * 10);
+        }
+
+        map.put(99, 990);
+        assert(map.length == 9);
+        assert(map[99] == 990);
+        assert(!map.contains(2000));
+    });
+
+    test("Assigning a String temporary moves it", () {
+        String string_ = makeString("first");
+        string_ = makeString("second");
+
+        assert(string_ == "second");
+        assert(string_.length == 6);
+
+        string_ ~= "!";
+        assert(string_ == "second!");
+    });
+
+    test("Assigning a String lvalue still deep-copies", () {
+        String source = makeString("source");
+        String target = makeString("target");
+        target = source;
+        source ~= "!";
+
+        assert(target == "source");
+        assert(source == "source!");
     });
 }

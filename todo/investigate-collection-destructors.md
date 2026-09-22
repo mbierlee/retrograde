@@ -40,6 +40,25 @@ source slot is then destroyed, you may end up freeing the same resource twice
 unless the source is reset to `T.init` first (or the move uses
 `core.lifetime.move` semantics).
 
+## Confirmed: the lvalue copy path leaks elements
+
+Measured with an element type that counts live instances (see the
+`Tracked` helper in the move-assignment tests in
+`source/retrograde/std/collections.d`):
+
+`Array.opAssign`'s copy path `realloc`s the buffer and `memset`s it to zero
+**without destroying the elements already living there**. Assigning a
+4-element array over a live 2-element `Array!T` leaves those 2 `T`s never
+destructed — 10 live instances where 8 are expected, and 2 still live after
+the scope exits.
+
+This is independent of the move-assignment work: the numbers are identical
+with the pre-`auto ref` `opAssign`. The move path added since does *not* have
+the problem — it routes the overwritten buffer through a destructor — so the
+copy branch (now `Array.copyAssign`) is the place to fix. Check the other
+containers' `copyAssign` bodies for the same `memset`-over-live-elements
+pattern.
+
 ## Containers / methods to audit
 
 At minimum:
