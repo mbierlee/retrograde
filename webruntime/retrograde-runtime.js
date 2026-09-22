@@ -332,8 +332,7 @@ export default class RetrogradeRuntime {
           fragmentShader,
         );
 
-        this.shaderPrograms.push(program);
-        return this.shaderPrograms.length;
+        return this.storeGlObject(this.shaderPrograms, program);
       },
 
       resizeCanvasToDisplaySize: () => {
@@ -354,12 +353,16 @@ export default class RetrogradeRuntime {
 
       glCreateBuffer: () => {
         const buffer = this.glContext.createBuffer();
-        this.buffers.push(buffer);
-        return this.buffers.length;
+        return this.storeGlObject(this.buffers, buffer);
       },
 
       glDeleteBuffer: (buffer) => {
-        const bufferObject = this.getBufferObject(buffer);
+        const bufferObject = this.releaseGlObject(
+          this.buffers,
+          buffer,
+          "Buffer",
+        );
+
         this.glContext.deleteBuffer(bufferObject);
       },
 
@@ -380,13 +383,14 @@ export default class RetrogradeRuntime {
 
       glCreateVertexArray: () => {
         const vertextArrayObject = this.glContext.createVertexArray();
-        this.vertextArrayObjects.push(vertextArrayObject);
-        return this.vertextArrayObjects.length;
+        return this.storeGlObject(this.vertextArrayObjects, vertextArrayObject);
       },
 
       glDeleteVertexArray: (vertextArrayObjectName) => {
-        const vertextArrayObject = this.getVertexArrayObject(
+        const vertextArrayObject = this.releaseGlObject(
+          this.vertextArrayObjects,
           vertextArrayObjectName,
+          "Vertex Array Object",
         );
 
         this.glContext.deleteVertexArray(vertextArrayObject);
@@ -464,8 +468,19 @@ export default class RetrogradeRuntime {
 
         const programObject = this.getProgramObject(program);
         const location = this.glContext.getUniformLocation(programObject, name);
-        this.uniformLocations.push(location);
-        return this.uniformLocations.length;
+
+        // -1 is what GL returns for a name the program does not have, and what
+        // glGetAttribLocation already relays, so an absent uniform stays
+        // something D can test for rather than a handle that looks valid.
+        // It is cached like any other, so that a name the program lacks is not
+        // looked up again on every call.
+        const handle =
+          location === null
+            ? -1
+            : this.storeGlObject(this.uniformLocations, location);
+
+        this.uniformLocationDict[dictKey] = handle;
+        return handle;
       },
 
       glGetAttribLocation: (program, nameLength, namePtr) => {
@@ -524,12 +539,16 @@ export default class RetrogradeRuntime {
 
       glCreateTexture: () => {
         const texture = this.glContext.createTexture();
-        this.textures.push(texture);
-        return this.textures.length;
+        return this.storeGlObject(this.textures, texture);
       },
 
       glDeleteTexture: (texture) => {
-        const textureObject = this.getTextureObject(texture);
+        const textureObject = this.releaseGlObject(
+          this.textures,
+          texture,
+          "Texture",
+        );
+
         this.glContext.deleteTexture(textureObject);
       },
 
@@ -610,12 +629,16 @@ export default class RetrogradeRuntime {
 
       glCreateFramebuffer: () => {
         const framebuffer = this.glContext.createFramebuffer();
-        this.framebuffers.push(framebuffer);
-        return this.framebuffers.length;
+        return this.storeGlObject(this.framebuffers, framebuffer);
       },
 
       glDeleteFramebuffer: (framebuffer) => {
-        const framebufferObject = this.getFramebufferObject(framebuffer);
+        const framebufferObject = this.releaseGlObject(
+          this.framebuffers,
+          framebuffer,
+          "Framebuffer",
+        );
+
         this.glContext.deleteFramebuffer(framebufferObject);
       },
 
@@ -840,7 +863,38 @@ export default class RetrogradeRuntime {
       throw new Error(`${type} ${name} does not exist`);
     }
 
-    return list[index];
+    const object = list[index];
+    if (object === null) {
+      throw new Error(`${type} ${name} was deleted`);
+    }
+
+    return object;
+  }
+
+  // Handles are 1-based indices into these tables, so that 0 means "no object"
+  // the way a GL name of 0 does. A deleted slot is nulled and handed out again
+  // by the next create: without that the tables only ever grow, and a game that
+  // recreates GL objects while it runs leaks a slot per recreation. Changing
+  // ShadowSettings.mapSize is one such case, since it remakes the shadow map
+  // array texture, so a settings slider would leak a slot per step.
+  storeGlObject(list, object) {
+    const freeIndex = list.indexOf(null);
+    if (freeIndex !== -1) {
+      list[freeIndex] = object;
+      return freeIndex + 1;
+    }
+
+    list.push(object);
+    return list.length;
+  }
+
+  releaseGlObject(list, name, type) {
+    const object = this.getGlObject(list, name, type);
+    if (name != 0) {
+      list[name - 1] = null;
+    }
+
+    return object;
   }
 
   getProgramObject(name) {
@@ -860,6 +914,13 @@ export default class RetrogradeRuntime {
   }
 
   getUniformLocationObject(name) {
+    // -1 is GL's "this program has no such uniform". Setting one is a silent
+    // no-op there, and a null location makes the WebGL uniform* calls do the
+    // same, so D may pass the location on without testing it first.
+    if (name === -1) {
+      return null;
+    }
+
     return this.getGlObject(this.uniformLocations, name, "Uniform Location");
   }
 
