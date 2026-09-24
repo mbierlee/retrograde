@@ -127,8 +127,7 @@ struct UniquePtr(T) {
     @disable void opAssign(ref typeof(this));
 
     void opAssign(typeof(null)) {
-        auto ptr = release();
-        free(ptr);
+        cleanup();
     }
 
     auto opDispatch(string s)() {
@@ -461,8 +460,12 @@ struct ResultPtr(T) {
     @disable void opAssign(ref typeof(this));
 
     void opAssign(typeof(null)) {
+        // Released rather than only cleaned up, so the pointer also reads as a failure afterwards.
         auto ptr = release();
-        free(ptr);
+        if (ptr !is null) {
+            destroy(*ptr);
+            free(ptr);
+        }
     }
 
     auto opDispatch(string s)() {
@@ -911,6 +914,15 @@ void runUniquePointerTests() {
         assert(ptr._ptr is null);
     });
 
+    test("Nullifying a unique pointer destroys the contained value", {
+        auto ptr = makeRaw!TestStruct().unique;
+        testStructDestroyed = false;
+
+        ptr = null;
+        assert(testStructDestroyed);
+        assert(!ptr.isDefined());
+    });
+
     test("Initialize a null unique pointer", {
         auto ptr = UniquePtr!int();
         assert(ptr._ptr is null);
@@ -1254,6 +1266,16 @@ void runResultPointerTests() {
         ptr = null;
         assert(!ptr.isDefined());
         assert(ptr._ptr is null);
+    });
+
+    test("Nullifying a result pointer destroys the contained value", {
+        auto ptr = makeRaw!TestStruct().successPtr;
+        testStructDestroyed = false;
+
+        ptr = null;
+        assert(testStructDestroyed);
+        assert(!ptr.isDefined());
+        assert(ptr.isFailure());
     });
 
     test("Initialize a null result pointer", {

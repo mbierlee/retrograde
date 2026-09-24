@@ -11,7 +11,7 @@
 
 module retrograde.std.collections;
 
-import retrograde.std.memory : malloc, realloc, free, calloc, allocateRaw, memset, memcpy;
+import retrograde.std.memory : malloc, realloc, free, calloc, memset, memcpy;
 import retrograde.std.math : ceil;
 import retrograde.std.option : Option, some, none;
 import retrograde.std.hash : hashOf;
@@ -123,6 +123,10 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
             return;
         }
 
+        for (size_t i = newCapacity; i < _length; i++) {
+            items[i].destroy();
+        }
+
         resize(newCapacity - capacity);
 
         if (_length > _capacity) {
@@ -162,15 +166,13 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
             return;
         }
 
-        if (index == _length - 1) {
-            _length--;
-            return;
-        }
-
         for (size_t i = index; i < _length - 1; i++) {
             items[i] = items[i + 1];
         }
 
+        // The shift copied the last element one slot down, so the tail slot holds
+        // a duplicate that would otherwise never be destructed.
+        items[_length - 1].destroy();
         _length--;
     }
 
@@ -197,10 +199,7 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
      */
     void clear() {
         if (items !is null) {
-            for (size_t i = 0; i < _length; i++) {
-                items[i].destroy();
-            }
-
+            destroyItems();
             free(items);
             items = null;
         }
@@ -219,6 +218,10 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
      */
     void truncate(size_t newLength) {
         if (newLength < _length) {
+            for (size_t i = newLength; i < _length; i++) {
+                items[i].destroy();
+            }
+
             _length = newLength;
         }
     }
@@ -283,11 +286,15 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
             return;
         }
 
-        if (other._capacity == 0) {
+        // An empty source can still have capacity, e.g. after truncate(0). Copying it
+        // would realloc to zero bytes, which may free the buffer and return null.
+        if (other._length == 0) {
             clear();
             return;
         }
 
+        // The memset below wipes the buffer, so current elements must be released first.
+        destroyItems();
         T* newItems = cast(T*) realloc(items, T.sizeof * other._length);
         if (newItems is null) {
             assert(0, "Failed to allocate memory during assignment of array");
@@ -323,6 +330,7 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
             return;
         }
 
+        destroyItems();
         T* newItems = cast(T*) realloc(items, T.sizeof * other.length);
         if (newItems is null) {
             assert(0, "Failed to allocate memory during assignment of array");
@@ -645,6 +653,12 @@ struct Array(T, size_t chunkSize = defaultChunkSize) {
         }
 
         return 0;
+    }
+
+    private void destroyItems() {
+        for (size_t i = 0; i < _length; i++) {
+            items[i].destroy();
+        }
     }
 
     private void considerResize() {
@@ -1148,6 +1162,11 @@ struct SlotList(T, size_t chunkSize = defaultChunkSize) {
             return;
         }
 
+        // The memset below wipes the buffer, so current elements must be released first.
+        for (size_t i = 0; i < _length; i++) {
+            items[i].destroy();
+        }
+
         T* newItems = cast(T*) realloc(items, T.sizeof * other._length);
         uint* newSerials = cast(uint*) realloc(serials, uint.sizeof * other._length);
         
@@ -1387,13 +1406,7 @@ struct LinkedList(T) {
     private size_t _length;
 
     ~this() {
-        NodePtr node = head;
-        while (node !is null) {
-            NodePtr next = node.next;
-            node.value.destroy();
-            free(node);
-            node = next;
-        }
+        clear();
     }
 
     /** 
@@ -1410,7 +1423,7 @@ struct LinkedList(T) {
      *   item = the item to add.
      */
     void add(T item) {
-        NodePtr node = allocateRaw!(LinkedListNode!T);
+        NodePtr node = allocateNode();
         node.next = null;
         node.prev = null;
         node.value = item;
@@ -1443,7 +1456,7 @@ struct LinkedList(T) {
             head.prev = null;
         }
 
-        free(node);
+        freeNode(node);
         _length--;
     }
 
@@ -1463,7 +1476,7 @@ struct LinkedList(T) {
             tail.next = null;
         }
 
-        free(node);
+        freeNode(node);
         _length--;
     }
 
@@ -1496,7 +1509,7 @@ struct LinkedList(T) {
                     node.next.prev = node.prev;
                 }
 
-                free(node);
+                freeNode(node);
                 _length--;
             }
 
@@ -1520,7 +1533,7 @@ struct LinkedList(T) {
         NodePtr node = head;
         while (node !is null) {
             NodePtr next = node.next;
-            free(node);
+            freeNode(node);
             node = next;
         }
 
@@ -1625,15 +1638,12 @@ struct LinkedList(T) {
     }
 
     private void copyAssign(ref return scope inout typeof(this) other) {
-        NodePtr node = head;
-        while (node !is null) {
-            NodePtr next = node.next;
-            free(node);
-            node = next;
+        if (this is other) {
+            return;
         }
 
-        _length = 0;
-        node = cast(NodePtr) other.head;
+        clear();
+        NodePtr node = cast(NodePtr) other.head;
         while (node !is null) {
             add(node.value);
             node = node.next;
@@ -1795,6 +1805,19 @@ struct LinkedList(T) {
         return hash;
     }
 
+    // Zeroed rather than raw, because the value is filled in by opAssign, which
+    // releases whatever it believes the slot held before.
+    private NodePtr allocateNode() {
+        NodePtr node = cast(NodePtr) calloc(1, LinkedListNode!T.sizeof);
+        assert(node !is null, "Failed to allocate memory for linked list node");
+        return node;
+    }
+
+    private void freeNode(NodePtr node) {
+        node.value.destroy();
+        free(node);
+    }
+
     private void removeItems(T item, bool onlyRemoveFirst) {
         NodePtr node = head;
         while (node !is null) {
@@ -1812,7 +1835,7 @@ struct LinkedList(T) {
                     node.next.prev = node.prev;
                 }
 
-                free(node);
+                freeNode(node);
                 _length--;
 
                 if (onlyRemoveFirst) {
@@ -1956,7 +1979,7 @@ struct LinkedListIterator(T) {
 
         list._length--;
 
-        free(node);
+        list.freeNode(node);
 
         // Reposition onto the predecessor so that next() lands on the
         // successor of the removed node. If there was no predecessor the
@@ -1978,7 +2001,7 @@ struct LinkedListIterator(T) {
      *   value = The value to insert.
      */
     void insert(T value) {
-        NodePtr newNode = allocateRaw!(LinkedListNode!T);
+        NodePtr newNode = list.allocateNode();
         newNode.value = value;
 
         if (node is null) {
@@ -2073,6 +2096,10 @@ struct HashMap(K, V) {
     }
 
     private void copyAssign(ref return scope inout typeof(this) other) {
+        if (this is other) {
+            return;
+        }
+
         clear();
         auto mutableOther = cast(typeof(this)*) &other;
         copyFrom(*mutableOther);
@@ -3050,6 +3077,7 @@ void runCollectionsTests() {
     runHashMapTests();
     runQueueTests();
     runMoveAssignmentTests();
+    runElementDestructionTests();
 }
 
 void runArrayTests() {
@@ -5170,6 +5198,26 @@ void runMoveAssignmentTests() {
         assert(target[0] == 0);
     });
 
+    test("Assigning an emptied Array lvalue that still has capacity clears the target", () {
+        liveTrackedCount = 0;
+        {
+            Array!Tracked source = makeTrackedArray(3);
+            source.truncate(0);
+            assert(source.capacity > 0);
+
+            Array!Tracked target = makeTrackedArray(2);
+            target = source;
+            assert(target.length == 0);
+            assert(liveTrackedCount == 0);
+
+            target.add(Tracked(9));
+            assert(target.length == 1);
+            assert(target[0].value == 9);
+        }
+
+        assert(liveTrackedCount == 0);
+    });
+
     test("Assigning an Array temporary over an empty Array moves it", () {
         liveTrackedCount = 0;
         {
@@ -5246,6 +5294,15 @@ void runMoveAssignmentTests() {
         assert(!map.contains(2000));
     });
 
+    test("Copy-assigning a HashMap to itself keeps its entries", () {
+        HashMap!(int, int) map = makeHashMap(3);
+        HashMap!(int, int)* alias_ = &map;
+        map = *alias_;
+
+        assert(map.length == 3);
+        assert(map[2] == 20);
+    });
+
     test("Assigning a String temporary moves it", () {
         String string_ = makeString("first");
         string_ = makeString("second");
@@ -5265,5 +5322,250 @@ void runMoveAssignmentTests() {
 
         assert(target == "source");
         assert(source == "source!");
+    });
+}
+
+private LinkedList!Tracked makeTrackedLinkedList(int count) {
+    LinkedList!Tracked list;
+    foreach (i; 0 .. count) {
+        list.add(Tracked(i));
+    }
+
+    return list;
+}
+
+private SlotList!Tracked makeTrackedSlotList(int count) {
+    SlotList!Tracked list;
+    foreach (i; 0 .. count) {
+        list.add(Tracked(i));
+    }
+
+    return list;
+}
+
+void runElementDestructionTests() {
+    import retrograde.std.test : test, writeSection;
+
+    writeSection("-- Container element destruction tests --");
+
+    test("Removing the last element of an Array destructs it", () {
+        liveTrackedCount = 0;
+        {
+            Array!Tracked array = makeTrackedArray(3);
+            array.remove(2);
+            assert(array.length == 2);
+            assert(liveTrackedCount == 2);
+        }
+
+        assert(liveTrackedCount == 0);
+    });
+
+    test("Removing a middle element of an Array destructs exactly one element", () {
+        liveTrackedCount = 0;
+        {
+            Array!Tracked array = makeTrackedArray(4);
+            array.remove(1);
+            assert(array.length == 3);
+            assert(array[0].value == 0);
+            assert(array[1].value == 2);
+            assert(array[2].value == 3);
+            assert(liveTrackedCount == 3);
+        }
+
+        assert(liveTrackedCount == 0);
+    });
+
+    test("An Array slot freed by remove can be reused by add", () {
+        liveTrackedCount = 0;
+        {
+            Array!Tracked array = makeTrackedArray(3);
+            array.remove(0);
+            array.add(Tracked(9));
+            assert(array.length == 3);
+            assert(array[2].value == 9);
+            assert(liveTrackedCount == 3);
+        }
+
+        assert(liveTrackedCount == 0);
+    });
+
+    test("Truncating an Array destructs the dropped elements", () {
+        liveTrackedCount = 0;
+        {
+            Array!Tracked array = makeTrackedArray(5);
+            array.truncate(2);
+            assert(array.length == 2);
+            assert(liveTrackedCount == 2);
+        }
+
+        assert(liveTrackedCount == 0);
+    });
+
+    test("Shrinking an Array's capacity below its length destructs the dropped elements", () {
+        liveTrackedCount = 0;
+        {
+            Array!Tracked array = makeTrackedArray(5);
+            array.capacity = 2;
+            assert(array.length == 2);
+            assert(array.capacity == 2);
+            assert(liveTrackedCount == 2);
+        }
+
+        assert(liveTrackedCount == 0);
+    });
+
+    test("Copy-assigning over a live Array destructs its previous elements", () {
+        liveTrackedCount = 0;
+        {
+            Array!Tracked source = makeTrackedArray(4);
+            Array!Tracked target = makeTrackedArray(2);
+            target = source;
+            assert(target.length == 4);
+            assert(liveTrackedCount == 8);
+        }
+
+        assert(liveTrackedCount == 0);
+    });
+
+    test("Assigning a D array over a live Array destructs its previous elements", () {
+        liveTrackedCount = 0;
+        {
+            Tracked[3] source = [Tracked(7), Tracked(8), Tracked(9)];
+            Array!Tracked target = makeTrackedArray(2);
+            target = source[];
+            assert(target.length == 3);
+            assert(target[0].value == 7);
+            assert(liveTrackedCount == 6);
+        }
+
+        assert(liveTrackedCount == 0);
+    });
+
+    test("Copy-assigning over a live SlotList destructs its previous elements", () {
+        liveTrackedCount = 0;
+        {
+            SlotList!Tracked source = makeTrackedSlotList(4);
+            SlotList!Tracked target = makeTrackedSlotList(2);
+            target = source;
+            assert(target.length == 4);
+            assert(liveTrackedCount == 8);
+        }
+
+        assert(liveTrackedCount == 0);
+    });
+
+    test("Removing from a SlotList destructs the element", () {
+        liveTrackedCount = 0;
+        {
+            SlotList!Tracked list = makeTrackedSlotList(3);
+            list.remove(1);
+            assert(liveTrackedCount == 2);
+        }
+
+        assert(liveTrackedCount == 0);
+    });
+
+    test("LinkedList removeFirst and removeLast destruct the element", () {
+        liveTrackedCount = 0;
+        {
+            LinkedList!Tracked list = makeTrackedLinkedList(4);
+            list.removeFirst();
+            assert(liveTrackedCount == 3);
+            list.removeLast();
+            assert(liveTrackedCount == 2);
+            assert(list.length == 2);
+        }
+
+        assert(liveTrackedCount == 0);
+    });
+
+    test("LinkedList removeAll and removeFirst(T) destruct the matching elements", () {
+        liveTrackedCount = 0;
+        {
+            LinkedList!Tracked list = makeTrackedLinkedList(3);
+            list.add(Tracked(1));
+            list.add(Tracked(1));
+            assert(liveTrackedCount == 5);
+
+            list.removeFirst(Tracked(1));
+            assert(list.length == 4);
+            assert(liveTrackedCount == 4);
+
+            list.removeAll(Tracked(1));
+            assert(list.length == 2);
+            assert(liveTrackedCount == 2);
+        }
+
+        assert(liveTrackedCount == 0);
+    });
+
+    test("LinkedList removeWhere destructs the matching elements", () {
+        liveTrackedCount = 0;
+        {
+            LinkedList!Tracked list = makeTrackedLinkedList(5);
+            list.removeWhere((const ref Tracked item) => item.value % 2 == 0);
+            assert(list.length == 2);
+            assert(liveTrackedCount == 2);
+        }
+
+        assert(liveTrackedCount == 0);
+    });
+
+    test("Clearing a LinkedList destructs its elements", () {
+        liveTrackedCount = 0;
+        {
+            LinkedList!Tracked list = makeTrackedLinkedList(3);
+            list.clear();
+            assert(list.length == 0);
+            assert(liveTrackedCount == 0);
+        }
+
+        assert(liveTrackedCount == 0);
+    });
+
+    test("Copy-assigning over a live LinkedList destructs its previous elements", () {
+        liveTrackedCount = 0;
+        {
+            LinkedList!Tracked source = makeTrackedLinkedList(4);
+            LinkedList!Tracked target = makeTrackedLinkedList(2);
+            target = source;
+            assert(target.length == 4);
+            assert(target[3].value == 3);
+            assert(liveTrackedCount == 8);
+
+            target.add(Tracked(9));
+            assert(target.length == 5);
+        }
+
+        assert(liveTrackedCount == 0);
+    });
+
+    test("Copy-assigning a LinkedList to itself keeps its elements", () {
+        liveTrackedCount = 0;
+        {
+            LinkedList!Tracked list = makeTrackedLinkedList(3);
+            LinkedList!Tracked* alias_ = &list;
+            list = *alias_;
+            assert(list.length == 3);
+            assert(list[2].value == 2);
+            assert(liveTrackedCount == 3);
+        }
+
+        assert(liveTrackedCount == 0);
+    });
+
+    test("Removing through a LinkedListIterator destructs the element", () {
+        liveTrackedCount = 0;
+        {
+            LinkedList!Tracked list = makeTrackedLinkedList(3);
+            auto iterator = list.iterator;
+            iterator.next();
+            iterator.next();
+            iterator.remove();
+            assert(list.length == 2);
+            assert(liveTrackedCount == 2);
+        }
+
+        assert(liveTrackedCount == 0);
     });
 }
